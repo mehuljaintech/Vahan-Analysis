@@ -23,9 +23,6 @@ seaborn
 # ===============================
 openpyxl
 xlsxwriter
-odfpy
-pypandoc
-reportlab
 
 # ===============================
 # 🤖 MACHINE LEARNING / ANALYTICS
@@ -63,15 +60,6 @@ tabulate
 pyarrow
 fastparquet
 numexpr
-
-# ===============================
-# 📈 BI / POWER BI / TABLEAU INTEGRATION
-# ===============================
-duckdb
-polars
-sqlalchemy
-pyodbc
-psycopg2-binary
 
 # ===============================
 # ☁️ STREAMLIT CLOUD / DEPLOYMENT
