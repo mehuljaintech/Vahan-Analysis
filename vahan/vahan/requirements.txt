@@ -31,8 +31,6 @@ scikit-learn
 prophet
 statsmodels
 xgboost
-pmdarima
-numpy-financial
 scipy
 
 # ===============================
