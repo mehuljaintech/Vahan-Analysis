@@ -1,5 +1,81 @@
+# ===============================
+# 🚀 CORE FRAMEWORK
+# ===============================
 streamlit
 pandas
+numpy
 requests
-plotly
 python-dateutil
+python-dotenv
+urllib3
+tqdm
+
+# ===============================
+# 🎨 VISUALIZATION / DASHBOARD
+# ===============================
+plotly
+altair
+matplotlib
+seaborn
+
+# ===============================
+# 📊 EXCEL / EXPORT / REPORTING
+# ===============================
+openpyxl
+xlsxwriter
+odfpy
+pypandoc
+reportlab
+
+# ===============================
+# 🤖 MACHINE LEARNING / ANALYTICS
+# ===============================
+scikit-learn
+prophet
+statsmodels
+xgboost
+pmdarima
+numpy-financial
+scipy
+
+# ===============================
+# 💡 AI / LLM INTEGRATION
+# ===============================
+openai
+tiktoken
+deepinfra
+httpx
+tenacity
+
+# ===============================
+# ⚙️ UTILITIES / PERFORMANCE / LOGGING
+# ===============================
+cachetools
+pyyaml
+python-json-logger
+loguru
+colorama
+
+# ===============================
+# 🧠 DATA PROCESSING / TRANSFORMATION
+# ===============================
+tabulate
+pyarrow
+fastparquet
+numexpr
+
+# ===============================
+# 📈 BI / POWER BI / TABLEAU INTEGRATION
+# ===============================
+duckdb
+polars
+sqlalchemy
+pyodbc
+psycopg2-binary
+
+# ===============================
+# ☁️ STREAMLIT CLOUD / DEPLOYMENT
+# ===============================
+validators
+watchdog
+gunicorn
