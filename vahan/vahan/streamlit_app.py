@@ -177,16 +177,53 @@ enable_clustering = st.sidebar.checkbox("🔍 Enable Clustering", value=True)
 enable_ai = st.sidebar.checkbox("🧠 Enable DeepInfra AI Narratives", value=True)
 forecast_periods = st.sidebar.number_input("⏳ Forecast Horizon (months)", min_value=1, max_value=36, value=3)
 
-# --- DeepInfra API Key ---
-DEEPINFRA_API_KEY = os.environ.get("DEEPINFRA_API_KEY") or (
-    st.secrets.get("DEEPINFRA_API_KEY") if "DEEPINFRA_API_KEY" in st.secrets else None
-)
-DEEPINFRA_MODEL = os.environ.get("DEEPINFRA_MODEL", "mistralai/Mixtral-8x7B-Instruct-v0.1")
+# ================================
+# 🤖 DeepInfra AI Connection Setup
+# ================================
+import os
+import requests
+import streamlit as st
 
-if enable_ai and not DEEPINFRA_API_KEY:
-    st.sidebar.warning("🧩 DeepInfra API key not found — add it in Streamlit Secrets to enable AI Narratives.")
+# --- DeepInfra API Configuration ---
+DEEPINFRA_API_KEY = (
+    os.environ.get("DEEPINFRA_API_KEY")
+    or st.secrets.get("DEEPINFRA_API_KEY")
+    if "DEEPINFRA_API_KEY" in st.secrets
+    else None
+)
+DEEPINFRA_MODEL = (
+    os.environ.get("DEEPINFRA_MODEL")
+    or st.secrets.get("DEEPINFRA_MODEL", "mistralai/Mixtral-8x7B-Instruct-v0.1")
+)
+
+# --- Sidebar Connection Status ---
+if enable_ai:
+    if not DEEPINFRA_API_KEY:
+        st.sidebar.warning("🧩 DeepInfra API key not found — add it in Streamlit Secrets to enable AI Narratives.")
+    else:
+        # ✅ Optional: Test key validity with lightweight request
+        try:
+            test_resp = requests.post(
+                "https://api.deepinfra.com/v1/openai/models",
+                headers={"Authorization": f"Bearer {DEEPINFRA_API_KEY}"},
+                timeout=10
+            )
+            if test_resp.status_code == 200:
+                st.sidebar.success(f"✅ DeepInfra Connected — Model: {DEEPINFRA_MODEL}")
+            elif test_resp.status_code == 401:
+                st.sidebar.error("🚫 Unauthorized — invalid DEEPINFRA_API_KEY in Streamlit Secrets.")
+            else:
+                st.sidebar.warning(f"⚠️ DeepInfra status: {test_resp.status_code}")
+        except Exception as e:
+            st.sidebar.error(f"❌ DeepInfra connection error: {e}")
 else:
-    st.sidebar.success("✅ DeepInfra Connected — AI Narratives Ready!")
+    st.sidebar.info("🤖 AI Narratives disabled — toggle it ON to enable DeepInfra insights.")
+
+# --- Debug / optional visibility ---
+# Remove after confirming it works
+# with st.expander("🔍 DeepInfra Debug Info"):
+#     st.write("Key Loaded:", bool(DEEPINFRA_API_KEY))
+#     st.write("Model:", DEEPINFRA_MODEL)
 
 st.sidebar.markdown("---")
 st.sidebar.caption("💡 Tip: Toggle features dynamically — the dashboard adapts instantly.")
