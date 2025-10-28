@@ -161,7 +161,6 @@ with st.sidebar.expander("🧠 Smart Analytics & AI", expanded=True):
 # 🎨 UNIVERSAL HYBRID THEME ENGINE (STABLE + )
 # =====================================================
 THEMES = {
-    "Auto": {"bg": "#F8FAFC", "text": "#0F172A", "card": "#FFFFFF", "accent": "#00BCD4"},
     "Dark": {"bg": "#0B1120", "text": "#E2E8F0", "card": "#1E293B", "accent": "#38BDF8"},
     "Light": {"bg": "#F9FAFB", "text": "#111827", "card": "#FFFFFF", "accent": "#2563EB"},
     "Glass": {"bg": "rgba(15,23,42,0.85)", "text": "#E0F2FE", "card": "rgba(255,255,255,0.06)", "accent": "#00E0FF"},
