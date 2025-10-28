@@ -237,12 +237,12 @@ with st.spinner("🚀 Generating request parameters... please wait"):
         st.error(f"❌ Error while building Vahan parameters: {str(e)}")
 
         if st.button("🔄 Auto-Retry Build"):
-            st.experimental_rerun()
+            st.rerun()
 
 # --- Optional auto-refresh animation ---
 if st.button("♻️ Refresh Parameters"):
     st.toast("Refreshing filters & rebuilding params...", icon="🔁")
-    st.experimental_rerun()
+    st.rerun()
 
 # ================================
 # ⚙️ Dynamic Safe API Fetch Layer
@@ -287,7 +287,7 @@ def fetch_json(endpoint, params=params_common, desc=""):
     )
 
     if st.button(f"🔁 Retry {desc or endpoint}"):
-        st.experimental_rerun()
+        st.rerun()
 
     return {}
 
@@ -366,7 +366,7 @@ def deepinfra_chat(system_prompt: str, user_prompt: str,
     # Final fallback
     st.error("⛔ DeepInfra AI failed after multiple attempts.")
     if st.button("🔁 Retry DeepInfra AI"):
-        st.experimental_rerun()
+        st.rerun()
 
     return {"error": "DeepInfra API failed after retries."}
 
