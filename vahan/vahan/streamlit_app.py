@@ -67,7 +67,7 @@ load_dotenv()
 
 
 # =====================================================
-# 🚀 PARIVAHAN ANALYTICS — MAXED HYBRID UI ENGINE
+# 🚀 PARIVAHAN ANALYTICS —  HYBRID UI ENGINE
 # =====================================================
 
 import streamlit as st
@@ -79,7 +79,7 @@ from urllib.parse import urlencode
 # ⚙️ PAGE CONFIG
 # =====================================================
 st.set_page_config(
-    page_title="🚗 Parivahan Analytics — All-World UI",
+    page_title="🚗 Parivahan Analytics",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -89,11 +89,11 @@ st.set_page_config(
 # =====================================================
 if "launched" not in st.session_state:
     st.session_state.launched = True
-    st.toast("🚀 Welcome to Parivahan Analytics — MAXED Hybrid Experience!", icon="🌍")
+    st.toast("🚀 Welcome to Parivahan Analytics —  Hybrid Experience!", icon="🌍")
     st.balloons()
 
 # =====================================================
-# 🧭 SIDEBAR — DYNAMIC FILTER PANEL (MAXED)
+# 🧭 SIDEBAR — DYNAMIC FILTER PANEL ()
 # =====================================================
 today = date.today()
 default_from_year = max(2017, today.year - 1)
@@ -158,7 +158,7 @@ with st.sidebar.expander("🧠 Smart Analytics & AI", expanded=True):
     forecast_periods = st.number_input("⏳ Forecast Horizon (months)", min_value=1, max_value=36, value=3)
 
 # =====================================================
-# 🎨 UNIVERSAL HYBRID THEME ENGINE (STABLE + MAXED)
+# 🎨 UNIVERSAL HYBRID THEME ENGINE (STABLE + )
 # =====================================================
 THEMES = {
     "Auto": {"bg": "#F8FAFC", "text": "#0F172A", "card": "#FFFFFF", "accent": "#00BCD4"},
@@ -251,25 +251,42 @@ def build_css(palette, font_size, radius, motion):
 st.markdown(build_css(palette, font_size, radius, motion), unsafe_allow_html=True)
 
 # =====================================================
-# 💹 DEMO DASHBOARD SECTION (SAFE, PREVIEW)
+# 💹 DASHBOARD SECTION (LIVE ANALYTICS PLACEHOLDER)
 # =====================================================
-st.markdown(f"<h2 style='text-align:center;'>🚗 Parivahan Analytics — {ui_mode} Theme Preview</h2>", unsafe_allow_html=True)
+st.markdown(
+    f"<h2 style='text-align:center;'>🚗 Parivahan Analytics — {ui_mode} Mode</h2>",
+    unsafe_allow_html=True
+)
 
-col1, col2, col3 = st.columns(3)
-col1.metric("Total Vehicles", "12.4M", "+3.2%")
-col2.metric("Revenue (₹ Cr)", "8,921", "+4.5%")
-col3.metric("Active States", "32", "+1")
-
+# -- Dynamic Divider --
 st.markdown("<hr>", unsafe_allow_html=True)
 
+# -- Layout Containers --
 col1, col2 = st.columns([2, 1])
+
 with col1:
-    st.markdown("<div class='glass-card'><h3>📊 Registration Trend</h3><p>Interactive chart or plot will go here...</p></div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div class='glass-card'><h3>📊 Registration Trends</h3>"
+        "<p>Live interactive charts and data visualizations will render here dynamically based on filters and API responses.</p>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
 with col2:
-    st.markdown("<div class='glass-card'><h3>🏭 Top Makers</h3><p>Bar chart / ranking section...</p></div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div class='glass-card'><h3>🏭 Top Makers / KPIs</h3>"
+        "<p>Top manufacturer insights, KPIs, and rankings will appear here once data is loaded.</p>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
-st.markdown("<div style='text-align:center;opacity:0.7;margin-top:2rem;'>✨ Parivahan Analytics • MAXED Premium UI Engine</div>", unsafe_allow_html=True)
-
+# -- Footer --
+st.markdown(
+    "<div style='text-align:center;opacity:0.7;margin-top:2rem;'>"
+    "✨ Parivahan Analytics • Hybrid UI Engine"
+    "</div>",
+    unsafe_allow_html=True,
+)
 # =====================================================
 # 🧭 HEADER
 # =====================================================
@@ -316,7 +333,7 @@ with layout:
 # =====================================================
 st.markdown("<hr>", unsafe_allow_html=True)
 st.markdown(
-    "<div style='text-align:center;opacity:0.6;font-size:13px;'>🌐 Parivahan Analytics — Unified Hybrid Interface | Adaptive to All Modes</div>",
+    "<div style='text-align:center;opacity:0.6;font-size:13px;'>🌐 Parivahan Analytics — Unified Hybrid Interface </div>",
     unsafe_allow_html=True,
 )
 # ================================
