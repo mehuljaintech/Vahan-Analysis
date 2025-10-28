@@ -263,21 +263,6 @@ st.markdown("<hr>", unsafe_allow_html=True)
 # -- Layout Containers --
 col1, col2 = st.columns([2, 1])
 
-with col1:
-    st.markdown(
-        "<div class='glass-card'><h3>📊 Registration Trends</h3>"
-        "<p>Live interactive charts and data visualizations will render here dynamically based on filters and API responses.</p>"
-        "</div>",
-        unsafe_allow_html=True,
-    )
-
-with col2:
-    st.markdown(
-        "<div class='glass-card'><h3>🏭 Top Makers / KPIs</h3>"
-        "<p>Top manufacturer insights, KPIs, and rankings will appear here once data is loaded.</p>"
-        "</div>",
-        unsafe_allow_html=True,
-    )
 
 # -- Footer --
 st.markdown(
