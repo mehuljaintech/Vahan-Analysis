@@ -1,3 +1,7 @@
+# ======================================================
+# 🚀 PARIVAHAN ANALYTICS 2025 — MAXED REQUIREMENTS
+# ======================================================
+
 # ===============================
 # 🚀 CORE FRAMEWORK
 # ===============================
@@ -17,12 +21,22 @@ plotly
 altair
 matplotlib
 seaborn
+vega-datasets
+folium
+pydeck
+streamlit-echarts
+streamlit-aggrid
 
 # ===============================
 # 📊 EXCEL / EXPORT / REPORTING
 # ===============================
 openpyxl
 xlsxwriter
+pyxlsb
+odfpy
+reportlab
+pypandoc
+fpdf2
 
 # ===============================
 # 🤖 MACHINE LEARNING / ANALYTICS
@@ -32,6 +46,9 @@ prophet
 statsmodels
 xgboost
 scipy
+catboost
+lightgbm
+mlxtend
 
 # ===============================
 # 💡 AI / LLM INTEGRATION
@@ -41,6 +58,23 @@ tiktoken
 deepinfra
 httpx
 tenacity
+transformers
+torch
+accelerate
+sentencepiece
+huggingface-hub
+
+# ===============================
+# 🧠 DATA PROCESSING / TRANSFORMATION
+# ===============================
+pyarrow
+fastparquet
+numexpr
+tabulate
+dask
+pyspark
+dataclasses-json
+polars
 
 # ===============================
 # ⚙️ UTILITIES / PERFORMANCE / LOGGING
@@ -50,14 +84,9 @@ pyyaml
 python-json-logger
 loguru
 colorama
-
-# ===============================
-# 🧠 DATA PROCESSING / TRANSFORMATION
-# ===============================
-tabulate
-pyarrow
-fastparquet
-numexpr
+rich
+psutil
+aiofiles
 
 # ===============================
 # ☁️ STREAMLIT CLOUD / DEPLOYMENT
@@ -65,6 +94,11 @@ numexpr
 validators
 watchdog
 gunicorn
+uvicorn
+fastapi
+flask
+werkzeug
+jinja2
 
 # ===============================
 # 🕸️ ADVANCED NETWORKING / CRAWLING / PLAYWRIGHT
@@ -73,3 +107,67 @@ playwright
 fake-useragent
 requests-toolbelt
 aiohttp
+beautifulsoup4
+lxml
+html5lib
+selenium
+
+# ===============================
+# 🧩 DATABASE CONNECTORS
+# ===============================
+sqlalchemy
+pymysql
+psycopg2-binary
+sqlite-utils
+duckdb
+redis
+pymongo
+
+# ===============================
+# 🔐 SECURITY / AUTH / CRYPTO
+# ===============================
+cryptography
+pyjwt
+bcrypt
+
+# ===============================
+# 🧾 FILE HANDLING / STORAGE
+# ===============================
+python-docx
+python-pptx
+pdfplumber
+PyPDF2
+pytesseract
+
+# ===============================
+# 🧰 DEVELOPMENT / TESTING / LINTING
+# ===============================
+pytest
+black
+flake8
+mypy
+isort
+playwright
+pytest-playwright
+httpx
+
+# ===============================
+# 🌐 OPTIONAL — CLOUD & API CLIENTS
+# ===============================
+boto3
+google-cloud-storage
+azure-storage-blob
+dropbox
+gspread
+oauthlib
+
+# ===============================
+# 🎯 BONUS — ENHANCEMENTS / UX / AI AGENTS
+# ===============================
+streamlit-lottie
+streamlit-extras
+streamlit-animate
+langchain
+langchain-community
+chromadb
+faiss-cpu
