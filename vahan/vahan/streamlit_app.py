@@ -160,9 +160,9 @@ with st.sidebar.expander("🧠 Smart Analytics & AI", expanded=True):
 # =====================================================
 # 🎨 UNIVERSAL HYBRID THEME ENGINE (STABLE + )
 # =====================================================
-THEMES = {
-    "Dark": {"bg": "#0B1120", "text": "#E2E8F0", "card": "#1E293B", "accent": "#38BDF8"},
+THEMES = {    
     "Light": {"bg": "#F9FAFB", "text": "#111827", "card": "#FFFFFF", "accent": "#2563EB"},
+    "Dark": {"bg": "#0B1120", "text": "#E2E8F0", "card": "#1E293B", "accent": "#38BDF8"},
     "Glass": {"bg": "rgba(15,23,42,0.85)", "text": "#E0F2FE", "card": "rgba(255,255,255,0.06)", "accent": "#00E0FF"},
     "Neumorphic": {"bg": "#E5E9F0", "text": "#1E293B", "card": "#F8FAFC", "accent": "#0078FF"},
     "Gradient": {"bg": "linear-gradient(120deg,#0F172A,#1E3A8A)", "text": "#E0F2FE", "card": "rgba(255,255,255,0.05)", "accent": "#38BDF8"},
