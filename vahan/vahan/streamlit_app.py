@@ -290,34 +290,40 @@ st.markdown("<hr>", unsafe_allow_html=True)
 layout = st.container()
 with layout:
     st.markdown("""
-    <div style='text-align:center;margin-bottom:20px;'>
+    <div style='text-align:center;margin-bottom:1.5rem;'>
         <h2>📈 Analytics Overview</h2>
-        <p style='opacity:0.7;'>Dynamic KPIs, Charts, and Insights will appear here</p>
+        <p style='opacity:0.7;'>Dynamic KPIs, charts, forecasts, and insights will load here automatically</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # Placeholder zones
-    top = st.columns(3)
+    # =================================================
+    # KPI PLACEHOLDERS — TOP ROW
+    # =================================================
+    kpi_cols = st.columns(3)
+    with kpi_cols[0]:
+        kpi_1 = st.empty()
+    with kpi_cols[1]:
+        kpi_2 = st.empty()
+    with kpi_cols[2]:
+        kpi_3 = st.empty()
+
+    # =================================================
+    # MAIN VISUAL AREA — CHARTS / INSIGHTS
+    # =================================================
     left, right = st.columns([2, 1])
-
-    with top[0]:
-        placeholder_kpi_1 = st.empty()
-    with top[1]:
-        placeholder_kpi_2 = st.empty()
-    with top[2]:
-        placeholder_kpi_3 = st.empty()
-
     with left:
-        placeholder_main_chart = st.empty()
+        main_chart = st.empty()   # Placeholder for major chart (trend, forecast, etc.)
     with right:
-        placeholder_sidebar_chart = st.empty()
+        side_chart = st.empty()   # Placeholder for comparison or breakdown visuals
 
 # =====================================================
-# 🧩 FOOTER
+# 🧩 FOOTER — BRAND STRIP
 # =====================================================
 st.markdown("<hr>", unsafe_allow_html=True)
 st.markdown(
-    "<div style='text-align:center;opacity:0.6;font-size:13px;'>🌐 Parivahan Analytics — Unified Hybrid Interface </div>",
+    "<div style='text-align:center;opacity:0.65;font-size:13px;margin-top:10px;'>"
+    "🌐 Parivahan Analytics • Hybrid Interface Engine"
+    "</div>",
     unsafe_allow_html=True,
 )
 # ================================
