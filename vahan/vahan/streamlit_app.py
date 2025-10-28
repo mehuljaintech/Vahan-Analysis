@@ -1277,6 +1277,52 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# ===============================
+# 🔢 SIMPLE LINEAR FORECAST HELPER
+# ===============================
+import pandas as pd
+import numpy as np
+
+def linear_forecast(df, months: int = 6, date_col: str = "date", value_col: str = "value"):
+    """
+    Generate a simple linear forecast for the next N months
+    based on the existing monthly trend data.
+
+    Args:
+        df (DataFrame): Must contain date_col and value_col columns.
+        months (int): Number of future months to predict.
+    Returns:
+        DataFrame with future 'date' and 'value' columns.
+    """
+    try:
+        if df.empty or value_col not in df or date_col not in df:
+            return pd.DataFrame(columns=[date_col, value_col])
+
+        df = df.copy()
+        df = df.sort_values(by=date_col)
+        df["t"] = np.arange(len(df))  # time index
+        X = df["t"].values
+        y = df[value_col].values
+
+        # Linear regression (np.polyfit)
+        slope, intercept = np.polyfit(X, y, 1)
+
+        # Forecast next months
+        last_date = df[date_col].max()
+        future_dates = pd.date_range(last_date + pd.offsets.MonthBegin(), periods=months, freq="MS")
+        future_t = np.arange(len(df), len(df) + months)
+        forecast_values = intercept + slope * future_t
+
+        forecast_df = pd.DataFrame({
+            date_col: future_dates,
+            value_col: forecast_values
+        })
+        return forecast_df
+    except Exception as e:
+        print(f"Forecast generation failed: {e}")
+        return pd.DataFrame(columns=[date_col, value_col])
+
+
 # ---------------- Forecast Helper (robust & progressive)
 def forecast_trend(df, periods=6):
     """
@@ -1910,13 +1956,9 @@ else:
         st.snow()
 
 
-# ======================
-# 🔮 Forecasting (Auto or AI)
-# ======================
 if enable_forecast:
     st.markdown("### 🔮 Forecasting — Future Revenue Projection")
     try:
-        # Simplified linear extrapolation for now
         df_trend = df_rev_trend.copy()
         df_trend['date'] = pd.to_datetime(df_trend['period'], errors='coerce')
         df_trend = df_trend.dropna(subset=['date'])
@@ -1985,7 +2027,7 @@ if enable_anomaly and not df_rev_trend.empty:
 
 
 # ======================
-# 🧭 Clustering & Correlation
+# 🧭 Clustering & Correlation (Auto-Adaptive)
 # ======================
 if enable_clustering and not df_rev_trend.empty:
     st.markdown("### 🧭 Clustering & Correlation (AI + Visuals)")
@@ -1995,40 +2037,75 @@ if enable_clustering and not df_rev_trend.empty:
         from sklearn.decomposition import PCA
         from sklearn.metrics import silhouette_score
         import plotly.express as px
+        import altair as alt
         import numpy as np
+        import pandas as pd
 
         df_cl = df_rev_trend.copy()
         df_cl['value'] = pd.to_numeric(df_cl['value'], errors='coerce').fillna(0)
-        X = df_cl[['value']].astype(float)
 
+        # --- Pick all numeric columns for clustering ---
+        num_cols = df_cl.select_dtypes(include=[np.number]).columns.tolist()
+        if not num_cols:
+            st.warning("No numeric columns found for clustering.")
+            st.stop()
+
+        X = df_cl[num_cols].astype(float)
         scaler = StandardScaler()
         Xs = scaler.fit_transform(X)
 
-        n_clusters = st.slider("Number of Clusters (k)", 2, min(8, len(Xs)), 3)
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+        # --- Ensure valid number of clusters ---
+        max_clusters = max(2, min(8, len(Xs)))
+        n_clusters = st.slider("Number of Clusters (k)", 2, max_clusters, 3)
+        if len(Xs) < n_clusters:
+            n_clusters = len(Xs)
+
+        kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init="auto")
         labels = kmeans.fit_predict(Xs)
         df_cl['cluster'] = labels
 
         sc = silhouette_score(Xs, labels) if len(Xs) > n_clusters else 0
-
         st.metric("Silhouette Score", f"{sc:.3f}")
-        st.dataframe(df_cl.head(15))
 
-        # PCA scatter
-        pca = PCA(n_components=2)
-        proj = pca.fit_transform(Xs)
-        scatter_df = pd.DataFrame({"x": proj[:, 0], "y": proj[:, 1], "cluster": labels})
-        chart = alt.Chart(scatter_df).mark_circle(size=80).encode(
-            x="x", y="y", color="cluster:N", tooltip=["x", "y", "cluster"]
-        ).properties(height=400, title="Cluster Projection (PCA)")
-        st.altair_chart(chart, use_container_width=True)
+        st.dataframe(df_cl.head(10))
 
-        # Correlation heatmap (Plotly)
-        corr = df_cl.corr(numeric_only=True)
-        fig_corr = px.imshow(corr, text_auto=".2f", title="Correlation Matrix", color_continuous_scale="RdBu_r")
-        st.plotly_chart(fig_corr, use_container_width=True)
+        # --- PCA or fallback visualization ---
+        if Xs.shape[1] >= 2:
+            pca = PCA(n_components=2)
+            proj = pca.fit_transform(Xs)
+            scatter_df = pd.DataFrame({"x": proj[:, 0], "y": proj[:, 1], "cluster": labels})
+            chart = (
+                alt.Chart(scatter_df)
+                .mark_circle(size=80)
+                .encode(x="x", y="y", color="cluster:N", tooltip=["x", "y", "cluster"])
+                .properties(height=400, title="Cluster Projection (PCA)")
+            )
+            st.altair_chart(chart, use_container_width=True)
+        else:
+            # fallback for 1D data
+            scatter_df = pd.DataFrame({"x": Xs.flatten(), "cluster": labels})
+            chart = (
+                alt.Chart(scatter_df)
+                .mark_circle(size=80)
+                .encode(x="x", y="cluster:N", color="cluster:N", tooltip=["x", "cluster"])
+                .properties(height=400, title="Cluster Visualization (1D Data)")
+            )
+            st.altair_chart(chart, use_container_width=True)
 
-        # AI Cluster Insights
+        # --- Correlation heatmap ---
+        if len(num_cols) > 1:
+            corr = df_cl[num_cols + ['cluster']].corr(numeric_only=True)
+            fig_corr = px.imshow(
+                corr,
+                text_auto=".2f",
+                title="Correlation Matrix",
+                color_continuous_scale="RdBu_r",
+            )
+            st.plotly_chart(fig_corr, use_container_width=True)
+        else:
+            st.info("ℹ️ Not enough numeric columns for correlation matrix.")
+
+        # --- AI Cluster Insights ---
         if enable_ai:
             with st.spinner("🤖 Generating AI clustering insights..."):
                 cluster_summary = df_cl.groupby('cluster')['value'].mean().to_dict()
@@ -2037,6 +2114,7 @@ if enable_clustering and not df_rev_trend.empty:
                 ai_resp = deepinfra_chat(system, user, max_tokens=320)
                 if isinstance(ai_resp, dict) and "text" in ai_resp:
                     st.markdown(f"<div class='ai-box'>{ai_resp['text']}</div>", unsafe_allow_html=True)
+
     except Exception as e:
         st.error(f"Clustering failed: {e}")
 
