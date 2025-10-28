@@ -65,3 +65,11 @@ numexpr
 validators
 watchdog
 gunicorn
+
+# ===============================
+# 🕸️ ADVANCED NETWORKING / CRAWLING / PLAYWRIGHT
+# ===============================
+playwright
+fake-useragent
+requests-toolbelt
+aiohttp
