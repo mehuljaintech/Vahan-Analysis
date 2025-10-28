@@ -157,118 +157,246 @@ with st.sidebar.expander("🧠 Smart Analytics & AI", expanded=True):
     enable_forecast = st.checkbox("📈 Enable Forecasting", value=True, key="enable_forecast")
     enable_anomaly = st.checkbox("⚠️ Enable Anomaly Detection", value=True, key="enable_anomaly")
     enable_clustering = st.checkbox("🔍 Enable Clustering", value=True, key="enable_clustering")
-    enable_ai = st.checkbox("🤖 Enable DeepInfra AI Narratives", value=True, key="enable_ai")
+    enable_ai = st.checkbox("🤖 Enable DeepInfra AI Narratives", value=False, key="enable_ai")
     forecast_periods = st.number_input("⏳ Forecast Horizon (months)", min_value=1, max_value=36, value=3, key="forecast_periods")
 
-# =====================================================
-# 🎨 UNIVERSAL THEME ENGINE — ALL MODES MAXED
-# =====================================================
-st.sidebar.markdown("---")
-st.sidebar.markdown("""
-<div class="sidebar-section">
-<h4>🎨 UI Modes</h4>
-<p style="font-size:13px;">Customize the look and behavior of the dashboard.</p>
-</div>
-""", unsafe_allow_html=True)
+# ================================
+# 🚀 MAXED THEME & LAYOUT ENGINE
+# ================================
+import streamlit as st
+from datetime import datetime
+from urllib.parse import urlencode
 
-ui_mode = st.sidebar.radio(
-    "🌗 Theme Mode",
-    ["Auto", "Light", "Dark", "Glass", "Neumorphic", "Gradient", "High Contrast"],
-    index=0,
-    key="ui_mode"
+# ---- Persist defaults across sessions (and optionally via URL) ----
+if "ui_prefs" not in st.session_state:
+    st.session_state.ui_prefs = {
+        "mode": "Auto",
+        "preset": "Premium Hybrid",
+        "font_size": 15,
+        "radius": 10,
+        "motion": True,
+        "contrast_boost": True,
+        "layout": "wide",  # options: wide, compact, dashboard
+        "vscode_mode": False,
+    }
+
+# --- Small helper to save prefs and apply query params ---
+def save_prefs_to_query():
+    q = st.experimental_get_query_params()
+    prefs = st.session_state.ui_prefs
+    q.update({
+        "mode": prefs["mode"],
+        "font": str(prefs["font_size"]),
+        "r": str(prefs["radius"]),
+        "m": "1" if prefs["motion"] else "0",
+        "c": "1" if prefs["contrast_boost"] else "0",
+        "layout": prefs["layout"],
+        "vscode": "1" if prefs["vscode_mode"] else "0",
+    })
+    st.experimental_set_query_params(**q)
+
+# Try to hydrate prefs from URL (so users can share theme)
+q = st.experimental_get_query_params()
+if q:
+    try:
+        if "mode" in q:
+            st.session_state.ui_prefs["mode"] = q.get("mode", [st.session_state.ui_prefs["mode"]])[0]
+        if "font" in q:
+            st.session_state.ui_prefs["font_size"] = int(q.get("font", [st.session_state.ui_prefs["font_size"]])[0])
+        if "r" in q:
+            st.session_state.ui_prefs["radius"] = int(q.get("r", [st.session_state.ui_prefs["radius"]])[0])
+        if "m" in q:
+            st.session_state.ui_prefs["motion"] = q.get("m", ["1"])[0] == "1"
+        if "c" in q:
+            st.session_state.ui_prefs["contrast_boost"] = q.get("c", ["1"])[0] == "1"
+        if "layout" in q:
+            st.session_state.ui_prefs["layout"] = q.get("layout", [st.session_state.ui_prefs["layout"]])[0]
+        if "vscode" in q:
+            st.session_state.ui_prefs["vscode_mode"] = q.get("vscode", ["0"])[0] == "1"
+    except Exception:
+        pass
+
+# --------------------------------
+# Sidebar: UI Controls (maxed)
+# --------------------------------
+st.sidebar.markdown("## 🎛️ Appearance & Layout — MAXED")
+mode = st.sidebar.selectbox(
+    "Theme Mode",
+    ["Auto", "Dark", "Light", "Glass", "Neumorphic", "Gradient", "High Contrast", "VSCode", "Fluent (Windows)", "MacOS Aqua"],
+    index=["Auto","Dark","Light","Glass","Neumorphic","Gradient","High Contrast","VSCode","Fluent (Windows)","MacOS Aqua"].index(st.session_state.ui_prefs["mode"]) if st.session_state.ui_prefs["mode"] in ["Auto","Dark","Light","Glass","Neumorphic","Gradient","High Contrast","VSCode","Fluent (Windows)","MacOS Aqua"] else 0
 )
-font_size = st.sidebar.slider("🔠 Font Size", 12, 20, 15, key="font_size")
-roundness = st.sidebar.slider("🟢 Corner Radius", 4, 24, 12, key="corner_radius")
-show_effects = st.sidebar.toggle("✨ Enable Motion & Glow", value=True, key="motion_glow")
+preset = st.sidebar.selectbox(
+    "Preset (composition)",
+    ["Premium Hybrid", "Minimal Clean", "Enterprise Slate", "Developer — VSCode", "Mobile Optimized"],
+    index=0
+)
+font_size = st.sidebar.slider("Font size", 12, 22, st.session_state.ui_prefs["font_size"])
+radius = st.sidebar.slider("Corner radius (px)", 0, 28, st.session_state.ui_prefs["radius"])
+motion = st.sidebar.checkbox("Enable soft motion & glow", value=st.session_state.ui_prefs["motion"])
+contrast_boost = st.sidebar.checkbox("Boost text clarity / contrast", value=st.session_state.ui_prefs["contrast_boost"])
+layout_choice = st.sidebar.radio("Layout style", ["wide", "compact", "dashboard"], index=["wide","compact","dashboard"].index(st.session_state.ui_prefs["layout"]))
+vscode_mode = st.sidebar.checkbox("Developer (VSCode style) sidebar", value=st.session_state.ui_prefs["vscode_mode"])
 
-if show_effects:
-    st.balloons()
+# Apply to session state
+st.session_state.ui_prefs.update({
+    "mode": mode,
+    "preset": preset,
+    "font_size": font_size,
+    "radius": radius,
+    "motion": motion,
+    "contrast_boost": contrast_boost,
+    "layout": layout_choice,
+    "vscode_mode": vscode_mode,
+})
 
-# =====================================================
-# 🪄 DYNAMIC STYLE BUILDER
-# =====================================================
-def build_css(mode, font_size, radius, glow):
-    glow_shadow = "0 0 25px rgba(0,255,200,0.5)" if glow else "none"
+# Offer quick save/share button
+if st.sidebar.button("Save theme & share URL"):
+    save_prefs_to_query()
+    st.sidebar.success("Theme saved to URL — copy & share the address.")
 
-    if mode == "Dark":
-        bg, text, card, accent = "#0f172a", "#E2E8F0", "#1e293b", "#00e0ff"
-    elif mode == "Light":
-        bg, text, card, accent = "#f8fafc", "#1e293b", "#ffffff", "#0077ff"
-    elif mode == "Glass":
-        bg, text, card, accent = "rgba(255,255,255,0.12)", "#ffffff", "rgba(255,255,255,0.15)", "#00f5d4"
-    elif mode == "Neumorphic":
-        bg, text, card, accent = "#e0e5ec", "#1e293b", "#f0f3f7", "#0077ff"
-    elif mode == "Gradient":
-        bg, text, card, accent = (
-            "linear-gradient(135deg,#1f005c,#5b0060,#870160,#ac255e,#ca485c,#e16b5c,#f39060,#ffb56b)",
-            "#f8fafc",
-            "rgba(255,255,255,0.15)",
-            "#ffd166",
-        )
-    elif mode == "High Contrast":
-        bg, text, card, accent = "#000000", "#ffffff", "#111111", "#ffde00"
-    else:  # Auto
-        bg, text, card, accent = "#ffffff", "#1e293b", "#f9fafb", "#00e0ff"
+# --------------------------------
+# Palettes (mix of OS + VSCode + Fluent + Aqua)
+# --------------------------------
+PALETTES = {
+    "Dark": {"bg":"#0b0f17","text":"#E6EEF6","card":"#0f1724","accent":"#38d6ff"},
+    "Light": {"bg":"#f6f9fc","text":"#0f1724","card":"#ffffff","accent":"#0078ff"},
+    "Glass": {"bg":"linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))","text":"#e9f7ff","card":"rgba(255,255,255,0.06)","accent":"#00f5d4"},
+    "Neumorphic": {"bg":"#e9eef5","text":"#102027","card":"#f6f9fc","accent":"#2b8cff"},
+    "Gradient": {"bg":"linear-gradient(120deg,#4f46e5,#06b6d4)","text":"#fff","card":"rgba(255,255,255,0.08)","accent":"#ffd166"},
+    "High Contrast": {"bg":"#000","text":"#fff","card":"#111","accent":"#ffde00"},
+    "VSCode": {"bg":"#0f1722","text":"#d4d4d4","card":"#0b1220","accent":"#007acc"},
+    "Fluent (Windows)": {"bg":"linear-gradient(120deg,#0f1722,#0b2540)","text":"#e6f0ff","card":"rgba(255,255,255,0.03)","accent":"#0078d4"},
+    "MacOS Aqua": {"bg":"linear-gradient(120deg,#ffffff,#e6f0ff)","text":"#09233a","card":"rgba(255,255,255,0.6)","accent":"#0ab7ff"},
+    "Auto": {"bg":"var(--auto-bg, #f6f9fc)","text":"var(--auto-text, #0f1724)","card":"var(--auto-card, #ffffff)","accent":"#00bcd4"},
+}
 
-    return f"""
+palette = PALETTES.get(mode, PALETTES["Auto"])
+
+# --------------------------------
+# Dynamic CSS generator (comprehensive)
+# --------------------------------
+def gen_css(palette, font_size=15, radius=10, motion=True, contrast_boost=True, layout="wide", preset="Premium Hybrid", vscode=False):
+    accent = palette["accent"]
+    text = palette["text"]
+    bg = palette["bg"]
+    card = palette["card"]
+    glow = "0 0 22px rgba(0,190,255,0.18)" if motion else "none"
+    contrast = "1.06" if contrast_boost else "1.0"
+
+    # layout-specific sizes
+    max_width = "1200px" if layout=="dashboard" else ("1400px" if layout=="wide" else "980px")
+    top_nav = ""
+    if preset=="Developer — VSCode" or vscode:
+        sidebar_style = """
+        /* VSCode-like left sidebar */
+        [data-testid="stSidebar"] { padding-top: 18px; background: #0b1220 !important; border-right: 1px solid rgba(255,255,255,0.03) !important; }
+        .vscode-editor { font-family: 'Fira Code', monospace; font-size: 0.95rem; background: linear-gradient(180deg,#071226,#0b1220); border-radius:8px; padding:12px;}
+        """
+    else:
+        sidebar_style = ""
+
+    css = f"""
     <style>
+    :root {{ --accent: {accent}; --text: {text}; --bg: {bg}; --card: {card}; --radius: {radius}px; --glow: {glow}; --contrast: {contrast}; }}
     html, body, .stApp {{
         background: {bg};
         color: {text};
-        font: {font_size}px 'Inter', 'Segoe UI', sans-serif;
-        transition: all 0.5s ease-in-out;
+        font-family: Inter, "Segoe UI", Roboto, system-ui, -apple-system;
+        font-size: {font_size}px;
+        transition: all 0.35s ease;
+        filter: contrast({contrast});
     }}
-    h1, h2, h3, h4, h5 {{
-        color: {accent};
-        font-weight: 800;
-        text-shadow: {glow_shadow};
-        text-align: center;
-    }}
-    .block-container {{
-        max-width: 95%;
-        padding: 1.5rem 2rem 4rem 2rem;
-        border-radius: {radius}px;
-    }}
-    [data-testid="stSidebar"] {{
-        background: {card};
-        border-right: 2px solid {accent}55;
-        backdrop-filter: blur(12px);
-        box-shadow: 0 0 12px rgba(0,0,0,0.3);
-    }}
+    .block-container {{ max-width: {max_width}; padding: 18px 28px 48px 28px; margin: 0 auto; border-radius: {radius}px; }}
+    h1,h2,h3,h4 {{ color: {accent}; font-weight:800; text-shadow: var(--glow); }}
+    hr {{ border: none; height: 1px; background: linear-gradient(90deg, rgba(255,255,255,0.02), {accent}33); margin: 1rem 0; }}
+
+    /* Buttons */
     div.stButton > button {{
-        background: {accent};
-        color: {text};
-        font-weight: 700;
-        border-radius: {radius}px;
-        transition: all 0.3s ease-in-out;
-        border: none;
+        background: linear-gradient(90deg, {accent}, #005f9e);
+        color: white; font-weight:700; border-radius: calc(var(--radius) - 2px); padding: 8px 14px;
+        box-shadow: 0 6px 18px rgba(2,6,23,0.18);
+        transition: transform .18s ease, box-shadow .18s ease;
     }}
-    div.stButton > button:hover {{
-        transform: translateY(-2px) scale(1.05);
-        box-shadow: 0 0 15px {accent};
-    }}
-    .stMetricValue {{
-        color: {accent} !important;
-        font-size: 1.5em;
-        font-weight: 800;
-    }}
-    .glass-card {{
+    div.stButton > button:hover {{ transform: translateY(-3px); box-shadow: 0 12px 28px rgba(2,6,23,0.26); }}
+
+    /* Metric clarity */
+    [data-testid="stMetricValue"] {{ color: {accent} !important; font-weight: 900 !important; font-size: 1.6rem !important; }}
+
+    /* Panels & cards */
+    .glass-card, div[data-testid="stVerticalBlock"] {{
         background: {card};
-        backdrop-filter: blur(10px);
         border-radius: {radius}px;
-        padding: 20px;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.25);
-        transition: all 0.3s ease;
+        padding: 18px;
+        box-shadow: 0 8px 22px rgba(2,6,23,0.18);
+        transition: transform 0.28s ease, box-shadow 0.28s ease;
+        border: 1px solid rgba(255,255,255,0.03);
+        backdrop-filter: blur(8px);
     }}
-    .glass-card:hover {{
-        transform: translateY(-4px);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+    .glass-card:hover {{ transform: translateY(-6px); box-shadow: 0 18px 40px rgba(2,6,23,0.28); }}
+
+    /* Top nav (optional) */
+    .top-nav {{
+        width:100%; padding:10px 20px; border-radius: {radius}px; display:flex; align-items:center; justify-content:space-between;
+        background: linear-gradient(90deg, rgba(0,0,0,0.02), rgba(255,255,255,0.01));
+        box-shadow: 0 6px 18px rgba(2,6,23,0.06);
+        margin-bottom: 14px;
     }}
+
+    /* VSCode / Developer helper */
+    .vscode-editor {{ font-family: 'Fira Code', monospace; font-size: 0.95rem; color: {text}; background: #071022; padding:12px; border-radius:8px; }}
+
+    /* Responsive helper */
+    @media (max-width: 900px) {{
+        .block-container {{ padding: 12px 12px 36px 12px; }}
+        [data-testid="stSidebar"] {{ display: none; }}
+    }}
+
+    {sidebar_style}
     </style>
     """
+    return css
 
-# Apply CSS dynamically
-st.markdown(build_css(ui_mode, font_size, roundness, show_effects), unsafe_allow_html=True)
+# -- Apply CSS --
+css = gen_css(palette, font_size=font_size, radius=radius, motion=motion, contrast_boost=contrast_boost, layout=layout_choice, preset=preset, vscode=vscode_mode)
+st.markdown(css, unsafe_allow_html=True)
+
+# ----------------------------
+# Optional header / top-nav (premium)
+# ----------------------------
+if st.session_state.get("show_top_nav", True):
+    st.markdown(f"""
+    <div class="top-nav">
+        <div style="display:flex;align-items:center;gap:12px;">
+            <div style="font-size:18px;font-weight:800;color:var(--accent)">🚀 Parivahan Analytics — MAXED</div>
+            <div style="opacity:0.7;font-size:12px;">{datetime.now().strftime('%A, %d %b %Y • %I:%M %p')}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <div style="font-size:13px;color:var(--text);opacity:0.9">Mode: <b style="color:var(--accent)">{mode}</b></div>
+            <div style="font-size:13px;color:var(--text);opacity:0.8">Layout: <b style="color:var(--accent)">{layout_choice}</b></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ----------------------------
+# Developer (VSCode) quick helper panel if enabled
+# ----------------------------
+if vscode_mode:
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 👨‍💻 Dev Tools (VSCode Mode)")
+    if st.sidebar.button("Toggle Editor Style"):
+        st.session_state.ui_prefs["vscode_mode"] = not st.session_state.ui_prefs["vscode_mode"]
+        st.experimental_rerun()
+    st.sidebar.markdown("<div class='vscode-editor'>Quick tips: Use `glass-card` on containers for premium look.<br>Use `st.markdown('<div class=\"glass-card\">...')` to wrap content.</div>", unsafe_allow_html=True)
+
+# ----------------------------
+# Finalize and show small preview zone
+# ----------------------------
+st.sidebar.markdown("---")
+st.sidebar.markdown(f"**Preview:** {preset} • {mode} • {layout_choice}")
+st.sidebar.caption("Theme choices persist while the app runs and can be exported to URL for sharing.")
+
+# End of block — theme engine applied
+
 
 # =====================================================
 # 🧭 HEADER
@@ -277,7 +405,6 @@ st.markdown(f"""
 <div style='text-align:center;padding:25px;border-radius:15px;
 background:rgba(255,255,255,0.05);margin-bottom:20px;'>
     <h1>🚗 Parivahan Analytics Dashboard</h1>
-    <h3>🌐 All Modes • All Worlds • All Insights</h3>
     <p style='opacity:0.8;font-size:14px;'>Updated: {datetime.now().strftime("%A, %d %B %Y %I:%M %p")}</p>
 </div>
 """, unsafe_allow_html=True)
