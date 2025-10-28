@@ -1,5 +1,5 @@
 # ======================================================
-# 🚀 PARIVAHAN ANALYTICS 2025 — MAXED REQUIREMENTS
+# 🚀 PARIVAHAN ANALYTICS 2025 — MAXED-LITE (CLOUD-OPTIMIZED)
 # ======================================================
 
 # ===============================
@@ -26,17 +26,22 @@ folium
 pydeck
 streamlit-echarts
 streamlit-aggrid
+streamlit-lottie
+streamlit-extras
 
 # ===============================
 # 📊 EXCEL / EXPORT / REPORTING
 # ===============================
 openpyxl
 xlsxwriter
-pyxlsb
 odfpy
 reportlab
 pypandoc
 fpdf2
+python-docx
+python-pptx
+pdfplumber
+PyPDF2
 
 # ===============================
 # 🤖 MACHINE LEARNING / ANALYTICS
@@ -72,9 +77,8 @@ fastparquet
 numexpr
 tabulate
 dask
-pyspark
-dataclasses-json
 polars
+dataclasses-json
 
 # ===============================
 # ⚙️ UTILITIES / PERFORMANCE / LOGGING
@@ -101,16 +105,14 @@ werkzeug
 jinja2
 
 # ===============================
-# 🕸️ ADVANCED NETWORKING / CRAWLING / PLAYWRIGHT
+# 🕸️ NETWORKING / SCRAPING (LIGHT)
 # ===============================
-playwright
 fake-useragent
 requests-toolbelt
 aiohttp
 beautifulsoup4
 lxml
 html5lib
-selenium
 
 # ===============================
 # 🧩 DATABASE CONNECTORS
@@ -131,27 +133,6 @@ pyjwt
 bcrypt
 
 # ===============================
-# 🧾 FILE HANDLING / STORAGE
-# ===============================
-python-docx
-python-pptx
-pdfplumber
-PyPDF2
-pytesseract
-
-# ===============================
-# 🧰 DEVELOPMENT / TESTING / LINTING
-# ===============================
-pytest
-black
-flake8
-mypy
-isort
-playwright
-pytest-playwright
-httpx
-
-# ===============================
 # 🌐 OPTIONAL — CLOUD & API CLIENTS
 # ===============================
 boto3
@@ -162,11 +143,8 @@ gspread
 oauthlib
 
 # ===============================
-# 🎯 BONUS — ENHANCEMENTS / UX / AI AGENTS
+# 🎯 BONUS — ENHANCEMENTS / AI AGENTS
 # ===============================
-streamlit-lottie
-streamlit-extras
-streamlit-animate
 langchain
 langchain-community
 chromadb
