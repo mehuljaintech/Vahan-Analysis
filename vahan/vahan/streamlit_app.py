@@ -66,41 +66,128 @@ load_dotenv()
 #   without adding external scripts or OS-specific services.
 
 
-# ============================================
-# ⚙️ UNIVERSAL THEME ENGINE — All Modes Maxed
-# ============================================
-import streamlit as st
-from datetime import datetime
+# =====================================================
+# 🚀 PARIVAHAN ANALYTICS — MAXED HYBRID UI ENGINE
+# =====================================================
 
-# --- Page Config ---
+import streamlit as st
+import requests
+from datetime import date, datetime
+
+# =====================================================
+# ⚙️ PAGE CONFIG
+# =====================================================
 st.set_page_config(
-    page_title="🚀 Parivahan Analytics — All-World UI",
+    page_title="🚗 Parivahan Analytics — All-World UI",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# --- On First Launch Animation ---
+# =====================================================
+# 🎉 FIRST-LAUNCH WELCOME
+# =====================================================
 if "launched" not in st.session_state:
     st.session_state.launched = True
     st.toast("🚀 Welcome to Parivahan Analytics — MAXED Hybrid Experience!", icon="🌍")
     st.balloons()
 
-# --- Sidebar Theme Controls ---
-st.sidebar.markdown("## 🎨 UI Personalization")
-ui_mode = st.sidebar.radio(
-    "🌓 Theme Mode",
-    ["Auto", "Light", "Dark", "Glass", "Neumorphic", "Gradient", "High Contrast"],
-    index=0
-)
-font_size = st.sidebar.slider("🔠 Font Size", 12, 20, 15)
-roundness = st.sidebar.slider("🟢 Corner Radius", 4, 24, 12)
-show_effects = st.sidebar.toggle("✨ Enable Motion & Glow", value=True)
+# =====================================================
+# 🧭 SIDEBAR — DYNAMIC FILTER PANEL (MAXED)
+# =====================================================
 
-# -------------------------------
-# 🧠 DYNAMIC STYLE BUILDER
-# -------------------------------
+# --- Date Defaults ---
+today = date.today()
+default_from_year = max(2017, today.year - 1)
+
+# --- Sidebar Styling ---
+st.sidebar.markdown("""
+<style>
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+    color: #E2E8F0;
+    animation: fadeIn 1.2s ease-in;
+}
+@keyframes fadeIn {
+  from {opacity: 0; transform: translateY(-10px);}
+  to {opacity: 1; transform: translateY(0);}
+}
+.sidebar-section {
+    padding: 10px 5px 10px 5px;
+    margin-bottom: 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.05);
+    border-left: 3px solid #00E0FFAA;
+    transition: all 0.3s ease-in-out;
+}
+.sidebar-section:hover {
+    background: rgba(0,224,255,0.1);
+    transform: scale(1.02);
+}
+.sidebar-section h4 {
+    color: #00E0FF;
+    margin-bottom: 6px;
+    font-size: 16px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.sidebar.markdown("""
+<div style="text-align:center; padding:10px 0;">
+    <h2 style="color:#00E0FF;">⚙️ Control Panel</h2>
+    <p style="font-size:13px;color:#9CA3AF;">Customize analytics, filters, and AI insights.</p>
+</div>
+""", unsafe_allow_html=True)
+
+# --- Data Filters ---
+with st.sidebar.expander("📊 Data Filters", expanded=True):
+    st.markdown("Fine-tune your Vahan data queries by time, geography, and category.")
+    from_year = st.number_input("📅 From Year", min_value=2012, max_value=today.year, value=default_from_year, key="from_year")
+    to_year = st.number_input("📆 To Year", min_value=from_year, max_value=today.year, value=today.year, key="to_year")
+    state_code = st.text_input("🏙️ State Code (blank = All-India)", value="", key="state_code")
+    rto_code = st.text_input("🏢 RTO Code (0 = aggregate)", value="0", key="rto_code")
+    vehicle_classes = st.text_input("🚘 Vehicle Classes (e.g., 2W,3W,4W)", value="", key="vehicle_classes")
+    vehicle_makers = st.text_input("🏭 Vehicle Makers (comma-separated or IDs)", value="", key="vehicle_makers")
+    vehicle_type = st.text_input("🛻 Vehicle Type (optional)", value="", key="vehicle_type")
+    time_period = st.selectbox("⏱️ Time Period", options=[0, 1, 2], index=0, key="time_period")
+    fitness_check = st.selectbox("🧾 Fitness Check", options=[0, 1], index=0, key="fitness_check")
+
+# --- Smart Analytics Toggles ---
+with st.sidebar.expander("🧠 Smart Analytics & AI", expanded=True):
+    st.markdown("Toggle advanced analytics, forecasting, and AI-driven insights.")
+    enable_forecast = st.checkbox("📈 Enable Forecasting", value=True, key="enable_forecast")
+    enable_anomaly = st.checkbox("⚠️ Enable Anomaly Detection", value=True, key="enable_anomaly")
+    enable_clustering = st.checkbox("🔍 Enable Clustering", value=True, key="enable_clustering")
+    enable_ai = st.checkbox("🤖 Enable DeepInfra AI Narratives", value=True, key="enable_ai")
+    forecast_periods = st.number_input("⏳ Forecast Horizon (months)", min_value=1, max_value=36, value=3, key="forecast_periods")
+
+# =====================================================
+# 🎨 UNIVERSAL THEME ENGINE — ALL MODES MAXED
+# =====================================================
+st.sidebar.markdown("---")
+st.sidebar.markdown("""
+<div class="sidebar-section">
+<h4>🎨 UI Modes</h4>
+<p style="font-size:13px;">Customize the look and behavior of the dashboard.</p>
+</div>
+""", unsafe_allow_html=True)
+
+ui_mode = st.sidebar.radio(
+    "🌗 Theme Mode",
+    ["Auto", "Light", "Dark", "Glass", "Neumorphic", "Gradient", "High Contrast"],
+    index=0,
+    key="ui_mode"
+)
+font_size = st.sidebar.slider("🔠 Font Size", 12, 20, 15, key="font_size")
+roundness = st.sidebar.slider("🟢 Corner Radius", 4, 24, 12, key="corner_radius")
+show_effects = st.sidebar.toggle("✨ Enable Motion & Glow", value=True, key="motion_glow")
+
+if show_effects:
+    st.balloons()
+
+# =====================================================
+# 🪄 DYNAMIC STYLE BUILDER
+# =====================================================
 def build_css(mode, font_size, radius, glow):
-    """Generate global CSS dynamically for given mode."""
     glow_shadow = "0 0 25px rgba(0,255,200,0.5)" if glow else "none"
 
     if mode == "Dark":
@@ -120,8 +207,8 @@ def build_css(mode, font_size, radius, glow):
         )
     elif mode == "High Contrast":
         bg, text, card, accent = "#000000", "#ffffff", "#111111", "#ffde00"
-    else:
-        bg, text, card, accent = "var(--background)", "var(--text)", "var(--card)", "var(--accent)"
+    else:  # Auto
+        bg, text, card, accent = "#ffffff", "#1e293b", "#f9fafb", "#00e0ff"
 
     return f"""
     <style>
@@ -183,9 +270,9 @@ def build_css(mode, font_size, radius, glow):
 # Apply CSS dynamically
 st.markdown(build_css(ui_mode, font_size, roundness, show_effects), unsafe_allow_html=True)
 
-# -------------------------------
+# =====================================================
 # 🧭 HEADER
-# -------------------------------
+# =====================================================
 st.markdown(f"""
 <div style='text-align:center;padding:25px;border-radius:15px;
 background:rgba(255,255,255,0.05);margin-bottom:20px;'>
@@ -195,12 +282,11 @@ background:rgba(255,255,255,0.05);margin-bottom:20px;'>
 </div>
 """, unsafe_allow_html=True)
 
-# -------------------------------
-# 🧩 MAIN LAYOUT AREA — DATA VISUALIZATION ZONE
-# -------------------------------
+# =====================================================
+# 📊 MAIN LAYOUT — PLACEHOLDER VISUAL AREA
+# =====================================================
 st.markdown("<hr>", unsafe_allow_html=True)
 
-# Create responsive grid (auto-adjusts when content is added)
 layout = st.container()
 with layout:
     st.markdown("""
@@ -210,11 +296,10 @@ with layout:
     </div>
     """, unsafe_allow_html=True)
 
-    # Placeholder layout zones (you will plug in your visuals later)
+    # Placeholder zones
     top = st.columns(3)
     left, right = st.columns([2, 1])
 
-    # Examples: Define zones, not demo data
     with top[0]:
         placeholder_kpi_1 = st.empty()
     with top[1]:
@@ -227,9 +312,14 @@ with layout:
     with right:
         placeholder_sidebar_chart = st.empty()
 
-# Footer
+# =====================================================
+# 🧩 FOOTER
+# =====================================================
 st.markdown("<hr>", unsafe_allow_html=True)
-st.markdown("<div style='text-align:center;opacity:0.6;font-size:13px;'>🌐 Parivahan Analytics — Unified Hybrid Interface | Adaptive to All Modes</div>", unsafe_allow_html=True)
+st.markdown(
+    "<div style='text-align:center;opacity:0.6;font-size:13px;'>🌐 Parivahan Analytics — Unified Hybrid Interface | Adaptive to All Modes</div>",
+    unsafe_allow_html=True,
+)
 # ================================
 # 🔐 DeepInfra Connection via Streamlit Secrets ()
 # ================================
