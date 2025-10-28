@@ -1,28 +1,4 @@
 # =============================
-# 🚀 AUTO-RESTART (Main file)
-# =============================
-# This does a full process exec restart when called (no external files required).
-# Place this at the very top of streamlit_app.py so errors can trigger an immediate restart.
-import os
-import sys
-import time
-import traceback
-import streamlit as st
-
-def auto_restart(delay: int = 5):
-    """Smart self-restart — execs the Python interpreter to replace the current process."""
-    try:
-        st.warning(f"⚠️ App will restart in {delay}s...")
-    except Exception:
-        # If Streamlit UI not available (early import error), print to console
-        print(f"[auto_restart] App will restart in {delay}s...")
-    time.sleep(delay)
-    python = sys.executable
-    # Exec the same process with same argv — this performs a full restart
-    os.execv(python, [python] + sys.argv)
-
-
-# =============================
 # 📚 Cleaned & Consolidated Imports
 # =============================
 # Standard library
