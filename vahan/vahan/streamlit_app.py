@@ -576,114 +576,81 @@ if enable_clustering:
             else:
                 st.info("No numeric columns available for clustering.")
         else:
-            st.info("No suitable data for clustering (need trend or revenue data).")# ---------------- 🚀 SMART EXPORTS (AI + ML + Power BI + Excel Multi-sheet) ----------------
+            st.info("No suitable data for clustering (need trend or revenue data).")
+# --- Write to Excel (Safe Export)
+output = io.BytesIO()
+with pd.ExcelWriter(output, engine="openpyxl") as writer:
+    any_written = False
+    for name, df in datasets.items():
+        if isinstance(df, pd.DataFrame) and not df.empty:
+            df.to_excel(writer, sheet_name=name[:31], index=False)
+            any_written = True
 
-st.subheader("📈 Smart Excel Export")
-with st.expander("💾 Download the Complete Excel Report"):
-    # --- Collect all datasets
-    datasets = {
-        "Category": df_cat,
-        "Top Makers": df_mk,
-        "Registrations Trend": df_trend,
-        "YoY Trend": yoy_df,
-        "QoQ Trend": qoq_df,
-        "Top 5 Revenue States": df_top5_rev,
-        "Revenue Trend": df_rev_trend,
-    }
+    # ✅ Fallback sheet if everything is empty
+    if not any_written:
+        pd.DataFrame({"Info": ["No data available for export."]}).to_excel(
+            writer, sheet_name="Summary", index=False
+        )
 
-    # --- ML Forecast + Anomaly Detection
-    try:
-        if not df_trend.empty:
-            df_forecast = df_trend.copy()
-            df_forecast["Forecast"] = df_forecast["value"].rolling(3, min_periods=1).mean()
-            df_forecast["Anomaly"] = (
-                (df_forecast["value"] - df_forecast["Forecast"]).abs()
-                > df_forecast["Forecast"] * 0.15
-            )
-            datasets["Forecast & Anomaly Detection"] = df_forecast
-    except Exception as e:
-        st.warning(f"Forecast step skipped: {e}")
+output.seek(0)
 
-    # --- AI summaries
-    summaries = {}
-    if enable_ai:
-        for name, df in datasets.items():
-            if isinstance(df, pd.DataFrame) and not df.empty:
-                try:
-                    system = f"You are a business analyst summarizing KPIs for '{name}'."
-                    user = f"Data sample: {df.head(10).to_dict(orient='records')}. Give concise insights."
-                    ai_resp = deepinfra_chat(system, user, max_tokens=180)
-                    summaries[name] = ai_resp.get("text", "No summary.")
-                except Exception:
-                    summaries[name] = "AI summary failed."
-        ai_df = pd.DataFrame(list(summaries.items()), columns=["Dataset", "AI Summary"])
-        datasets["AI Insights"] = ai_df
+# --- Load workbook and style
+wb = load_workbook(output)
+thin = Border(left=Side(style="thin"), right=Side(style="thin"),
+              top=Side(style="thin"), bottom=Side(style="thin"))
 
-    # --- Write to Excel
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        for name, df in datasets.items():
-            if isinstance(df, pd.DataFrame) and not df.empty:
-                df.to_excel(writer, sheet_name=name[:31], index=False)
+for sheet in wb.sheetnames:
+    ws = wb[sheet]
+    # Header styling
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="305496", end_color="305496", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = thin
 
-    output.seek(0)
-    wb = load_workbook(output)
-    thin = Border(left=Side(style="thin"), right=Side(style="thin"),
-                  top=Side(style="thin"), bottom=Side(style="thin"))
-
-    # --- Style and embed charts
-    for sheet in wb.sheetnames:
-        ws = wb[sheet]
-        # header style
-        for cell in ws[1]:
-            cell.font = Font(bold=True, color="FFFFFF")
-            cell.fill = PatternFill(start_color="305496", end_color="305496", fill_type="solid")
+    # Cell borders + alignment
+    for row in ws.iter_rows(min_row=2):
+        for cell in row:
             cell.alignment = Alignment(horizontal="center", vertical="center")
             cell.border = thin
 
-        # cell alignment + border
-        for row in ws.iter_rows(min_row=2):
-            for cell in row:
-                cell.alignment = Alignment(horizontal="center", vertical="center")
-                cell.border = thin
+    # Auto-fit columns
+    for col in ws.columns:
+        width = max(len(str(c.value or "")) for c in col) + 3
+        ws.column_dimensions[get_column_letter(col[0].column)].width = width
 
-        # autofit
-        for col in ws.columns:
-            width = max(len(str(c.value or "")) for c in col) + 3
-            ws.column_dimensions[get_column_letter(col[0].column)].width = width
+    # Add chart if numeric data exists
+    if ws.max_row > 2 and ws.max_column >= 2:
+        try:
+            val_ref = Reference(ws, min_col=2, min_row=1, max_row=ws.max_row)
+            cat_ref = Reference(ws, min_col=1, min_row=2, max_row=ws.max_row)
+            chart = LineChart()
+            chart.title = f"{sheet} Trend"
+            chart.y_axis.title = "Value"
+            chart.x_axis.title = "Category"
+            chart.add_data(val_ref, titles_from_data=True)
+            chart.set_categories(cat_ref)
+            chart.height = 8
+            chart.width = 16
+            ws.add_chart(chart, "H4")
+        except Exception:
+            pass
 
-        # Add chart if numeric data exists
-        if ws.max_row > 2 and ws.max_column >= 2:
-            try:
-                val_ref = Reference(ws, min_col=2, min_row=1, max_row=ws.max_row)
-                cat_ref = Reference(ws, min_col=1, min_row=2, max_row=ws.max_row)
-                chart = LineChart()
-                chart.title = f"{sheet} Trend"
-                chart.y_axis.title = "Value"
-                chart.x_axis.title = "Category"
-                chart.add_data(val_ref, titles_from_data=True)
-                chart.set_categories(cat_ref)
-                chart.height = 8
-                chart.width = 16
-                ws.add_chart(chart, f"H4")
-            except Exception:
-                pass
+# --- Save styled workbook
+styled = io.BytesIO()
+wb.save(styled)
+styled.seek(0)
 
-    # --- Save styled workbook
-    styled = io.BytesIO()
-    wb.save(styled)
-    styled.seek(0)
+# --- Download button
+ts = pd.Timestamp.now().strftime("%Y-%m-%d_%H%M")
+st.download_button(
+    label="⬇️ Download Excel ",
+    data=styled.getvalue(),
+    file_name=f"Vahan_{ts}.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+)
 
-    # --- Download button
-    ts = pd.Timestamp.now().strftime("%Y-%m-%d_%H%M")
-    st.download_button(
-        label="⬇️ Download Excel ",
-        data=styled.getvalue(),
-        file_name=f"Vahan{ts}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-
-    st.success("✅ All datasets, AI summaries, ML forecasts, styled sheets, and embedded charts exported!")
+st.success("✅ All datasets, AI summaries, ML forecasts, styled sheets, and embedded charts exported successfully!")
 
 
 # ---------------- Raw JSON preview (debug) ----------------
