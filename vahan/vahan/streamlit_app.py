@@ -292,25 +292,29 @@ def fetch_json(endpoint, params=params_common, desc=""):
     return {}
 
 # ============================================
-# 🤖 DeepInfra AI Helper (OpenAI-Compatible)
+# 🤖 DeepInfra AI Helper (Streamlit Secrets Only)
 # ============================================
+import time, random, requests, streamlit as st
 
 DEEPINFRA_CHAT_URL = "https://api.deepinfra.com/v1/openai/chat/completions"
 
-def deepinfra_chat(system_prompt: str, user_prompt: str, 
+# 🔐 Load secrets directly from Streamlit Cloud
+DEEPINFRA_API_KEY = st.secrets.get("DEEPINFRA_API_KEY")
+DEEPINFRA_MODEL = st.secrets.get("DEEPINFRA_MODEL", "mistralai/Mixtral-8x7B-Instruct-v0.1")
+
+def deepinfra_chat(system_prompt: str, user_prompt: str,
                    max_tokens: int = 512, temperature: float = 0.3,
                    retries: int = 3, delay: float = 2.0):
     """
-    DeepInfra chat helper:
-    ✅ Automatic retries with exponential backoff
-    ✅ Smart streaming-style display
-    ✅ Error recovery with user retry
-    ✅ Toasts + logs
-    ✅ Works on Streamlit Cloud, no OS restriction
+    💬 DeepInfra Chat Wrapper (for Streamlit Cloud)
+    - Uses Streamlit Secrets only (no .env or OS vars)
+    - Handles 401, 429, and timeout errors
+    - Retries automatically with exponential delay
+    - Streamlit spinner + toast UI feedback
     """
     if not DEEPINFRA_API_KEY:
-        st.warning("⚠️ DeepInfra API key not configured. Add it to st.secrets or environment.")
-        return {"error": "Missing DeepInfra API key."}
+        st.warning("⚠️ Missing DeepInfra API key in Streamlit Secrets.")
+        return {"error": "Missing API key"}
 
     headers = {
         "Authorization": f"Bearer {DEEPINFRA_API_KEY}",
@@ -325,12 +329,12 @@ def deepinfra_chat(system_prompt: str, user_prompt: str,
         ],
         "temperature": temperature,
         "max_tokens": max_tokens,
-        "stream": False  # keep disabled for Streamlit Cloud stability
+        "stream": False  # stable for Streamlit Cloud
     }
 
     st.markdown(
         f"<div style='padding:8px 15px;border-left:4px solid #7d3cff;"
-        f"background:rgba(125,60,255,0.1);border-radius:8px;margin:5px 0;'>"
+        f"background:rgba(125,60,255,0.08);border-radius:8px;margin:5px 0;'>"
         f"🧠 <b>AI Generating Insight...</b> (Model: <code>{DEEPINFRA_MODEL}</code>)</div>",
         unsafe_allow_html=True
     )
@@ -339,23 +343,25 @@ def deepinfra_chat(system_prompt: str, user_prompt: str,
         try:
             with st.spinner(f"💬 DeepInfra generating response (attempt {attempt}/{retries})..."):
                 response = requests.post(DEEPINFRA_CHAT_URL, headers=headers, json=payload, timeout=90)
+
+                if response.status_code == 401:
+                    st.error("🚫 Unauthorized — check `DEEPINFRA_API_KEY` in Streamlit Secrets.")
+                    return {"error": "Unauthorized"}
+
                 response.raise_for_status()
                 data = response.json()
 
                 if "choices" in data and data["choices"]:
                     text = data["choices"][0]["message"]["content"].strip()
-
                     st.toast("✅ DeepInfra AI response ready!", icon="🤖")
                     st.markdown(
-                        f"<div style='background:#f8f9fa;padding:15px;border-radius:10px;"
+                        f"<div style='background:#f9fafb;padding:15px;border-radius:10px;"
                         f"border:1px solid #ddd;margin-top:8px;'>"
                         f"<b>🔍 AI Insight:</b><br><pre style='white-space:pre-wrap;'>{text}</pre></div>",
                         unsafe_allow_html=True
                     )
-
                     return {"text": text, "raw": data}
 
-                # Empty response fallback
                 st.warning("⚠️ No content returned by AI.")
                 return {"text": "No AI output generated.", "raw": data}
 
@@ -363,11 +369,9 @@ def deepinfra_chat(system_prompt: str, user_prompt: str,
             st.error(f"❌ DeepInfra error: {e}")
             time.sleep(delay * attempt * random.uniform(1.0, 1.5))
 
-    # Final fallback
     st.error("⛔ DeepInfra AI failed after multiple attempts.")
     if st.button("🔁 Retry DeepInfra AI"):
         st.rerun()
-
     return {"error": "DeepInfra API failed after retries."}
 
 # ================================
@@ -460,7 +464,7 @@ with st.container():
         st.warning("No category data returned from Vahan API.")
 
 # ================================
-# 2️⃣ Top Makers
+# 2️⃣ Top Makers (Auto-Safe + Maxed)
 # ================================
 with st.container():
     st.markdown("""
@@ -479,76 +483,94 @@ with st.container():
         df_mk = parse_makers(mk_json)
 
     if not df_mk.empty:
-        col1, col2 = st.columns(2)
+        # Normalize columns for flexible matching
+        df_mk.columns = [c.strip().lower() for c in df_mk.columns]
 
-        with col1:
+        # Identify maker/value columns automatically
+        maker_col = next((c for c in ["maker", "makename", "manufacturer", "label", "name"] if c in df_mk.columns), None)
+        value_col = next((c for c in ["value", "count", "total", "registeredvehiclecount", "y"] if c in df_mk.columns), None)
+
+        if not maker_col or not value_col:
+            st.warning("⚠️ Unable to identify maker/value columns in dataset.")
+            st.dataframe(df_mk)
+        else:
+            # --- Visualization section ---
+            col1, col2 = st.columns(2)
+
+            with col1:
+                try:
+                    bar_from_df(df_mk.rename(columns={maker_col: "label", value_col: "value"}), title="Top Makers (Bar)")
+                except Exception as e:
+                    st.error(f"⚠️ Bar chart error: {e}")
+                    st.dataframe(df_mk)
+
+            with col2:
+                try:
+                    pie_from_df(df_mk.rename(columns={maker_col: "label", value_col: "value"}), title="Top Makers (Pie)", donut=True)
+                except Exception as e:
+                    st.error(f"⚠️ Pie chart error: {e}")
+                    st.dataframe(df_mk)
+
+            # --- KPI Snapshot ---
             try:
-                bar_from_df(df_mk.rename(columns={"maker": "label"}), title="Top Makers (Bar)")
+                top_maker = df_mk.loc[df_mk[value_col].idxmax(), maker_col]
+                total_val = df_mk[value_col].sum()
+                top_val = df_mk[value_col].max()
+                pct_share = round((top_val / total_val) * 100, 2)
+
+                st.markdown(
+                    f"""
+                    <div style="margin-top:10px;padding:10px 15px;
+                                background:rgba(255,107,107,0.08);
+                                border:1px solid #FF6B6B;border-radius:10px;">
+                        <b>🏆 Leading Maker:</b> {top_maker}<br>
+                        <b>Market Share:</b> {pct_share}% of total registrations ({total_val:,} total)
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
             except Exception as e:
-                st.error(f"⚠️ Bar chart error: {e}")
+                st.warning(f"⚠️ Could not compute top maker: {e}")
                 st.dataframe(df_mk)
 
-        with col2:
-            try:
-                pie_from_df(df_mk.rename(columns={"maker": "label"}), title="Top Makers (Pie)", donut=True)
-            except Exception as e:
-                st.error(f"⚠️ Pie chart error: {e}")
-                st.dataframe(df_mk)
+            # --- 🤖 AI Summary (DeepInfra) ---
+            if enable_ai:
+                with st.expander("🤖 AI Summary — Maker Insights", expanded=True):
+                    with st.spinner("Generating DeepInfra AI summary for Top Makers..."):
+                        try:
+                            system = (
+                                "You are an automotive market analyst. "
+                                "Summarize market trends, dominant manufacturers, and competitive insights based on maker data."
+                            )
+                            sample = df_mk[[maker_col, value_col]].head(10).to_dict(orient='records')
+                            user = (
+                                f"Dataset sample: {json.dumps(sample, default=str)}\n"
+                                "Generate a concise summary (3–5 lines) identifying leading makers, rising competitors, "
+                                "and one strategic insight for the Indian vehicle market."
+                            )
 
-        # 🚀 KPI Snapshot — Top Maker, Market Share
-        top_maker = df_mk.loc[df_mk['value'].idxmax(), 'maker']
-        total_val = df_mk['value'].sum()
-        top_val = df_mk['value'].max()
-        pct_share = round((top_val / total_val) * 100, 2)
+                            ai_resp = deepinfra_chat(system, user, max_tokens=300, temperature=0.4)
 
-        st.markdown(
-            f"""
-            <div style="margin-top:10px;padding:10px 15px;
-                        background:rgba(255,107,107,0.08);
-                        border:1px solid #FF6B6B;border-radius:10px;">
-                <b>🏆 Leading Maker:</b> {top_maker}<br>
-                <b>Market Share:</b> {pct_share}% of total registrations ({total_val:,} total)
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-        # 🤖 AI Summary
-        if enable_ai:
-            with st.expander("🤖 AI Summary — Maker Insights", expanded=True):
-                with st.spinner("Generating DeepInfra AI summary for Top Makers..."):
-                    system = (
-                        "You are an automotive data intelligence assistant analyzing market share and manufacturer trends. "
-                        "Focus on dominant and emerging makers, growth signals, and competition."
-                    )
-                    sample = df_mk.head(10).to_dict(orient='records')
-                    user = (
-                        f"Dataset sample: {json.dumps(sample, default=str)}\n"
-                        "Generate a 3–5 line summary identifying leading makers, any rising competitors, "
-                        "and one strategic insight for the automotive market."
-                    )
-
-                    ai_resp = deepinfra_chat(system, user, max_tokens=300, temperature=0.4)
-
-                    if "text" in ai_resp and ai_resp["text"]:
-                        st.markdown(
-                            f"""
-                            <div style="margin-top:8px;padding:12px 16px;
-                                        background:#fafafa;border-left:4px solid #FF6B6B;
-                                        border-radius:10px;">
-                                <b>AI Market Insight:</b><br>
-                                <div style="margin-top:6px;font-size:15px;">
-                                    {ai_resp["text"]}
-                                </div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                    else:
-                        st.info("AI summary unavailable — no DeepInfra response received.")
+                            if ai_resp and "text" in ai_resp and ai_resp["text"]:
+                                st.markdown(
+                                    f"""
+                                    <div style="margin-top:8px;padding:12px 16px;
+                                                background:#fafafa;border-left:4px solid #FF6B6B;
+                                                border-radius:10px;">
+                                        <b>AI Market Insight:</b><br>
+                                        <div style="margin-top:6px;font-size:15px;">
+                                            {ai_resp["text"]}
+                                        </div>
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+                            else:
+                                st.info("AI summary unavailable — no DeepInfra response received.")
+                        except Exception as e:
+                            st.error(f"AI generation error: {e}")
     else:
         st.warning("No maker data returned from Vahan API.")
-
 
 
 # =============================================
