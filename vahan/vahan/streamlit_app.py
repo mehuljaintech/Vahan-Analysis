@@ -659,7 +659,62 @@ with st.container():
 
 
 # =============================================
-# 3️⃣ Registration Trends + YoY/QoQ + AI + Forecast
+# 3️⃣ Registration Trends + YoY/QoQ + AI + Forecast (MAXED)
+# =============================================
+
+# 🔮 Forecast Helper (Inline)
+def forecast_trend(df, periods=6):
+    """
+    Generates a lightweight forecast from trend data.
+    Tries Prophet → Linear Regression → Moving Average.
+    """
+    if df.empty or "date" not in df.columns or "value" not in df.columns:
+        return df
+
+    df_fc = df.copy().sort_values("date").reset_index(drop=True)
+
+    # --- Prophet Forecast (if available) ---
+    try:
+        from prophet import Prophet
+        tmp = df_fc.rename(columns={"date": "ds", "value": "y"})
+        m = Prophet(daily_seasonality=False, yearly_seasonality=True)
+        m.fit(tmp)
+        future = m.make_future_dataframe(periods=periods, freq='M')
+        forecast = m.predict(future)
+        fc_df = forecast[["ds", "yhat"]].rename(columns={"ds": "date", "yhat": "value"})
+        fc_df["forecast"] = fc_df["date"] > df_fc["date"].max()
+        return fc_df
+    except Exception:
+        pass
+
+    # --- Linear Regression Fallback ---
+    try:
+        from sklearn.linear_model import LinearRegression
+        X = np.arange(len(df_fc)).reshape(-1, 1)
+        y = df_fc["value"].values
+        model = LinearRegression().fit(X, y)
+        future_X = np.arange(len(df_fc), len(df_fc) + periods).reshape(-1, 1)
+        y_pred = model.predict(future_X)
+        future_dates = pd.date_range(df_fc["date"].max() + pd.offsets.MonthEnd(), periods=periods, freq="M")
+        fc_df = pd.DataFrame({"date": future_dates, "value": y_pred, "forecast": True})
+        return pd.concat([df_fc.assign(forecast=False), fc_df], ignore_index=True)
+    except Exception:
+        pass
+
+    # --- Simple Moving Average Fallback ---
+    try:
+        avg_growth = df_fc["value"].pct_change().mean()
+        last_value = df_fc["value"].iloc[-1]
+        future_dates = pd.date_range(df_fc["date"].max() + pd.offsets.MonthEnd(), periods=periods, freq="M")
+        values = [last_value * (1 + avg_growth) ** (i + 1) for i in range(periods)]
+        fc_df = pd.DataFrame({"date": future_dates, "value": values, "forecast": True})
+        return pd.concat([df_fc.assign(forecast=False), fc_df], ignore_index=True)
+    except Exception:
+        return df_fc
+
+
+# =============================================
+# 📈 Main Section — Registration Trends + YoY/QoQ + AI + Forecast
 # =============================================
 with st.container():
     st.markdown("""
@@ -771,13 +826,26 @@ with st.container():
                     if df_forecast.empty:
                         st.warning("Forecast unavailable due to insufficient data.")
                     else:
-                        line_from_trend(df_forecast, title="Forecasted Trend")
+                        # Custom plot — solid for actual, dashed for forecast
+                        import plotly.express as px
+                        if "forecast" in df_forecast.columns:
+                            fig = px.line(
+                                df_forecast, x="date", y="value",
+                                color="forecast",
+                                line_dash="forecast",
+                                title="Forecasted Registration Trend",
+                                color_discrete_map={False: "#007BFF", True: "#FF9800"}
+                            )
+                            st.plotly_chart(fig, use_container_width=True)
+                        else:
+                            line_from_trend(df_forecast, title="Forecasted Trend")
 
             except Exception as e:
                 st.warning(f"Forecast failed: {e}")
 
     else:
         st.warning("No registration trend data returned from API.")
+
 
 
 # ================================================================
