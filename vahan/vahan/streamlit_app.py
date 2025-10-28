@@ -591,7 +591,7 @@ with colB:
         st.rerun()
 
 # ================================
-# ⚙️ Dynamic Safe API Fetch Layer —  EDITION
+# ⚙️ Dynamic Safe API Fetch Layer — FIXED
 # ================================
 
 import time, random, streamlit as st
@@ -645,7 +645,7 @@ def fetch_json(endpoint, params=params_common, desc=""):
 
     # ✅ Success Case
     if json_data:
-        with st.expander(f"📦 View {desc} JSON Response Preview"):
+        with st.expander(f"📦 View {desc} JSON Response Preview", expanded=False):
             st.json(json_data)
         st.markdown(f"""
         <div style="
@@ -679,17 +679,18 @@ def fetch_json(endpoint, params=params_common, desc=""):
     # 🎯 Interactive retry + test controls
     c1, c2 = st.columns([1, 1])
     with c1:
-        if st.button(f"🔁 Retry {desc} Now"):
+        if st.button(f"🔁 Retry {desc} Now", key=f"retry_{desc}_{random.randint(0,9999)}"):
             st.toast("Retrying API fetch...", icon="🔄")
             time.sleep(0.8)
             st.rerun()
     with c2:
-        if st.button("📡 Test API Endpoint"):
+        if st.button("📡 Test API Endpoint", key=f"test_api_{desc}_{random.randint(0,9999)}"):
             test_url = f"https://analytics.parivahan.gov.in/{endpoint}"
             st.markdown(f"🌐 **Test URL:** `{test_url}`")
             st.info("This is a test-only preview link. Data requires valid params to return results.")
 
     return {}
+
 
 # ============================================
 # 🤖 DeepInfra AI Helper (Streamlit Secrets Only) —  EDITION
