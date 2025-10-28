@@ -151,6 +151,10 @@ st.markdown("---")
 # ================================
 # 🧭 Sidebar — Dynamic Filter Panel
 # ================================
+import requests
+from datetime import date
+import streamlit as st
+
 today = date.today()
 default_from_year = max(2017, today.year - 1)
 
@@ -177,13 +181,16 @@ enable_clustering = st.sidebar.checkbox("🔍 Enable Clustering", value=True)
 enable_ai = st.sidebar.checkbox("🧠 Enable DeepInfra AI Narratives", value=True)
 forecast_periods = st.sidebar.number_input("⏳ Forecast Horizon (months)", min_value=1, max_value=36, value=3)
 
+# ================================
+# 🔐 DeepInfra Connection via Streamlit Secrets
+# ================================
 def load_deepinfra_config():
     try:
         key = st.secrets["DEEPINFRA_API_KEY"]
         model = st.secrets.get("DEEPINFRA_MODEL", "mistralai/Mixtral-8x7B-Instruct-v0.1")
         return key, model
     except Exception:
-        st.sidebar.error("🚫 Missing DeepInfra secrets. Add DEEPINFRA_API_KEY in Streamlit Secrets.")
+        st.sidebar.error("🚫 Missing DeepInfra secrets — please add DEEPINFRA_API_KEY in Streamlit Secrets.")
         return None, None
 
 DEEPINFRA_API_KEY, DEEPINFRA_MODEL = load_deepinfra_config()
@@ -191,20 +198,27 @@ DEEPINFRA_API_KEY, DEEPINFRA_MODEL = load_deepinfra_config()
 # --- Verify connection ---
 if enable_ai and DEEPINFRA_API_KEY:
     try:
-        resp = requests.post(
+        # ✅ DeepInfra expects GET /v1/openai/models, not POST
+        resp = requests.get(
             "https://api.deepinfra.com/v1/openai/models",
             headers={"Authorization": f"Bearer {DEEPINFRA_API_KEY}"},
             timeout=8
         )
+
         if resp.status_code == 200:
             st.sidebar.success(f"✅ DeepInfra Connected — Model: {DEEPINFRA_MODEL}")
         elif resp.status_code == 401:
             st.sidebar.error("🚫 Unauthorized — invalid or expired DEEPINFRA_API_KEY.")
+        elif resp.status_code == 405:
+            st.sidebar.warning("⚠️ DeepInfra returned 405 — check endpoint or API format.")
         else:
             st.sidebar.warning(f"⚠️ DeepInfra status: {resp.status_code}")
+
+    except requests.exceptions.Timeout:
+        st.sidebar.error("⏱️ DeepInfra request timed out.")
     except Exception as e:
         st.sidebar.error(f"❌ DeepInfra connection error: {e}")
-        
+
 st.sidebar.markdown("---")
 st.sidebar.caption("💡 Tip: Toggle features dynamically — the dashboard adapts instantly.")
 
@@ -313,22 +327,54 @@ def fetch_json(endpoint, params=params_common, desc=""):
 # ============================================
 import time, random, requests, streamlit as st
 
+# ✅ Correct DeepInfra Chat Completion endpoint
 DEEPINFRA_CHAT_URL = "https://api.deepinfra.com/v1/openai/chat/completions"
 
 # 🔐 Load secrets directly from Streamlit Cloud
 DEEPINFRA_API_KEY = st.secrets.get("DEEPINFRA_API_KEY")
 DEEPINFRA_MODEL = st.secrets.get("DEEPINFRA_MODEL", "mistralai/Mixtral-8x7B-Instruct-v0.1")
 
+
+# --------------------------------------------------
+# 🔍 Optional: Sidebar connection status check
+# --------------------------------------------------
+def check_deepinfra_connection():
+    if not DEEPINFRA_API_KEY:
+        st.sidebar.warning("⚠️ No DeepInfra API key found in Streamlit Secrets.")
+        return False
+
+    try:
+        resp = requests.get(
+            "https://api.deepinfra.com/v1/openai/models",
+            headers={"Authorization": f"Bearer {DEEPINFRA_API_KEY}"},
+            timeout=8
+        )
+        if resp.status_code == 200:
+            st.sidebar.success("✅ DeepInfra Connected — AI Narratives Ready!")
+            return True
+        elif resp.status_code == 401:
+            st.sidebar.error("🚫 Unauthorized — invalid API key.")
+        else:
+            st.sidebar.warning(f"⚠️ DeepInfra reachable but returned {resp.status_code}.")
+    except Exception as e:
+        st.sidebar.error(f"❌ DeepInfra connection error: {e}")
+    return False
+
+
+# --------------------------------------------------
+# 💬 Main DeepInfra Chat Function
+# --------------------------------------------------
 def deepinfra_chat(system_prompt: str, user_prompt: str,
                    max_tokens: int = 512, temperature: float = 0.3,
                    retries: int = 3, delay: float = 2.0):
     """
-    💬 DeepInfra Chat Wrapper (for Streamlit Cloud)
-    - Uses Streamlit Secrets only (no .env or OS vars)
-    - Handles 401, 429, and timeout errors
+    DeepInfra Chat Wrapper (for Streamlit Cloud)
+    - Reads keys only from st.secrets
+    - Handles 401, 405, 429, timeout, and empty responses
     - Retries automatically with exponential delay
-    - Streamlit spinner + toast UI feedback
+    - Streamlit-friendly feedback
     """
+
     if not DEEPINFRA_API_KEY:
         st.warning("⚠️ Missing DeepInfra API key in Streamlit Secrets.")
         return {"error": "Missing API key"}
@@ -346,7 +392,7 @@ def deepinfra_chat(system_prompt: str, user_prompt: str,
         ],
         "temperature": temperature,
         "max_tokens": max_tokens,
-        "stream": False  # stable for Streamlit Cloud
+        "stream": False
     }
 
     st.markdown(
@@ -361,9 +407,14 @@ def deepinfra_chat(system_prompt: str, user_prompt: str,
             with st.spinner(f"💬 DeepInfra generating response (attempt {attempt}/{retries})..."):
                 response = requests.post(DEEPINFRA_CHAT_URL, headers=headers, json=payload, timeout=90)
 
+                # Handle unauthorized or unsupported methods
                 if response.status_code == 401:
                     st.error("🚫 Unauthorized — check `DEEPINFRA_API_KEY` in Streamlit Secrets.")
                     return {"error": "Unauthorized"}
+
+                if response.status_code == 405:
+                    st.error("⚠️ DeepInfra returned 405 — wrong endpoint or request format.")
+                    return {"error": "405 Method Not Allowed"}
 
                 response.raise_for_status()
                 data = response.json()
@@ -390,6 +441,23 @@ def deepinfra_chat(system_prompt: str, user_prompt: str,
     if st.button("🔁 Retry DeepInfra AI"):
         st.rerun()
     return {"error": "DeepInfra API failed after retries."}
+
+
+# --------------------------------------------------
+# 🧪 Optional Test UI (for Streamlit Debugging)
+# --------------------------------------------------
+def deepinfra_test_ui():
+    """Tiny test block to validate DeepInfra key inside Streamlit."""
+    st.subheader("🧠 Test DeepInfra Connection")
+    if st.button("🔍 Run Test Prompt"):
+        resp = deepinfra_chat(
+            "You are an AI summarizer.",
+            "Summarize this message: DeepInfra integration test for Streamlit."
+        )
+        if "text" in resp:
+            st.success("✅ AI test successful!")
+        else:
+            st.error("❌ AI test failed — check logs above.")
 
 # ================================
 # 1️⃣ Category Distribution
