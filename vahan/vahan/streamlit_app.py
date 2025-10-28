@@ -659,7 +659,7 @@ with st.container():
 
 
 # =============================================
-# 3️⃣ Registration Trends + YoY/QoQ + AI
+# 3️⃣ Registration Trends + YoY/QoQ + AI + Forecast
 # =============================================
 with st.container():
     st.markdown("""
@@ -668,11 +668,12 @@ with st.container():
                 border-radius:12px;margin-bottom:15px;">
         <h3 style="margin:0;">📈 Registration Trends</h3>
         <p style="margin:4px 0 0;color:#555;font-size:14px;">
-            Yearly and Monthly trends in new vehicle registrations, including growth metrics and DeepInfra AI insights.
+            Yearly and Monthly trends in new vehicle registrations, including growth metrics, AI insights, and forecasting.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
+    # ---- Fetch Data ----
     with st.spinner("Fetching registration trends..."):
         tr_json = fetch_json("vahandashboard/vahanyearwiseregistrationtrend", desc="Registration Trend")
 
@@ -682,6 +683,7 @@ with st.container():
         st.error(f"Trend parsing failed: {e}")
         df_trend = pd.DataFrame(columns=["date", "value"])
 
+    # ---- If Data Available ----
     if not df_trend.empty:
         # ================= Line Chart =================
         st.markdown("### 📊 Registration Trend Line")
@@ -701,7 +703,7 @@ with st.container():
         total_days = (df_trend["date"].max() - df_trend["date"].min()).days or 1
         daily_avg = df_trend["value"].sum() / total_days
 
-        # KPI Summary Cards
+        # ---- KPI Summary ----
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("📦 Total Registrations", f"{int(df_trend['value'].sum()):,}")
@@ -712,7 +714,7 @@ with st.container():
         with col4:
             st.metric("📊 Latest QoQ%", f"{latest_qoq:.2f}%" if latest_qoq else "N/A")
 
-        # Display YoY / QoQ Tables
+        # ---- YoY & QoQ Tables ----
         with st.expander("📑 Year-over-Year and Quarter-over-Quarter Analysis", expanded=False):
             st.markdown("#### 📆 Year-over-Year (YoY)")
             st.dataframe(yoy_df, use_container_width=True)
@@ -725,8 +727,8 @@ with st.container():
                 with st.spinner("Generating DeepInfra AI analysis for trends..."):
                     system = (
                         "You are an automotive data analyst summarizing registration trends. "
-                        "Explain growth pattern, highlight anomalies, give 2 concise actionable insights. "
-                        "Write clearly with numerical context."
+                        "Explain growth pattern, highlight anomalies, and give 2 concise actionable insights. "
+                        "Be analytical yet concise."
                     )
 
                     sample_rows = df_trend.tail(12).to_dict(orient='records')
@@ -757,18 +759,26 @@ with st.container():
                     else:
                         st.info("AI summary unavailable — no valid response received.")
 
-        # ================= Optional: Forecasting =================
+        # ================= Forecasting =================
         if enable_forecast:
             try:
                 with st.expander("🔮 Forecast — Next Periods", expanded=False):
                     st.markdown("Forecasting next 3–12 months (based on recent trend)...")
+
+                    # ✅ Forecast Function Call
                     df_forecast = forecast_trend(df_trend, forecast_periods)
-                    line_from_trend(df_forecast, title="Forecasted Trend")
+
+                    if df_forecast.empty:
+                        st.warning("Forecast unavailable due to insufficient data.")
+                    else:
+                        line_from_trend(df_forecast, title="Forecasted Trend")
+
             except Exception as e:
                 st.warning(f"Forecast failed: {e}")
 
     else:
         st.warning("No registration trend data returned from API.")
+
 
 # ================================================================
 # 4️⃣ Duration-wise Growth + 5️⃣ Top 5 Revenue States
