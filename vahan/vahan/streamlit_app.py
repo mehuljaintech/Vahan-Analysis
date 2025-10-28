@@ -1114,12 +1114,23 @@ with st.container():
                 except Exception as e:
                     st.error(f"Clustering pipeline failed: {e}")
 
-# ---------------- 🚀 SMART EXPORTS ----------------
+# ============================================================
+# 💾 SMART EXCEL EXPORT — Unified, Safe, and AI-enhanced
+# ============================================================
 st.markdown("## 💾 Smart Excel Export")
 st.caption("Automatically export all KPIs, trends, forecasts, and AI insights into a single, styled Excel workbook.")
 
 with st.container():
     with st.expander("📈 Generate & Download Smart Excel Report", expanded=True):
+
+        # --- ✅ Safe defaults for all DataFrames
+        df_cat = locals().get("df_cat", pd.DataFrame())
+        df_mk = locals().get("df_mk", pd.DataFrame())
+        df_trend = locals().get("df_trend", pd.DataFrame())
+        yoy_df = locals().get("yoy_df", pd.DataFrame())
+        qoq_df = locals().get("qoq_df", pd.DataFrame())
+        df_top5_rev = locals().get("df_top5_rev", pd.DataFrame())
+        df_rev_trend = locals().get("df_rev_trend", pd.DataFrame())
 
         # --- Collect all datasets
         datasets = {
@@ -1132,7 +1143,7 @@ with st.container():
             "Revenue Trend": df_rev_trend,
         }
 
-        # --- ML Forecast + Anomaly Detection
+        # --- 🔍 Forecast & Anomaly Detection
         with st.spinner("🔍 Performing Forecast & Anomaly Detection..."):
             try:
                 if not df_trend.empty:
@@ -1143,42 +1154,45 @@ with st.container():
                         > df_forecast["Forecast"] * 0.15
                     )
                     datasets["Forecast & Anomaly Detection"] = df_forecast
-
                     st.success("✅ Forecast & anomaly detection completed!")
                     st.dataframe(df_forecast.tail(5), use_container_width=True)
+                else:
+                    st.info("ℹ️ No trend data available for forecast.")
             except Exception as e:
                 st.warning(f"⚠️ Forecast step skipped: {e}")
 
-        # --- AI Summaries (if DeepInfra key enabled)
+        # --- 🧠 AI Summaries (if DeepInfra key enabled)
         summaries = {}
-        if enable_ai:
-            st.info("🤖 Generating AI-driven summaries for each dataset...")
-            for name, df in datasets.items():
-                if isinstance(df, pd.DataFrame) and not df.empty:
-                    try:
-                        system = f"You are a business analyst summarizing KPIs for '{name}'."
-                        user = f"Data sample: {df.head(10).to_dict(orient='records')}. Give concise insights (2–3 lines)."
-                        ai_resp = deepinfra_chat(system, user, max_tokens=180)
-                        summaries[name] = ai_resp.get("text", "No summary generated.")
-                    except Exception:
-                        summaries[name] = "AI summary failed."
+        if 'enable_ai' in locals() and enable_ai:
+            try:
+                st.info("🤖 Generating AI-driven summaries for each dataset...")
+                for name, df in datasets.items():
+                    if isinstance(df, pd.DataFrame) and not df.empty:
+                        try:
+                            system = f"You are a business analyst summarizing KPIs for '{name}'."
+                            user = f"Data sample: {df.head(10).to_dict(orient='records')}.\nGive concise insights (2–3 lines)."
+                            ai_resp = deepinfra_chat(system, user, max_tokens=180)
+                            summaries[name] = ai_resp.get("text", "No summary generated.")
+                        except Exception as e:
+                            summaries[name] = f"AI summary failed: {e}"
 
-            if summaries:
-                ai_df = pd.DataFrame(list(summaries.items()), columns=["Dataset", "AI Summary"])
-                datasets["AI Insights"] = ai_df
+                if summaries:
+                    ai_df = pd.DataFrame(list(summaries.items()), columns=["Dataset", "AI Summary"])
+                    datasets["AI Insights"] = ai_df
 
-                # --- Show quick AI dashboard
-                with st.expander("🧠 View AI Insights"):
-                    for name, text in summaries.items():
-                        st.markdown(f"**{name}**")
-                        st.write(text)
-                        st.markdown("---")
+                    with st.expander("🧠 View AI Insights"):
+                        for name, text in summaries.items():
+                            st.markdown(f"**{name}**")
+                            st.write(text)
+                            st.markdown("---")
+            except Exception as e:
+                st.warning(f"⚠️ AI summaries skipped: {e}")
 
-        # --- Warn if no data
+        # --- Warn if no data at all
         if all((not isinstance(df, pd.DataFrame)) or df.empty for df in datasets.values()):
-            st.warning("⚠️ No data available for export. A summary sheet will be created instead.")
+            st.warning("⚠️ No data available for export. Creating summary sheet instead.")
 
-        # --- Export progress
+        # --- 📦 Compile Excel workbook
         with st.spinner("📦 Compiling Excel workbook..."):
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine="openpyxl") as writer:
@@ -1188,7 +1202,7 @@ with st.container():
                         df.to_excel(writer, sheet_name=name[:31], index=False)
                         any_written = True
 
-                # Always ensure one visible sheet
+                # Always ensure at least one visible sheet
                 if not any_written:
                     pd.DataFrame({"Info": ["No data available for export."]}).to_excel(
                         writer, sheet_name="Summary", index=False
@@ -1196,22 +1210,27 @@ with st.container():
 
             output.seek(0)
 
-            # --- Load workbook and style it
+            # --- Style workbook
+            from openpyxl import load_workbook
+            from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+            from openpyxl.utils import get_column_letter
+            from openpyxl.chart import LineChart, Reference
+
             wb = load_workbook(output)
             thin = Border(left=Side(style="thin"), right=Side(style="thin"),
-                        top=Side(style="thin"), bottom=Side(style="thin"))
+                          top=Side(style="thin"), bottom=Side(style="thin"))
 
             for sheet in wb.sheetnames:
                 ws = wb[sheet]
 
-                # Header style
+                # Header styling
                 for cell in ws[1]:
                     cell.font = Font(bold=True, color="FFFFFF")
                     cell.fill = PatternFill(start_color="305496", end_color="305496", fill_type="solid")
                     cell.alignment = Alignment(horizontal="center", vertical="center")
                     cell.border = thin
 
-                # Body style
+                # Body styling
                 for row in ws.iter_rows(min_row=2):
                     for cell in row:
                         cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -1219,10 +1238,10 @@ with st.container():
 
                 # Auto-fit columns
                 for col in ws.columns:
-                    width = max(len(str(c.value or "")) for c in col) + 3
-                    ws.column_dimensions[get_column_letter(col[0].column)].width = width
+                    max_len = max(len(str(c.value or "")) for c in col)
+                    ws.column_dimensions[get_column_letter(col[0].column)].width = max_len + 3
 
-                # Add chart if numeric data exists
+                # Add simple trend chart (if applicable)
                 if ws.max_row > 2 and ws.max_column >= 2:
                     try:
                         val_ref = Reference(ws, min_col=2, min_row=1, max_row=ws.max_row)
@@ -1239,7 +1258,6 @@ with st.container():
                     except Exception:
                         pass
 
-            # Save styled workbook
             styled = io.BytesIO()
             wb.save(styled)
             styled.seek(0)
