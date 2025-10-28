@@ -67,303 +67,169 @@ load_dotenv()
 
 
 # ============================================
-# ⚡  Streamlit Page Setup + Neon Effects
+# ⚙️ UNIVERSAL THEME ENGINE — All Modes Maxed
 # ============================================
 import streamlit as st
 from datetime import datetime
 
 # --- Page Config ---
 st.set_page_config(
-    page_title="🚀 Vahan Registrations | Parivahan Analytics",
+    page_title="🚀 Parivahan Analytics — All-World UI",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
-# --- Trigger Balloons on Launch ---
+# --- On First Launch Animation ---
 if "launched" not in st.session_state:
     st.session_state.launched = True
+    st.toast("🚀 Welcome to Parivahan Analytics — MAXED Hybrid Experience!", icon="🌍")
     st.balloons()
-    st.toast("🎉 Welcome to Parivahan Analytics — Fully  Dashboard!", icon="🚀")
 
-# --- Dynamic Background CSS ---
-st.markdown("""
-<style>
-/* ==========================
-   🌌 GLOBAL BACKGROUND
-   ========================== */
-.stApp {
-    background: radial-gradient(circle at top left, #0a0f1f 0%, #101b3a 40%, #1c2541 100%);
-    color: #E2E8F0;
-    font-family: 'Segoe UI', sans-serif;
-    transition: all 0.4s ease-in-out;
-}
+# --- Sidebar Theme Controls ---
+st.sidebar.markdown("## 🎨 UI Personalization")
+ui_mode = st.sidebar.radio(
+    "🌓 Theme Mode",
+    ["Auto", "Light", "Dark", "Glass", "Neumorphic", "Gradient", "High Contrast"],
+    index=0
+)
+font_size = st.sidebar.slider("🔠 Font Size", 12, 20, 15)
+roundness = st.sidebar.slider("🟢 Corner Radius", 4, 24, 12)
+show_effects = st.sidebar.toggle("✨ Enable Motion & Glow", value=True)
 
-/* ==========================
-   🌈 SECTION CONTAINERS
-   ========================== */
-.block-container {
-    padding-top: 1.2rem;
-    padding-bottom: 4rem;
-    max-width: 95%;
-    animation: fadeInUp 1.5s ease-in-out;
-}
+# -------------------------------
+# 🧠 DYNAMIC STYLE BUILDER
+# -------------------------------
+def build_css(mode, font_size, radius, glow):
+    """Generate global CSS dynamically for given mode."""
+    glow_shadow = "0 0 25px rgba(0,255,200,0.5)" if glow else "none"
 
-@keyframes fadeInUp {
-    from {opacity: 0; transform: translateY(20px);}
-    to {opacity: 1; transform: translateY(0);}
-}
+    if mode == "Dark":
+        bg, text, card, accent = "#0f172a", "#E2E8F0", "#1e293b", "#00e0ff"
+    elif mode == "Light":
+        bg, text, card, accent = "#f8fafc", "#1e293b", "#ffffff", "#0077ff"
+    elif mode == "Glass":
+        bg, text, card, accent = "rgba(255,255,255,0.12)", "#ffffff", "rgba(255,255,255,0.15)", "#00f5d4"
+    elif mode == "Neumorphic":
+        bg, text, card, accent = "#e0e5ec", "#1e293b", "#f0f3f7", "#0077ff"
+    elif mode == "Gradient":
+        bg, text, card, accent = (
+            "linear-gradient(135deg,#1f005c,#5b0060,#870160,#ac255e,#ca485c,#e16b5c,#f39060,#ffb56b)",
+            "#f8fafc",
+            "rgba(255,255,255,0.15)",
+            "#ffd166",
+        )
+    elif mode == "High Contrast":
+        bg, text, card, accent = "#000000", "#ffffff", "#111111", "#ffde00"
+    else:
+        bg, text, card, accent = "var(--background)", "var(--text)", "var(--card)", "var(--accent)"
 
-/* ==========================
-   🪩 TITLES & HEADINGS
-   ========================== */
-h1 {
-    text-align: center;
-    color: #00E0FF;
-    font-weight: 900;
-    letter-spacing: 1.5px;
-    text-shadow: 0px 0px 25px rgba(0,224,255,0.8), 0px 0px 5px rgba(0,0,0,0.3);
-    animation: pulseGlow 2.5s infinite alternate;
-}
+    return f"""
+    <style>
+    html, body, .stApp {{
+        background: {bg};
+        color: {text};
+        font: {font_size}px 'Inter', 'Segoe UI', sans-serif;
+        transition: all 0.5s ease-in-out;
+    }}
+    h1, h2, h3, h4, h5 {{
+        color: {accent};
+        font-weight: 800;
+        text-shadow: {glow_shadow};
+        text-align: center;
+    }}
+    .block-container {{
+        max-width: 95%;
+        padding: 1.5rem 2rem 4rem 2rem;
+        border-radius: {radius}px;
+    }}
+    [data-testid="stSidebar"] {{
+        background: {card};
+        border-right: 2px solid {accent}55;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 0 12px rgba(0,0,0,0.3);
+    }}
+    div.stButton > button {{
+        background: {accent};
+        color: {text};
+        font-weight: 700;
+        border-radius: {radius}px;
+        transition: all 0.3s ease-in-out;
+        border: none;
+    }}
+    div.stButton > button:hover {{
+        transform: translateY(-2px) scale(1.05);
+        box-shadow: 0 0 15px {accent};
+    }}
+    .stMetricValue {{
+        color: {accent} !important;
+        font-size: 1.5em;
+        font-weight: 800;
+    }}
+    .glass-card {{
+        background: {card};
+        backdrop-filter: blur(10px);
+        border-radius: {radius}px;
+        padding: 20px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+        transition: all 0.3s ease;
+    }}
+    .glass-card:hover {{
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+    }}
+    </style>
+    """
 
-@keyframes pulseGlow {
-    from { text-shadow: 0 0 10px #00E0FF; }
-    to { text-shadow: 0 0 30px #00E0FF, 0 0 10px #0077FF; }
-}
+# Apply CSS dynamically
+st.markdown(build_css(ui_mode, font_size, roundness, show_effects), unsafe_allow_html=True)
 
-h3, h4 {
-    color: #9BE7FF;
-    font-weight: 700;
-}
-
-/* ==========================
-   🧊 SIDEBAR STYLING
-   ========================== */
-[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #111827 0%, #1E293B 100%);
-    color: #E2E8F0;
-    border-right: 3px solid #00E0FF55;
-    box-shadow: 0 0 20px rgba(0, 224, 255, 0.1);
-}
-
-[data-testid="stSidebar"] * {
-    font-size: 15px !important;
-    transition: all 0.3s ease;
-}
-
-[data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-    color: #00E0FF !important;
-    text-shadow: 0 0 8px rgba(0,224,255,0.5);
-}
-
-/* Sidebar hover transitions */
-[data-testid="stSidebar"] input:hover,
-[data-testid="stSidebar"] select:hover {
-    box-shadow: 0 0 10px #00E0FF66;
-    border-color: #00E0FF;
-}
-
-/* ==========================
-   🔘 BUTTONS
-   ========================== */
-div.stButton > button {
-    border-radius: 12px;
-    background: linear-gradient(90deg, #00E0FF 0%, #0077FF 100%);
-    color: #fff;
-    font-weight: 700;
-    padding: 0.6rem 1rem;
-    box-shadow: 0 0 15px rgba(0, 224, 255, 0.3);
-    transition: all 0.3s ease;
-}
-div.stButton > button:hover {
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 0 25px #00E0FFAA;
-}
-
-/* ==========================
-   🧠 ALERTS / METRICS
-   ========================== */
-.stAlert {
-    border-radius: 12px;
-    background-color: rgba(30, 41, 59, 0.8);
-    border-left: 5px solid #00E0FF;
-    backdrop-filter: blur(6px);
-}
-
-[data-testid="stMetricValue"] {
-    color: #00E0FF !important;
-    text-shadow: 0px 0px 10px rgba(0,224,255,0.7);
-    font-weight: 800;
-}
-
-/* ==========================
-   📊 CARDS & PANELS
-   ========================== */
-div[data-testid="stVerticalBlock"] {
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(0,224,255,0.08);
-    border-radius: 15px;
-    padding: 18px;
-    margin-bottom: 16px;
-    transition: 0.3s ease;
-}
-div[data-testid="stVerticalBlock"]:hover {
-    box-shadow: 0 0 25px rgba(0,224,255,0.2);
-    transform: translateY(-2px);
-}
-
-/* ==========================
-   ✨ FLOATING BADGES
-   ========================== */
-.badge {
-    display: inline-block;
-    padding: 5px 12px;
-    border-radius: 10px;
-    background: linear-gradient(90deg, #00E0FF 0%, #0077FF 100%);
-    color: #fff;
-    font-weight: 600;
-    box-shadow: 0 0 12px rgba(0,224,255,0.5);
-}
-
-/* ==========================
-   ⚡ Animations
-   ========================== */
-@keyframes neonFade {
-    0%, 100% { opacity: 0.7; text-shadow: 0 0 5px #00E0FF; }
-    50% { opacity: 1; text-shadow: 0 0 15px #00E0FF; }
-}
-
-.neonText {
-    animation: neonFade 3s ease-in-out infinite;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# --- Header Block with Floating Elements ---
+# -------------------------------
+# 🧭 HEADER
+# -------------------------------
 st.markdown(f"""
-<div style="
-    text-align:center;
-    padding:20px 10px;
-    border-radius:15px;
-    margin-top:-10px;
-    background:linear-gradient(90deg, rgba(0,224,255,0.2), rgba(0,119,255,0.1));
-    box-shadow:0 0 20px rgba(0,224,255,0.3);
-    backdrop-filter:blur(8px);
-    animation: fadeInUp 1.6s;">
-    <h1>🚀 <span class='neonText'>Vahan Registrations Dashboard</span></h1>
-    <h3>🌍 <span style="color:#00E0FF;">Parivahan Analytics</span> — 
-    <span style="color:#9BE7FF;">AI Narratives • Forecasting • Clustering • KPIs • Smart Insights</span></h3>
-    <p style="font-size:14px;opacity:0.8;">{datetime.now().strftime("%A, %d %B %Y")}</p>
+<div style='text-align:center;padding:25px;border-radius:15px;
+background:rgba(255,255,255,0.05);margin-bottom:20px;'>
+    <h1>🚗 Parivahan Analytics Dashboard</h1>
+    <h3>🌐 All Modes • All Worlds • All Insights</h3>
+    <p style='opacity:0.8;font-size:14px;'>Updated: {datetime.now().strftime("%A, %d %B %Y %I:%M %p")}</p>
 </div>
 """, unsafe_allow_html=True)
 
-# --- Dynamic Toast Animation ---
-st.toast("📊 Dashboard UI initialized successfully!", icon="💡")
-st.markdown("---")
+# -------------------------------
+# 🧩 MAIN LAYOUT AREA — DATA VISUALIZATION ZONE
+# -------------------------------
+st.markdown("<hr>", unsafe_allow_html=True)
 
-# ================================
-# 🧭 Sidebar — Dynamic Filter Panel ()
-# ================================
-import streamlit as st
-import requests
-from datetime import date
+# Create responsive grid (auto-adjusts when content is added)
+layout = st.container()
+with layout:
+    st.markdown("""
+    <div style='text-align:center;margin-bottom:20px;'>
+        <h2>📈 Analytics Overview</h2>
+        <p style='opacity:0.7;'>Dynamic KPIs, Charts, and Insights will appear here</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-# --- Date Defaults ---
-today = date.today()
-default_from_year = max(2017, today.year - 1)
+    # Placeholder layout zones (you will plug in your visuals later)
+    top = st.columns(3)
+    left, right = st.columns([2, 1])
 
-# --- Sidebar Header ---
-st.sidebar.markdown("""
-<style>
-[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
-    color: #E2E8F0;
-    animation: fadeIn 1.2s ease-in;
-}
-@keyframes fadeIn {
-  from {opacity: 0; transform: translateY(-10px);}
-  to {opacity: 1; transform: translateY(0);}
-}
+    # Examples: Define zones, not demo data
+    with top[0]:
+        placeholder_kpi_1 = st.empty()
+    with top[1]:
+        placeholder_kpi_2 = st.empty()
+    with top[2]:
+        placeholder_kpi_3 = st.empty()
 
-.sidebar-section {
-    padding: 10px 5px 10px 5px;
-    margin-bottom: 12px;
-    border-radius: 10px;
-    background: rgba(255,255,255,0.05);
-    border-left: 3px solid #00E0FFAA;
-    transition: all 0.3s ease-in-out;
-}
-.sidebar-section:hover {
-    background: rgba(0,224,255,0.1);
-    transform: scale(1.02);
-}
-.sidebar-section h4 {
-    color: #00E0FF;
-    margin-bottom: 6px;
-    font-size: 16px;
-}
-</style>
-""", unsafe_allow_html=True)
+    with left:
+        placeholder_main_chart = st.empty()
+    with right:
+        placeholder_sidebar_chart = st.empty()
 
-st.sidebar.markdown("""
-<div style="text-align:center; padding:10px 0;">
-    <h2 style="color:#00E0FF;">⚙️ Control Panel</h2>
-    <p style="font-size:13px;color:#9CA3AF;">Customize analytics, filters, and AI insights.</p>
-</div>
-""", unsafe_allow_html=True)
-
-# ==========================
-# 📅 Data Filters
-# ==========================
-with st.sidebar.expander("📊 Data Filters", expanded=True):
-    st.markdown("Fine-tune your Vahan data queries by time, geography, and category.")
-    from_year = st.number_input("📅 From Year", min_value=2012, max_value=today.year, value=default_from_year)
-    to_year = st.number_input("📆 To Year", min_value=from_year, max_value=today.year, value=today.year)
-    state_code = st.text_input("🏙️ State Code (blank = All-India)", value="")
-    rto_code = st.text_input("🏢 RTO Code (0 = aggregate)", value="0")
-    vehicle_classes = st.text_input("🚘 Vehicle Classes (e.g., 2W,3W,4W)", value="")
-    vehicle_makers = st.text_input("🏭 Vehicle Makers (comma-separated or IDs)", value="")
-    vehicle_type = st.text_input("🛻 Vehicle Type (optional)", value="")
-    time_period = st.selectbox("⏱️ Time Period", options=[0, 1, 2], index=0)
-    fitness_check = st.selectbox("🧾 Fitness Check", options=[0, 1], index=0)
-
-# ==========================
-# 🧠 Smart Analytics Toggles
-# ==========================
-with st.sidebar.expander("🧠 Smart Analytics & AI", expanded=True):
-    st.markdown("Toggle advanced analytics, forecasting, and AI-driven insights.")
-    enable_forecast = st.checkbox("📈 Enable Forecasting", value=True)
-    enable_anomaly = st.checkbox("⚠️ Enable Anomaly Detection", value=True)
-    enable_clustering = st.checkbox("🔍 Enable Clustering", value=True)
-    enable_ai = st.checkbox("🤖 Enable DeepInfra AI Narratives", value=True)
-    forecast_periods = st.number_input("⏳ Forecast Horizon (months)", min_value=1, max_value=36, value=3)
-
-# ==========================
-# 🎉 Visual Enhancements
-# ==========================
-st.sidebar.markdown("---")
-st.sidebar.markdown("""
-<div class="sidebar-section">
-<h4>🎨 UI Modes</h4>
-<p style="font-size:13px;">Customize the look and behavior of the dashboard.</p>
-</div>
-""", unsafe_allow_html=True)
-
-ui_mode = st.sidebar.radio("🌗 Theme Mode", ["Auto", "Dark", "Light"], index=0)
-show_animations = st.sidebar.toggle("✨ Enable Animations", value=True)
-if show_animations:
-    st.balloons()
-
-# ==========================
-# 🪄 Sidebar Footer
-# ==========================
-st.sidebar.markdown("---")
-st.sidebar.markdown("""
-<center style="font-size:13px;color:#94A3B8;">
-Made with ❤️ using <b>Streamlit</b><br>
-<small>v2025 — Parivahan Analytics Suite</small>
-</center>
-""", unsafe_allow_html=True)
-
+# Footer
+st.markdown("<hr>", unsafe_allow_html=True)
+st.markdown("<div style='text-align:center;opacity:0.6;font-size:13px;'>🌐 Parivahan Analytics — Unified Hybrid Interface | Adaptive to All Modes</div>", unsafe_allow_html=True)
 # ================================
 # 🔐 DeepInfra Connection via Streamlit Secrets ()
 # ================================
