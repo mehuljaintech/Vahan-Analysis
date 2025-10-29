@@ -271,14 +271,21 @@ st.markdown(
     "</div>",
     unsafe_allow_html=True,
 )
+from datetime import datetime
+import pytz
+
 # =====================================================
 # 🧭 HEADER
 # =====================================================
+# Get current time in IST
+ist = pytz.timezone('Asia/Kolkata')
+current_time = datetime.now(ist).strftime("%A, %d %B %Y • %I:%M %p")
+
 st.markdown(f"""
 <div style='text-align:center;padding:25px;border-radius:15px;
 background:rgba(255,255,255,0.05);margin-bottom:20px;'>
     <h1>🚗 Parivahan Analytics Dashboard</h1>
-    <p style='opacity:0.8;font-size:14px;'>Updated: {datetime.now().strftime("%A, %d %B %Y %I:%M %p")}</p>
+    <p style='opacity:0.8;font-size:14px;'>Updated: {current_time} (IST)</p>
 </div>
 """, unsafe_allow_html=True)
 
