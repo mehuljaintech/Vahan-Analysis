@@ -1430,54 +1430,66 @@ with st.container():
     """, unsafe_allow_html=True)
 
     # =====================================================
-    # ⚙️ USER CONFIG — OPTIONAL TOP-N FILTER
+    # ⚙️ USER CONFIG — FULLY CUSTOM FILTERS
     # =====================================================
-    top_n = st.sidebar.slider("🏅 Show Top N Categories", 3, 20, 10)
+    with st.sidebar.expander("⚙️ Category Distribution Filters", expanded=True):
+        # ✅ Avoid putting widgets in cached functions
+        top_n = st.slider("🏅 Show Top N Categories", 3, 25, 10)
+        show_all = st.checkbox("📦 Show All Categories (ignore Top N)", value=False)
+        include_state_breakdown = st.checkbox("🏙️ Include State Breakdown", value=False)
+        compare_makers = st.checkbox("🏭 Compare by Vehicle Makers", value=False)
+        show_raw_json = st.checkbox("🧾 Show Raw API JSON", value=False)
+        ai_mode = st.selectbox("🤖 AI Analysis Mode", ["None", "Summary", "Trends + Recommendations"], index=1)
 
     # =====================================================
     # ⚡ OPTIMIZED MULTI-YEAR FETCHING (CACHED)
     # =====================================================
-    @st.cache_data(ttl=3600)
+    @st.cache_data(ttl=3600, show_spinner=False)
     def cached_fetch_json(endpoint, params, desc):
+        """Fetch JSON safely and cache results for an hour."""
         return fetch_json(endpoint, params, desc)
 
     all_dfs = []
     spinner_scope = f"{state_code or 'All States'} | {vehicle_classes or 'All Classes'} | {vehicle_makers or 'All Makers'}"
+
     with st.spinner(f"📡 API Task Fetching: Category Distribution — {from_year}→{to_year} ({spinner_scope})"):
         for yr in range(from_year, to_year + 1):
+            params = {
+                "stateCd": state_code or "",
+                "rtoCd": rto_code or "0",
+                "year": yr,
+                "vehicleClass": vehicle_classes or "",
+                "vehicleMaker": vehicle_makers or "",
+                "vehicleType": vehicle_type or "",
+                "timePeriod": time_period,
+                "fitnessCheck": fitness_check,
+            }
             try:
-                params = {
-                    "stateCd": state_code or "",
-                    "rtoCd": rto_code or "0",
-                    "year": yr,
-                    "vehicleClass": vehicle_classes or "",
-                    "vehicleMaker": vehicle_makers or "",
-                    "vehicleType": vehicle_type or "",
-                    "timePeriod": time_period,
-                    "fitnessCheck": fitness_check,
-                }
                 json_data = cached_fetch_json("vahandashboard/categoriesdonutchart", params, desc=f"Category Distribution {yr}")
+                if show_raw_json:
+                    with st.expander(f"🧾 Raw JSON — {yr}", expanded=False):
+                        st.json(json_data)
                 df_temp = to_df(json_data)
                 if not df_temp.empty:
                     df_temp["year"] = yr
                     all_dfs.append(df_temp)
             except Exception as e:
-                st.error(f"⚠️ Failed to fetch for {yr}: {e}")
+                st.error(f"⚠️ API failed for {yr}: {e}")
 
     # =====================================================
-    # 📊 DATA AGGREGATION & PREPARATION
+    # 📊 DATA AGGREGATION
     # =====================================================
     if all_dfs:
         df_cat_all = pd.concat(all_dfs, ignore_index=True)
         df_cat_all = df_cat_all.groupby(["label", "year"], as_index=False)["value"].sum()
         df_cat_all = df_cat_all.sort_values(["year", "value"], ascending=[True, False])
 
-        # Apply Top-N filter per year
-        df_cat_all = (
-            df_cat_all.groupby("year")
-            .apply(lambda x: x.nlargest(top_n, "value"))
-            .reset_index(drop=True)
-        )
+        if not show_all:
+            df_cat_all = (
+                df_cat_all.groupby("year")
+                .apply(lambda x: x.nlargest(top_n, "value"))
+                .reset_index(drop=True)
+            )
 
         years_list = sorted(df_cat_all["year"].unique())
         st.success(f"✅ Data Loaded for {len(years_list)} Years: {', '.join(map(str, years_list))}")
@@ -1488,8 +1500,8 @@ with st.container():
         col1, col2 = st.columns(2, gap="large")
 
         with col1:
+            st.markdown("#### 📈 Year-wise Comparison (Bar)")
             try:
-                st.markdown("#### 📈 Year-wise Comparison (Bar)")
                 fig = px.bar(
                     df_cat_all,
                     x="label",
@@ -1499,24 +1511,29 @@ with st.container():
                     title="Multi-Year Category Comparison",
                     text_auto=True,
                 )
-                fig.update_layout(xaxis_title="", yaxis_title="Registrations", legend_title="Year")
+                fig.update_layout(
+                    xaxis_title="Vehicle Category",
+                    yaxis_title="Registrations",
+                    legend_title="Year",
+                    height=500,
+                )
                 st.plotly_chart(fig, use_container_width=True)
             except Exception as e:
                 st.error(f"⚠️ Bar chart failed: {e}")
                 st.dataframe(df_cat_all)
 
         with col2:
+            st.markdown("#### 🍩 Latest Year Donut View")
             try:
-                st.markdown("#### 🍩 Latest Year Donut View")
                 latest_year = max(years_list)
                 df_latest = df_cat_all[df_cat_all["year"] == latest_year]
                 pie_from_df(df_latest, title=f"Category Distribution ({latest_year})", donut=True)
             except Exception as e:
-                st.error(f"⚠️ Pie chart failed: {e}")
+                st.error(f"⚠️ Donut chart failed: {e}")
                 st.dataframe(df_cat_all)
 
         # =====================================================
-        # 💎 KPI ZONE — TOTALS & LEADERS
+        # 💎 KPI ZONE
         # =====================================================
         total_all = df_cat_all["value"].sum()
         top_row = df_cat_all.loc[df_cat_all["value"].idxmax()]
@@ -1525,12 +1542,9 @@ with st.container():
         pct = round((top_val / total_all) * 100, 2)
 
         k1, k2, k3 = st.columns(3)
-        with k1:
-            st.metric("🏆 Top Category", top_cat)
-        with k2:
-            st.metric("📊 Share of Total", f"{pct}%")
-        with k3:
-            st.metric("🚘 Total Registrations", f"{total_all:,}")
+        k1.metric("🏆 Top Category", top_cat)
+        k2.metric("📊 Share of Total", f"{pct}%")
+        k3.metric("🚘 Total Registrations", f"{total_all:,}")
 
         st.markdown(f"""
         <div style="margin-top:10px;padding:14px 16px;
@@ -1542,7 +1556,7 @@ with st.container():
         """, unsafe_allow_html=True)
 
         # =====================================================
-        # 📋 OPTIONAL — YEAR-WISE SUMMARY TABLE
+        # 📋 YEAR-WISE SUMMARY TABLE
         # =====================================================
         with st.expander("📋 View Year-Wise Category Summary"):
             st.dataframe(
@@ -1551,44 +1565,45 @@ with st.container():
             )
 
         # =====================================================
-        # 🤖 AI NARRATIVE (Optional)
+        # 🤖 AI ANALYSIS — MAXED CUSTOM MODES
         # =====================================================
-        if enable_ai:
-            st.markdown("### 🤖 AI-Powered Multi-Year Insight")
-            with st.expander("🔍 View AI Narrative", expanded=True):
-                with st.spinner("🧠 DeepInfra AI is analyzing multi-year category trends..."):
-                    sample = df_cat_all.head(15).to_dict(orient="records")
+        if ai_mode != "None" and enable_ai:
+            with st.expander(f"🤖 DeepInfra AI — {ai_mode}", expanded=True):
+                with st.spinner("🧠 DeepInfra AI is analyzing category distribution..."):
                     context = {
                         "years": years_list,
                         "top_category": top_cat,
-                        "top_percentage": pct,
+                        "share_percent": pct,
                         "total_registrations": int(total_all),
-                        "sample_data": sample,
+                        "sample_data": df_cat_all.head(20).to_dict(orient="records"),
                     }
                     system = (
-                        "You are a senior automotive analytics expert. "
-                        "Analyze year-over-year category growth across states, highlight top trends, "
-                        "and provide concise insights and 1 strategic recommendation."
+                        "You are an expert automotive analyst. "
+                        "Generate a concise but data-backed narrative summarizing category trends, YoY changes, "
+                        "and dominant vehicle types."
                     )
-                    user = f"Context data: {json.dumps(context, default=str)}"
-                    ai_resp = deepinfra_chat(system, user, max_tokens=400, temperature=0.5)
+                    if ai_mode == "Trends + Recommendations":
+                        system += " End with 2 actionable recommendations for policymakers and manufacturers."
+
+                    user = f"Analyze this context: {json.dumps(context, default=str)}"
+                    ai_resp = deepinfra_chat(system, user, max_tokens=450, temperature=0.5)
                     if ai_resp.get("text"):
                         st.markdown(f"""
                         <div style="margin-top:8px;padding:16px 18px;
                                     background:linear-gradient(90deg,#fafaff,#f5f7ff);
                                     border-left:4px solid #6C63FF;border-radius:12px;">
-                            <b>AI Summary:</b>
+                            <b>AI Insight:</b>
                             <p style="margin-top:6px;font-size:15px;color:#333;">
                                 {ai_resp["text"]}
                             </p>
                         </div>
                         """, unsafe_allow_html=True)
-                        st.snow()
+                        st.balloons()
                     else:
-                        st.info("💤 No AI summary generated. Try again or check DeepInfra key.")
+                        st.info("💤 AI summary not generated.")
     else:
         st.warning("⚠️ No data returned for selected years.")
-        st.info("🔄 Try adjusting filters or refresh the API connection.")
+        st.info("🔄 Try expanding filters or check API connectivity.")
 
 # ===============================================================
 # 2️⃣ TOP MAKERS — FULL CUSTOM EDITION 🏭🚀 (MAXED)
