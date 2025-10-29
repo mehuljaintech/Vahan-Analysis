@@ -1670,15 +1670,25 @@ with st.container():
     """, unsafe_allow_html=True)
 
     # =====================================================
-    # ⚙️ FILTER CONFIG
+    # ⚙️ FILTER CONFIG — ALL MAXED
     # =====================================================
     with st.sidebar.expander("⚙️ Top Makers Filters", expanded=True):
-        top_n = st.slider("🔢 Show Top N Makers", 3, 25, 10)
-        show_raw_json = st.checkbox("🧾 Show Raw API JSON", value=False)
-        ai_mode = st.selectbox("🤖 AI Analysis Mode", ["None", "Summary", "Trends + Recommendations"], index=1)
+        top_n = st.slider("🔢 Show Top N Makers", 3, 25, 10, key="topmakers_topn")
+        show_raw_json = st.checkbox("🧾 Show Raw API JSON", value=False, key="topmakers_showjson")
+        ai_mode = st.selectbox("🤖 AI Analysis Mode", ["None", "Summary", "Trends + Recommendations"], index=1, key="topmakers_aimode")
+
+        st.markdown("---")
+        st.markdown("### 🌍 Custom Filters")
+        state_code = st.text_input("🏙️ State Code (Optional)", key="topmakers_statecode")
+        rto_code = st.text_input("🏢 RTO Code (Optional)", key="topmakers_rtocode")
+        vehicle_type = st.text_input("🚗 Vehicle Type (Optional)", key="topmakers_vehicletype")
+        vehicle_classes = st.text_input("🛻 Vehicle Class (Optional)", key="topmakers_vehicleclass")
+        vehicle_makers = st.text_input("🏭 Specific Makers (comma-separated, optional)", key="topmakers_vehiclemakers")
+        time_period = st.selectbox("⏰ Time Period", ["YEARLY", "QUARTERLY", "MONTHLY"], key="topmakers_timeperiod")
+        fitness_check = st.selectbox("🧾 Fitness Check", ["ALL", "FIT", "UNFIT"], key="topmakers_fitnesscheck")
 
     # =====================================================
-    # 📡 MULTI-YEAR FETCH (NO CACHE)
+    # 📡 MULTI-YEAR FETCH
     # =====================================================
     all_maker_dfs = []
     st.toast(f"📡 Fetching Top Makers: {from_year} → {to_year}", icon="🚀")
@@ -1708,7 +1718,7 @@ with st.container():
                 st.error(f"⚠️ Fetch failed for {yr}: {e}")
 
     # =====================================================
-    # 📊 DATA AGGREGATION
+    # 📊 DATA AGGREGATION + VISUALS
     # =====================================================
     if all_maker_dfs:
         df_mk_all = pd.concat(all_maker_dfs, ignore_index=True)
@@ -1731,7 +1741,7 @@ with st.container():
             st.success(f"✅ Loaded data for {len(years_list)} years | Top {top_n} Makers per year")
 
             # =====================================================
-            # 🎨 VISUALS
+            # 🎨 VISUALS — MAXED OUT
             # =====================================================
             col1, col2 = st.columns(2, gap="large")
             with col1:
@@ -1745,7 +1755,7 @@ with st.container():
                         barmode="group",
                         text_auto=True,
                         title=f"Top {top_n} Makers — {from_year} → {to_year}",
-                        height=450,
+                        height=460,
                     )
                     fig.update_layout(
                         xaxis_title="Maker",
@@ -1767,7 +1777,7 @@ with st.container():
                     st.error(f"⚠️ Donut chart failed: {e}")
 
             # =====================================================
-            # 💎 KPI ZONE
+            # 💎 KPI ZONE — ALL MAXED
             # =====================================================
             total_val = df_mk_all[value_col].sum()
             top_row = df_mk_all.loc[df_mk_all[value_col].idxmax()]
@@ -1791,7 +1801,7 @@ with st.container():
             st.balloons()
 
             # =====================================================
-            # 🤖 AI INSIGHT
+            # 🤖 AI INSIGHT (DeepInfra)
             # =====================================================
             if ai_mode != "None" and enable_ai:
                 with st.expander(f"🤖 DeepInfra AI — {ai_mode}", expanded=True):
@@ -1820,7 +1830,6 @@ with st.container():
                             st.snow()
                         else:
                             st.info("💤 No AI summary generated.")
-
     else:
         st.warning("⚠️ No multi-year maker data found.")
         st.info("🔄 Try expanding filters or check API connectivity.")
@@ -1841,7 +1850,7 @@ with st.container():
     """, unsafe_allow_html=True)
 
     with st.spinner("🚗 Fetching Top Makers (latest year)..."):
-        mk_json = fetch_json("vahandashboard/top5Makerchart", desc="Top Makers")
+        mk_json = fetch_json("vahandashboard/top5Makerchart", desc="Top Makers — Single Year")
         df_mk = parse_makers(mk_json)
 
     if not df_mk.empty:
@@ -1858,7 +1867,6 @@ with st.container():
             with col2:
                 pie_from_df(df_mk.rename(columns={maker_col: "label", value_col: "value"}), title="Top Makers (Donut)", donut=True)
 
-            # KPI Zone
             top_maker = df_mk.loc[df_mk[value_col].idxmax(), maker_col]
             total_val = df_mk[value_col].sum()
             top_val = df_mk[value_col].max()
