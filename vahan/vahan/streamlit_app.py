@@ -545,26 +545,8 @@ with layout:
     </div>
     """, unsafe_allow_html=True)
 
-    # ================= KPIs =================
-    kpi_cols = st.columns(3)
-    with kpi_cols[0]:
-        with st.container():
-            st.markdown("<div class='metric-box'>🚘<br><b>Total Vehicles</b><br><span style='font-size:1.5rem;'>—</span></div>", unsafe_allow_html=True)
-    with kpi_cols[1]:
-        with st.container():
-            st.markdown("<div class='metric-box'>📅<br><b>Daily Growth</b><br><span style='font-size:1.5rem;'>—</span></div>", unsafe_allow_html=True)
-    with kpi_cols[2]:
-        with st.container():
-            st.markdown("<div class='metric-box'>📊<br><b>Yearly Comparison</b><br><span style='font-size:1.5rem;'>—</span></div>", unsafe_allow_html=True)
-
+    
     st.markdown("<br>", unsafe_allow_html=True)
-
-    # ================= MAIN VISUALS =================
-    left, right = st.columns([2, 1])
-    with left:
-        st.markdown("<div class='metric-box'>📈 Main Chart / Forecast Area</div>", unsafe_allow_html=True)
-    with right:
-        st.markdown("<div class='metric-box'>📋 Breakdown / Insights Panel</div>", unsafe_allow_html=True)
 
 # =====================================================
 # 🧩 FOOTER
