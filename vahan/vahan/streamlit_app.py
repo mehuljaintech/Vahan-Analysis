@@ -2227,8 +2227,139 @@ df_monthly   = fetch_duration_growth(3, "Monthly",  "#007bff", "📅")
 df_quarterly = fetch_duration_growth(2, "Quarterly", "#6f42c1", "🧭")
 df_yearly    = fetch_duration_growth(1, "Yearly",   "#28a745", "📆")
 
+# # ============================================================
+# # 📈 Unified Duration Comparison — Daily / Monthly / Quarterly / Yearly (All Maxed)
+# # ============================================================
+
+# st.markdown("""
+# <style>
+# .compare-header {
+#     background: linear-gradient(90deg, #eef9ff, #ffffff);
+#     border-left: 6px solid #007bff;
+#     padding: 14px 20px;
+#     border-radius: 14px;
+#     margin-top: 35px;
+#     animation: pulseGlow 3s infinite;
+# }
+# </style>
+
+# <div class="compare-header">
+#     <h2 style="margin:0;">📊 Unified Growth Comparison Dashboard</h2>
+#     <p style="margin:4px 0 0;color:#444;font-size:15px;">
+#         Compare vehicle registration trends across <b>daily, monthly, quarterly, and yearly</b> durations — fully maxed with dynamic analytics, charts, and AI insights.
+#     </p>
+# </div>
+# """, unsafe_allow_html=True)
+
+
+# # ---- Helper: Normalize and merge duration data ----
+# def prep_df(df, period):
+#     if df is None or df.empty:
+#         return pd.DataFrame()
+#     out = df.copy()
+#     out["period"] = period
+#     out["label"] = out["label"].astype(str)
+#     out["value"] = pd.to_numeric(out["value"], errors="coerce")
+#     return out[["label", "value", "period"]]
+
+
+# # Fetch all periods — including Daily
+# df_daily     = fetch_duration_growth(4, "Daily", "#17a2b8", "🗓️")
+# df_monthly   = fetch_duration_growth(3, "Monthly", "#007bff", "📅")
+# df_quarterly = fetch_duration_growth(2, "Quarterly", "#6f42c1", "🧭")
+# df_yearly    = fetch_duration_growth(1, "Yearly", "#28a745", "📆")
+
+# # Merge all
+# dfs = [
+#     prep_df(df_daily, "Daily"),
+#     prep_df(df_monthly, "Monthly"),
+#     prep_df(df_quarterly, "Quarterly"),
+#     prep_df(df_yearly, "Yearly"),
+# ]
+
+# df_compare = pd.concat([d for d in dfs if not d.empty], ignore_index=True)
+
+# if not df_compare.empty:
+#     # Pivot for side-by-side comparison
+#     pivot_df = df_compare.pivot_table(
+#         index="label", columns="period", values="value", aggfunc="sum"
+#     ).fillna(0)
+
+#     # Compute percentage change columns (MoM, QoQ, YoY, DoD)
+#     for col in pivot_df.columns:
+#         pivot_df[f"{col} %Δ"] = pivot_df[col].pct_change().fillna(0) * 100
+
+#     st.subheader("📈 Duration-wise Growth Comparison (All Maxed)")
+#     st.dataframe(
+#         pivot_df.style.format("{:,.0f}")
+#         .background_gradient(axis=None, cmap="Blues")
+#         .highlight_max(color="lightgreen")
+#     )
+
+#     # --- Line Chart (All durations) ---
+#     try:
+#         st.subheader("📊 Trend Chart — Multi-duration Comparison")
+#         chart_df = pivot_df.reset_index().melt(id_vars="label", var_name="Metric", value_name="Value")
+#         import altair as alt
+#         chart = (
+#             alt.Chart(chart_df)
+#             .mark_line(point=True)
+#             .encode(
+#                 x="label:N",
+#                 y="Value:Q",
+#                 color="Metric:N",
+#                 tooltip=["label", "Metric", "Value"]
+#             )
+#             .properties(height=400)
+#         )
+#         st.altair_chart(chart, use_container_width=True)
+#     except Exception as e:
+#         st.warning(f"Chart generation error: {e}")
+
+#     # --- KPI Summary ---
+#     try:
+#         totals = df_compare.groupby("period")["value"].sum().sort_values(ascending=False)
+#         top_period = totals.index[0]
+#         top_value = totals.iloc[0]
+#         st.markdown(f"""
+#         <div style="margin-top:10px;padding:14px 18px;
+#                     background:linear-gradient(90deg,#f0f9ff,#ffffff);
+#                     border-left:5px solid #007bff;
+#                     border-radius:12px;
+#                     box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+#             <b>🏆 Best Performing Duration:</b> {top_period}<br>
+#             <b>📊 Total Registrations:</b> {top_value:,.0f}
+#         </div>
+#         """, unsafe_allow_html=True)
+#     except Exception:
+#         pass
+
+#     # --- AI Comparison Summary ---
+#     if enable_ai:
+#         with st.expander("🤖 AI Summary — Cross-Duration Analysis", expanded=True):
+#             with st.spinner("Generating AI comparison insights..."):
+#                 system = (
+#                     "You are an expert data analyst comparing vehicle registration growth across "
+#                     "daily, monthly, quarterly, and yearly durations. Identify which durations perform best, "
+#                     "discuss volatility or trends, highlight anomalies, and suggest one actionable improvement."
+#                 )
+#                 sample = df_compare.head(20).to_dict(orient="records")
+#                 user = f"Dataset: {json.dumps(sample, default=str)}"
+#                 ai_resp = deepinfra_chat(system, user, max_tokens=280)
+#                 if isinstance(ai_resp, dict) and "text" in ai_resp:
+#                     st.markdown(f"""
+#                     <div style="padding:12px 16px;margin-top:8px;
+#                                 background:linear-gradient(90deg,#ffffff,#f2f9ff);
+#                                 border-left:4px solid #007bff;
+#                                 border-radius:10px;">
+#                         {ai_resp["text"]}
+#                     </div>
+#                     """, unsafe_allow_html=True)
+# else:
+#     st.info("No comparable data available for unified growth analysis.")
+
 # ============================================================
-# 📈 Unified Duration Comparison — Daily / Monthly / Quarterly / Yearly (All Maxed)
+# 📈 Unified Duration Comparison — Daily / Monthly / Quarterly / Yearly (All Maxed v2)
 # ============================================================
 
 st.markdown("""
@@ -2241,101 +2372,152 @@ st.markdown("""
     margin-top: 35px;
     animation: pulseGlow 3s infinite;
 }
+@keyframes pulseGlow {
+    0% { box-shadow: 0 0 5px #007bff33; }
+    50% { box-shadow: 0 0 15px #007bff55; }
+    100% { box-shadow: 0 0 5px #007bff33; }
+}
 </style>
 
 <div class="compare-header">
     <h2 style="margin:0;">📊 Unified Growth Comparison Dashboard</h2>
     <p style="margin:4px 0 0;color:#444;font-size:15px;">
-        Compare vehicle registration trends across <b>daily, monthly, quarterly, and yearly</b> durations — fully maxed with dynamic analytics, charts, and AI insights.
+        Compare vehicle registration trends across <b>daily, monthly, quarterly, and yearly</b> durations — fully maxed with dynamic analytics, charts, AI summaries, and safe fallbacks.
     </p>
 </div>
 """, unsafe_allow_html=True)
 
 
-# ---- Helper: Normalize and merge duration data ----
+# ------------------------------------------------------------
+# ⚙️ Helper functions
+# ------------------------------------------------------------
+def safe_to_df(obj):
+    """Convert any JSON or dict to safe DataFrame."""
+    try:
+        if isinstance(obj, pd.DataFrame):
+            return obj
+        if isinstance(obj, (list, dict)):
+            return pd.json_normalize(obj)
+        return pd.DataFrame()
+    except Exception:
+        return pd.DataFrame()
+
 def prep_df(df, period):
+    """Attach period label and ensure valid structure."""
     if df is None or df.empty:
         return pd.DataFrame()
     out = df.copy()
     out["period"] = period
-    out["label"] = out["label"].astype(str)
-    out["value"] = pd.to_numeric(out["value"], errors="coerce")
-    return out[["label", "value", "period"]]
+    if "label" not in out.columns:
+        out["label"] = np.arange(len(out))
+    if "value" not in out.columns:
+        val_col = next((c for c in out.columns if c.lower() in ["count", "total", "registeredvehiclecount", "y"]), None)
+        if val_col:
+            out["value"] = pd.to_numeric(out[val_col], errors="coerce")
+        else:
+            out["value"] = np.nan
+    return out[["label", "value", "period"]].dropna(subset=["value"])
 
 
-# Fetch all periods — including Daily
+# ------------------------------------------------------------
+# 🧠 Safe fetch wrapper
+# ------------------------------------------------------------
+def fetch_duration_growth(duration_code, period_name, color, icon):
+    """Fetch duration-based dataset; never crash even if API fails."""
+    try:
+        st.write(f"{icon} Loading {period_name} data...")
+        data = fetch_json("vahandashboard/categoriesdonutchart", desc=f"{period_name} Data")
+        df = safe_to_df(data)
+        return prep_df(df, period_name)
+    except Exception as e:
+        st.warning(f"⚠️ {period_name} fetch failed: {e}")
+        return pd.DataFrame()
+
+
+# ------------------------------------------------------------
+# 📦 Fetch all durations safely
+# ------------------------------------------------------------
 df_daily     = fetch_duration_growth(4, "Daily", "#17a2b8", "🗓️")
 df_monthly   = fetch_duration_growth(3, "Monthly", "#007bff", "📅")
 df_quarterly = fetch_duration_growth(2, "Quarterly", "#6f42c1", "🧭")
 df_yearly    = fetch_duration_growth(1, "Yearly", "#28a745", "📆")
 
-# Merge all
-dfs = [
-    prep_df(df_daily, "Daily"),
-    prep_df(df_monthly, "Monthly"),
-    prep_df(df_quarterly, "Quarterly"),
-    prep_df(df_yearly, "Yearly"),
-]
+# Combine datasets (safe concat)
+non_empty = [d for d in [df_daily, df_monthly, df_quarterly, df_yearly] if not d.empty]
+if not non_empty:
+    st.warning("⚠️ No duration datasets available — skipping unified comparison.")
+    st.stop()
 
-df_compare = pd.concat([d for d in dfs if not d.empty], ignore_index=True)
+df_compare = pd.concat(non_empty, ignore_index=True)
 
-if not df_compare.empty:
-    # Pivot for side-by-side comparison
-    pivot_df = df_compare.pivot_table(
-        index="label", columns="period", values="value", aggfunc="sum"
-    ).fillna(0)
 
-    # Compute percentage change columns (MoM, QoQ, YoY, DoD)
-    for col in pivot_df.columns:
-        pivot_df[f"{col} %Δ"] = pivot_df[col].pct_change().fillna(0) * 100
+# ------------------------------------------------------------
+# 📊 Pivot + Compute Percentage Changes
+# ------------------------------------------------------------
+pivot_df = df_compare.pivot_table(
+    index="label", columns="period", values="value", aggfunc="sum"
+).fillna(0)
 
-    st.subheader("📈 Duration-wise Growth Comparison (All Maxed)")
-    st.dataframe(
-        pivot_df.style.format("{:,.0f}")
-        .background_gradient(axis=None, cmap="Blues")
-        .highlight_max(color="lightgreen")
-    )
+for col in pivot_df.columns:
+    pivot_df[f"{col} %Δ"] = pivot_df[col].pct_change().fillna(0) * 100
 
-    # --- Line Chart (All durations) ---
-    try:
-        st.subheader("📊 Trend Chart — Multi-duration Comparison")
-        chart_df = pivot_df.reset_index().melt(id_vars="label", var_name="Metric", value_name="Value")
-        import altair as alt
-        chart = (
-            alt.Chart(chart_df)
-            .mark_line(point=True)
-            .encode(
-                x="label:N",
-                y="Value:Q",
-                color="Metric:N",
-                tooltip=["label", "Metric", "Value"]
-            )
-            .properties(height=400)
+st.subheader("📈 Duration-wise Growth Comparison (All Maxed)")
+st.dataframe(
+    pivot_df.style.format("{:,.0f}")
+    .background_gradient(axis=None, cmap="Blues")
+    .highlight_max(color="lightgreen")
+)
+
+
+# ------------------------------------------------------------
+# 📈 Multi-duration Trend Chart
+# ------------------------------------------------------------
+try:
+    st.subheader("📊 Trend Chart — Multi-duration Comparison")
+    chart_df = pivot_df.reset_index().melt(id_vars="label", var_name="Metric", value_name="Value")
+    import altair as alt
+    chart = (
+        alt.Chart(chart_df)
+        .mark_line(point=True)
+        .encode(
+            x="label:N",
+            y="Value:Q",
+            color="Metric:N",
+            tooltip=["label", "Metric", "Value"]
         )
-        st.altair_chart(chart, use_container_width=True)
-    except Exception as e:
-        st.warning(f"Chart generation error: {e}")
+        .properties(height=400)
+    )
+    st.altair_chart(chart, use_container_width=True)
+except Exception as e:
+    st.warning(f"Chart generation error: {e}")
 
-    # --- KPI Summary ---
-    try:
-        totals = df_compare.groupby("period")["value"].sum().sort_values(ascending=False)
-        top_period = totals.index[0]
-        top_value = totals.iloc[0]
-        st.markdown(f"""
-        <div style="margin-top:10px;padding:14px 18px;
-                    background:linear-gradient(90deg,#f0f9ff,#ffffff);
-                    border-left:5px solid #007bff;
-                    border-radius:12px;
-                    box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-            <b>🏆 Best Performing Duration:</b> {top_period}<br>
-            <b>📊 Total Registrations:</b> {top_value:,.0f}
-        </div>
-        """, unsafe_allow_html=True)
-    except Exception:
-        pass
 
-    # --- AI Comparison Summary ---
-    if enable_ai:
+# ------------------------------------------------------------
+# 🧾 KPI Summary
+# ------------------------------------------------------------
+try:
+    totals = df_compare.groupby("period")["value"].sum().sort_values(ascending=False)
+    top_period = totals.index[0]
+    top_value = totals.iloc[0]
+    st.markdown(f"""
+    <div style="margin-top:10px;padding:14px 18px;
+                background:linear-gradient(90deg,#f0f9ff,#ffffff);
+                border-left:5px solid #007bff;
+                border-radius:12px;
+                box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+        <b>🏆 Best Performing Duration:</b> {top_period}<br>
+        <b>📊 Total Registrations:</b> {top_value:,.0f}
+    </div>
+    """, unsafe_allow_html=True)
+except Exception:
+    pass
+
+
+# ------------------------------------------------------------
+# 🤖 AI Summary (if DeepInfra enabled)
+# ------------------------------------------------------------
+try:
+    if "enable_ai" in globals() and enable_ai:
         with st.expander("🤖 AI Summary — Cross-Duration Analysis", expanded=True):
             with st.spinner("Generating AI comparison insights..."):
                 system = (
@@ -2355,8 +2537,8 @@ if not df_compare.empty:
                         {ai_resp["text"]}
                     </div>
                     """, unsafe_allow_html=True)
-else:
-    st.info("No comparable data available for unified growth analysis.")
+except Exception as e:
+    st.warning(f"AI summary skipped: {e}")
 
 # --------------------- Top 5 Revenue States ---------------------
 st.markdown("""
