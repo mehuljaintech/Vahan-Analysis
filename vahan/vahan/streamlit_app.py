@@ -567,15 +567,37 @@ st.markdown("""
 
 st.write("")
 
-# =====================================================
-# ⚙️ PARAMETER BUILD EXECUTION
-# =====================================================
+# ================================
+# ⚙️ Build & Display Vahan Parameters —  EDITION
+# ================================
+import json
+import streamlit as st
+import time
+import random
+
+# --- Animated Header Banner ---
+st.markdown("""
+<div style="
+    background: linear-gradient(90deg, #0072ff, #00c6ff);
+    padding: 16px 26px;
+    border-radius: 14px;
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 700;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 0 25px rgba(0,114,255,0.4);">
+    <div>🧩 Building Dynamic API Parameters for <b>Vahan Analytics</b></div>
+    <div style="font-size:14px;opacity:0.85;">Auto-synced with filters 🔁</div>
+</div>
+""", unsafe_allow_html=True)
+
+st.write("")  # spacing
+
+# --- Build Params Block ---
 with st.spinner("🚀 Generating dynamic request parameters..."):
     try:
-        # assumes build_params and variables already exist
         params_common = build_params(
-            from_year,
-            to_year,
+            from_year, to_year,
             state_code=state_code,
             rto_code=rto_code,
             vehicle_classes=vehicle_classes,
@@ -585,19 +607,25 @@ with st.spinner("🚀 Generating dynamic request parameters..."):
             vehicle_type=vehicle_type
         )
 
+        # --- Animated “processing complete” effect ---
         st.balloons()
         st.toast("✨ Parameters generated successfully!", icon="⚙️")
 
+        # --- Show result in expander with style ---
         with st.expander("🔧 View Generated Vahan Request Parameters (JSON)", expanded=True):
             st.markdown("""
             <div style="font-size:15px;color:#00E0FF;font-weight:600;margin-bottom:6px;">
                 📜 Parameter Payload Preview
             </div>
             """, unsafe_allow_html=True)
+
             st.json(params_common)
+
+            # --- Copy-to-clipboard button ---
             if st.button("📋 Copy Parameters JSON to Clipboard"):
                 st.toast("Copied successfully!", icon="✅")
 
+        # --- Context success banner ---
         st.markdown(f"""
         <div style="
             margin-top:12px;
@@ -614,185 +642,31 @@ with st.spinner("🚀 Generating dynamic request parameters..."):
 
     except Exception as e:
         st.error(f"❌ Error while building Vahan parameters: {str(e)}")
-        c1, c2 = st.columns(2)
-        with c1:
+
+        col1, col2 = st.columns([1,1])
+        with col1:
             if st.button("🔄 Auto-Retry Build"):
                 st.toast("Rebuilding parameters...", icon="🔁")
                 time.sleep(0.5)
                 st.rerun()
-        with c2:
+        with col2:
             if st.button("📘 View Troubleshooting Help"):
                 st.info("""
-                - Ensure all filters are valid (year range, class, etc.)
-                - Make sure no required variable is missing
-                - Try again with default settings
+                - Check if all filters are valid (e.g., correct year range or vehicle class).
+                - Ensure all mandatory fields are filled.
+                - Try again with fewer filters or reset defaults.
                 """)
 
-# =====================================================
-# ♻️ LIVE REFRESH BUTTON
-# =====================================================
+# --- Live Refresh Button ---
 st.markdown("<hr>", unsafe_allow_html=True)
-colA, colB, colC = st.columns([1.5, 1, 1.5])
+colA, colB, colC = st.columns([1.5,1,1.5])
+
 with colB:
     if st.button("♻️ Rebuild Parameters with Latest Filters"):
         emoji = random.choice(["🔁", "🚗", "⚙️", "🧠", "🛰️"])
         st.toast(f"{emoji} Rebuilding dynamic params...", icon=emoji)
         time.sleep(0.8)
         st.rerun()
-
-# =====================================================
-# 🌐 UNIVERSAL API ENGINE — MAXED EDITION
-# =====================================================
-VAHAN_API_BASE = st.secrets.get(
-    "VAHAN_API_BASE",
-    "https://analytics.parivahan.gov.in/analytics/"
-)
-
-def _ensure_url(endpoint: str) -> str:
-    """Ensure full valid API URL."""
-    if not isinstance(endpoint, str) or not endpoint:
-        raise ValueError("Empty endpoint provided.")
-    parsed = urlparse(endpoint)
-    if parsed.scheme and parsed.netloc:
-        return endpoint  # full URL already
-    base = VAHAN_API_BASE if VAHAN_API_BASE.endswith("/") else VAHAN_API_BASE + "/"
-    full = urljoin(base, endpoint.lstrip("/"))
-    p2 = urlparse(full)
-    if not (p2.scheme and p2.netloc):
-        raise ValueError(f"Constructed URL is invalid: {full}")
-    return full
-
-def get_json(endpoint, params=None, method="POST", headers=None, timeout=30):
-    """Universal safe API JSON getter with full feedback."""
-    headers = headers or {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-    }
-
-    try:
-        url = _ensure_url(endpoint)
-    except Exception as e:
-        st.error(f"❌ Invalid endpoint: {e}")
-        return {}, 0
-
-    try:
-        if method.upper() == "POST":
-            res = requests.post(url, json=params, headers=headers, timeout=timeout)
-        else:
-            res = requests.get(url, params=params, headers=headers, timeout=timeout)
-
-        if res.status_code == 200:
-            try:
-                return res.json(), res.status_code
-            except Exception:
-                st.warning("⚠️ API returned non-JSON response (200).")
-                return {}, res.status_code
-        else:
-            st.warning(f"⚠️ API responded with HTTP {res.status_code}")
-            return {}, res.status_code
-
-    except requests.exceptions.Timeout:
-        st.error("⏳ Request timed out. Try again later.")
-    except requests.exceptions.ConnectionError:
-        st.error("🚫 Connection error — check network/VPN.")
-    except Exception as e:
-        st.error(f"❌ Unexpected API error: {e}")
-
-    return {}, 0
-
-def _tag(text, color):
-    """Utility: colored tag generator"""
-    return f"<span style='background:{color};padding:4px 8px;border-radius:6px;color:white;font-size:12px;margin-right:6px;'>{text}</span>"
-
-def fetch_json(endpoint, params=None, desc="", method="POST"):
-    """Dynamic, safe, and beautiful API fetcher with retries + UI feedback."""
-    if params is None:
-        try:
-            params = params_common
-        except NameError:
-            st.error("❌ Missing parameters — build them first before calling fetch_json().")
-            return {}
-
-    max_retries = 3
-    delay = 1 + random.random()
-    desc = desc or endpoint
-
-    st.markdown(f"""
-    <div style="
-        padding:10px 15px;
-        margin:12px 0;
-        border-radius:12px;
-        background:rgba(0, 150, 255, 0.12);
-        border-left:5px solid #00C6FF;
-        box-shadow:0 0 10px rgba(0,198,255,0.15);">
-        <b>{_tag("API", "#007BFF")} {_tag("Task", "#00B894")}</b>
-        <span style="font-size:14px;color:#E2E8F0;">Fetching: <code>{desc}</code></span>
-    </div>
-    """, unsafe_allow_html=True)
-
-    json_data = None
-    for attempt in range(1, max_retries + 1):
-        with st.spinner(f"🔄 Attempt {attempt}/{max_retries} — Fetching `{desc}` ..."):
-            try:
-                json_data, _ = get_json(endpoint, params, method=method)
-                if json_data:
-                    st.toast(f"✅ {desc} fetched successfully!", icon="🚀")
-                    if attempt == 1:
-                        st.balloons()
-                    st.success(f"✅ Data fetched successfully on attempt {attempt}!")
-                    break
-                else:
-                    st.warning(f"⚠️ Empty response for {desc}. Retrying...")
-            except Exception as e:
-                st.error(f"❌ Error fetching {desc}: {e}")
-            time.sleep(delay * attempt * random.uniform(0.9, 1.3))
-
-    if json_data:
-        with st.expander(f"📦 View {desc} JSON Preview", expanded=False):
-            st.json(json_data)
-        st.markdown(f"""
-        <div style="
-            background:linear-gradient(90deg,#00c6ff,#0072ff);
-            padding:10px 15px;
-            border-radius:10px;
-            color:white;
-            font-weight:600;
-            margin-top:10px;">
-            ✅ Successfully fetched <b>{desc}</b>! Proceed with visualization.
-        </div>
-        """, unsafe_allow_html=True)
-        return json_data
-
-    # ❌ failure UI
-    st.error(f"⛔ Failed to fetch {desc} after {max_retries} attempts.")
-    st.markdown("""
-    <div style="
-        background:rgba(255,60,60,0.08);
-        padding:15px;
-        border-radius:10px;
-        border-left:5px solid #ff4444;
-        margin-top:10px;">
-        <b>💡 Troubleshooting Tips:</b><br>
-        - Check your network or VPN<br>
-        - Verify parameters are valid<br>
-        - Retry after a short delay<br>
-        - Ensure the endpoint exists
-    </div>
-    """, unsafe_allow_html=True)
-
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button(f"🔁 Retry {desc}", key=f"retry_{desc}_{random.randint(0,9999)}"):
-            st.toast("Retrying API fetch...", icon="🔄")
-            time.sleep(0.8)
-            st.rerun()
-    with c2:
-        if st.button("📡 Show Endpoint", key=f"test_{desc}_{random.randint(0,9999)}"):
-            try:
-                st.info(f"🔗 URL: `{_ensure_url(endpoint)}`")
-            except Exception as e:
-                st.error(str(e))
-    return {}
 
 # ============================================
 # 🤖 DeepInfra AI Helper (Streamlit Secrets Only) —  EDITION
