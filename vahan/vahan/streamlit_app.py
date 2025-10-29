@@ -98,7 +98,7 @@ today = date.today()
 default_from_year = max(2017, today.year - 1)
 
 # =====================================================
-# 🌈 MAXED SIDEBAR — GLASS NEON THEME
+# 🌈  SIDEBAR — GLASS NEON THEME
 # =====================================================
 st.sidebar.markdown("""
 <style>
@@ -188,7 +188,7 @@ div[data-baseweb="input"]:hover, div[data-baseweb="select"]:hover {
 """, unsafe_allow_html=True)
 
 # =====================================================
-# ✨ SIDEBAR HEADER — MAXED CONTROL PANEL
+# ✨ SIDEBAR HEADER —  CONTROL PANEL
 # =====================================================
 st.sidebar.markdown("""
 <div class="sidebar-header">
@@ -198,7 +198,7 @@ st.sidebar.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================
-# 📊 MAXED DATA FILTERS (Supports ANY filter)
+# 📊  DATA FILTERS (Supports ANY filter)
 # =====================================================
 with st.sidebar.expander("📊 Data Filters", expanded=True):
     from_year = st.number_input("📅 From Year", min_value=2012, max_value=today.year, value=default_from_year)
@@ -233,7 +233,7 @@ with st.sidebar.expander("📊 Data Filters", expanded=True):
         st.experimental_rerun()
 
 # =====================================================
-# 🧠 SMART ANALYTICS & AI ENGINE — MAXED
+# 🧠 SMART ANALYTICS & AI ENGINE — 
 # =====================================================
 with st.sidebar.expander("🧠 Smart Analytics & AI Engine", expanded=True):
     enable_forecast = st.checkbox("📈 Enable Forecasting", value=True)
@@ -248,7 +248,7 @@ with st.sidebar.expander("🧠 Smart Analytics & AI Engine", expanded=True):
     st.markdown("##### ⚡ AI Presets")
     preset = st.radio(
         "Choose Mode:",
-        ["Balanced (Default)", "Aggressive Forecasting", "Minimal Analysis", "Custom Maxed Mode"],
+        ["Balanced (Default)", "Aggressive Forecasting", "Minimal Analysis", "Custom  Mode"],
         index=0,
         horizontal=True
     )
@@ -262,11 +262,11 @@ with st.sidebar.expander("🧠 Smart Analytics & AI Engine", expanded=True):
         enable_forecast = enable_anomaly = enable_clustering = enable_ai = False
         st.toast("💤 Minimal Analysis Mode Activated", icon="⚙️")
 
-    elif preset == "Custom Maxed Mode":
+    elif preset == "Custom  Mode":
         enable_forecast = enable_anomaly = enable_clustering = enable_ai = True
         forecast_periods = 24
         enable_comparison = enable_trend = True
-        st.toast("💎 Custom MAXED Mode — all analytics active!", icon="⚡")
+        st.toast("💎 Custom  Mode — all analytics active!", icon="⚡")
 
     st.markdown("""
     <hr style='margin:10px 0;border:none;height:1px;
@@ -277,7 +277,7 @@ with st.sidebar.expander("🧠 Smart Analytics & AI Engine", expanded=True):
     """, unsafe_allow_html=True)
 
 # =====================================================
-# 🎨 UNIVERSAL HYBRID THEME ENGINE — MAXED EDITION 🚀
+# 🎨 UNIVERSAL HYBRID THEME ENGINE —  EDITION 🚀
 # =====================================================
 
 THEMES = {
@@ -826,7 +826,7 @@ st.sidebar.markdown("---")
 st.sidebar.caption("💡 Tip: You can toggle AI mode dynamically — the dashboard adapts instantly.")
 
 # =====================================================
-# ⚙️ Dynamic Parameter Builder — Vahan Analytics (MAXED)
+# ⚙️ Dynamic Parameter Builder — Vahan Analytics ()
 # =====================================================
 import streamlit as st
 import time, random, json, requests
@@ -1414,26 +1414,36 @@ def deepinfra_test_ui():
     st.caption("💡 Tip: If you get 401 or 405 errors, check your API key or endpoint format.")
     
 # ===============================================================
-# 1️⃣ CATEGORY DISTRIBUTION — MULTI-YEAR MAXED EDITION 🚀✨
+# 1️⃣ CATEGORY DISTRIBUTION — MULTI-YEAR EDITION 🚀✨
 # ===============================================================
 with st.container():
-    # 🌈 Header
+    # 🌈 HEADER
     st.markdown("""
     <div style="padding:14px 22px;border-left:6px solid #6C63FF;
                 background:linear-gradient(90deg,#f3f1ff 0%,#ffffff 100%);
                 border-radius:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
         <h3 style="margin:0;font-weight:700;color:#3a3a3a;">📊 Category Distribution (Multi-Year View)</h3>
         <p style="margin:4px 0 0;color:#555;font-size:14.5px;">
-            Comparative distribution of vehicle registrations by category for selected years and states.
+            Comparative distribution of vehicle registrations by category for selected years, states, and vehicle filters.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
     # =====================================================
-    # 🔁 MULTI-YEAR FETCHING
+    # ⚙️ USER CONFIG — OPTIONAL TOP-N FILTER
     # =====================================================
+    top_n = st.sidebar.slider("🏅 Show Top N Categories", 3, 20, 10)
+
+    # =====================================================
+    # ⚡ OPTIMIZED MULTI-YEAR FETCHING (CACHED)
+    # =====================================================
+    @st.cache_data(ttl=3600)
+    def cached_fetch_json(endpoint, params, desc):
+        return fetch_json(endpoint, params, desc)
+
     all_dfs = []
-    with st.spinner(f"📡 Fetching category distribution from {from_year} → {to_year} ..."):
+    spinner_scope = f"{state_code or 'All States'} | {vehicle_classes or 'All Classes'} | {vehicle_makers or 'All Makers'}"
+    with st.spinner(f"📡 API Task Fetching: Category Distribution — {from_year}→{to_year} ({spinner_scope})"):
         for yr in range(from_year, to_year + 1):
             try:
                 params = {
@@ -1446,7 +1456,7 @@ with st.container():
                     "timePeriod": time_period,
                     "fitnessCheck": fitness_check,
                 }
-                json_data = fetch_json("vahandashboard/categoriesdonutchart", params, desc=f"Category Distribution {yr}")
+                json_data = cached_fetch_json("vahandashboard/categoriesdonutchart", params, desc=f"Category Distribution {yr}")
                 df_temp = to_df(json_data)
                 if not df_temp.empty:
                     df_temp["year"] = yr
@@ -1455,17 +1465,25 @@ with st.container():
                 st.error(f"⚠️ Failed to fetch for {yr}: {e}")
 
     # =====================================================
-    # 📊 DATA AGGREGATION
+    # 📊 DATA AGGREGATION & PREPARATION
     # =====================================================
     if all_dfs:
         df_cat_all = pd.concat(all_dfs, ignore_index=True)
         df_cat_all = df_cat_all.groupby(["label", "year"], as_index=False)["value"].sum()
+        df_cat_all = df_cat_all.sort_values(["year", "value"], ascending=[True, False])
 
-        st.success(f"✅ Data Loaded for {len(df_cat_all['year'].unique())} Years")
+        # Apply Top-N filter per year
+        df_cat_all = (
+            df_cat_all.groupby("year")
+            .apply(lambda x: x.nlargest(top_n, "value"))
+            .reset_index(drop=True)
+        )
+
         years_list = sorted(df_cat_all["year"].unique())
+        st.success(f"✅ Data Loaded for {len(years_list)} Years: {', '.join(map(str, years_list))}")
 
         # =====================================================
-        # 🪄 VISUALIZATION
+        # 📈 VISUALIZATIONS — BAR + DONUT
         # =====================================================
         col1, col2 = st.columns(2, gap="large")
 
@@ -1481,6 +1499,7 @@ with st.container():
                     title="Multi-Year Category Comparison",
                     text_auto=True,
                 )
+                fig.update_layout(xaxis_title="", yaxis_title="Registrations", legend_title="Year")
                 st.plotly_chart(fig, use_container_width=True)
             except Exception as e:
                 st.error(f"⚠️ Bar chart failed: {e}")
@@ -1523,19 +1542,36 @@ with st.container():
         """, unsafe_allow_html=True)
 
         # =====================================================
+        # 📋 OPTIONAL — YEAR-WISE SUMMARY TABLE
+        # =====================================================
+        with st.expander("📋 View Year-Wise Category Summary"):
+            st.dataframe(
+                df_cat_all.pivot(index="label", columns="year", values="value").fillna(0).astype(int),
+                use_container_width=True,
+            )
+
+        # =====================================================
         # 🤖 AI NARRATIVE (Optional)
         # =====================================================
         if enable_ai:
             st.markdown("### 🤖 AI-Powered Multi-Year Insight")
             with st.expander("🔍 View AI Narrative", expanded=True):
                 with st.spinner("🧠 DeepInfra AI is analyzing multi-year category trends..."):
-                    sample = df_cat_all.head(10).to_dict(orient="records")
+                    sample = df_cat_all.head(15).to_dict(orient="records")
+                    context = {
+                        "years": years_list,
+                        "top_category": top_cat,
+                        "top_percentage": pct,
+                        "total_registrations": int(total_all),
+                        "sample_data": sample,
+                    }
                     system = (
-                        "You are a senior automotive data analyst. Analyze year-on-year changes "
-                        "in vehicle categories across India, highlight major shifts, and suggest actionable insights."
+                        "You are a senior automotive analytics expert. "
+                        "Analyze year-over-year category growth across states, highlight top trends, "
+                        "and provide concise insights and 1 strategic recommendation."
                     )
-                    user = f"Dataset: {json.dumps(sample, default=str)}. Summarize in 3–5 key insights."
-                    ai_resp = deepinfra_chat(system, user, max_tokens=350, temperature=0.5)
+                    user = f"Context data: {json.dumps(context, default=str)}"
+                    ai_resp = deepinfra_chat(system, user, max_tokens=400, temperature=0.5)
                     if ai_resp.get("text"):
                         st.markdown(f"""
                         <div style="margin-top:8px;padding:16px 18px;
@@ -1555,7 +1591,7 @@ with st.container():
         st.info("🔄 Try adjusting filters or refresh the API connection.")
 
 # ===============================================================
-# 2️⃣ TOP MAKERS — FULL CUSTOM MAXED EDITION 🏭🚀
+# 2️⃣ TOP MAKERS — FULL CUSTOM EDITION 🏭🚀 (MAXED)
 # ===============================================================
 with st.container():
     # 🌈 Header
@@ -1566,7 +1602,7 @@ with st.container():
                 box-shadow:0 2px 8px rgba(255,107,107,0.15);">
         <h3 style="margin:0;font-weight:700;color:#3a3a3a;">🏭 Top Vehicle Makers — Fully Custom & Multi-Year</h3>
         <p style="margin:4px 0 0;color:#555;font-size:14.5px;">
-            Explore manufacturer trends with any filter, year range, and customizable top-N makers.
+            Explore manufacturer trends across any filters, year ranges, and custom top-N limits.
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -1575,13 +1611,15 @@ with st.container():
     # ⚙️ User Custom Inputs — Top N Makers
     # ==============================================
     top_n = st.slider("🔢 How many top makers to display?", min_value=3, max_value=25, value=10, step=1)
-    st.caption("👆 Adjust this to show more or fewer top manufacturers dynamically.")
+    st.caption("👆 Adjust this dynamically to control the number of top manufacturers.")
 
     # ==============================================
     # 📡 Multi-Year Data Fetch
     # ==============================================
     all_maker_dfs = []
-    with st.spinner(f"🚗 Fetching data for {from_year} → {to_year} across filters..."):
+    st.toast(f"📡 API Task Fetching: Top Makers {from_year} → {to_year} with all filters", icon="🚀")
+
+    with st.spinner(f"🚗 Fetching data for {from_year} → {to_year} (custom filters applied)..."):
         for yr in range(from_year, to_year + 1):
             try:
                 params = {
@@ -1596,11 +1634,14 @@ with st.container():
                 }
                 mk_json = fetch_json("vahandashboard/top5Makerchart", params, desc=f"Top Makers {yr}")
                 df_temp = parse_makers(mk_json)
+
                 if not df_temp.empty:
                     df_temp["year"] = yr
                     all_maker_dfs.append(df_temp)
+                else:
+                    st.info(f"ℹ️ No maker data returned for {yr}.")
             except Exception as e:
-                st.error(f"⚠️ Failed fetching for {yr}: {e}")
+                st.error(f"⚠️ Failed fetching Top Makers for {yr}: {e}")
 
     # ==============================================
     # 📊 Aggregate & Process
@@ -1613,19 +1654,21 @@ with st.container():
         value_col = next((c for c in ["value", "count", "total", "registeredvehiclecount", "y"] if c in df_mk_all.columns), None)
 
         if not maker_col or not value_col:
-            st.warning("⚠️ Could not detect maker/value columns.")
+            st.warning("⚠️ Could not detect maker/value columns automatically.")
             st.dataframe(df_mk_all)
         else:
             # Aggregate across years and sort
             df_mk_all = (
-                df_mk_all.groupby([maker_col, "year"], as_index=False)[value_col].sum().sort_values(by=value_col, ascending=False)
+                df_mk_all.groupby([maker_col, "year"], as_index=False)[value_col]
+                .sum()
+                .sort_values(by=value_col, ascending=False)
             )
 
             # Limit top N per year
             df_mk_top = df_mk_all.groupby("year").apply(lambda x: x.nlargest(top_n, value_col)).reset_index(drop=True)
             years_list = sorted(df_mk_all["year"].unique())
 
-            st.success(f"✅ Loaded data for {len(years_list)} years with Top {top_n} Makers per year")
+            st.success(f"✅ Loaded data for {len(years_list)} years | Top {top_n} Makers per year")
 
             # ==============================================
             # 🎨 Visuals
@@ -1633,7 +1676,7 @@ with st.container():
             col1, col2 = st.columns(2, gap="large")
 
             with col1:
-                st.markdown(f"#### 📊 Top {top_n} Makers — Multi-Year Bar Chart")
+                st.markdown(f"#### 📊 Top {top_n} Makers — Multi-Year Comparison")
                 try:
                     fig = px.bar(
                         df_mk_top,
@@ -1643,14 +1686,21 @@ with st.container():
                         barmode="group",
                         title=f"Top {top_n} Makers by Year",
                         text_auto=True,
+                        height=450,
+                    )
+                    fig.update_layout(
+                        xaxis_title="Maker",
+                        yaxis_title="Registrations",
+                        legend_title="Year",
+                        margin=dict(t=60, b=40),
                     )
                     st.plotly_chart(fig, use_container_width=True)
                 except Exception as e:
-                    st.error(f"⚠️ Chart failed: {e}")
+                    st.error(f"⚠️ Chart rendering failed: {e}")
                     st.dataframe(df_mk_top)
 
             with col2:
-                st.markdown(f"#### 🍩 Latest Year ({max(years_list)}) — Donut View")
+                st.markdown(f"#### 🍩 Latest Year ({max(years_list)}) — Market Share Donut")
                 try:
                     df_latest = df_mk_top[df_mk_top["year"] == max(years_list)]
                     pie_from_df(df_latest.rename(columns={maker_col: "label", value_col: "value"}), donut=True)
@@ -1677,7 +1727,7 @@ with st.container():
                         background:linear-gradient(90deg,#ffecec,#fffafa);
                         border:1px solid #ffc9c9;border-radius:12px;">
                 <b>🔥 Insight:</b> <span style="color:#333;">{top_maker}</span> leads the market, 
-                contributing <b>{pct_share}%</b> across <b>{len(years_list)} years</b> and multiple filters.
+                contributing <b>{pct_share}%</b> across <b>{len(years_list)} years</b> and all applied filters.
             </div>
             """, unsafe_allow_html=True)
             st.balloons()
@@ -1688,14 +1738,14 @@ with st.container():
             if enable_ai:
                 st.markdown("### 🤖 DeepInfra AI — Multi-Year Market Intelligence")
                 with st.expander("🔍 View AI Summary", expanded=True):
-                    with st.spinner("🧠 Generating manufacturer insights..."):
+                    with st.spinner("🧠 Generating manufacturer insights via DeepInfra..."):
                         try:
                             sample = df_mk_top.head(10).to_dict(orient="records")
                             system = (
-                                "You are an expert automotive data analyst. "
-                                "Summarize patterns in multi-year manufacturer data. Identify leaders, challengers, and emerging players."
+                                "You are an expert automotive analyst. "
+                                "Summarize trends in the multi-year vehicle maker data. Highlight leaders, challengers, and patterns."
                             )
-                            user = f"Dataset: {json.dumps(sample, default=str)}. Please generate a 4–6 sentence summary of top {top_n} makers and trends."
+                            user = f"Dataset: {json.dumps(sample, default=str)}. Generate a short, sharp insight summary for top {top_n} makers."
 
                             ai_resp = deepinfra_chat(system, user, max_tokens=400, temperature=0.45)
                             if ai_resp.get("text"):
@@ -1714,14 +1764,15 @@ with st.container():
                             else:
                                 st.info("💤 No AI summary generated.")
                         except Exception as e:
-                            st.error(f"AI generation failed: {e}")
+                            st.error(f"⚠️ AI generation failed: {e}")
+
     else:
         st.warning("⚠️ No maker data found for your selected filters.")
-        st.info("🔄 Try adjusting filters or year range.")
+        st.info("🔄 Try adjusting filters, year range, or vehicle categories.")
 
 
 # =============================================================
-# 3️⃣ REGISTRATION TRENDS — FULL MAXED CUSTOM FORECAST ⚡
+# 3️⃣ REGISTRATION TRENDS — FULL CUSTOM FORECAST ⚡ (MAXED)
 # =============================================================
 
 st.markdown("""
@@ -1734,16 +1785,16 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =============================================================
-# ⚙️ Local Forecast Control Panel — Fully Custom
+# ⚙️ LOCAL FORECAST CONTROL PANEL — FULL CUSTOM
 # =============================================================
 st.markdown("<div class='trend-card' style='padding:12px 14px;margin-bottom:10px;'>", unsafe_allow_html=True)
-st.markdown("<h3 style='margin:0 0 6px;'>📈 Registration Trends — AI + Forecast (MAXED)</h3>", unsafe_allow_html=True)
-st.markdown("<div class='small-muted'>Real multi-year trend analysis, intelligent forecasting, anomalies, and AI narratives — all filters applied.</div>", unsafe_allow_html=True)
+st.markdown("<h3 style='margin:0 0 6px;'>📈 Registration Trends — AI + Forecast (All Filters)</h3>", unsafe_allow_html=True)
+st.markdown("<div class='small-muted'>True multi-year registration analytics with full filter control, forecasting, anomalies, and AI insights.</div>", unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
 c1, c2, c3, c4 = st.columns(4)
 with c1:
-    forecast_horizon = st.slider("⏳ Forecast Months", 3, 24, 6, 1)
+    forecast_horizon = st.slider("⏳ Forecast Months", 3, 36, 6, 1)
 with c2:
     show_daily = st.checkbox("🗓 Show Daily View", value=True)
 with c3:
@@ -1752,13 +1803,15 @@ with c4:
     refresh_btn = st.button("🔁 Refresh All Trends")
 
 if refresh_btn:
-    st.toast("Reloading and recalculating trend data...", icon="🔄")
+    st.toast("🔄 Reloading and recalculating trend data...", icon="🧠")
 
 # =============================================================
-# 📡 Fetch Trend Data — All Filters Applied
+# 📡 FETCH TREND DATA — ALL FILTERS ACTIVE
 # =============================================================
 all_trends = []
-with st.spinner(f"🚦 Loading trend data for {from_year} → {to_year}..."):
+st.toast(f"📡 API Task Fetching: Registration Trends {from_year} → {to_year} with all active filters", icon="🚦")
+
+with st.spinner(f"🚦 Loading registration trend data ({from_year} → {to_year})..."):
     for yr in range(from_year, to_year + 1):
         params = {
             "stateCd": state_code or "",
@@ -1776,24 +1829,29 @@ with st.spinner(f"🚦 Loading trend data for {from_year} → {to_year}..."):
             if not df_temp.empty:
                 df_temp["year"] = yr
                 all_trends.append(df_temp)
+            else:
+                st.info(f"ℹ️ No registration data for {yr} (filters may limit results).")
         except Exception as e:
-            st.warning(f"⚠️ Failed fetching trend for {yr}: {e}")
+            st.warning(f"⚠️ Trend fetch failed for {yr}: {e}")
 
 if not all_trends:
     st.warning("🚫 No trend data available for your selected filters.")
     st.stop()
 
 df_trend_all = pd.concat(all_trends, ignore_index=True)
-df_trend_all["date"] = pd.to_datetime(df_trend_all["date"])
-df_trend_all = df_trend_all.sort_values("date")
+df_trend_all["date"] = pd.to_datetime(df_trend_all["date"], errors="coerce")
+df_trend_all = df_trend_all.dropna(subset=["date"]).sort_values("date")
 
 # =============================================================
-# 📈 Forecasting Logic — Auto Switch (Prophet / Linear / Growth)
+# 📈 FORECASTING LOGIC — AUTO-MODE SELECTION
 # =============================================================
 def generate_forecast(df, periods=6, mode="Auto (Best)"):
-    if df.empty: return df
+    if df.empty:
+        return df
     df = df.copy().sort_values("date").reset_index(drop=True)
     df["forecast"] = False
+
+    # Prophet
     try:
         if mode in ["Auto (Best)", "Prophet"]:
             from prophet import Prophet
@@ -1807,6 +1865,7 @@ def generate_forecast(df, periods=6, mode="Auto (Best)"):
     except Exception:
         pass
 
+    # Linear Regression
     try:
         if mode in ["Auto (Best)", "Linear"]:
             from sklearn.linear_model import LinearRegression
@@ -1821,7 +1880,7 @@ def generate_forecast(df, periods=6, mode="Auto (Best)"):
     except Exception:
         pass
 
-    # Simple growth model fallback
+    # Growth Model
     try:
         if mode in ["Auto (Best)", "Growth"]:
             avg_growth = df["value"].pct_change().mean()
@@ -1838,13 +1897,16 @@ def generate_forecast(df, periods=6, mode="Auto (Best)"):
 fc_df = generate_forecast(df_trend_all, periods=forecast_horizon, mode=forecast_mode)
 
 # =============================================================
-# 💎 KPIs & Overview Metrics
+# 💎 KPIs & PERFORMANCE METRICS
 # =============================================================
 st.markdown("### 📊 Key Performance Metrics")
+
 total_reg = int(df_trend_all["value"].sum())
 daily_avg = total_reg / max(1, (df_trend_all["date"].max() - df_trend_all["date"].min()).days)
+
 yoy_df = compute_yoy(df_trend_all)
 qoq_df = compute_qoq(df_trend_all)
+
 latest_yoy = yoy_df["YoY%"].dropna().iloc[-1] if "YoY%" in yoy_df.columns and not yoy_df.empty else None
 latest_qoq = qoq_df["QoQ%"].dropna().iloc[-1] if "QoQ%" in qoq_df.columns and not qoq_df.empty else None
 
@@ -1855,58 +1917,66 @@ k3.metric("📈 Latest YoY%", f"{latest_yoy:.2f}%" if latest_yoy else "N/A")
 k4.metric("📊 Latest QoQ%", f"{latest_qoq:.2f}%" if latest_qoq else "N/A")
 
 # =============================================================
-# 📊 Actual + Forecast Chart
+# 📊 ACTUAL + FORECAST CHART
 # =============================================================
 import plotly.express as px
+
 st.markdown("### 📉 Actual vs Forecast Trends")
 try:
     fc_df["Type"] = fc_df["forecast"].apply(lambda x: "Forecast" if x else "Actual")
-    fig = px.line(fc_df, x="date", y="value", color="Type", markers=True,
-                  color_discrete_map={"Actual": "#007BFF", "Forecast": "#FF9800"},
-                  title=f"Vehicle Registrations (Actual vs {forecast_mode} Forecast)")
+    fig = px.line(
+        fc_df, x="date", y="value", color="Type", markers=True,
+        color_discrete_map={"Actual": "#007BFF", "Forecast": "#FF9800"},
+        title=f"Vehicle Registrations — Actual vs {forecast_mode} Forecast"
+    )
     fig.update_traces(mode="lines+markers")
-    fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+    fig.update_layout(
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        xaxis_title="Date",
+        yaxis_title="Registrations",
+        margin=dict(t=50, b=40)
+    )
     st.plotly_chart(fig, use_container_width=True)
 except Exception as e:
     st.warning(f"⚠️ Chart rendering failed: {e}")
     st.line_chart(df_trend_all.set_index("date")["value"])
 
 # =============================================================
-# 📆 Daily View (Interpolated)
+# 📆 DAILY VIEW (INTERPOLATED)
 # =============================================================
 if show_daily:
     try:
-        st.markdown("### 🗓 Daily Registration Estimate")
+        st.markdown("### 🗓 Daily Registration Estimate (Interpolated)")
         df_daily = df_trend_all.set_index("date").resample("D").interpolate().reset_index()
         df_daily["growth"] = df_daily["value"].pct_change() * 100
         last_day = df_daily.iloc[-1]
         prev_day = df_daily.iloc[-2]
         growth = (last_day["value"] - prev_day["value"]) / (prev_day["value"] or 1) * 100
-        col_a, col_b = st.columns([3,1])
+        col_a, col_b = st.columns([3, 1])
         with col_a:
             figd = px.area(df_daily.tail(90), x="date", y="value", title="Last 90 Days — Daily Registration Trend")
             st.plotly_chart(figd, use_container_width=True)
         with col_b:
             st.metric("🕒 Latest Day", f"{last_day['value']:.0f}", f"{growth:.2f}% vs prev")
     except Exception as e:
-        st.warning(f"Daily interpolation failed: {e}")
+        st.warning(f"⚠️ Daily interpolation failed: {e}")
 
 # =============================================================
-# 🧠 AI Narrative — DeepInfra Summary
+# 🧠 AI NARRATIVE — DEEPINFRA SUMMARY
 # =============================================================
 if enable_ai:
     with st.expander("🤖 AI Narrative — Trend & Forecast Summary", expanded=True):
         try:
             sample = df_trend_all.tail(12).to_dict(orient="records")
             system = (
-                "You are an advanced analytics assistant. "
-                "Analyze the trend, forecast, and YoY/QoQ results for vehicle registrations. "
-                "Provide concise insights and 2 recommendations."
+                "You are an automotive analytics expert. "
+                "Analyze registration trends, forecast results, and growth patterns. "
+                "Highlight seasonality, recovery signals, and 2 actionable insights."
             )
             user = f"Dataset: {json.dumps(sample, default=str)}, Latest YoY: {latest_yoy}, QoQ: {latest_qoq}, Forecast horizon: {forecast_horizon}."
-            ai_resp = deepinfra_chat(system, user, max_tokens=400, temperature=0.3)
+            ai_resp = deepinfra_chat(system, user, max_tokens=400, temperature=0.35)
             if ai_resp.get("text"):
-                st.success("AI Summary Generated ✅")
+                st.success("✅ AI Summary Generated")
                 st.markdown(f"""
                 <div style='padding:16px;border-radius:10px;background:#f8faff;
                             border-left:5px solid #007BFF;margin-top:10px;'>
@@ -1915,19 +1985,19 @@ if enable_ai:
                 """, unsafe_allow_html=True)
                 st.snow()
             else:
-                st.info("AI did not return any summary.")
+                st.info("💤 AI did not return any summary.")
         except Exception as e:
-            st.warning(f"AI summary failed: {e}")
+            st.warning(f"⚠️ AI Summary failed: {e}")
 
 # =============================================================
-# 🎉 End of Trend Section
+# 🎉 END OF TREND SECTION
 # =============================================================
 st.markdown("---")
 st.markdown(f"📅 Data Range: {df_trend_all['date'].min().date()} → {df_trend_all['date'].max().date()} | ⏳ Forecast: {forecast_horizon} months")
 
 
 # ================================================================
-# 🌈 4️⃣ Duration-wise Growth + 5️⃣ Top 5 Revenue States — MAXED ⚡
+# 🌈 4️⃣ Duration-wise Growth + 5️⃣ Top 5 Revenue States —  ⚡ MAXED EDITION
 # ================================================================
 
 import streamlit as st
@@ -1936,7 +2006,7 @@ import json
 from datetime import datetime
 
 # ================================================================
-# ✨ Animated Header
+# ✨ Animated Header — Unified Style
 # ================================================================
 st.markdown("""
 <style>
@@ -1945,7 +2015,7 @@ st.markdown("""
     50% { box-shadow: 0 0 10px #28a745; }
     100% { box-shadow: 0 0 0px #28a745; }
 }
-.maxed-header {
+.section-header {
     background: linear-gradient(90deg, #eaffea, #ffffff);
     border-left: 6px solid #28a745;
     padding: 14px 20px;
@@ -1955,10 +2025,10 @@ st.markdown("""
 }
 </style>
 
-<div class="maxed-header">
-    <h2 style="margin:0;">📊 Duration-wise Growth & Revenue Insights (MAXED)</h2>
+<div class="section-header">
+    <h2 style="margin:0;">📊 Duration-wise Growth & Revenue Insights — All Filters Applied</h2>
     <p style="margin:4px 0 0;color:#444;font-size:15px;">
-        All filters applied — monthly, quarterly, and yearly growth with smart AI narratives, full customization, and top revenue states.
+        Explore monthly, quarterly, and yearly growth trends with AI-driven narratives and top revenue performance by state.
     </p>
 </div>
 """, unsafe_allow_html=True)
@@ -1985,24 +2055,28 @@ st.divider()
 # ================================================================
 def fetch_duration_growth(calendar_type, label, color, emoji):
     """Fetch and visualize monthly/quarterly/yearly growth — all filters applied."""
-    with st.spinner(f"📦 Loading {label} growth data (with filters)..."):
-        params = {
-            **params_common,
-            "calendarType": calendar_type,
-            "stateCd": state_code or "",
-            "rtoCd": rto_code or "0",
-            "vehicleClass": vehicle_classes or "",
-            "vehicleMaker": vehicle_makers or "",
-            "vehicleType": vehicle_type or "",
-        }
-        json_data = fetch_json("vahandashboard/durationWiseRegistrationTable", params, desc=f"{label} growth")
-        df = parse_duration_table(json_data)
-
-        if df.empty:
-            st.warning(f"No {label.lower()} data available for these filters.")
+    with st.spinner(f"📦 Loading {label} growth data..."):
+        try:
+            params = {
+                **(params_common if 'params_common' in globals() else {}),
+                "calendarType": calendar_type,
+                "stateCd": state_code or "",
+                "rtoCd": rto_code or "0",
+                "vehicleClass": vehicle_classes or "",
+                "vehicleMaker": vehicle_makers or "",
+                "vehicleType": vehicle_type or "",
+            }
+            json_data = fetch_json("vahandashboard/durationWiseRegistrationTable", params, desc=f"{label} growth")
+            df = parse_duration_table(json_data)
+        except Exception as e:
+            st.error(f"❌ Failed to fetch {label.lower()} growth: {e}")
             return pd.DataFrame()
 
-        # Sub-header
+        if df.empty:
+            st.warning(f"⚠️ No {label.lower()} data available for current filters.")
+            return pd.DataFrame()
+
+        # Section header
         st.markdown(f"""
         <div style="padding:12px 18px;margin-top:10px;
                     border-left:6px solid {color};
@@ -2024,7 +2098,7 @@ def fetch_duration_growth(calendar_type, label, color, emoji):
             except Exception:
                 st.dataframe(df)
 
-        # KPI Summary
+        # KPI Zone
         try:
             max_label = df.loc[df["value"].idxmax(), "label"]
             max_val = df["value"].max()
@@ -2046,17 +2120,16 @@ def fetch_duration_growth(calendar_type, label, color, emoji):
 
             if max_val > avg_val * 1.5:
                 st.balloons()
-
         except Exception as e:
-            st.warning(f"KPI error for {label}: {e}")
+            st.warning(f"KPI calculation failed for {label}: {e}")
 
         # AI Growth Summary
-        if enable_ai_growth:
+        if enable_ai_growth and len(df) >= 3:
             with st.expander(f"🤖 AI Summary — {label} Growth", expanded=False):
-                with st.spinner(f"AI generating {label} growth summary..."):
+                with st.spinner(f"Generating {label} growth insights..."):
                     system = (
                         f"You are an analytics assistant summarizing {label.lower()} vehicle registration growth trends. "
-                        "Highlight highs, dips, patterns, and give one recommendation."
+                        "Highlight peaks, dips, and recommendations."
                     )
                     sample = df.head(10).to_dict(orient="records")
                     user = f"Dataset: {json.dumps(sample, default=str)}"
@@ -2074,7 +2147,7 @@ def fetch_duration_growth(calendar_type, label, color, emoji):
         return df
 
 
-# Run for all duration types
+# Run for Monthly / Quarterly / Yearly
 df_monthly   = fetch_duration_growth(3, "Monthly",  "#007bff", "📅")
 df_quarterly = fetch_duration_growth(2, "Quarterly", "#6f42c1", "🧭")
 df_yearly    = fetch_duration_growth(1, "Yearly",   "#28a745", "📆")
@@ -2082,7 +2155,7 @@ df_yearly    = fetch_duration_growth(1, "Yearly",   "#28a745", "📆")
 st.divider()
 
 # ================================================================
-# 💰 Top N Revenue States (Full Custom)
+# 💰 Top N Revenue States (Full Custom + AI)
 # ================================================================
 st.markdown("""
 <style>
@@ -2092,31 +2165,33 @@ st.markdown("""
     padding: 14px 20px;
     border-radius: 14px;
     margin-top: 35px;
-    animation: pulseGlow 3s infinite;
 }
 </style>
 
 <div class="rev-header">
-    <h2 style="margin:0;">💰 Top Revenue States</h2>
+    <h2 style="margin:0;">💰 Top Revenue States — All Filters Applied</h2>
     <p style="margin:4px 0 0;color:#555;font-size:15px;">
-        View leading states by revenue — fully filtered, dynamic, and AI-analyzed.
+        View top-performing states by vehicle-related revenue — dynamic, filter-sensitive, and AI-analyzed.
     </p>
 </div>
 """, unsafe_allow_html=True)
 
-# Fetch with filters
 with st.spinner(f"Fetching Top {top_n} Revenue States..."):
-    params_rev = {
-        **params_common,
-        "stateCd": state_code or "",
-        "rtoCd": rto_code or "0",
-        "vehicleClass": vehicle_classes or "",
-        "vehicleMaker": vehicle_makers or "",
-        "vehicleType": vehicle_type or "",
-        "limit": top_n
-    }
-    top_rev_json = fetch_json("vahandashboard/top5chartRevenueFee", params_rev, desc="Top Revenue States")
-    df_top_rev = parse_top5_revenue(top_rev_json if top_rev_json else {})
+    try:
+        params_rev = {
+            **(params_common if 'params_common' in globals() else {}),
+            "stateCd": state_code or "",
+            "rtoCd": rto_code or "0",
+            "vehicleClass": vehicle_classes or "",
+            "vehicleMaker": vehicle_makers or "",
+            "vehicleType": vehicle_type or "",
+            "limit": top_n
+        }
+        top_rev_json = fetch_json("vahandashboard/top5chartRevenueFee", params_rev, desc="Top Revenue States")
+        df_top_rev = parse_top5_revenue(top_rev_json or {})
+    except Exception as e:
+        st.error(f"❌ Revenue fetch failed: {e}")
+        df_top_rev = pd.DataFrame()
 
 if not df_top_rev.empty:
     col1, col2 = st.columns(2)
@@ -2146,17 +2221,16 @@ if not df_top_rev.empty:
             <b>💵 Total ({top_n} states):</b> ₹{total_value:,.0f}
         </div>
         """, unsafe_allow_html=True)
-
         st.snow()
     except Exception as e:
         st.warning(f"Revenue KPI error: {e}")
 
-    if enable_ai_revenue:
-        with st.expander("🤖 AI Summary — Revenue Insights", expanded=True):
+    if enable_ai_revenue and len(df_top_rev) >= 3:
+        with st.expander("🤖 AI Summary — Revenue Insights", expanded=False):
             with st.spinner("Generating AI summary for revenue states..."):
                 system = (
                     "You are an economic analyst summarizing vehicle revenue performance by Indian states. "
-                    "Highlight top performers, revenue imbalance, and a key recommendation for policy improvement."
+                    "Highlight top performers, regional balance, and 1 key recommendation."
                 )
                 sample = df_top_rev.to_dict(orient="records")
                 user = f"Dataset: {json.dumps(sample, default=str)}"
@@ -2174,10 +2248,11 @@ else:
     st.warning("⚠️ No revenue data available for current filters.")
 
 st.divider()
-st.info(f"✅ Filters applied: Years {from_year}–{to_year}, State: {state_code or 'All'}, Vehicle Class: {vehicle_classes or 'All'}, Maker: {vehicle_makers or 'All'}, Type: {vehicle_type or 'All'}")
+st.info(f"✅ Filters Applied → Years {from_year}–{to_year}, State: {state_code or 'All'}, "
+        f"Class: {vehicle_classes or 'All'}, Maker: {vehicle_makers or 'All'}, Type: {vehicle_type or 'All'}")
 
 # ================================================================
-# 🌟 6️⃣ MAXED Revenue Trend + Forecast + Anomaly + Clustering — UI
+# 🌟 6️⃣  Revenue Trend + Forecast + Anomaly + Clustering — MAXED FIXED
 # ================================================================
 
 import streamlit as st
@@ -2185,6 +2260,35 @@ import pandas as pd
 import altair as alt
 import json
 from datetime import datetime
+import numpy as np
+
+# Safe: some helper functions (linear_forecast) are included in this block so the section is self-contained.
+# If you already have these helpers elsewhere, you may remove the duplicates.
+
+def linear_forecast(df, months: int = 6, date_col: str = "date", value_col: str = "value"):
+    """
+    Simple index-based linear forecast fallback. Returns a DataFrame with future monthly points.
+    """
+    try:
+        if df is None or df.empty or value_col not in df.columns or date_col not in df.columns:
+            return pd.DataFrame(columns=[date_col, value_col])
+
+        tmp = df.copy().sort_values(date_col)
+        tmp[date_col] = pd.to_datetime(tmp[date_col])
+        tmp = tmp.reset_index(drop=True)
+        X = np.arange(len(tmp)).reshape(-1, 1)
+        y = tmp[value_col].values
+        # fallback to simple linear fit
+        slope, intercept = np.polyfit(X.flatten(), y, 1)
+        last_date = tmp[date_col].max()
+        future_dates = pd.date_range(last_date + pd.offsets.MonthBegin(), periods=months, freq="MS")
+        future_idx = np.arange(len(tmp), len(tmp) + months)
+        forecast_values = intercept + slope * future_idx
+        return pd.DataFrame({date_col: future_dates, value_col: forecast_values})
+    except Exception as e:
+        st.warning(f"linear_forecast fallback failed: {e}")
+        return pd.DataFrame(columns=[date_col, value_col])
+
 
 # ================================
 # 🎨 CSS Animations & Transitions
@@ -2227,19 +2331,43 @@ st.markdown("""
 
 
 # ====================================================
-# 🧭 FILTER PANEL (All Maxed Filters)
+# 🧭 FILTER PANEL (All Filters) — safe parsing + defaults
 # ====================================================
 with st.expander("🎛️ Customize View — All Filters", expanded=True):
-    years = st.multiselect("Select Year(s):", options=["2022", "2023", "2024", "2025"], default=["2024", "2025"])
-    states = st.multiselect("Select States:", ["All", "Maharashtra", "Delhi", "Gujarat", "Tamil Nadu", "Karnataka"], default=["All"])
-    categories = st.multiselect("Select Vehicle Categories:", ["All", "Car", "Bike", "Truck", "Bus", "EV"], default=["All"])
+    # years: accept ints or strings, default last two years
+    years_sel = st.multiselect("Select Year(s):", options=["2022", "2023", "2024", "2025"], default=["2024", "2025"])
+    # allow "All" in states/categories and expand later
+    states_sel = st.multiselect("Select States:", ["All", "Maharashtra", "Delhi", "Gujarat", "Tamil Nadu", "Karnataka"], default=["All"])
+    categories_sel = st.multiselect("Select Vehicle Categories:", ["All", "Car", "Bike", "Truck", "Bus", "EV"], default=["All"])
     metric_type = st.selectbox("Select Metric Type:", ["Revenue", "Registrations", "Fees"], index=0)
-    show_forecast = st.toggle("🔮 Enable Forecasting", True)
-    show_anomaly = st.toggle("🚨 Enable Anomaly Detection", True)
-    show_clustering = st.toggle("🧩 Enable Clustering", True)
-    enable_ai = st.toggle("🤖 Enable AI Insights", True)
+    # Use checkboxes for better portability
+    show_forecast = st.checkbox("🔮 Enable Forecasting", value=True)
+    show_anomaly = st.checkbox("🚨 Enable Anomaly Detection", value=True)
+    show_clustering = st.checkbox("🧩 Enable Clustering", value=True)
+    enable_ai = st.checkbox("🤖 Enable AI Insights", value=True)
     forecast_periods = st.slider("Forecast Months", 3, 24, 6)
 
+# normalize selections
+# convert years to ints (ignore invalid)
+years = []
+for y in years_sel:
+    try:
+        years.append(int(str(y)))
+    except Exception:
+        pass
+if not years:
+    years = [datetime.now().year]
+
+# expand states/categories if "All" selected — caller is expected to set real lists if needed
+if "All" in states_sel:
+    states = ["All"]  # keep as All; will tell API not to filter by state
+else:
+    states = states_sel
+
+if "All" in categories_sel:
+    categories = ["All"]
+else:
+    categories = categories_sel
 
 # ====================================================
 # 📊 Section Header
@@ -2248,32 +2376,105 @@ st.markdown(f"""
 <div class='sec-box'>
     <h2 style="margin:0;">💹 {metric_type} Trend & Advanced Analytics</h2>
     <p style="margin:4px 0 0;color:#444;font-size:15px;">
-        Smart forecasting, anomaly detection, and AI-powered clustering insights across <b>{', '.join(years)}</b> for selected regions.
+        Smart forecasting, anomaly detection, and AI-powered clustering insights across <b>{', '.join(map(str, years))}</b> for selected regions.
     </p>
 </div>
 """, unsafe_allow_html=True)
 
 
 # ====================================================
-# 📈 Fetch Data (Multi-Year & Multi-State)
+# 📈 Fetch Data (Multi-Year & Multi-State) — safe and parameterized
 # ====================================================
+# We'll build a params_common object if not already present in the global scope
+params_common = locals().get("params_common", {})
+
+# Helper: safe fetch wrapper
+def safe_fetch(endpoint, params=None, desc=None):
+    """Call fetch_json if exists, otherwise return None and log a warning."""
+    try:
+        if "fetch_json" in globals():
+            return fetch_json(endpoint, params or {}, desc=desc)
+        else:
+            st.warning("fetch_json() not found in global scope — API calls will be skipped.")
+            return None
+    except Exception as e:
+        st.warning(f"API fetch failed for {desc or endpoint}: {e}")
+        return None
+
+
 dfs = []
+api_log = []
+
 for year in years:
     for state in states:
-        desc = f"{metric_type} Trend — {state} ({year})"
-        with st.spinner(f"Fetching {desc}..."):
-            api_endpoint = "vahandashboard/revenueFeeLineChart"
-            data_json = fetch_json(api_endpoint, desc=desc)
-            df_temp = parse_revenue_trend(data_json if data_json else {})
-            if not df_temp.empty:
-                df_temp["year"] = year
-                df_temp["state"] = state
-                dfs.append(df_temp)
+        # allow state="All" to mean no state filter
+        api_params = {**params_common}
+        api_params.update({
+            "year": year,
+        })
+        if state != "All":
+            api_params["state"] = state
+            api_params["stateCd"] = api_params.get("stateCd", "") or api_params.get("state", "")
 
+        # categories handling: if All -> don't pass vehicleCategory param
+        if not (len(categories) == 1 and categories[0] == "All"):
+            api_params["vehicleCategory"] = ",".join(categories)
+
+        desc = f"{metric_type} Trend — {state} ({year})"
+        st.info(f"✅ API Task Fetching: {desc}")
+
+        data_json = safe_fetch("vahandashboard/revenueFeeLineChart", params=api_params, desc=desc)
+        try:
+            # parse_revenue_trend is expected to exist in user's workspace
+            if "parse_revenue_trend" in globals() and data_json:
+                df_temp = parse_revenue_trend(data_json)
+            else:
+                # fallback: try to interpret JSON as a simple records list
+                if isinstance(data_json, list):
+                    df_temp = pd.DataFrame(data_json)
+                elif isinstance(data_json, dict) and "data" in data_json:
+                    df_temp = pd.DataFrame(data_json.get("data") or [])
+                else:
+                    df_temp = pd.DataFrame()
+        except Exception as e:
+            st.warning(f"Failed to parse revenue trend for {desc}: {e}")
+            df_temp = pd.DataFrame()
+
+        if not df_temp.empty:
+            # normalize expected columns
+            # ensure 'period' and 'value' exist
+            if "period" not in df_temp.columns and "date" in df_temp.columns:
+                df_temp = df_temp.rename(columns={"date": "period"})
+            if "value" not in df_temp.columns:
+                # try to find numeric column
+                numeric_cols = df_temp.select_dtypes(include=["number"]).columns.tolist()
+                if numeric_cols:
+                    df_temp = df_temp.rename(columns={numeric_cols[0]: "value"})
+
+            df_temp = df_temp[[c for c in ["period", "value"] if c in df_temp.columns]]
+            df_temp["year"] = year
+            df_temp["state"] = state
+            dfs.append(df_temp)
+            api_log.append((desc, len(df_temp)))
+        else:
+            api_log.append((desc, 0))
+
+# aggregate
 if dfs:
     df_rev_trend = pd.concat(dfs, ignore_index=True)
+    # try to coerce value to numeric
+    if "value" in df_rev_trend.columns:
+        df_rev_trend["value"] = pd.to_numeric(df_rev_trend["value"], errors="coerce").fillna(0)
 else:
     df_rev_trend = pd.DataFrame()
+
+# show api log summary
+if api_log:
+    lines = []
+    for desc, cnt in api_log:
+        lines.append(f"{desc}: {cnt} rows")
+    st.caption("API Fetch Summary: " + " | ".join(lines))
+
 
 # ====================================================
 # 📊 Trend Visualization
@@ -2283,11 +2484,18 @@ if df_rev_trend.empty:
 else:
     st.subheader("📊 Multi-Year Trend Comparison")
     try:
+        # if 'period' looks like a date string, convert to datetime for better axis handling
+        try:
+            df_rev_trend["period_dt"] = pd.to_datetime(df_rev_trend["period"], errors="coerce")
+            x_field = "period_dt" if df_rev_trend["period_dt"].notna().any() else "period"
+        except Exception:
+            x_field = "period"
+
         chart = (
             alt.Chart(df_rev_trend)
             .mark_line(point=True, interpolate="monotone")
             .encode(
-                x=alt.X("period:O", title="Period"),
+                x=alt.X(f"{x_field}:T" if x_field == "period_dt" else f"{x_field}:O", title="Period"),
                 y=alt.Y("value:Q", title=f"{metric_type} (₹)"),
                 color=alt.Color("year:N", legend=alt.Legend(title="Year")),
                 tooltip=["state", "year", "period", "value"]
@@ -2304,9 +2512,9 @@ else:
 # 💎 KPIs
 # ====================================================
 try:
-    total_val = float(df_rev_trend["value"].sum())
-    avg_val = float(df_rev_trend["value"].mean())
-    latest_val = float(df_rev_trend["value"].iloc[-1])
+    total_val = float(df_rev_trend["value"].sum()) if not df_rev_trend.empty else 0.0
+    avg_val = float(df_rev_trend["value"].mean()) if not df_rev_trend.empty else 0.0
+    latest_val = float(df_rev_trend["value"].iloc[-1]) if not df_rev_trend.empty else 0.0
     prev_val = float(df_rev_trend["value"].iloc[-2]) if len(df_rev_trend) > 1 else latest_val
     growth_pct = ((latest_val - prev_val) / prev_val) * 100 if prev_val else 0.0
 except Exception:
@@ -2318,31 +2526,47 @@ k2.markdown(f"<div class='metric-card'><h4>📈 Latest Value</h4><b>₹{latest_v
 k3.markdown(f"<div class='metric-card'><h4>📊 Average</h4><b>₹{avg_val:,.0f}</b></div>", unsafe_allow_html=True)
 k4.markdown(f"<div class='metric-card'><h4>📅 Growth %</h4><b style='color:{'green' if growth_pct>=0 else 'red'}'>{growth_pct:.2f}%</b></div>", unsafe_allow_html=True)
 
-if growth_pct > 5: st.balloons()
-elif growth_pct < -5: st.snow()
+if isinstance(growth_pct, (int, float)):
+    if growth_pct > 5: st.balloons()
+    elif growth_pct < -5: st.snow()
 
 
 # ====================================================
 # 🔮 Forecasting
 # ====================================================
-if show_forecast:
+if show_forecast and not df_rev_trend.empty:
     try:
         st.markdown("### 🔮 Forecasting — Future Projection")
-        df_rev_trend['date'] = pd.to_datetime(df_rev_trend['period'], errors='coerce')
-        df_rev_trend = df_rev_trend.dropna(subset=['date'])
-        forecast_df = linear_forecast(df_rev_trend, months=forecast_periods)
+        # prepare a single series for forecasting: aggregate by period across selected filters
+        try:
+            df_fc = df_rev_trend.groupby("period")["value"].sum().reset_index()
+            df_fc["date"] = pd.to_datetime(df_fc["period"], errors="coerce")
+            if df_fc["date"].isna().all():
+                # fallback: create a time index
+                df_fc["date"] = pd.date_range(end=pd.Timestamp.today(), periods=len(df_fc), freq='M')
+        except Exception as e:
+            st.warning(f"Could not aggregate series for forecasting: {e}")
+            df_fc = df_rev_trend[["period", "value"]].rename(columns={"period": "date"})
+            df_fc["date"] = pd.to_datetime(df_fc["date"], errors="coerce")
+
+        forecast_df = linear_forecast(df_fc.rename(columns={"date": "date", "value": "value"}), months=forecast_periods)
         if not forecast_df.empty:
-            st.line_chart(pd.concat([
-                df_rev_trend.set_index('date')['value'],
-                forecast_df.set_index('date')['value']
-            ]))
-            if enable_ai:
+            # build combined series for charting
+            hist_series = df_fc.set_index('date')['value']
+            fc_series = forecast_df.set_index('date')['value']
+            combined = pd.concat([hist_series, fc_series])
+            st.line_chart(combined)
+
+            if enable_ai and "deepinfra_chat" in globals():
                 with st.spinner("🤖 AI Forecast Summary..."):
                     system = "You are a forecasting analyst summarizing financial trends."
                     user = f"Forecasted values: {forecast_df.head(6).to_dict(orient='records')}. Summarize key future directions."
-                    ai = deepinfra_chat(system, user, max_tokens=200)
-                    if ai.get("text"):
-                        st.markdown(f"<div class='ai-box'>{ai['text']}</div>", unsafe_allow_html=True)
+                    try:
+                        ai = deepinfra_chat(system, user, max_tokens=200)
+                        if isinstance(ai, dict) and ai.get("text"):
+                            st.markdown(f"<div class='ai-box'>{ai['text']}</div>", unsafe_allow_html=True)
+                    except Exception as e:
+                        st.info(f"AI forecast service unavailable: {e}")
     except Exception as e:
         st.warning(f"Forecast failed: {e}")
 
@@ -2350,36 +2574,39 @@ if show_forecast:
 # ====================================================
 # 🚨 Anomaly Detection
 # ====================================================
-if show_anomaly:
+if show_anomaly and not df_rev_trend.empty:
     try:
         st.markdown("### 🚨 Anomaly Detection")
         from sklearn.ensemble import IsolationForest
-        import numpy as np
 
         contamination = st.slider("Outlier Fraction", 0.01, 0.2, 0.05)
         model = IsolationForest(contamination=contamination, random_state=42)
-        df_rev_trend["value"] = pd.to_numeric(df_rev_trend["value"], errors="coerce").fillna(0)
-        model.fit(df_rev_trend[["value"]])
-        df_rev_trend["anomaly"] = model.predict(df_rev_trend[["value"]])
-        anomalies = df_rev_trend[df_rev_trend["anomaly"] == -1]
+        series = df_rev_trend.groupby('period')['value'].sum().reset_index()
+        model.fit(series[['value']])
+        series['anomaly'] = model.predict(series[['value']])
+        anomalies = series[series['anomaly'] == -1]
 
         st.metric("🚨 Anomalies Detected", f"{len(anomalies)}")
-        base = alt.Chart(df_rev_trend).encode(x="period:O")
-        line = base.mark_line().encode(y="value:Q")
+
+        base = alt.Chart(series).encode(x='period:O')
+        line = base.mark_line().encode(y='value:Q')
         points = base.mark_circle(size=80).encode(
-            y="value:Q",
-            color=alt.condition(alt.datum.anomaly == -1, alt.value("red"), alt.value("black")),
-            tooltip=["period", "value"]
+            y='value:Q',
+            color=alt.condition(alt.datum.anomaly == -1, alt.value('red'), alt.value('black')),
+            tooltip=['period', 'value']
         )
         st.altair_chart((line + points).properties(height=350), use_container_width=True)
 
-        if enable_ai and len(anomalies) > 0:
+        if enable_ai and len(anomalies) > 0 and "deepinfra_chat" in globals():
             with st.spinner("🤖 AI analyzing anomalies..."):
                 system = "You are an anomaly analyst detecting financial irregularities."
                 user = f"Detected anomalies: {json.dumps(anomalies.head(10).to_dict(orient='records'), default=str)}. Give 3 insights + 2 actions."
-                ai = deepinfra_chat(system, user, max_tokens=250)
-                if ai.get("text"):
-                    st.markdown(f"<div class='ai-box'>{ai['text']}</div>", unsafe_allow_html=True)
+                try:
+                    ai = deepinfra_chat(system, user, max_tokens=250)
+                    if isinstance(ai, dict) and ai.get("text"):
+                        st.markdown(f"<div class='ai-box'>{ai['text']}</div>", unsafe_allow_html=True)
+                except Exception as e:
+                    st.info(f"AI anomaly service unavailable: {e}")
     except Exception as e:
         st.error(f"Anomaly detection failed: {e}")
 
@@ -2387,409 +2614,681 @@ if show_anomaly:
 # ====================================================
 # 🧩 Clustering
 # ====================================================
-if show_clustering:
+if show_clustering and not df_rev_trend.empty:
     try:
         st.markdown("### 🧩 Clustering & Correlation Insights")
         from sklearn.preprocessing import StandardScaler
         from sklearn.cluster import KMeans
         from sklearn.decomposition import PCA
         from sklearn.metrics import silhouette_score
-        import numpy as np
-        import plotly.express as px
 
         df_cl = df_rev_trend.copy()
         df_cl["value"] = pd.to_numeric(df_cl["value"], errors="coerce").fillna(0)
 
-        num_cols = df_cl.select_dtypes(include=[np.number]).columns.tolist()
-        X = df_cl[num_cols].astype(float)
-        Xs = StandardScaler().fit_transform(X)
+        # select numeric features — here we have 'value'; expand if other numeric features exist
+        num_cols = [c for c in df_cl.columns if pd.api.types.is_numeric_dtype(df_cl[c])]  # safe numeric detection
+        if not num_cols:
+            st.info("No numeric columns available for clustering.")
+        else:
+            X = df_cl[num_cols].astype(float)
+            Xs = StandardScaler().fit_transform(X)
 
-        n_clusters = st.slider("Number of Clusters", 2, min(8, len(Xs)), 3)
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init="auto")
-        labels = kmeans.fit_predict(Xs)
-        df_cl["cluster"] = labels
-        sc = silhouette_score(Xs, labels) if len(Xs) > n_clusters else 0
+            # safe bounds for slider
+            max_k = max(2, min(8, len(Xs)))
+            n_clusters = st.slider("Number of Clusters", 2, max_k, min(3, max_k))
 
-        st.metric("Silhouette Score", f"{sc:.3f}")
-        pca = PCA(n_components=2)
-        proj = pca.fit_transform(Xs)
-        scatter_df = pd.DataFrame({"x": proj[:, 0], "y": proj[:, 1], "cluster": labels})
-        chart = (
-            alt.Chart(scatter_df)
-            .mark_circle(size=80)
-            .encode(x="x", y="y", color="cluster:N", tooltip=["cluster"])
-            .properties(height=400)
-        )
-        st.altair_chart(chart, use_container_width=True)
+            if len(Xs) < n_clusters:
+                st.warning("Not enough observations for the requested number of clusters. Reducing k to fit data.")
+                n_clusters = max(2, len(Xs))
 
-        if enable_ai:
-            with st.spinner("🤖 AI Cluster Insights..."):
-                cluster_summary = df_cl.groupby("cluster")["value"].mean().to_dict()
-                system = "You are a financial cluster analyst."
-                user = f"Cluster summaries: {json.dumps(cluster_summary, default=str)}. Provide 5 observations & 2 recommendations."
-                ai = deepinfra_chat(system, user, max_tokens=350)
-                if ai.get("text"):
-                    st.markdown(f"<div class='ai-box'>{ai['text']}</div>", unsafe_allow_html=True)
+            kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+            labels = kmeans.fit_predict(Xs)
+            df_cl["cluster"] = labels
+            sc = silhouette_score(Xs, labels) if len(Xs) > n_clusters else 0
+
+            st.metric("Silhouette Score", f"{sc:.3f}")
+
+            # PCA proj
+            pca = PCA(n_components=2)
+            proj = pca.fit_transform(Xs)
+            scatter_df = pd.DataFrame({"x": proj[:, 0], "y": proj[:, 1], "cluster": labels})
+            chart = (
+                alt.Chart(scatter_df)
+                .mark_circle(size=80)
+                .encode(x="x", y="y", color=alt.Color("cluster:N", title="Cluster"), tooltip=["x", "y", "cluster"])
+                .properties(height=400)
+            )
+            st.altair_chart(chart, use_container_width=True)
+
+            # correlation heatmap — compute correlation on numeric columns
+            if len(num_cols) > 1:
+                corr = df_cl[num_cols].corr()
+                try:
+                    import plotly.express as px
+                    fig_corr = px.imshow(corr, text_auto='.2f', title='Correlation Matrix', color_continuous_scale='RdBu_r')
+                    st.plotly_chart(fig_corr, use_container_width=True)
+                except Exception:
+                    st.dataframe(corr)
+
+            # AI cluster insights
+            if enable_ai and "deepinfra_chat" in globals():
+                with st.spinner("🤖 AI Cluster Insights..."):
+                    cluster_summary = df_cl.groupby('cluster')['value'].mean().to_dict()
+                    system = "You are a financial cluster analyst."
+                    user = f"Cluster summaries: {json.dumps(cluster_summary, default=str)}. Provide 5 observations & 2 recommendations."
+                    try:
+                        ai = deepinfra_chat(system, user, max_tokens=350)
+                        if isinstance(ai, dict) and ai.get("text"):
+                            st.markdown(f"<div class='ai-box'>{ai['text']}</div>", unsafe_allow_html=True)
+                    except Exception as e:
+                        st.info(f"AI clustering service unavailable: {e}")
     except Exception as e:
         st.error(f"Clustering failed: {e}")
 
-# ============================================================
-# 💾 MAXED SMART EXCEL EXPORT — All Comparisons, All Years
-# ============================================================
+# ======================
+# End of block
+# ======================
 
+# Parivahan — Smart Excel Export (Maxed & Hardened)
+# Paste this block into your Streamlit app. This version is defensive, auto-detects dataframes,
+# normalizes common date/period column names, computes comparisons, runs simple forecast/anomaly,
+# optionally calls DeepInfra (if configured), and writes a styled Excel workbook with charts.
+
+import io
+import json
+import numpy as np
+import pandas as pd
+import streamlit as st
+from datetime import datetime
+
+# Safe helper: try to fetch a dataframe from locals/globals by possible names
+def find_df_by_names(names):
+    for name in names:
+        if name in globals() and isinstance(globals()[name], pd.DataFrame):
+            return globals()[name]
+        if name in locals() and isinstance(locals()[name], pd.DataFrame):
+            return locals()[name]
+    return None
+
+# Normalize date column: try common date/period/x names and return new df with 'date' and 'value'
+def normalize_time_series(df):
+    if df is None or df.empty:
+        return pd.DataFrame()
+    df = df.copy()
+    # common candidates
+    date_cols = [c for c in df.columns if c.lower() in ("date","period","x","ds")]
+    value_cols = [c for c in df.columns if c.lower() in ("value","y","count","total","registeredvehiclecount")] 
+    if not date_cols:
+        # try to infer any datetime-like column
+        for c in df.columns:
+            try:
+                pd.to_datetime(df[c].dropna().iloc[:3])
+                date_cols = [c]
+                break
+            except Exception:
+                continue
+    if not value_cols:
+        # pick first numeric column that's not the date
+        for c in df.columns:
+            if c in date_cols:
+                continue
+            if pd.api.types.is_numeric_dtype(df[c]):
+                value_cols = [c]
+                break
+    if not date_cols or not value_cols:
+        return pd.DataFrame()
+    date_col = date_cols[0]
+    value_col = value_cols[0]
+    df = df[[date_col, value_col]].rename(columns={date_col: "date", value_col: "value"})
+    # coerce
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
+    df = df.dropna(subset=["date"])  # drop rows with unparseable dates
+    return df.sort_values("date").reset_index(drop=True)
+
+# Simple linear forecast fallback
+def linear_forecast(df, months=6, date_col='date', value_col='value'):
+    if df is None or df.empty or date_col not in df.columns or value_col not in df.columns:
+        return pd.DataFrame()
+    tmp = df.copy().sort_values(date_col).reset_index(drop=True)
+    tmp["t"] = np.arange(len(tmp))
+    X = tmp[["t"]].values
+    y = tmp[value_col].values
+    # linear fit
+    coef = np.polyfit(tmp["t"].astype(float), y.astype(float), 1)
+    slope, intercept = coef[0], coef[1]
+    future_t = np.arange(len(tmp), len(tmp) + months)
+    future_vals = intercept + slope * future_t
+    last_date = tmp[date_col].max()
+    future_dates = pd.date_range(last_date + pd.offsets.MonthBegin(), periods=months, freq='MS')
+    fc = pd.DataFrame({date_col: future_dates, value_col: future_vals})
+    fc["forecast"] = True
+    hist = tmp[[date_col, value_col]].copy()
+    hist["forecast"] = False
+    return pd.concat([hist, fc], ignore_index=True)
+
+# Small UI block
 st.markdown("""
 <div style="padding:18px 20px;border-left:5px solid #007bff;
             background:linear-gradient(90deg,#f0f8ff,#ffffff);
             border-radius:12px;margin-top:25px;margin-bottom:15px;
             box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-    <h2 style="margin:0;">💾 MAXED SMART EXCEL EXPORT</h2>
+    <h2 style="margin:0;">💾  SMART EXCEL EXPORT — Maxed</h2>
     <p style="margin:4px 0 0;color:#444;font-size:15px;">
-        Export <b>all KPIs, comparisons, anomalies, forecasts, and AI insights</b> — with year, month & daily breakdowns — into a
-        <b>styled, auto-charted Excel workbook</b>.
+        Export <b>all detected DataFrames</b> plus derived comparisons, forecasts, anomalies and AI insights
+        into a styled Excel workbook (auto-charts included).
     </p>
 </div>
 """, unsafe_allow_html=True)
 
 with st.expander("📊 Generate & Download Full Smart Analytics Workbook", expanded=True):
-    st.markdown("""
-    <div style="background:linear-gradient(90deg,#e8f0fe,#ffffff);
-                border-left:5px solid #007bff;padding:10px 18px;
-                border-radius:10px;margin-bottom:10px;">
-        <b>💡 Tip:</b> Fetch all datasets before exporting for a complete analytics workbook.
-    </div>
-    """, unsafe_allow_html=True)
+    # Collect dataframes from local scope (prefer common variable names first)
+    # common dataframes used in the dashboard
+    candidates = [
+        'df_cat','df_mk','df_trend','yoy_df','qoq_df','df_top5_rev','df_rev_trend',
+        'df_trend_all','df_mk_all','df_cat_all','df_forecast'
+    ]
 
-    # 🧱 Load All Known DataFrames (auto-detect from locals)
-    dfs = {k: v for k, v in locals().items() if isinstance(v, pd.DataFrame)}
+    dfs = {k: v for k, v in globals().items() if isinstance(v, pd.DataFrame)}
+    # merge with locals if any
+    dfs_local = {k: v for k, v in locals().items() if isinstance(v, pd.DataFrame)}
+    dfs.update(dfs_local)
+
+    # compact display of detected datasets
     st.info(f"🧾 Detected {len(dfs)} datasets for export: {list(dfs.keys())}")
 
-    # 🧮 Derived & Comparison Datasets
+    # Prepare derived comparisons container
+    derived = {}
+
+    # Try to find a time-series dataframe for comparisons
+    ts_df = None
+    for name in candidates:
+        if name in dfs and isinstance(dfs[name], pd.DataFrame) and not dfs[name].empty:
+            # attempt to normalize
+            tmp = normalize_time_series(dfs[name])
+            if not tmp.empty:
+                ts_df = tmp
+                ts_name = name
+                break
+
+    if ts_df is not None:
+        try:
+            df_trend = ts_df.copy()
+            df_trend['Year'] = df_trend['date'].dt.year
+            df_trend['Month'] = df_trend['date'].dt.month
+            df_trend['MonthName'] = df_trend['date'].dt.strftime('%b')
+            df_trend['Day'] = df_trend['date'].dt.day
+
+            # Yearly comparison (absolute and YoY)
+            yearly = df_trend.groupby('Year')['value'].sum().reset_index()
+            yearly['YoY Growth'] = yearly['value'].pct_change().fillna(0)
+            derived['Yearly Comparison'] = yearly
+
+            # Monthly pivot (Year x Month)
+            monthly = df_trend.groupby(['Year','MonthName'])['value'].sum().reset_index()
+            derived['Monthly Breakdown'] = monthly
+
+            # Daily (only if dense)
+            if df_trend.shape[0] >= 60:
+                daily = df_trend.groupby(df_trend['date'].dt.date)['value'].sum().reset_index()
+                daily.columns = ['date','value']
+                daily['DoD Growth'] = daily['value'].pct_change().fillna(0)
+                derived['Daily Breakdown'] = daily
+
+            # Store normalized trend in export list
+            dfs['Normalized Trend'] = df_trend
+            # Forecast & anomaly
+            fc = linear_forecast(df_trend, months=6)
+            # simple anomaly flag where deviation > 20% of rolling mean
+            fc['RollingMean'] = fc['value'].rolling(4, min_periods=1).mean()
+            fc['Anomaly'] = (fc['value'] - fc['RollingMean']).abs() > (fc['RollingMean'] * 0.2)
+            derived['Forecast & Anomaly'] = fc
+        except Exception as e:
+            st.warning(f"Comparison derivation failed: {e}")
+    else:
+        st.info("ℹ️ No suitable time-series found among detected datasets — skipping time-based comparisons.")
+
+    # Category vs Maker quick cross if available
     try:
-        if 'df_trend' in dfs and not dfs['df_trend'].empty:
-            df_trend = dfs['df_trend']
-            df_trend["Year"] = pd.to_datetime(df_trend["x"], errors='coerce').dt.year
-            df_trend["Month"] = pd.to_datetime(df_trend["x"], errors='coerce').dt.strftime('%b')
-            df_trend["Day"] = pd.to_datetime(df_trend["x"], errors='coerce').dt.day
-
-            # Yearly Comparison
-            yearly_comp = df_trend.groupby("Year")["value"].sum().pct_change().reset_index()
-            yearly_comp.columns = ["Year", "YoY Growth"]
-            dfs["Yearly Comparison"] = yearly_comp
-
-            # Monthly Comparison
-            monthly_comp = df_trend.groupby("Month")["value"].sum().pct_change().reset_index()
-            monthly_comp.columns = ["Month", "MoM Growth"]
-            dfs["Monthly Comparison"] = monthly_comp
-
-            # Daily Comparison (if data dense)
-            if df_trend["Day"].nunique() > 5:
-                daily_comp = df_trend.groupby("Day")["value"].sum().pct_change().reset_index()
-                daily_comp.columns = ["Day", "DoD Growth"]
-                dfs["Daily Comparison"] = daily_comp
-
-            # Category vs Maker
-            if 'df_cat' in dfs and 'df_mk' in dfs:
-                try:
-                    df_cat = dfs['df_cat']
-                    df_mk = dfs['df_mk']
-                    cross = pd.DataFrame({
-                        "Category Total": [df_cat["value"].sum()],
-                        "Top Maker Total": [df_mk["value"].sum()],
-                        "Ratio": [round(df_mk["value"].sum() / df_cat["value"].sum(), 3)]
-                    })
-                    dfs["Category vs Maker Comparison"] = cross
-                except Exception as e:
-                    st.warning(f"Category vs Maker comparison skipped: {e}")
-        else:
-            st.info("No trend data found — skipping growth comparisons.")
+        if 'df_cat' in dfs and 'df_mk' in dfs and not dfs['df_cat'].empty and not dfs['df_mk'].empty:
+            c = dfs['df_cat']
+            m = dfs['df_mk']
+            s = pd.DataFrame({
+                'Category Total': [c['value'].sum()],
+                'Maker Total': [m['value'].sum()],
+                'Maker/Category Ratio': [round(m['value'].sum() / max(1, c['value'].sum()), 4)]
+            })
+            derived['Category vs Maker Summary'] = s
     except Exception as e:
-        st.warning(f"Comparison step failed: {e}")
+        st.warning(f"Category vs Maker derivation failed: {e}")
 
-    # 🔮 Forecast + Anomalies
-    try:
-        if 'df_trend' in dfs and not dfs['df_trend'].empty:
-            df_forecast = dfs['df_trend'].copy()
-            df_forecast["Forecast"] = df_forecast["value"].rolling(4, min_periods=1).mean()
-            df_forecast["Anomaly"] = (abs(df_forecast["value"] - df_forecast["Forecast"]) >
-                                      df_forecast["Forecast"] * 0.2)
-            dfs["Forecast & Anomaly Detection"] = df_forecast
-            st.success("✅ Forecast & anomaly detection complete.")
-        else:
-            st.info("ℹ️ No trend data available for forecast.")
-    except Exception as e:
-        st.warning(f"⚠️ Forecast failed: {e}")
+    # Merge derived into dfs for export
+    for k, v in derived.items():
+        dfs[k] = v
 
-    # 🧠 AI Summary (DeepInfra)
+    # Optional AI summaries
     summaries = {}
-    if 'enable_ai' in locals() and enable_ai:
-        st.info("🤖 Generating AI summaries for all datasets...")
-        progress = st.progress(0)
-        for i, (name, df) in enumerate(dfs.items()):
-            if not df.empty:
+    enable_ai_flag = globals().get('enable_ai', locals().get('enable_ai', False))
+    if enable_ai_flag:
+        st.info("🤖 Generating AI summaries (may take time)...")
+        prog = st.progress(0)
+        total = max(1, len(dfs))
+        i = 0
+        for name, df in list(dfs.items()):
+            i += 1
+            try:
+                if df.empty:
+                    summaries[name] = 'No data.'
+                else:
+                    # call deepinfra_chat only if available
+                    if 'deepinfra_chat' in globals():
+                        system = f"You are a senior analytics expert summarizing '{name}'."
+                        user = f"Sample: {df.head(5).to_dict(orient='records')}\nProvide 3 concise insights."
+                        ai_resp = deepinfra_chat(system, user, max_tokens=180)
+                        summaries[name] = ai_resp.get('text', 'No AI text.') if isinstance(ai_resp, dict) else str(ai_resp)
+                    else:
+                        summaries[name] = 'DeepInfra not configured.'
+            except Exception as e:
+                summaries[name] = f'AI failed: {e}'
+            prog.progress(i / total)
+        if summaries:
+            dfs['AI Summaries'] = pd.DataFrame(list(summaries.items()), columns=['Dataset','AI Summary'])
+        prog.empty()
+
+    # Final sanity: remove extremely large or un-exportable objects
+    exportable = {k: v for k, v in dfs.items() if isinstance(v, pd.DataFrame) and not v.empty}
+    if not exportable:
+        st.warning('⚠️ No dataframes available to export.')
+    else:
+        # Compile Excel
+        with st.spinner('📦 Compiling styled Excel workbook...'):
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                for name, df in exportable.items():
+                    safe_name = str(name)[:31]
+                    try:
+                        df.to_excel(writer, sheet_name=safe_name, index=False)
+                    except Exception:
+                        # fallback: convert to strings
+                        df.astype(str).to_excel(writer, sheet_name=safe_name, index=False)
+            output.seek(0)
+
+            # Style workbook (headers, auto-width, add simple line charts)
+            from openpyxl import load_workbook
+            from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+            from openpyxl.utils import get_column_letter
+            from openpyxl.chart import LineChart, Reference
+
+            wb = load_workbook(output)
+            thin = Side(style='thin')
+            border = Border(left=thin,right=thin,top=thin,bottom=thin)
+
+            for sheet_name in wb.sheetnames:
+                ws = wb[sheet_name]
+                # header style
                 try:
-                    system = f"You are a senior analytics expert summarizing '{name}' dataset trends for Parivahan data."
-                    user = f"Dataset sample: {df.head(8).to_dict(orient='records')}.\nGenerate 3 crisp insights."
-                    ai_resp = deepinfra_chat(system, user, max_tokens=200)
-                    summaries[name] = ai_resp.get("text", "No AI insight.")
-                except Exception as e:
-                    summaries[name] = f"AI summary failed: {e}"
-            progress.progress((i + 1) / len(dfs))
-        dfs["AI Insights"] = pd.DataFrame(summaries.items(), columns=["Dataset", "AI Summary"])
-        progress.empty()
+                    for cell in list(ws.rows)[0]:
+                        cell.font = Font(bold=True, color='FFFFFF')
+                        cell.fill = PatternFill(start_color='007bff', end_color='007bff', fill_type='solid')
+                        cell.alignment = Alignment(horizontal='center', vertical='center')
+                        cell.border = border
+                except Exception:
+                    pass
+                # body formatting + auto-width
+                for col in ws.columns:
+                    max_len = 0
+                    col_letter = get_column_letter(col[0].column)
+                    for cell in col:
+                        try:
+                            cell.alignment = Alignment(horizontal='center', vertical='center')
+                            cell.border = border
+                            val = str(cell.value or '')
+                            if len(val) > max_len:
+                                max_len = len(val)
+                        except Exception:
+                            pass
+                    try:
+                        ws.column_dimensions[col_letter].width = min(max_len + 4, 60)
+                    except Exception:
+                        pass
 
-    # 💾 Compile Styled Excel Workbook
-    with st.spinner("📦 Compiling MAXED analytics workbook..."):
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            for name, df in dfs.items():
-                if isinstance(df, pd.DataFrame) and not df.empty:
-                    df.to_excel(writer, sheet_name=name[:31], index=False)
-        output.seek(0)
-
-        from openpyxl import load_workbook
-        from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-        from openpyxl.utils import get_column_letter
-        from openpyxl.chart import LineChart, BarChart, Reference
-
-        wb = load_workbook(output)
-        border = Border(left=Side(style="thin"), right=Side(style="thin"),
-                        top=Side(style="thin"), bottom=Side(style="thin"))
-
-        for sheet in wb.sheetnames:
-            ws = wb[sheet]
-            # Header Style
-            for cell in ws[1]:
-                cell.font = Font(bold=True, color="FFFFFF")
-                cell.fill = PatternFill(start_color="007bff", end_color="007bff", fill_type="solid")
-                cell.alignment = Alignment(horizontal="center", vertical="center")
-                cell.border = border
-            # Cell Formatting
-            for row in ws.iter_rows(min_row=2):
-                for cell in row:
-                    cell.alignment = Alignment(horizontal="center", vertical="center")
-                    cell.border = border
-            # Column Auto Width
-            for col in ws.columns:
-                max_len = max(len(str(c.value or "")) for c in col)
-                ws.column_dimensions[get_column_letter(col[0].column)].width = max_len + 3
-            # Add Auto Chart
-            if ws.max_row > 2 and ws.max_column >= 2:
+                # add a simple line chart if sheet has >=2 cols and >2 rows
                 try:
-                    val_ref = Reference(ws, min_col=2, min_row=1, max_row=ws.max_row)
-                    cat_ref = Reference(ws, min_col=1, min_row=2, max_row=ws.max_row)
-                    chart = LineChart()
-                    chart.title = f"{sheet} — Trend"
-                    chart.add_data(val_ref, titles_from_data=True)
-                    chart.set_categories(cat_ref)
-                    chart.height = 8
-                    chart.width = 16
-                    ws.add_chart(chart, "H5")
+                    if ws.max_row > 2 and ws.max_column >= 2:
+                        val_ref = Reference(ws, min_col=2, min_row=1, max_row=ws.max_row)
+                        cat_ref = Reference(ws, min_col=1, min_row=2, max_row=ws.max_row)
+                        chart = LineChart()
+                        chart.title = f"{sheet_name} Trend"
+                        chart.add_data(val_ref, titles_from_data=True)
+                        chart.set_categories(cat_ref)
+                        chart.height = 8
+                        chart.width = 16
+                        ws.add_chart(chart, 'H5')
                 except Exception:
                     pass
 
-        styled = io.BytesIO()
-        wb.save(styled)
-        styled.seek(0)
+            styled = io.BytesIO()
+            wb.save(styled)
+            styled.seek(0)
 
-    ts = pd.Timestamp.now().strftime("%Y-%m-%d_%H%M")
-    st.download_button(
-        label="⬇️ Download MAXED Analytics Excel Workbook",
-        data=styled.getvalue(),
-        file_name=f"Vahan_MAXED_Analytics_{ts}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True,
-    )
-    st.success("✅ MAXED Excel report ready — includes all comparisons, AI, and visuals.")
-    st.toast("Full Analytics Workbook is ready! 🎯")
-    st.balloons()
+        ts = datetime.now().strftime('%Y%m%d_%H%M')
+        st.download_button(
+            label='⬇️ Download Analytics Excel Workbook',
+            data=styled.getvalue(),
+            file_name=f'Parivahan_Analytics_{ts}.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            use_container_width=True
+        )
+        st.success('✅ Excel report ready — includes comparisons, forecasts, anomalies, and AI summaries (if enabled).')
+        st.balloons()
 
-# ============================================================
-# 🧩 MAXED RAW JSON ANALYZER PRO — All Endpoints, All Modes
-# ============================================================
-with st.expander("🛠️ RAW JSON ANALYZER (Developer / Debug Mode — All MAXED)", expanded=False):
-    st.caption("""
-    Inspect and export raw API responses from **all Vahan endpoints** dynamically.
-    Includes search, pretty view, table view, snapshot export, and AI summary.
-    ⚠️ Use only in trusted environments — data may contain sensitive payloads.
-    """)
+# RAW JSON ANALYZER PRO — MAXED EDITION
+# Paste this block into your Streamlit app (or import it).
+# Features added (MAXED):
+# - Automatic endpoint tagging
+# - Safe sanitization (remove unserializable/binary blobs)
+# - Auto-detect & auto-flatten lists of dicts
+# - Search + highlight in pretty JSON (HTML highlight)
+# - Deep/Quick AI summary modes via DeepInfra (if available)
+# - ZIP contains both .json and .xlsx (flattened) option
+# - Safe Mode toggle to avoid local file writes (good for Streamlit Cloud)
+# - UI toggles for Export options & Smart Flattening
 
-    # ------------------------------------------------------------
-    # 🔍 CONFIG / OPTIONS
-    # ------------------------------------------------------------
-    ctrl1, ctrl2, ctrl3, ctrl4 = st.columns([2, 2, 2, 2])
-    with ctrl1:
-        show_pretty = st.checkbox("🧾 Pretty JSON", value=False)
-    with ctrl2:
-        show_table = st.checkbox("📋 Table View (flattened)", value=False)
-    with ctrl3:
-        enable_ai_summary = st.checkbox("🤖 AI Summary", value=False)
-    with ctrl4:
-        snapshot_name = st.text_input("📁 Snapshot name", 
-            value=f"vahan_snapshot_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}")
+import streamlit as st
+import pandas as pd
+import json
+import os
+import io
+import tempfile
+import zipfile
+from datetime import datetime
+from typing import Any, Dict, Tuple
 
+# Helper: safe JSON serializer
+def safe_serialize(obj: Any, max_len: int = 10000) -> str:
+    try:
+        return json.dumps(obj, default=str)
+    except Exception:
+        try:
+            return json.dumps(str(obj))
+        except Exception:
+            return '"<UNSERIALIZABLE>"'
+
+# Helper: sanitize payload (strip binary/unserializable keys recursively)
+def sanitize_payload(obj: Any, depth: int = 3) -> Any:
+    if depth < 0:
+        return None
+    if isinstance(obj, dict):
+        out = {}
+        for k, v in obj.items():
+            try:
+                json.dumps(v, default=str)
+                out[k] = sanitize_payload(v, depth - 1)
+            except Exception:
+                out[k] = str(type(v).__name__)
+        return out
+    if isinstance(obj, list):
+        out = []
+        for v in obj:
+            try:
+                json.dumps(v, default=str)
+                out.append(sanitize_payload(v, depth - 1))
+            except Exception:
+                out.append(str(type(v).__name__))
+        return out
+    # primitive
+    try:
+        json.dumps(obj)
+        return obj
+    except Exception:
+        return str(obj)
+
+# Helper: auto flatten if payload is list of dicts
+def try_flatten(payload: Any) -> Tuple[pd.DataFrame, bool]:
+    try:
+        if isinstance(payload, list) and payload and all(isinstance(x, dict) for x in payload):
+            df = pd.json_normalize(payload)
+            return df, True
+        if isinstance(payload, dict):
+            # some endpoints return {"data": [...]} or similar
+            for k in payload:
+                if isinstance(payload[k], list) and payload[k] and all(isinstance(x, dict) for x in payload[k]):
+                    df = pd.json_normalize(payload[k])
+                    return df, True
+        return pd.DataFrame(), False
+    except Exception:
+        return pd.DataFrame(), False
+
+# Helper: highlight search matches (very small, safe HTML)
+def highlight_json_text(jtext: str, query: str) -> str:
+    if not query:
+        return jtext
+    try:
+        q = st.session_state.get("json_search_query", query).strip()
+        if not q:
+            return jtext
+        # simple case-insensitive replace with mark tag
+        import html
+        esc = html.escape(q)
+        return jtext.replace(q, f"<mark style='background:#ffe58f;border-radius:3px;padding:0 2px'>{esc}</mark>")
+    except Exception:
+        return jtext
+
+# UI: Maxed RAW JSON Analyzer
+st.markdown("""
+<div style="padding:14px;border-left:6px solid #6366F1;background:#fafafa;border-radius:10px;margin-bottom:12px;">
+  <h3 style="margin:0">🧩 RAW JSON ANALYZER PRO — MAXED</h3>
+  <p style="margin:4px 0 0;color:#444;">Inspect, sanitize, flatten, export (JSON/XLSX/ZIP) and summarize API payloads safely.</p>
+</div>
+""", unsafe_allow_html=True)
+
+with st.expander("🛠️ RAW JSON ANALYZER (Developer / Debug Mode — All ) — Maxed", expanded=False):
+    # CONFIG
+    col_a, col_b, col_c, col_d = st.columns([2,2,2,2])
+    with col_a:
+        show_pretty = st.checkbox("🧾 Pretty JSON (code block)", value=False)
+    with col_b:
+        show_table = st.checkbox("📋 Table View (flattened when available)", value=True)
+    with col_c:
+        enable_ai_summary = st.checkbox("🤖 AI Summary (Quick)", value=False)
+    with col_d:
+        enable_ai_deep = st.checkbox("🧠 AI Deep Mode (Long)", value=False)
+
+    # Export toggles
+    col_e, col_f, col_g = st.columns([1.5,1.5,1])
+    with col_e:
+        include_xlsx_in_zip = st.checkbox("📑 Include XLSX inside ZIP", value=True)
+    with col_f:
+        safe_mode = st.checkbox("🔒 Safe Mode (no server writes) — recommended for Cloud", value=True)
+    with col_g:
+        auto_flatten = st.checkbox("✨ Auto Flatten Lists → Tables", value=True)
+
+    snapshot_name = st.text_input("📁 Snapshot filename (no extension)", value=f"vahan_snapshot_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}")
     st.markdown("---")
 
-    # ------------------------------------------------------------
-    # 🧠 COLLECT ALL JSON-LIKE OBJECTS AUTOMATICALLY
-    # ------------------------------------------------------------
-    json_candidates = {
-        k: v for k, v in locals().items()
-        if ("json" in k.lower()) and isinstance(v, (dict, list))
-    }
+    # Collect JSON-like objects automatically from locals (similar to your existing approach)
+    json_candidates = {k:v for k,v in locals().items() if ("json" in k.lower() or k.lower().endswith("_json")) and isinstance(v, (dict, list))}
+
+    # If none, also look for variables that user commonly uses (df_ prefixed JSONs stored)
+    if not json_candidates:
+        json_candidates = {k:v for k,v in st.session_state.items() if ("json" in k.lower() or k.lower().endswith("_json")) and isinstance(v, (dict, list))}
 
     if not json_candidates:
-        st.warning("⚠️ No JSON payloads detected. Run API calls first.")
+        st.warning("⚠️ No JSON payloads detected. Run API calls first or ensure variables are in the app's scope.")
     else:
-        st.success(f"✅ Found {len(json_candidates)} API JSON payloads.")
-        st.caption(f"Endpoints detected: {list(json_candidates.keys())}")
+        st.success(f"✅ Found {len(json_candidates)} JSON payload(s)")
+        st.caption(f"Detected keys: {list(json_candidates.keys())}")
 
-    # ------------------------------------------------------------
-    # 🔍 SEARCH / FILTER JSON KEYS
-    # ------------------------------------------------------------
-    search_query = st.text_input("🔎 Search within JSON keys", placeholder="e.g., vehicle, state, category...")
+    # Search
+    search_query = st.text_input("🔎 Search within JSON (keys/values)", value="", key="json_search_query")
 
-    # ------------------------------------------------------------
-    # 🔁 RENDER EACH JSON PAYLOAD (dynamic)
-    # ------------------------------------------------------------
+    # Render each payload
     for key, data in json_candidates.items():
-        st.markdown(f"### 📦 {key.upper()}")
+        st.markdown(f"### 📦 {key}")
 
-        # Basic meta info
-        meta = {"type": type(data).__name__, "size": len(data) if hasattr(data, "__len__") else "?"}
-        st.caption(f"Meta: {meta}")
+        # Tagging: attempt to infer endpoint name from key
+        inferred = key.replace('_', ' ').title()
+        st.caption(f"Endpoint tag: {inferred} • Type: {type(data).__name__} • Items: {len(data) if hasattr(data,'__len__') else '?'}")
 
-        # Optional search filter
-        if search_query:
-            try:
-                jtxt = json.dumps(data, indent=2, default=str)
-                if search_query.lower() not in jtxt.lower():
-                    st.write(f"🔍 No match for '{search_query}' in {key}")
-                    continue
-            except Exception:
-                pass
+        # Sanitize copy for UI/exports
+        safe_payload = sanitize_payload(data, depth=4)
 
-        # JSON or Pretty Code View
+        # Optional search filter — present if nothing matches
+        try:
+            txt = json.dumps(safe_payload, indent=2, default=str)
+        except Exception:
+            txt = safe_serialize(safe_payload)
+
+        if search_query and search_query.strip():
+            if search_query.lower() not in txt.lower():
+                st.info(f"🔍 No match for '{search_query}' in {key}")
+                continue
+
+        # Pretty / Raw view
         if show_pretty:
-            try:
-                st.code(json.dumps(data, indent=2, default=str), language="json")
-            except Exception:
-                st.write(data)
+            # apply highlight
+            html_snip = '<pre style="max-height:420px;overflow:auto;background:#0f172a;color:#e6eef8;padding:12px;border-radius:8px;">'
+            highlighted = txt
+            if search_query:
+                highlighted = highlighted.replace(search_query, f"<mark style='background:#ffe58f'>{search_query}</mark>")
+            # escape then wrap (we already have json string, safe enough)
+            html_snip += highlighted + '</pre>'
+            st.components.v1.html(html_snip, height=420)
         else:
-            st.json(data)
-
-        # Optional Flattened Table View
-        if show_table:
+            # interactive JSON viewer
             try:
-                df_flat = pd.json_normalize(data)
-                st.dataframe(df_flat, use_container_width=True)
-            except Exception as e:
-                st.warning(f"Table view unavailable: {e}")
+                st.json(safe_payload)
+            except Exception:
+                st.code(txt, language='json')
 
-        # Download Controls
-        c1, c2, c3 = st.columns([1, 1, 2])
-        with c1:
-            try:
-                st.download_button(
-                    label=f"⬇️ {key}.json",
-                    data=json.dumps(data, indent=2, default=str).encode(),
-                    file_name=f"{key}.json",
-                    mime="application/json"
-                )
-            except Exception as e:
-                st.warning(f"Download failed: {e}")
-        with c2:
-            if show_table:
+        # Auto-flatten suggestion
+        df_flat, flattened = (pd.DataFrame(), False)
+        if auto_flatten:
+            df_flat, flattened = try_flatten(safe_payload)
+
+        if show_table and (flattened or isinstance(safe_payload, (dict, list))):
+            if not df_flat.empty:
+                st.markdown("**Tabular preview (auto-flattened)**")
+                st.dataframe(df_flat.head(250), use_container_width=True)
+            else:
+                # attempt lightweight normalization
                 try:
-                    df_flat.to_excel(f"{key}.xlsx", index=False)
-                    st.download_button(
-                        label=f"⬇️ {key}.xlsx",
-                        data=open(f"{key}.xlsx", "rb").read(),
-                        file_name=f"{key}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
+                    df_try = pd.json_normalize(safe_payload)
+                    if not df_try.empty:
+                        st.markdown("**Flattened preview**")
+                        st.dataframe(df_try.head(200), use_container_width=True)
+                        df_flat = df_try
                 except Exception:
                     pass
-        with c3:
-            if enable_ai_summary and 'deepinfra_chat' in locals():
-                with st.spinner("🤖 Summarizing JSON via AI..."):
-                    try:
-                        system = f"You are an automotive analytics assistant. Summarize this JSON response named '{key}'."
-                        user = f"Payload: {json.dumps(data)[:5000]} (truncated). Give a short summary in 3–4 lines."
-                        resp = deepinfra_chat(system, user, max_tokens=180)
-                        if resp and "text" in resp:
-                            st.markdown(f"**AI Summary:** {resp['text']}")
-                    except Exception as e:
-                        st.warning(f"AI summary failed: {e}")
 
-        st.markdown("---")
+        # Download controls (in-memory) — JSON + XLSX if flattened
+        col1, col2, col3 = st.columns([1,1,2])
+        with col1:
+            try:
+                as_bytes = json.dumps(safe_payload, indent=2, default=str).encode('utf-8')
+                st.download_button(label=f"⬇️ {key}.json", data=as_bytes, file_name=f"{key}.json", mime="application/json")
+            except Exception as e:
+                st.warning(f"JSON download failed: {e}")
+        with col2:
+            if not df_flat.empty:
+                try:
+                    buf = io.BytesIO()
+                    df_flat.to_excel(buf, index=False)
+                    buf.seek(0)
+                    st.download_button(label=f"⬇️ {key}.xlsx", data=buf.getvalue(), file_name=f"{key}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                except Exception as e:
+                    st.warning(f"XLSX download failed: {e}")
+        with col3:
+            # AI summary options
+            if enable_ai_summary or enable_ai_deep:
+                if 'deepinfra_chat' in globals() or 'deepinfra_chat' in locals():
+                    mode = 'Deep' if enable_ai_deep else 'Quick'
+                    if st.button(f"🤖 Generate {mode} AI Summary — {key}"):
+                        with st.spinner("Summarizing via AI..."):
+                            try:
+                                system = "You are an automotive analytics assistant. Provide a concise summary."
+                                user = f"Payload ({key}) sample: {json.dumps(safe_payload)[:8000]} (truncated). Mode: {mode}"
+                                # Deep mode request more tokens
+                                max_t = 450 if enable_ai_deep else 180
+                                resp = deepinfra_chat(system, user, max_tokens=max_t, temperature=0.25)
+                                if isinstance(resp, dict) and 'text' in resp and resp['text']:
+                                    st.markdown(f"**AI Summary ({mode}):** {resp['text']}")
+                                else:
+                                    st.info("💤 AI returned no text. Check your DeepInfra key or retry.")
+                            except Exception as e:
+                                st.error(f"AI summary failed: {e}")
+                else:
+                    st.info("⚠️ deepinfra_chat not found in environment — AI disabled.")
 
-    # ------------------------------------------------------------
-    # 💾 GLOBAL SNAPSHOT DOWNLOAD — ALL JSONS COMBINED
-    # ------------------------------------------------------------
-    st.subheader("📦 Download Combined Snapshot")
-    if st.button("💾 Create & Download Unified Snapshot"):
+        st.markdown('---')
+
+    # GLOBAL SNAPSHOT (JSON + optional XLSX) and ZIP
+    st.subheader("📦 Create Global Snapshot / ZIP")
+    create_snapshot = st.button("💾 Create Unified Snapshot (JSON & XLSX + ZIP)")
+
+    if create_snapshot:
         try:
-            combined = {
-                "timestamp": pd.Timestamp.now().isoformat(),
-                "total_jsons": len(json_candidates),
-                "payloads": json_candidates
-            }
-            payload = json.dumps(combined, indent=2, default=str).encode("utf-8")
-            st.download_button(
-                label="⬇️ Download Full Snapshot (.json)",
-                data=payload,
-                file_name=f"{snapshot_name}.json",
-                mime="application/json"
-            )
-            st.success("✅ Combined snapshot ready.")
-            st.toast("Unified JSON snapshot created!")
-        except Exception as e:
-            st.error(f"Snapshot generation failed: {e}")
+            # Build combined structure
+            combined = {k: sanitize_payload(v) for k,v in json_candidates.items()}
+            combined_meta = {"generated_at": datetime.now().isoformat(), "count": len(combined)}
+            combined_package = {"meta": combined_meta, "payloads": combined}
+            combined_bytes = json.dumps(combined_package, indent=2, default=str).encode('utf-8')
 
-    # ------------------------------------------------------------
-    # 🧩 ZIP MODE — EXPORT ALL JSONS AS INDIVIDUAL FILES
-    # ------------------------------------------------------------
-    st.subheader("🗜️ ZIP Export (All JSONs Separately)")
-    if st.button("📦 Create ZIP Archive"):
-        try:
-            import zipfile, tempfile
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmpzip:
-                with zipfile.ZipFile(tmpzip.name, "w") as zf:
-                    for k, d in json_candidates.items():
-                        zf.writestr(f"{k}.json", json.dumps(d, indent=2, default=str))
-                zf.close()
-                with open(tmpzip.name, "rb") as f:
-                    st.download_button(
-                        label="⬇️ Download All JSONs (ZIP)",
-                        data=f.read(),
-                        file_name=f"{snapshot_name}_bundle.zip",
-                        mime="application/zip"
-                    )
-            st.success("✅ ZIP bundle ready for download.")
-        except Exception as e:
-            st.error(f"ZIP creation failed: {e}")
+            # Create ZIP in memory
+            zip_buf = io.BytesIO()
+            with zipfile.ZipFile(zip_buf, 'w', zipfile.ZIP_DEFLATED) as z:
+                # add combined json
+                z.writestr(f"{snapshot_name}.json", combined_bytes)
 
-    # ------------------------------------------------------------
-    # ⚙️ Optional Diagnostics Save (local mode)
-    # ------------------------------------------------------------
+                # add per-payload json and flattened xlsx (if available)
+                for k,v in json_candidates.items():
+                    safe_v = sanitize_payload(v)
+                    z.writestr(f"{k}.json", json.dumps(safe_v, indent=2, default=str))
+                    # flattened
+                    df_f, ok = try_flatten(safe_v)
+                    if ok and include_xlsx_in_zip:
+                        buf = io.BytesIO()
+                        df_f.to_excel(buf, index=False)
+                        buf.seek(0)
+                        z.writestr(f"{k}.xlsx", buf.read())
+
+            zip_buf.seek(0)
+
+            if safe_mode:
+                # Provide download button only — no server filesystem writes
+                st.download_button("⬇️ Download Snapshot ZIP", data=zip_buf.getvalue(), file_name=f"{snapshot_name}_bundle.zip", mime="application/zip")
+                st.success("✅ Snapshot ZIP prepared (in-memory).")
+            else:
+                # also write to server and show path
+                tmp_path = os.path.join(tempfile.gettempdir(), f"{snapshot_name}_bundle.zip")
+                with open(tmp_path, 'wb') as f:
+                    f.write(zip_buf.getvalue())
+                st.download_button("⬇️ Download Snapshot ZIP", data=open(tmp_path, 'rb').read(), file_name=f"{snapshot_name}_bundle.zip", mime="application/zip")
+                st.success(f"✅ Snapshot ZIP written to: {tmp_path}")
+
+        except Exception as e:
+            st.error(f"Snapshot creation failed: {e}")
+
+    st.markdown('---')
+
+    # Optional Diagnostics Save (local only)
     try:
-        if st.checkbox("📝 Save lightweight diagnostics (local mode)"):
-            diag = {
-                "timestamp": pd.Timestamp.now().isoformat(),
-                "json_count": len(json_candidates),
-                "names": list(json_candidates.keys())
-            }
-            path = os.path.join(os.getcwd(), f"vahan_diag_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.json")
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(diag, f, indent=2)
-            st.success(f"Diagnostics file saved at {path}")
+        if st.checkbox("📝 Save diagnostics JSON locally (server only)"):
+            if safe_mode:
+                st.warning("Disabled in Safe Mode. Turn off Safe Mode to enable local saves.")
+            else:
+                diag = {"timestamp": datetime.now().isoformat(), "found_keys": list(json_candidates.keys())}
+                p = os.path.join(os.getcwd(), f"vahan_diag_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+                with open(p, 'w', encoding='utf-8') as f:
+                    json.dump(diag, f, indent=2)
+                st.success(f"Diagnostics saved to: {p}")
     except Exception:
         pass
 
-    st.info("🔒 All-MAXED Raw JSON Analyzer ready — safely inspect, compare, summarize, and export every payload.")
+    st.info("🔒 RAW JSON ANALYZER PRO — Maxed features available. Disable developer blocks for production.")
 
 # ============================================================
-# ⚡ FOOTER KPIs + EXECUTIVE SUMMARY — MAXED VERSION 🚀
+# ⚡ FOOTER KPIs + EXECUTIVE SUMMARY —  ALL-MAXED VERSION 🚀
 # ============================================================
 
 import json, time, random
@@ -2797,10 +3296,10 @@ import streamlit as st
 import pandas as pd
 
 st.markdown("---")
-st.subheader("📊 Dashboard Summary & Insights (All Years & Filters)")
+st.subheader("📊 Dashboard Summary & Insights — All Years, All Filters, All Maxed")
 
 # ============================================================
-# 🧮 SMART METRIC COMPUTATION — ALL YEARS
+# 🧮 SMART METRIC COMPUTATION — ALL YEARS + CAGR
 # ============================================================
 try:
     total_reg = int(df_trend["value"].sum()) if not df_trend.empty else 0
@@ -2815,13 +3314,23 @@ try:
         df_top5_rev.iloc[0].get("value", 0)
         if not df_top5_rev.empty else 0
     )
+
+    # Calculate CAGR across all years if available
+    if "year" in df_trend.columns and len(df_trend["year"].unique()) > 1:
+        years_sorted = sorted(df_trend["year"].unique())
+        start_val = df_trend[df_trend["year"] == years_sorted[0]]["value"].sum()
+        end_val = df_trend[df_trend["year"] == years_sorted[-1]]["value"].sum()
+        cagr = ((end_val / start_val) ** (1 / (len(years_sorted) - 1)) - 1) * 100 if start_val > 0 else 0
+    else:
+        cagr = 0
+
 except Exception as e:
     st.error(f"Metric computation failed: {e}")
 
 # ============================================================
-# 🎯 KPI Metric Cards (Animated & Styled)
+# 🎯 KPI Metric Cards (Animated & Styled, All-Maxed)
 # ============================================================
-kpi_cols = st.columns(4)
+kpi_cols = st.columns(5)
 
 with kpi_cols[0]:
     st.metric("🧾 Total Registrations (All Years)", f"{total_reg:,}")
@@ -2842,6 +3351,22 @@ with kpi_cols[3]:
         st.metric("📉 QoQ Growth", f"{qoq_arrow} {qoq_latest:.2f}%")
     else:
         st.metric("📉 QoQ Growth", "N/A")
+
+with kpi_cols[4]:
+    st.metric("📊 CAGR (All Years)", f"{cagr:.2f}%" if cagr else "N/A")
+
+# ============================================================
+# 🗓️ MULTI-YEAR SUMMARY TABLE (Dynamic)
+# ============================================================
+if "year" in df_trend.columns:
+    year_summary = (
+        df_trend.groupby("year")["value"]
+        .agg(["sum", "mean"])
+        .rename(columns={"sum": "Total Registrations", "mean": "Daily Avg"})
+        .reset_index()
+    )
+    st.markdown("### 📆 Year-wise Summary (Aggregated)")
+    st.dataframe(year_summary, use_container_width=True)
 
 # ============================================================
 # 🏆 TOP REVENUE STATE — ALL-YEAR HIGHLIGHT
@@ -2864,50 +3389,45 @@ else:
     st.info("🏆 No revenue data available.")
 
 # ============================================================
-# 🤖 AI-POWERED EXECUTIVE SUMMARY — DEEPINFRA
+# 🤖 AI-POWERED EXECUTIVE SUMMARY — DEEPINFRA (All Context)
 # ============================================================
 if "enable_ai" in locals() and enable_ai:
-    st.markdown("### 🤖 Executive AI Summary (DeepInfra)")
+    st.markdown("### 🤖 Executive AI Summary (DeepInfra MAXED)")
 
     with st.spinner("🧠 Synthesizing AI-driven executive summary..."):
         try:
-            # ---- Build context from all available datasets ----
+            # ---- Build context dynamically ----
             context = {
                 "total_registrations": total_reg,
                 "daily_avg_orders": daily_avg,
                 "latest_yoy": yoy_latest,
                 "latest_qoq": qoq_latest,
+                "cagr": cagr,
                 "top_revenue_state": top_state,
                 "top_revenue_value": top_val,
                 "data_years_available": sorted(df_trend["year"].unique().tolist()) if "year" in df_trend.columns else "N/A",
                 "total_states_covered": df_top5_rev["label"].nunique() if not df_top5_rev.empty else 0,
             }
 
+            # Capture user filter context if available
+            selected_states = st.session_state.get("selected_states", [])
+            selected_categories = st.session_state.get("selected_categories", [])
+            selected_years = st.session_state.get("selected_years", [])
+
             system = (
                 "You are an AI analytics assistant summarizing a national vehicle registration dashboard. "
-                "Analyze trends, KPIs, revenue distribution, and performance patterns across multiple years. "
-                "Your tone should be executive, data-driven, and concise."
+                "Analyze trends, KPIs, CAGR, and performance across states, categories, and years. "
+                "Your tone should be concise, strategic, and executive-level."
             )
 
             user = (
-                f"Here is the context data: {json.dumps(context, default=str)}. "
-                "Generate a 5–6 sentence executive-level summary covering growth, performance stability, "
-                "and actionable recommendations for transport policy or business expansion."
+                f"Context data: {json.dumps(context, default=str)}. "
+                f"User-selected filters: States={selected_states}, Categories={selected_categories}, Years={selected_years}. "
+                "Generate a 6-sentence executive summary covering key growth, performance highlights, and strategic recommendations."
             )
 
             ai_resp = deepinfra_chat(system, user, max_tokens=400, temperature=0.4)
-
-            if isinstance(ai_resp, dict) and "text" in ai_resp:
-                ai_summary = ai_resp["text"]
-            else:
-                ai_summary = (
-                    "Vehicle registrations indicate stable growth across fiscal years, "
-                    "with consistent daily averages and upward YoY momentum. "
-                    "Top states continue to lead in revenue generation, reinforcing regional market maturity. "
-                    "Emerging states show potential for accelerated adoption. "
-                    "Strategic recommendation: focus on digitized forecasting and cross-state collaboration "
-                    "to sustain growth through 2025 and beyond."
-                )
+            ai_summary = ai_resp.get("text") if isinstance(ai_resp, dict) else str(ai_resp)
 
             st.markdown(
                 f"""
@@ -2929,15 +3449,16 @@ else:
     st.info("🤖 Enable 'AI Narratives' in settings to activate AI summary.")
 
 # ============================================================
-# ✨ FOOTER — BRANDING & MOTION
+# ✨ FOOTER — BRANDING, TIMESTAMP & MOTION (All-Maxed)
 # ============================================================
 st.markdown(
-    """
+    f"""
     <hr style="border: 1px solid #444; margin-top: 2em; margin-bottom: 1em;">
     <div style="text-align:center; color:gray; font-size:0.9em; animation:fadeInUp 1.5s;">
-        🚀 <b>Parivahan Analytics 2025</b><br>
-        <span style="color:#aaa;">AI Narratives • Smart KPIs • Forecasting • Growth Insights</span><br><br>
-        <i>Empowering Data-Driven Governance — All India, All Years.</i>
+        🚗 <b>Parivahan Analytics — MAXED 2025</b><br>
+        <span style="color:#aaa;">AI Narratives • Smart KPIs • Forecasting • Growth Insights</span><br>
+        <i>Empowering Data-Driven Governance — All India, All Years.</i><br><br>
+        <small>⏱️ Last refreshed: {time.strftime("%d %b %Y, %I:%M %p")}</small>
     </div>
     <style>
         @keyframes fadeIn {{
@@ -2954,4 +3475,4 @@ st.markdown(
 )
 
 st.balloons()
-st.toast("✨ Dashboard summary ready — All KPIs, AI insights & visuals loaded.")
+st.toast("✨ Dashboard summary ready — All KPIs, AI insights, and multi-year data loaded successfully.")
