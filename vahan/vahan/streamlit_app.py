@@ -1,108 +1,5 @@
 # =====================================================
-# 🚀 PARIVAHAN ANALYTICS — MAXED IMPORTS BLOCK
-# =====================================================
-
-# =============================
-# 🧱 Standard Library
-# =============================
-import os
-import sys
-import io
-import json
-import time
-import random
-import math
-import traceback
-from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Tuple, Optional
-
-# =============================
-# 📦 Core Third-Party Libraries
-# =============================
-import requests
-import numpy as np
-import pandas as pd
-import streamlit as st
-import altair as alt
-import plotly.express as px
-import plotly.graph_objects as go
-import matplotlib.pyplot as plt
-import seaborn as sns
-from dotenv import load_dotenv
-
-# =============================
-# 📊 Excel / Export Utilities
-# =============================
-from openpyxl import load_workbook, Workbook
-from openpyxl.utils import get_column_letter
-from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-from openpyxl.chart import LineChart, BarChart, Reference
-import xlsxwriter
-
-# =============================
-# 🧠 Machine Learning (Optional)
-# =============================
-SKLEARN_AVAILABLE = False
-try:
-    from sklearn.ensemble import IsolationForest, RandomForestRegressor
-    from sklearn.cluster import KMeans
-    from sklearn.preprocessing import StandardScaler, LabelEncoder
-    from sklearn.decomposition import PCA
-    from sklearn.linear_model import LinearRegression
-    from sklearn.metrics import mean_absolute_error, r2_score
-    SKLEARN_AVAILABLE = True
-except Exception:
-    SKLEARN_AVAILABLE = False
-
-# =============================
-# 🔮 Forecasting / Prophet (Optional)
-# =============================
-PROPHET_AVAILABLE = False
-try:
-    from prophet import Prophet
-    from prophet.serialize import model_to_json, model_from_json
-    PROPHET_AVAILABLE = True
-except Exception:
-    PROPHET_AVAILABLE = False
-
-# =============================
-# 🧰 Visualization / Reporting Helpers
-# =============================
-import warnings
-warnings.filterwarnings("ignore", category=FutureWarning)
-
-# =============================
-# 🔐 Load Environment Variables
-# =============================
-load_dotenv()
-
-# =============================
-# 🧩 Local Package Imports (vahan ecosystem)
-# =============================
-from vahan.api import build_params, get_json
-from vahan.parsing import (
-    to_df, normalize_trend, parse_duration_table,
-    parse_top5_revenue, parse_revenue_trend, parse_makers
-)
-from vahan.metrics import (
-    compute_yoy, compute_qoq, compute_growth,
-    compare_periods, summarize_trends
-)
-from vahan.charts import (
-    bar_from_df, pie_from_df, line_from_trend,
-    show_metrics, show_tables, trend_comparison_chart
-)
-# =============================
-# ⚠️ Notes
-# =============================
-# - Keep this imports block intact across updates.
-# - Supports: forecasting, comparison, clustering, daily/monthly analysis, AI commentary.
-# - All optional ML/forecasting libs are handled gracefully.
-# - Streamlit Cloud compatible — no external binaries required
-
-
-# =====================================================
-# 🚗 PARIVAHAN ANALYTICS — HYBRID UI ENGINE (FINAL MAXED VERSION)
+# 🚗 PARIVAHAN ANALYTICS — MAXED HYBRID DASHBOARD UI
 # =====================================================
 
 import streamlit as st
@@ -113,105 +10,108 @@ import pytz
 # ⚙️ PAGE CONFIG
 # =====================================================
 st.set_page_config(
-    page_title="🚗 Parivahan Analytics — Hybrid Intelligence",
+    page_title="🚗 Parivahan Analytics — Hybrid Dashboard",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
 # =====================================================
-# 🌅 GLOBAL STYLE — HYBRID GLASS GRADIENT THEME
+# 🕓 TIME (IST)
+# =====================================================
+ist = pytz.timezone("Asia/Kolkata")
+current_time = datetime.now(ist).strftime("%A, %d %B %Y • %I:%M %p")
+
+# =====================================================
+# 🎨 GLOBAL THEME (Single Mode — MAXED Hybrid)
 # =====================================================
 st.markdown("""
 <style>
-/* ====== BASE LAYOUT ====== */
 html, body, [class*="stApp"] {
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+    background: linear-gradient(120deg, #0f172a, #1e293b, #334155);
     color: #E2E8F0;
     font-family: 'Inter', 'Segoe UI', 'SF Pro Display', sans-serif;
     font-size: 15px;
 }
 .block-container {
-    padding: 2rem 3rem 4rem 3rem;
-    max-width: 1400px;
+    max-width: 1350px;
+    padding: 2rem 2.5rem 3rem 2.5rem;
 }
 
-/* ====== HEADER ====== */
-.dashboard-header {
+/* HEADER */
+.header {
     text-align:center;
-    padding: 35px;
-    border-radius: 20px;
+    padding: 40px 30px;
     background: rgba(255,255,255,0.06);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    border-radius: 20px;
     backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.35);
     margin-bottom: 40px;
-    border: 1px solid rgba(255,255,255,0.1);
-    animation: fadeIn 1.5s ease-in-out;
+    animation: fadeIn 1.4s ease;
 }
-.dashboard-header h1 {
+.header h1 {
     color: #38BDF8;
-    font-size: 2.6rem;
-    margin-bottom: 8px;
+    font-size: 2.5rem;
     font-weight: 800;
-    text-shadow: 0 0 15px rgba(56,189,248,0.5);
+    margin-bottom: 8px;
 }
-.dashboard-header p {
-    opacity: 0.8;
-    font-size: 0.95rem;
+.header p {
+    opacity: 0.85;
+    margin: 2px 0;
 }
 
-/* ====== KPI CARDS ====== */
-.metric-box {
+/* KPI CARDS */
+.kpi {
     background: rgba(255,255,255,0.08);
     border-radius: 16px;
-    padding: 20px;
+    padding: 22px 15px;
     text-align: center;
     backdrop-filter: blur(10px);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    transition: all 0.3s ease-in-out;
     border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    transition: all 0.25s ease-in-out;
 }
-.metric-box:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 28px rgba(0,0,0,0.4);
+.kpi:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 26px rgba(0,0,0,0.35);
 }
-.metric-box b {
+.kpi b {
+    font-size: 1.05rem;
     color: #38BDF8;
-    font-size: 1rem;
 }
-.metric-box span {
-    display:block;
+.kpi .value {
     font-size: 1.8rem;
     font-weight: 700;
     margin-top: 6px;
 }
 
-/* ====== CHART/INSIGHT BOXES ====== */
-.chart-box {
+/* MAIN BOXES */
+.section {
     background: rgba(255,255,255,0.06);
     border-radius: 18px;
-    padding: 25px;
+    padding: 25px 22px;
     backdrop-filter: blur(10px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+    box-shadow: 0 6px 28px rgba(0,0,0,0.3);
     border: 1px solid rgba(255,255,255,0.1);
-    min-height: 320px;
+    min-height: 360px;
     transition: all 0.3s ease;
 }
-.chart-box:hover {
-    box-shadow: 0 10px 35px rgba(0,0,0,0.35);
-    transform: translateY(-3px);
+.section:hover {
+    box-shadow: 0 10px 35px rgba(0,0,0,0.4);
+    transform: translateY(-2px);
 }
 
-/* ====== FOOTER ====== */
+/* FOOTER */
 .footer {
     text-align:center;
     opacity:0.75;
     font-size:13px;
     margin-top:40px;
-    padding-top:10px;
+    padding-top:12px;
     border-top: 1px solid rgba(255,255,255,0.15);
 }
 
-/* ====== ANIMATIONS ====== */
+/* ANIMATIONS */
 @keyframes fadeIn {
     from {opacity: 0; transform: translateY(20px);}
     to {opacity: 1; transform: translateY(0);}
@@ -219,68 +119,57 @@ html, body, [class*="stApp"] {
 </style>
 """, unsafe_allow_html=True)
 
-
-# =====================================================
-# 🕓 LIVE TIME (IST)
-# =====================================================
-ist = pytz.timezone("Asia/Kolkata")
-current_time = datetime.now(ist).strftime("%A, %d %B %Y • %I:%M %p")
-
 # =====================================================
 # 🧭 HEADER
 # =====================================================
 st.markdown(f"""
-<div class="dashboard-header">
+<div class="header">
     <h1>🚗 Parivahan Analytics Dashboard</h1>
     <p>Updated: {current_time} (IST)</p>
     <p style="font-size:14px;opacity:0.75;">
-        Intelligent Visual Analytics • Forecasting • AI Narratives • KPI Insights
+        Live State-wise • Maker-wise • Month-wise Analytics Engine
     </p>
 </div>
 """, unsafe_allow_html=True)
 
-
 # =====================================================
-# 📊 ANALYTICS OVERVIEW TITLE
+# 📈 ANALYTICS OVERVIEW TITLE
 # =====================================================
 st.markdown("""
 <div style='text-align:center;margin-bottom:1.5rem;'>
-    <h2 style='font-size:1.8rem;color:#38BDF8;'>📈 Analytics Overview</h2>
-    <p style='opacity:0.75;'>Live KPIs, Charts, Forecasts, and AI-generated Insights</p>
+    <h2 style='font-size:1.7rem;color:#38BDF8;'>📊 Analytics Overview</h2>
+    <p style='opacity:0.75;'>Real-time KPIs, Visualizations, and Insights — powered by Parivahan data</p>
 </div>
 """, unsafe_allow_html=True)
 
-
 # =====================================================
-# 💎 KPI CARDS
+# 🔢 KPI PLACEHOLDERS (READY FOR LIVE DATA)
 # =====================================================
 kpi_cols = st.columns(3)
 with kpi_cols[0]:
-    st.markdown("<div class='metric-box'>🚘<br><b>Total Vehicles</b><span>12.8M</span></div>", unsafe_allow_html=True)
+    st.markdown("<div class='kpi'><b>Total Registered Vehicles</b><div class='value'>Loading...</div></div>", unsafe_allow_html=True)
 with kpi_cols[1]:
-    st.markdown("<div class='metric-box'>📅<br><b>Daily Growth</b><span>+4.6%</span></div>", unsafe_allow_html=True)
+    st.markdown("<div class='kpi'><b>Daily Average Orders</b><div class='value'>Loading...</div></div>", unsafe_allow_html=True)
 with kpi_cols[2]:
-    st.markdown("<div class='metric-box'>📊<br><b>Yearly Comparison</b><span>↑ 12.3%</span></div>", unsafe_allow_html=True)
+    st.markdown("<div class='kpi'><b>Month-on-Month Growth</b><div class='value'>Loading...</div></div>", unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-
 # =====================================================
-# 📈 MAIN VISUAL AREA (CHARTS + INSIGHTS)
+# 📉 CHART + INSIGHT PANELS (LIVE-READY)
 # =====================================================
 left, right = st.columns([2, 1])
 with left:
-    st.markdown("<div class='chart-box'>📈 Main Chart / Forecast Visualization</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section'>📈 Main Chart / Trend / Forecast — <i>Data will auto-load here</i></div>", unsafe_allow_html=True)
 with right:
-    st.markdown("<div class='chart-box'>🧠 AI Insights & Breakdown Summary</div>", unsafe_allow_html=True)
-
+    st.markdown("<div class='section'>🧠 AI Insights / Narrative Summary — <i>DeepInfra summary placeholder</i></div>", unsafe_allow_html=True)
 
 # =====================================================
-# 🧾 FOOTER
+# 🧩 FOOTER
 # =====================================================
 st.markdown("""
 <div class="footer">
-    🌐 Parivahan Analytics • Hybrid Intelligence Engine • © 2025
+    🌐 Parivahan Analytics • Hybrid Intelligence Interface • © 2025
 </div>
 """, unsafe_allow_html=True)
 
