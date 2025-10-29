@@ -853,106 +853,74 @@ st.markdown("""
 
 st.write("")
 
-# ================================
-# ⚙️ Build & Display Vahan Parameters —  EDITION
-# ================================
-import json
-import streamlit as st
-import time
-import random
+# =====================================================
+# ⚙️ Smart Parameter Builder (Maxed Edition)
+# =====================================================
 
-# --- Animated Header Banner ---
-st.markdown("""
-<div style="
-    background: linear-gradient(90deg, #0072ff, #00c6ff);
-    padding: 16px 26px;
-    border-radius: 14px;
-    color: #ffffff;
-    font-size: 18px;
-    font-weight: 700;
-    display: flex; justify-content: space-between; align-items: center;
-    box-shadow: 0 0 25px rgba(0,114,255,0.4);">
-    <div>🧩 Building Dynamic API Parameters for <b>Vahan Analytics</b></div>
-    <div style="font-size:14px;opacity:0.85;">Auto-synced with filters 🔁</div>
-</div>
-""", unsafe_allow_html=True)
+def build_params(
+    from_year=None,
+    to_year=None,
+    state_code="",
+    rto_code="0",
+    vehicle_classes=None,
+    vehicle_makers=None,
+    time_period=None,
+    fitness_check="All",
+    vehicle_type="",
+):
+    """
+    Dynamically builds safe, API-compliant Vahan request parameters.
+    Handles:
+      ✅ Year range logic (auto-expands)
+      ✅ Safe defaults (no All+Time)
+      ✅ Multiple vehicle filters
+      ✅ Smart period fallback
+    """
 
-st.write("")  # spacing
+    # --- Normalize lists to comma-strings ---
+    def list_to_str(val):
+        if isinstance(val, list):
+            return ",".join([v for v in val if v])
+        return val or ""
 
-# --- Build Params Block ---
-with st.spinner("🚀 Generating dynamic request parameters..."):
+    # --- Sanitize year inputs ---
     try:
-        params_common = build_params(
-            from_year, to_year,
-            state_code=state_code,
-            rto_code=rto_code,
-            vehicle_classes=vehicle_classes,
-            vehicle_makers=vehicle_makers,
-            time_period=time_period,
-            fitness_check=fitness_check,
-            vehicle_type=vehicle_type
-        )
+        fy, ty = int(from_year or 0), int(to_year or 0)
+    except ValueError:
+        fy, ty = 0, 0
 
-        # --- Animated “processing complete” effect ---
-        st.balloons()
-        st.toast("✨ Parameters generated successfully!", icon="⚙️")
+    # --- Build all year range ---
+    if fy and ty and fy <= ty:
+        years = [str(y) for y in range(fy, ty + 1)]
+    elif fy:
+        years = [str(fy)]
+    elif ty:
+        years = [str(ty)]
+    else:
+        years = []
 
-        # --- Show result in expander with style ---
-        with st.expander("🔧 View Generated Vahan Request Parameters (JSON)", expanded=True):
-            st.markdown("""
-            <div style="font-size:15px;color:#00E0FF;font-weight:600;margin-bottom:6px;">
-                📜 Parameter Payload Preview
-            </div>
-            """, unsafe_allow_html=True)
+    # --- Determine safe timePeriod ---
+    if not time_period or "All" in str(time_period):
+        # If year is provided → must be "Yearly"
+        safe_period = "Yearly" if years else "ALL"
+    else:
+        safe_period = str(time_period).replace("+", " ").strip()
 
-            st.json(params_common)
+    # --- Build params ---
+    params = {
+        "stateCd": state_code or "",
+        "rtoCd": rto_code or "0",
+        "vehicleClass": list_to_str(vehicle_classes),
+        "vehicleMaker": list_to_str(vehicle_makers),
+        "vehicleType": vehicle_type or "",
+        "fitnessCheck": fitness_check or "All",
+        "timePeriod": safe_period,
+    }
 
-            # --- Copy-to-clipboard button ---
-            if st.button("📋 Copy Parameters JSON to Clipboard"):
-                st.toast("Copied successfully!", icon="✅")
-
-        # --- Context success banner ---
-        st.markdown(f"""
-        <div style="
-            margin-top:12px;
-            background: linear-gradient(90deg, #00c6ff, #0072ff);
-            padding: 14px 20px;
-            border-radius: 10px;
-            color: #fff;
-            font-weight:600;
-            display:flex;justify-content:space-between;align-items:center;">
-            <div>✅ Parameters built successfully for <b>{to_year}</b></div>
-            <div style="opacity:0.85;font-size:14px;">Ready to fetch data 📡</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    except Exception as e:
-        st.error(f"❌ Error while building Vahan parameters: {str(e)}")
-
-        col1, col2 = st.columns([1,1])
-        with col1:
-            if st.button("🔄 Auto-Retry Build"):
-                st.toast("Rebuilding parameters...", icon="🔁")
-                time.sleep(0.5)
-                st.rerun()
-        with col2:
-            if st.button("📘 View Troubleshooting Help"):
-                st.info("""
-                - Check if all filters are valid (e.g., correct year range or vehicle class).
-                - Ensure all mandatory fields are filled.
-                - Try again with fewer filters or reset defaults.
-                """)
-
-# --- Live Refresh Button ---
-st.markdown("<hr>", unsafe_allow_html=True)
-colA, colB, colC = st.columns([1.5,1,1.5])
-
-with colB:
-    if st.button("♻️ Rebuild Parameters with Latest Filters"):
-        emoji = random.choice(["🔁", "🚗", "⚙️", "🧠", "🛰️"])
-        st.toast(f"{emoji} Rebuilding dynamic params...", icon=emoji)
-        time.sleep(0.8)
-        st.rerun()
+    # --- Inject year only if timePeriod != ALL ---
+    if safe_period != "ALL" and years:
+        params["year"] = years[-1]  # latest year for display
+    return params
 
 # ================================
 # ⚙️ Dynamic Safe API Fetch Layer — FIXED
