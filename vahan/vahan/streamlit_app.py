@@ -579,12 +579,12 @@ with colB:
 
 import time, random, streamlit as st
 
-# Utility: colored tag generator
 def _tag(text, color):
+    """Utility: colored tag generator"""
     return f"<span style='background:{color};padding:4px 8px;border-radius:6px;color:white;font-size:12px;margin-right:6px;'>{text}</span>"
 
-# Smart API Fetch Wrapper
-def fetch_json(endpoint, params=params_common, desc=""):
+# ✅ FIXED: No direct reference to params_common in the function signature
+def fetch_json(endpoint, params=None, desc=""):
     """
     Intelligent API fetch with full UI feedback, retries, and rich logging.
     - Animated visual elements
@@ -592,6 +592,16 @@ def fetch_json(endpoint, params=params_common, desc=""):
     - Retry attempts with progressive delay
     - Interactive retry + JSON preview on failure
     """
+    import time, random
+
+    # ✅ If no params provided, fall back to global params_common (if defined)
+    if params is None:
+        try:
+            params = params_common
+        except NameError:
+            st.error("❌ Missing request parameters. Please build parameters first before fetching data.")
+            return {}
+
     max_retries = 3
     delay = 1 + random.random()
     desc = desc or endpoint
@@ -659,7 +669,6 @@ def fetch_json(endpoint, params=params_common, desc=""):
     </div>
     """, unsafe_allow_html=True)
 
-    # 🎯 Interactive retry + test controls
     c1, c2 = st.columns([1, 1])
     with c1:
         if st.button(f"🔁 Retry {desc} Now", key=f"retry_{desc}_{random.randint(0,9999)}"):
