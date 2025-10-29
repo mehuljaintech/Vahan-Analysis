@@ -1,3 +1,23 @@
+import logging
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+# Force logging timestamps to IST
+class ISTFormatter(logging.Formatter):
+    converter = lambda *args: datetime.now(ZoneInfo("Asia/Kolkata")).timetuple()
+    def formatTime(self, record, datefmt=None):
+        dt = datetime.fromtimestamp(record.created, ZoneInfo("Asia/Kolkata"))
+        if datefmt:
+            return dt.strftime(datefmt)
+        return dt.isoformat()
+
+# Apply globally
+for handler in logging.getLogger().handlers:
+    handler.setFormatter(ISTFormatter("%(asctime)s | %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S"))
+
+logging.info("✅ Logging timezone set to IST")
+
+
 # =============================
 # 📚 Cleaned & Consolidated Imports
 # =============================
@@ -73,26 +93,6 @@ import streamlit as st
 import requests
 from datetime import date, datetime
 from urllib.parse import urlencode
-
-import logging
-from datetime import datetime
-from zoneinfo import ZoneInfo
-
-# Force logging timestamps to IST
-class ISTFormatter(logging.Formatter):
-    converter = lambda *args: datetime.now(ZoneInfo("Asia/Kolkata")).timetuple()
-    def formatTime(self, record, datefmt=None):
-        dt = datetime.fromtimestamp(record.created, ZoneInfo("Asia/Kolkata"))
-        if datefmt:
-            return dt.strftime(datefmt)
-        return dt.isoformat()
-
-# Apply globally
-for handler in logging.getLogger().handlers:
-    handler.setFormatter(ISTFormatter("%(asctime)s | %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S"))
-
-logging.info("✅ Logging timezone set to IST")
-
 
 # =====================================================
 # ⚙️ PAGE CONFIG
