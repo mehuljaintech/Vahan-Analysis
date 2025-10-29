@@ -540,26 +540,16 @@ st.sidebar.markdown("---")
 st.sidebar.caption("💡 Tip: You can toggle AI mode dynamically — the dashboard adapts instantly.")
 
 # =====================================================
-# ⚙️ Dynamic Parameter Builder — Vahan Analytics (Final)
+# ⚙️ Dynamic Parameter Builder — Vahan Analytics (MAXED)
 # =====================================================
 import streamlit as st
-import time
-import random
+import time, random, json, requests
+from urllib.parse import urlparse, urljoin
 from datetime import datetime
 
-# ============================================================
-# ⚙️ VAHAN PARAMETER BUILDER + API ENGINE — MAXED EDITION
-# ============================================================
-
-import json
-import streamlit as st
-import time
-import random
-import requests
-
-# ============================================================
+# =====================================================
 # 🎨 HEADER — Animated Banner
-# ============================================================
+# =====================================================
 st.markdown("""
 <div style="
     background: linear-gradient(90deg, #0072ff, #00c6ff);
@@ -577,12 +567,12 @@ st.markdown("""
 
 st.write("")
 
-# ============================================================
-# 🔧 PARAMETER BUILD EXECUTION
-# ============================================================
+# =====================================================
+# ⚙️ PARAMETER BUILD EXECUTION
+# =====================================================
 with st.spinner("🚀 Generating dynamic request parameters..."):
     try:
-        # assumes these variables exist upstream in your app
+        # assumes build_params and variables already exist
         params_common = build_params(
             from_year,
             to_year,
@@ -638,9 +628,9 @@ with st.spinner("🚀 Generating dynamic request parameters..."):
                 - Try again with default settings
                 """)
 
-# ============================================================
+# =====================================================
 # ♻️ LIVE REFRESH BUTTON
-# ============================================================
+# =====================================================
 st.markdown("<hr>", unsafe_allow_html=True)
 colA, colB, colC = st.columns([1.5, 1, 1.5])
 with colB:
@@ -650,42 +640,71 @@ with colB:
         time.sleep(0.8)
         st.rerun()
 
-# ============================================================
-# 🌐 UNIVERSAL API ENGINE — MAXED
-# ============================================================
+# =====================================================
+# 🌐 UNIVERSAL API ENGINE — MAXED EDITION
+# =====================================================
+VAHAN_API_BASE = st.secrets.get(
+    "VAHAN_API_BASE",
+    "https://analytics.parivahan.gov.in/analytics/"
+)
+
+def _ensure_url(endpoint: str) -> str:
+    """Ensure full valid API URL."""
+    if not isinstance(endpoint, str) or not endpoint:
+        raise ValueError("Empty endpoint provided.")
+    parsed = urlparse(endpoint)
+    if parsed.scheme and parsed.netloc:
+        return endpoint  # full URL already
+    base = VAHAN_API_BASE if VAHAN_API_BASE.endswith("/") else VAHAN_API_BASE + "/"
+    full = urljoin(base, endpoint.lstrip("/"))
+    p2 = urlparse(full)
+    if not (p2.scheme and p2.netloc):
+        raise ValueError(f"Constructed URL is invalid: {full}")
+    return full
+
 def get_json(endpoint, params=None, method="POST", headers=None, timeout=30):
-    """Universal safe API JSON getter with Streamlit feedback."""
+    """Universal safe API JSON getter with full feedback."""
     headers = headers or {
         "Content-Type": "application/json",
         "Accept": "application/json"
     }
+
+    try:
+        url = _ensure_url(endpoint)
+    except Exception as e:
+        st.error(f"❌ Invalid endpoint: {e}")
+        return {}, 0
+
     try:
         if method.upper() == "POST":
-            res = requests.post(endpoint, json=params, headers=headers, timeout=timeout)
+            res = requests.post(url, json=params, headers=headers, timeout=timeout)
         else:
-            res = requests.get(endpoint, params=params, headers=headers, timeout=timeout)
+            res = requests.get(url, params=params, headers=headers, timeout=timeout)
+
         if res.status_code == 200:
             try:
                 return res.json(), res.status_code
             except Exception:
-                st.warning("⚠️ API returned non-JSON response.")
+                st.warning("⚠️ API returned non-JSON response (200).")
                 return {}, res.status_code
         else:
             st.warning(f"⚠️ API responded with HTTP {res.status_code}")
             return {}, res.status_code
+
     except requests.exceptions.Timeout:
         st.error("⏳ Request timed out. Try again later.")
     except requests.exceptions.ConnectionError:
-        st.error("🚫 Connection error — check VPN/internet.")
+        st.error("🚫 Connection error — check network/VPN.")
     except Exception as e:
         st.error(f"❌ Unexpected API error: {e}")
+
     return {}, 0
 
 def _tag(text, color):
     """Utility: colored tag generator"""
     return f"<span style='background:{color};padding:4px 8px;border-radius:6px;color:white;font-size:12px;margin-right:6px;'>{text}</span>"
 
-def fetch_json(endpoint, params=None, desc=""):
+def fetch_json(endpoint, params=None, desc="", method="POST"):
     """Dynamic, safe, and beautiful API fetcher with retries + UI feedback."""
     if params is None:
         try:
@@ -715,7 +734,7 @@ def fetch_json(endpoint, params=None, desc=""):
     for attempt in range(1, max_retries + 1):
         with st.spinner(f"🔄 Attempt {attempt}/{max_retries} — Fetching `{desc}` ..."):
             try:
-                json_data, _ = get_json(endpoint, params)
+                json_data, _ = get_json(endpoint, params, method=method)
                 if json_data:
                     st.toast(f"✅ {desc} fetched successfully!", icon="🚀")
                     if attempt == 1:
@@ -744,6 +763,7 @@ def fetch_json(endpoint, params=None, desc=""):
         """, unsafe_allow_html=True)
         return json_data
 
+    # ❌ failure UI
     st.error(f"⛔ Failed to fetch {desc} after {max_retries} attempts.")
     st.markdown("""
     <div style="
@@ -755,7 +775,8 @@ def fetch_json(endpoint, params=None, desc=""):
         <b>💡 Troubleshooting Tips:</b><br>
         - Check your network or VPN<br>
         - Verify parameters are valid<br>
-        - Retry after 1–2 minutes (server may throttle requests)
+        - Retry after a short delay<br>
+        - Ensure the endpoint exists
     </div>
     """, unsafe_allow_html=True)
 
@@ -766,9 +787,11 @@ def fetch_json(endpoint, params=None, desc=""):
             time.sleep(0.8)
             st.rerun()
     with c2:
-        if st.button("📡 Test Endpoint", key=f"test_{desc}_{random.randint(0,9999)}"):
-            st.info(f"🔗 Endpoint: `{endpoint}`")
-
+        if st.button("📡 Show Endpoint", key=f"test_{desc}_{random.randint(0,9999)}"):
+            try:
+                st.info(f"🔗 URL: `{_ensure_url(endpoint)}`")
+            except Exception as e:
+                st.error(str(e))
     return {}
 
 # ============================================
