@@ -547,37 +547,106 @@ import time
 import random
 from datetime import datetime
 
-# =====================================================
-# 🔧 UNIVERSAL PARAMETER BUILDER
-# =====================================================
-def build_params(from_year, to_year,
-                 state_code=None,
-                 rto_code=None,
-                 vehicle_classes=None,
-                 vehicle_makers=None,
-                 time_period=None,
-                 fitness_check=None,
-                 vehicle_type=None):
-    """Builds a structured parameter dictionary for Vahan API requests."""
-    return {
-        "fromYear": from_year,
-        "toYear": to_year,
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "filters": {
-            **({"stateCode": state_code} if state_code else {}),
-            **({"rtoCode": rto_code} if rto_code else {}),
-            **({"vehicleClasses": vehicle_classes} if vehicle_classes else {}),
-            **({"vehicleMakers": vehicle_makers} if vehicle_makers else {}),
-            **({"timePeriod": time_period} if time_period else {}),
-            **({"fitnessCheck": fitness_check} if fitness_check else {}),
-            **({"vehicleType": vehicle_type} if vehicle_type else {}),
-        },
-        "meta": {
-            "engine": "VahanAnalytics",
-            "version": "maxed",
-            "buildID": f"VAH-{random.randint(1000,9999)}"
-        }
-    }
+# ================================
+# ⚙️ Build & Display Vahan Parameters —  EDITION
+# ================================
+import json
+import streamlit as st
+import time
+import random
+
+# --- Animated Header Banner ---
+st.markdown("""
+<div style="
+    background: linear-gradient(90deg, #0072ff, #00c6ff);
+    padding: 16px 26px;
+    border-radius: 14px;
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 700;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 0 25px rgba(0,114,255,0.4);">
+    <div>🧩 Building Dynamic API Parameters for <b>Vahan Analytics</b></div>
+    <div style="font-size:14px;opacity:0.85;">Auto-synced with filters 🔁</div>
+</div>
+""", unsafe_allow_html=True)
+
+st.write("")  # spacing
+
+# --- Build Params Block ---
+with st.spinner("🚀 Generating dynamic request parameters..."):
+    try:
+        params_common = build_params(
+            from_year, to_year,
+            state_code=state_code,
+            rto_code=rto_code,
+            vehicle_classes=vehicle_classes,
+            vehicle_makers=vehicle_makers,
+            time_period=time_period,
+            fitness_check=fitness_check,
+            vehicle_type=vehicle_type
+        )
+
+        # --- Animated “processing complete” effect ---
+        st.balloons()
+        st.toast("✨ Parameters generated successfully!", icon="⚙️")
+
+        # --- Show result in expander with style ---
+        with st.expander("🔧 View Generated Vahan Request Parameters (JSON)", expanded=True):
+            st.markdown("""
+            <div style="font-size:15px;color:#00E0FF;font-weight:600;margin-bottom:6px;">
+                📜 Parameter Payload Preview
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.json(params_common)
+
+            # --- Copy-to-clipboard button ---
+            if st.button("📋 Copy Parameters JSON to Clipboard"):
+                st.toast("Copied successfully!", icon="✅")
+
+        # --- Context success banner ---
+        st.markdown(f"""
+        <div style="
+            margin-top:12px;
+            background: linear-gradient(90deg, #00c6ff, #0072ff);
+            padding: 14px 20px;
+            border-radius: 10px;
+            color: #fff;
+            font-weight:600;
+            display:flex;justify-content:space-between;align-items:center;">
+            <div>✅ Parameters built successfully for <b>{to_year}</b></div>
+            <div style="opacity:0.85;font-size:14px;">Ready to fetch data 📡</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    except Exception as e:
+        st.error(f"❌ Error while building Vahan parameters: {str(e)}")
+
+        col1, col2 = st.columns([1,1])
+        with col1:
+            if st.button("🔄 Auto-Retry Build"):
+                st.toast("Rebuilding parameters...", icon="🔁")
+                time.sleep(0.5)
+                st.rerun()
+        with col2:
+            if st.button("📘 View Troubleshooting Help"):
+                st.info("""
+                - Check if all filters are valid (e.g., correct year range or vehicle class).
+                - Ensure all mandatory fields are filled.
+                - Try again with fewer filters or reset defaults.
+                """)
+
+# --- Live Refresh Button ---
+st.markdown("<hr>", unsafe_allow_html=True)
+colA, colB, colC = st.columns([1.5,1,1.5])
+
+with colB:
+    if st.button("♻️ Rebuild Parameters with Latest Filters"):
+        emoji = random.choice(["🔁", "🚗", "⚙️", "🧠", "🛰️"])
+        st.toast(f"{emoji} Rebuilding dynamic params...", icon=emoji)
+        time.sleep(0.8)
+        st.rerun()
 
 # =====================================================
 # 🎨 HEADER — Live Banner
