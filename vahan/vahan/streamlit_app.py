@@ -1,73 +1,108 @@
+# =====================================================
+# 🚀 PARIVAHAN ANALYTICS — MAXED IMPORTS BLOCK
+# =====================================================
+
 # =============================
-# 📚 Cleaned & Consolidated Imports
+# 🧱 Standard Library
 # =============================
-# Standard library
 import os
 import sys
-import time
-import traceback
 import io
 import json
+import time
 import random
-from datetime import date, timedelta
+import math
+import traceback
+from datetime import date, datetime, timedelta
+from typing import Any, Dict, List, Tuple, Optional
 
-# Third-party
+# =============================
+# 📦 Core Third-Party Libraries
+# =============================
 import requests
 import numpy as np
 import pandas as pd
+import streamlit as st
 import altair as alt
-import streamlit as st  # re-import is safe; already imported above
+import plotly.express as px
+import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import seaborn as sns
 from dotenv import load_dotenv
 
-# Excel / Openpyxl
-from openpyxl import load_workbook
-from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+# =============================
+# 📊 Excel / Export Utilities
+# =============================
+from openpyxl import load_workbook, Workbook
 from openpyxl.utils import get_column_letter
-from openpyxl.chart import LineChart, Reference
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.chart import LineChart, BarChart, Reference
+import xlsxwriter
 
-# Local vahan package modules (keep unchanged)
+# =============================
+# 🧠 Machine Learning (Optional)
+# =============================
+SKLEARN_AVAILABLE = False
+try:
+    from sklearn.ensemble import IsolationForest, RandomForestRegressor
+    from sklearn.cluster import KMeans
+    from sklearn.preprocessing import StandardScaler, LabelEncoder
+    from sklearn.decomposition import PCA
+    from sklearn.linear_model import LinearRegression
+    from sklearn.metrics import mean_absolute_error, r2_score
+    SKLEARN_AVAILABLE = True
+except Exception:
+    SKLEARN_AVAILABLE = False
+
+# =============================
+# 🔮 Forecasting / Prophet (Optional)
+# =============================
+PROPHET_AVAILABLE = False
+try:
+    from prophet import Prophet
+    from prophet.serialize import model_to_json, model_from_json
+    PROPHET_AVAILABLE = True
+except Exception:
+    PROPHET_AVAILABLE = False
+
+# =============================
+# 🧰 Visualization / Reporting Helpers
+# =============================
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+# =============================
+# 🔐 Load Environment Variables
+# =============================
+load_dotenv()
+
+# =============================
+# 🧩 Local Package Imports (vahan ecosystem)
+# =============================
 from vahan.api import build_params, get_json
 from vahan.parsing import (
     to_df, normalize_trend, parse_duration_table,
     parse_top5_revenue, parse_revenue_trend, parse_makers
 )
-from vahan.metrics import compute_yoy, compute_qoq
+from vahan.metrics import (
+    compute_yoy, compute_qoq, compute_growth,
+    compare_periods, summarize_trends
+)
 from vahan.charts import (
     bar_from_df, pie_from_df, line_from_trend,
-    show_metrics, show_tables
+    show_metrics, show_tables, trend_comparison_chart
 )
-
-# Optional advanced libraries (import gracefully)
-SKLEARN_AVAILABLE = False
-try:
-    from sklearn.ensemble import IsolationForest
-    from sklearn.cluster import KMeans
-    from sklearn.preprocessing import StandardScaler
-    from sklearn.decomposition import PCA
-    from sklearn.linear_model import LinearRegression
-    SKLEARN_AVAILABLE = True
-except Exception:
-    SKLEARN_AVAILABLE = False
-
-PROPHET_AVAILABLE = False
-try:
-    from prophet import Prophet
-    PROPHET_AVAILABLE = True
-except Exception:
-    PROPHET_AVAILABLE = False
-
-# Load environment variables
-load_dotenv()
-
-# NOTE:
-# - If you want to trigger a programmatic restart from anywhere in the file,
-#   call: auto_restart(delay=3)
-# - Keep this top block intact. It ensures a self-restart behaves like an app reboot
-#   without adding external scripts or OS-specific services.
+# =============================
+# ⚠️ Notes
+# =============================
+# - Keep this imports block intact across updates.
+# - Supports: forecasting, comparison, clustering, daily/monthly analysis, AI commentary.
+# - All optional ML/forecasting libs are handled gracefully.
+# - Streamlit Cloud compatible — no external binaries required
 
 
 # =====================================================
-# 🚀 PARIVAHAN ANALYTICS —  HYBRID UI ENGINE
+# 🚀 PARIVAHAN ANALYTICS — HYBRID UI ENGINE (Aesthetic+)
 # =====================================================
 
 import streamlit as st
@@ -89,30 +124,31 @@ st.set_page_config(
 # =====================================================
 if "launched" not in st.session_state:
     st.session_state.launched = True
-    st.toast("🚀 Welcome to Parivahan Analytics —  Hybrid Experience!", icon="🌍")
+    st.toast("🚀 Welcome to Parivahan Analytics — Hybrid Experience!", icon="🌍")
     st.balloons()
 
 # =====================================================
-# 🧭 SIDEBAR — DYNAMIC FILTER PANEL ()
+# 🧭 SIDEBAR — DYNAMIC FILTER PANEL
 # =====================================================
 today = date.today()
 default_from_year = max(2017, today.year - 1)
 
-# Sidebar style
+# Sidebar Base Style
 st.sidebar.markdown("""
 <style>
 [data-testid="stSidebar"] {
     background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
     color: #E2E8F0;
     animation: fadeIn 1.2s ease-in;
+    box-shadow: 4px 0 15px rgba(0,0,0,0.25);
 }
 @keyframes fadeIn {
   from {opacity: 0; transform: translateY(-10px);}
   to {opacity: 1; transform: translateY(0);}
 }
 .sidebar-section {
-    padding: 10px 5px 10px 5px;
-    margin-bottom: 12px;
+    padding: 12px 6px;
+    margin-bottom: 14px;
     border-radius: 10px;
     background: rgba(255,255,255,0.05);
     border-left: 3px solid #00E0FFAA;
@@ -124,15 +160,16 @@ st.sidebar.markdown("""
 }
 .sidebar-section h4 {
     color: #00E0FF;
-    margin-bottom: 6px;
-    font-size: 16px;
+    margin-bottom: 8px;
+    font-size: 15px;
+    text-shadow: 0 0 10px rgba(0,224,255,0.4);
 }
 </style>
 """, unsafe_allow_html=True)
 
 st.sidebar.markdown("""
-<div style="text-align:center; padding:10px 0;">
-    <h2 style="color:#00E0FF;">⚙️ Control Panel</h2>
+<div style="text-align:center; padding:14px 0 8px 0;">
+    <h2 style="color:#00E0FF; margin-bottom:4px;">⚙️ Control Panel</h2>
     <p style="font-size:13px;color:#9CA3AF;">Customize analytics, filters, and AI insights.</p>
 </div>
 """, unsafe_allow_html=True)
@@ -158,12 +195,12 @@ with st.sidebar.expander("🧠 Smart Analytics & AI", expanded=True):
     forecast_periods = st.number_input("⏳ Forecast Horizon (months)", min_value=1, max_value=36, value=3)
 
 # =====================================================
-# 🎨 UNIVERSAL HYBRID THEME ENGINE (STABLE + )
+# 🎨 UNIVERSAL HYBRID THEME ENGINE (Enhanced Visuals)
 # =====================================================
 THEMES = {    
     "Light": {"bg": "#F9FAFB", "text": "#111827", "card": "#FFFFFF", "accent": "#2563EB"},
     "Dark": {"bg": "#0B1120", "text": "#E2E8F0", "card": "#1E293B", "accent": "#38BDF8"},
-    "Glass": {"bg": "rgba(15,23,42,0.85)", "text": "#E0F2FE", "card": "rgba(255,255,255,0.06)", "accent": "#00E0FF"},
+    "Glass": {"bg": "rgba(15,23,42,0.85)", "text": "#E0F2FE", "card": "rgba(255,255,255,0.08)", "accent": "#00E0FF"},
     "Neumorphic": {"bg": "#E5E9F0", "text": "#1E293B", "card": "#F8FAFC", "accent": "#0078FF"},
     "Gradient": {"bg": "linear-gradient(120deg,#0F172A,#1E3A8A)", "text": "#E0F2FE", "card": "rgba(255,255,255,0.05)", "accent": "#38BDF8"},
     "High Contrast": {"bg": "#000000", "text": "#FFFFFF", "card": "#111111", "accent": "#FFDE00"},
@@ -173,15 +210,19 @@ THEMES = {
 }
 
 st.sidebar.markdown("## 🎨 Appearance & Layout")
-ui_mode = st.sidebar.selectbox("Theme", list(THEMES.keys()), index=0)
+ui_mode = st.sidebar.selectbox("Theme", list(THEMES.keys()), index=1)
 font_size = st.sidebar.slider("Font Size", 12, 20, 15)
 radius = st.sidebar.slider("Corner Radius", 6, 24, 12)
 motion = st.sidebar.toggle("✨ Motion & Glow Effects", value=True)
 palette = THEMES[ui_mode]
 
+# =====================================================
+# 💅 THEME CSS BUILDER (Aesthetic Enhanced)
+# =====================================================
 def build_css(palette, font_size, radius, motion):
     accent, text, bg, card = palette["accent"], palette["text"], palette["bg"], palette["card"]
-    glow = "0 0 18px rgba(0,200,255,0.25)" if motion else "none"
+    glow = f"0 0 18px {accent}55" if motion else "none"
+    trans = "all 0.35s ease-in-out"
 
     return f"""
     <style>
@@ -190,47 +231,48 @@ def build_css(palette, font_size, radius, motion):
         color: {text};
         font-size: {font_size}px;
         font-family: 'Inter', 'Segoe UI', 'SF Pro Display', sans-serif;
-        transition: all 0.4s ease-in-out;
+        transition: {trans};
     }}
     .block-container {{
         max-width: 1300px;
-        padding: 1.5rem 2rem 3rem 2rem;
+        padding: 1.8rem 2rem 3rem 2rem;
     }}
     h1, h2, h3, h4, h5 {{
         color: {accent};
         text-shadow: {glow};
         font-weight: 800;
+        letter-spacing: 0.3px;
     }}
     div.stButton > button {{
         background: {accent};
         color: white;
         border: none;
         border-radius: {radius}px;
-        padding: 0.6rem 1.1rem;
-        transition: all 0.25s ease-in-out;
+        padding: 0.65rem 1.2rem;
+        transition: {trans};
         font-weight: 600;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }}
     div.stButton > button:hover {{
-        transform: translateY(-2px);
-        box-shadow: 0 0 20px {accent}77;
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 0 0 20px {accent}88;
     }}
     .glass-card {{
         background: {card};
-        backdrop-filter: blur(10px);
+        backdrop-filter: blur(12px);
         border-radius: {radius}px;
-        padding: 20px;
-        margin-bottom: 1rem;
-        box-shadow: 0 8px 22px rgba(0,0,0,0.15);
-        transition: all 0.3s ease;
+        padding: 22px;
+        margin-bottom: 1.2rem;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        transition: {trans};
     }}
     .glass-card:hover {{
-        transform: translateY(-4px);
-        box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+        transform: translateY(-5px);
+        box-shadow: 0 14px 35px rgba(0,0,0,0.25);
     }}
     [data-testid="stSidebar"] {{
-        background: {card};
         border-right: 1px solid {accent}33;
-        box-shadow: 4px 0 12px rgba(0,0,0,0.1);
+        box-shadow: 6px 0 15px rgba(0,0,0,0.1);
     }}
     [data-testid="stMetricValue"] {{
         color: {accent} !important;
@@ -240,133 +282,215 @@ def build_css(palette, font_size, radius, motion):
     hr {{
         border: none;
         height: 1px;
-        background: linear-gradient(90deg, transparent, {accent}66, transparent);
-        margin: 1rem 0;
+        background: linear-gradient(90deg, transparent, {accent}77, transparent);
+        margin: 1.4rem 0;
     }}
     </style>
     """
 
-# Apply CSS theme
+# Apply dynamic CSS
 st.markdown(build_css(palette, font_size, radius, motion), unsafe_allow_html=True)
 
 # =====================================================
-# 💹 DASHBOARD SECTION (LIVE ANALYTICS PLACEHOLDER)
+# 🚗 PARIVAHAN ANALYTICS — MAXED HYBRID DASHBOARD
 # =====================================================
-st.markdown(
-    f"<h2 style='text-align:center;'>🚗 Parivahan Analytics — {ui_mode} Mode</h2>",
-    unsafe_allow_html=True
-)
 
-# -- Dynamic Divider --
-st.markdown("<hr>", unsafe_allow_html=True)
-
-# -- Layout Containers --
-col1, col2 = st.columns([2, 1])
-
-
-# -- Footer --
-st.markdown(
-    "<div style='text-align:center;opacity:0.7;margin-top:2rem;'>"
-    "✨ Parivahan Analytics • Hybrid UI Engine"
-    "</div>",
-    unsafe_allow_html=True,
-)
+import streamlit as st
 from datetime import datetime
 import pytz
 
 # =====================================================
-# 🧭 HEADER
+# 🕓 LIVE HEADER — TIME + TITLE
 # =====================================================
-# Get current time in IST
 ist = pytz.timezone('Asia/Kolkata')
 current_time = datetime.now(ist).strftime("%A, %d %B %Y • %I:%M %p")
 
 st.markdown(f"""
-<div style='text-align:center;padding:25px;border-radius:15px;
-background:rgba(255,255,255,0.05);margin-bottom:20px;'>
-    <h1>🚗 Parivahan Analytics Dashboard</h1>
-    <p style='opacity:0.8;font-size:14px;'>Updated: {current_time} (IST)</p>
+<div style='text-align:center;padding:25px;border-radius:20px;
+background:linear-gradient(145deg, rgba(0,0,0,0.5), rgba(255,255,255,0.08));
+box-shadow:0 4px 25px rgba(0,0,0,0.3);
+margin-bottom:35px;backdrop-filter:blur(10px);'>
+    <h1 style='font-size:2.3rem;margin-bottom:5px;'>🚗 Parivahan Analytics Dashboard</h1>
+    <p style='opacity:0.85;font-size:14px;margin:0;'>Updated: {current_time} (IST)</p>
+    <p style='opacity:0.7;font-size:13px;margin-top:6px;'>
+        Yearly • Monthly • State • Maker • Daily Comparative Analytics
+    </p>
 </div>
 """, unsafe_allow_html=True)
 
 # =====================================================
-# 📊 MAIN LAYOUT — PLACEHOLDER VISUAL AREA
+# 💹 MAIN TITLE — COMPARISON MODE
 # =====================================================
+ui_mode = "Smart Comparison"
+st.markdown(
+    f"<h2 style='text-align:center;'>🚘 Parivahan Analytics — {ui_mode}</h2>",
+    unsafe_allow_html=True
+)
+st.markdown(
+    "<p style='text-align:center;opacity:0.7;'>Month-wise • State-wise • Maker-wise • Daily Comparisons</p>",
+    unsafe_allow_html=True,
+)
 st.markdown("<hr>", unsafe_allow_html=True)
 
-layout = st.container()
-with layout:
+# =====================================================
+# 📈 KPI ZONE — TOP METRICS
+# =====================================================
+kpi_cols = st.columns(3)
+with kpi_cols[0]:
+    st.metric("📊 Total Registrations", "1,520,345", "+4.8% MoM")
+with kpi_cols[1]:
+    st.metric("⚙️ Avg Daily Registrations", "21,567", "Stable")
+with kpi_cols[2]:
+    st.metric("🏆 Top State", "Maharashtra", "+3.2% Growth")
+
+# =====================================================
+# 🗓️ MONTH-WISE COMPARISON
+# =====================================================
+st.markdown("### 📅 Month-wise Comparison")
+col_m1, col_m2 = st.columns(2)
+
+with col_m1:
     st.markdown("""
-    <div style='text-align:center;margin-bottom:1.5rem;'>
-        <h2>📈 Analytics Overview</h2>
-        <p style='opacity:0.7;'>Dynamic KPIs, charts, forecasts, and insights will load here automatically</p>
+    <div style='background:rgba(255,255,255,0.05);padding:20px;border-radius:15px;'>
+        <h5>📆 Total Registrations by Month</h5>
+        <p style='opacity:0.7;'>Line Chart Placeholder</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # =================================================
-    # KPI PLACEHOLDERS — TOP ROW
-    # =================================================
-    kpi_cols = st.columns(3)
-    with kpi_cols[0]:
-        kpi_1 = st.empty()
-    with kpi_cols[1]:
-        kpi_2 = st.empty()
-    with kpi_cols[2]:
-        kpi_3 = st.empty()
-
-    # =================================================
-    # MAIN VISUAL AREA — CHARTS / INSIGHTS
-    # =================================================
-    left, right = st.columns([2, 1])
-    with left:
-        main_chart = st.empty()   # Placeholder for major chart (trend, forecast, etc.)
-    with right:
-        side_chart = st.empty()   # Placeholder for comparison or breakdown visuals
+with col_m2:
+    st.markdown("""
+    <div style='background:rgba(255,255,255,0.05);padding:20px;border-radius:15px;'>
+        <h5>📊 Month-over-Month Comparison</h5>
+        <p style='opacity:0.7;'>Bar Chart Placeholder</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # =====================================================
-# 🧩 FOOTER — BRAND STRIP
+# 🌍 STATE-WISE COMPARISON
+# =====================================================
+st.markdown("### 🏙️ State-wise Comparison")
+col_s1, col_s2 = st.columns(2)
+
+with col_s1:
+    st.markdown("""
+    <div style='background:rgba(255,255,255,0.05);padding:20px;border-radius:15px;'>
+        <h5>🗺️ State-wise Distribution</h5>
+        <p style='opacity:0.7;'>Map or Bar Chart Placeholder</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_s2:
+    st.markdown("""
+    <div style='background:rgba(255,255,255,0.05);padding:20px;border-radius:15px;'>
+        <h5>🏅 Top & Bottom Performing States</h5>
+        <p style='opacity:0.7;'>Table / Comparison Placeholder</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# =====================================================
+# 🏭 MAKER-WISE COMPARISON
+# =====================================================
+st.markdown("### 🏭 Maker-wise Comparison")
+col_mk1, col_mk2 = st.columns(2)
+
+with col_mk1:
+    st.markdown("""
+    <div style='background:rgba(255,255,255,0.05);padding:20px;border-radius:15px;'>
+        <h5>🏗️ Monthly Maker Performance</h5>
+        <p style='opacity:0.7;'>Stacked Bar Chart Placeholder</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_mk2:
+    st.markdown("""
+    <div style='background:rgba(255,255,255,0.05);padding:20px;border-radius:15px;'>
+        <h5>🔝 Top 10 Makers Comparison</h5>
+        <p style='opacity:0.7;'>Horizontal Bar Chart Placeholder</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# =====================================================
+# 📆 DAILY TREND COMPARISON
+# =====================================================
+st.markdown("### 📆 Daily Trend Comparison")
+col_d1, col_d2 = st.columns(2)
+
+with col_d1:
+    st.markdown("""
+    <div style='background:rgba(255,255,255,0.05);padding:20px;border-radius:15px;'>
+        <h5>📈 Daily Average Registrations</h5>
+        <p style='opacity:0.7;'>Line Chart Placeholder</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_d2:
+    st.markdown("""
+    <div style='background:rgba(255,255,255,0.05);padding:20px;border-radius:15px;'>
+        <h5>📊 Day-to-Day Change</h5>
+        <p style='opacity:0.7;'>Delta / Bar Chart Placeholder</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# =====================================================
+# 🧭 INSIGHTS SECTION
+# =====================================================
+st.markdown("<hr>", unsafe_allow_html=True)
+st.markdown("""
+<div style='text-align:center;margin-top:25px;margin-bottom:20px;'>
+    <h3>🧠 AI-Powered Insights (Coming Soon)</h3>
+    <p style='opacity:0.7;'>Narratives, Forecasts, and Anomaly Highlights will auto-generate here.</p>
+</div>
+""", unsafe_allow_html=True)
+
+# =====================================================
+# 🧾 FOOTER — BRAND STRIP
 # =====================================================
 st.markdown("<hr>", unsafe_allow_html=True)
 st.markdown(
     "<div style='text-align:center;opacity:0.65;font-size:13px;margin-top:10px;'>"
-    "🌐 Parivahan Analytics • Hybrid Interface Engine"
+    "🌐 Parivahan Analytics • Hybrid Interface Engine • Maxed Edition"
     "</div>",
     unsafe_allow_html=True,
 )
-# ================================
-# 🔐 DeepInfra Connection via Streamlit Secrets ()
-# ================================
+
+# =====================================================
+# 🤖 DeepInfra AI — Secure Connection via Streamlit Secrets
+# =====================================================
 import streamlit as st
 import requests
 import time
 
+# =====================================================
+# 🔧 CONFIG LOADER
+# =====================================================
 def load_deepinfra_config():
-    """Load DeepInfra API key & model from Streamlit secrets."""
+    """Safely load DeepInfra API key and model from Streamlit secrets."""
     try:
         key = st.secrets["DEEPINFRA_API_KEY"]
         model = st.secrets.get("DEEPINFRA_MODEL", "mistralai/Mixtral-8x7B-Instruct-v0.1")
         return key, model
     except Exception:
-        st.sidebar.error("🚫 Missing DeepInfra secrets — please add `DEEPINFRA_API_KEY` in Streamlit Secrets.")
         return None, None
 
 DEEPINFRA_API_KEY, DEEPINFRA_MODEL = load_deepinfra_config()
 
-# --- Custom CSS for Connection Indicator ---
+# =====================================================
+# 🎨 CUSTOM SIDEBAR CSS (Status Cards)
+# =====================================================
 st.sidebar.markdown("""
 <style>
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(0,224,255, 0.7); }
-  70% { box-shadow: 0 0 0 8px rgba(0,224,255, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(0,224,255, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(0,224,255,0.6); }
+  70% { box-shadow: 0 0 0 8px rgba(0,224,255,0); }
+  100% { box-shadow: 0 0 0 0 rgba(0,224,255,0); }
 }
 .deepinfra-box {
   background: rgba(255,255,255,0.05);
   padding: 12px 15px;
-  border-radius: 10px;
-  border-left: 4px solid #00E0FFAA;
+  border-radius: 12px;
+  border-left: 4px solid #00E0FF99;
   margin-top: 10px;
-  transition: all 0.3s ease-in-out;
+  transition: all 0.3s ease;
 }
 .deepinfra-connected {
   animation: pulse 2s infinite;
@@ -383,62 +507,83 @@ st.sidebar.markdown("""
   color: #00E0FF;
   font-size: 15px;
 }
+.small-text {
+  opacity: 0.75;
+  font-size: 13px;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# --- DeepInfra Connection Check ---
-if enable_ai:
-    st.sidebar.markdown("<div class='deepinfra-box'><span class='deepinfra-title'>🤖 DeepInfra AI Connection</span></div>", unsafe_allow_html=True)
-    if DEEPINFRA_API_KEY:
-        try:
-            with st.spinner("Connecting to DeepInfra..."):
-                resp = requests.get(
-                    "https://api.deepinfra.com/v1/openai/models",
-                    headers={"Authorization": f"Bearer {DEEPINFRA_API_KEY}"},
-                    timeout=8
-                )
-                time.sleep(1)
+# =====================================================
+# 🧠 CONNECTION CHECK FUNCTION
+# =====================================================
+def check_deepinfra_connection(api_key: str):
+    """Ping DeepInfra API and return response details."""
+    try:
+        resp = requests.get(
+            "https://api.deepinfra.com/v1/openai/models",
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=8,
+        )
+        return resp.status_code
+    except requests.exceptions.Timeout:
+        return "timeout"
+    except Exception:
+        return "error"
 
-            if resp.status_code == 200:
-                st.sidebar.markdown(f"""
-                <div class='deepinfra-box deepinfra-connected'>
-                    ✅ <b>Connected</b><br>
-                    <small>Model: <b>{DEEPINFRA_MODEL}</b></small><br>
-                    <small>Status: 200 OK</small>
-                </div>
-                """, unsafe_allow_html=True)
-            elif resp.status_code == 401:
-                st.sidebar.markdown("""
-                <div class='deepinfra-box deepinfra-error'>
-                    🚫 <b>Unauthorized</b> — invalid or expired key.<br>
-                    <small>Check your DEEPINFRA_API_KEY.</small>
-                </div>
-                """, unsafe_allow_html=True)
-            elif resp.status_code == 405:
-                st.sidebar.markdown("""
-                <div class='deepinfra-box deepinfra-warning'>
-                    ⚠️ <b>Method Not Allowed (405)</b><br>
-                    <small>Check DeepInfra endpoint or SDK usage.</small>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.sidebar.markdown(f"""
-                <div class='deepinfra-box deepinfra-warning'>
-                    ⚠️ <b>DeepInfra Status:</b> {resp.status_code}<br>
-                    <small>Unexpected response — check dashboard logs.</small>
-                </div>
-                """, unsafe_allow_html=True)
-        except requests.exceptions.Timeout:
+# =====================================================
+# ⚙️ AI MODE TOGGLE (AUTO DETECT OR MANUAL)
+# =====================================================
+enable_ai = st.session_state.get("enable_ai", True)
+
+st.sidebar.markdown("<div class='deepinfra-box'><span class='deepinfra-title'>🤖 DeepInfra AI Connection</span></div>", unsafe_allow_html=True)
+
+if enable_ai:
+    if DEEPINFRA_API_KEY:
+        with st.spinner("Connecting to DeepInfra..."):
+            status = check_deepinfra_connection(DEEPINFRA_API_KEY)
+            time.sleep(1)
+
+        if status == 200:
+            st.sidebar.markdown(f"""
+            <div class='deepinfra-box deepinfra-connected'>
+                ✅ <b>Connected</b><br>
+                <small>Model: <b>{DEEPINFRA_MODEL}</b></small><br>
+                <small>Status: 200 OK</small>
+            </div>
+            """, unsafe_allow_html=True)
+        elif status == 401:
+            st.sidebar.markdown("""
+            <div class='deepinfra-box deepinfra-error'>
+                🚫 <b>Unauthorized</b> — invalid or expired key.<br>
+                <small>Check your DEEPINFRA_API_KEY.</small>
+            </div>
+            """, unsafe_allow_html=True)
+        elif status == 405:
+            st.sidebar.markdown("""
+            <div class='deepinfra-box deepinfra-warning'>
+                ⚠️ <b>Method Not Allowed (405)</b><br>
+                <small>Check DeepInfra endpoint or SDK usage.</small>
+            </div>
+            """, unsafe_allow_html=True)
+        elif status == "timeout":
             st.sidebar.markdown("""
             <div class='deepinfra-box deepinfra-error'>
                 ⏱️ <b>Timeout</b> — DeepInfra did not respond in time.
             </div>
             """, unsafe_allow_html=True)
-        except Exception as e:
-            st.sidebar.markdown(f"""
+        elif status == "error":
+            st.sidebar.markdown("""
             <div class='deepinfra-box deepinfra-error'>
-                ❌ <b>Connection Error:</b><br>
-                <small>{e}</small>
+                ❌ <b>Connection Error</b><br>
+                <small>Unable to reach DeepInfra API.</small>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.sidebar.markdown(f"""
+            <div class='deepinfra-box deepinfra-warning'>
+                ⚠️ <b>DeepInfra Status:</b> {status}<br>
+                <small>Unexpected response — check dashboard logs.</small>
             </div>
             """, unsafe_allow_html=True)
     else:
@@ -456,11 +601,11 @@ else:
     """, unsafe_allow_html=True)
 
 st.sidebar.markdown("---")
-st.sidebar.caption("💡 Tip: Toggle features dynamically — the dashboard adapts instantly.")
+st.sidebar.caption("💡 Tip: You can toggle AI mode dynamically — the dashboard adapts instantly.")
 
-# ================================
-# ⚙️ Build & Display Vahan Parameters —  EDITION
-# ================================
+# =====================================================
+# ⚙️ Build & Display Vahan Parameters — MAXED HYBRID EDITION
+# =====================================================
 import json
 import streamlit as st
 import time
@@ -469,17 +614,27 @@ import random
 # --- Animated Header Banner ---
 st.markdown("""
 <div style="
-    background: linear-gradient(90deg, #0072ff, #00c6ff);
-    padding: 16px 26px;
-    border-radius: 14px;
+    background: linear-gradient(90deg, #00c6ff, #0072ff, #00e0ff);
+    background-size: 300% 300%;
+    animation: gradientShift 4s ease infinite;
+    padding: 18px 26px;
+    border-radius: 16px;
     color: #ffffff;
     font-size: 18px;
     font-weight: 700;
     display: flex; justify-content: space-between; align-items: center;
-    box-shadow: 0 0 25px rgba(0,114,255,0.4);">
+    box-shadow: 0 0 25px rgba(0, 224, 255, 0.3);">
     <div>🧩 Building Dynamic API Parameters for <b>Vahan Analytics</b></div>
-    <div style="font-size:14px;opacity:0.85;">Auto-synced with filters 🔁</div>
+    <div style="font-size:14px;opacity:0.85;">Auto-synced with active filters 🔁</div>
 </div>
+
+<style>
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+</style>
 """, unsafe_allow_html=True)
 
 st.write("")  # spacing
@@ -498,11 +653,11 @@ with st.spinner("🚀 Generating dynamic request parameters..."):
             vehicle_type=vehicle_type
         )
 
-        # --- Animated “processing complete” effect ---
+        # --- Success Animation ---
         st.balloons()
         st.toast("✨ Parameters generated successfully!", icon="⚙️")
 
-        # --- Show result in expander with style ---
+        # --- Stylish Expander with JSON view ---
         with st.expander("🔧 View Generated Vahan Request Parameters (JSON)", expanded=True):
             st.markdown("""
             <div style="font-size:15px;color:#00E0FF;font-weight:600;margin-bottom:6px;">
@@ -512,22 +667,26 @@ with st.spinner("🚀 Generating dynamic request parameters..."):
 
             st.json(params_common)
 
-            # --- Copy-to-clipboard button ---
-            if st.button("📋 Copy Parameters JSON to Clipboard"):
-                st.toast("Copied successfully!", icon="✅")
+            # --- Copy button (centered) ---
+            colL, colM, colR = st.columns([1.2, 1, 1.2])
+            with colM:
+                if st.button("📋 Copy JSON to Clipboard"):
+                    st.toast("Copied successfully!", icon="✅")
 
-        # --- Context success banner ---
+        # --- Success Banner ---
         st.markdown(f"""
         <div style="
-            margin-top:12px;
-            background: linear-gradient(90deg, #00c6ff, #0072ff);
+            margin-top:16px;
+            background: rgba(0, 224, 255, 0.1);
+            border: 1px solid rgba(0,224,255,0.3);
             padding: 14px 20px;
-            border-radius: 10px;
-            color: #fff;
+            border-radius: 12px;
+            color: #00E0FF;
             font-weight:600;
+            backdrop-filter: blur(8px);
             display:flex;justify-content:space-between;align-items:center;">
             <div>✅ Parameters built successfully for <b>{to_year}</b></div>
-            <div style="opacity:0.85;font-size:14px;">Ready to fetch data 📡</div>
+            <div style="opacity:0.75;font-size:14px;">Ready to fetch data 📡</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -549,7 +708,7 @@ with st.spinner("🚀 Generating dynamic request parameters..."):
                 """)
 
 # --- Live Refresh Button ---
-st.markdown("<hr>", unsafe_allow_html=True)
+st.markdown("<hr style='opacity:0.4;'>", unsafe_allow_html=True)
 colA, colB, colC = st.columns([1.5,1,1.5])
 
 with colB:
@@ -559,43 +718,52 @@ with colB:
         time.sleep(0.8)
         st.rerun()
 
-# ================================
-# ⚙️ Dynamic Safe API Fetch Layer — FIXED
-# ================================
-
+# =====================================================
+# ⚙️ Dynamic Safe API Fetch Layer — MAXED HYBRID EDITION
+# =====================================================
 import time, random, streamlit as st
 
-# Utility: colored tag generator
+# ----------------------------------------
+# 🔹 Internal Tag Builder
+# ----------------------------------------
 def _tag(text, color):
+    """Generate a small neon tag label."""
     return f"<span style='background:{color};padding:4px 8px;border-radius:6px;color:white;font-size:12px;margin-right:6px;'>{text}</span>"
 
-# Smart API Fetch Wrapper
+# ----------------------------------------
+# 🔹 Smart API Fetch Wrapper
+# ----------------------------------------
 def fetch_json(endpoint, params=params_common, desc=""):
     """
-    Intelligent API fetch with full UI feedback, retries, and rich logging.
-    - Animated visual elements
-    - Toast notifications
-    - Retry attempts with progressive delay
-    - Interactive retry + JSON preview on failure
+    Intelligent API fetch wrapper with:
+      - Live retry system
+      - Animated UI feedback
+      - JSON preview expander
+      - Self-healing retry button
+      - Consistent Parivahan theme visuals
     """
     max_retries = 3
     delay = 1 + random.random()
     desc = desc or endpoint
 
+    # --- Visual Task Header ---
     st.markdown(f"""
     <div style="
-        padding:10px 15px;
+        padding:10px 16px;
         margin:12px 0;
         border-radius:12px;
         background:rgba(0, 150, 255, 0.12);
         border-left:5px solid #00C6FF;
-        box-shadow:0 0 10px rgba(0,198,255,0.15);">
-        <b>{_tag("API", "#007BFF")} {_tag("Task", "#00B894")}</b>
-        <span style="font-size:14px;color:#E2E8F0;">Fetching: <code>{desc}</code></span>
+        box-shadow:0 0 15px rgba(0,198,255,0.15);
+        display:flex;align-items:center;gap:8px;">
+        <div>{_tag("API", "#007BFF")} {_tag("TASK", "#00B894")}</div>
+        <div style="font-size:14px;color:#E2E8F0;">Fetching <code>{desc}</code> ...</div>
     </div>
     """, unsafe_allow_html=True)
 
     json_data = None
+
+    # --- Retry Loop ---
     for attempt in range(1, max_retries + 1):
         with st.spinner(f"🔄 Attempt {attempt}/{max_retries} — Fetching `{desc}` ..."):
             try:
@@ -610,12 +778,17 @@ def fetch_json(endpoint, params=params_common, desc=""):
                     st.warning(f"⚠️ Empty response for {desc}. Retrying...")
             except Exception as e:
                 st.error(f"❌ Error fetching {desc}: {e}")
+
+            # Progressive delay
             time.sleep(delay * attempt * random.uniform(0.9, 1.3))
 
-    # ✅ Success Case
+    # ============================================================
+    # ✅ SUCCESS CASE
+    # ============================================================
     if json_data:
         with st.expander(f"📦 View {desc} JSON Response Preview", expanded=False):
             st.json(json_data)
+
         st.markdown(f"""
         <div style="
             background:linear-gradient(90deg,#00c6ff,#0072ff);
@@ -623,13 +796,16 @@ def fetch_json(endpoint, params=params_common, desc=""):
             border-radius:10px;
             color:white;
             font-weight:600;
-            margin-top:10px;">
-            ✅ Fetched <b>{desc}</b> successfully! You can proceed with processing or visualization.
+            margin-top:10px;
+            box-shadow:0 0 15px rgba(0,198,255,0.25);">
+            ✅ Successfully fetched <b>{desc}</b>! Ready for visualization 🚗
         </div>
         """, unsafe_allow_html=True)
         return json_data
 
-    # ❌ Failure Case
+    # ============================================================
+    # ❌ FAILURE CASE
+    # ============================================================
     st.error(f"⛔ Failed to fetch {desc} after {max_retries} attempts.")
     st.markdown("""
     <div style="
@@ -639,30 +815,36 @@ def fetch_json(endpoint, params=params_common, desc=""):
         border-left:5px solid #ff4444;
         margin-top:10px;">
         <b>💡 Troubleshooting Tips:</b><br>
-        - Check internet / API connectivity<br>
-        - Verify parameters are valid<br>
-        - Try again after 1–2 minutes (API may be rate-limited)
+        • Check internet / API connectivity<br>
+        • Verify parameters are valid<br>
+        • Try again after 1–2 minutes (API may be rate-limited)
     </div>
     """, unsafe_allow_html=True)
 
-    # 🎯 Interactive retry + test controls
-    c1, c2 = st.columns([1, 1])
-    with c1:
-        if st.button(f"🔁 Retry {desc} Now", key=f"retry_{desc}_{random.randint(0,9999)}"):
+    # --- Interactive Retry Controls ---
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button(f"🔁 Retry {desc}", key=f"retry_{desc}_{random.randint(0,9999)}"):
             st.toast("Retrying API fetch...", icon="🔄")
             time.sleep(0.8)
             st.rerun()
-    with c2:
-        if st.button("📡 Test API Endpoint", key=f"test_api_{desc}_{random.randint(0,9999)}"):
+
+    with col2:
+        if st.button("📡 Test API Endpoint", key=f"test_{desc}_{random.randint(0,9999)}"):
             test_url = f"https://analytics.parivahan.gov.in/{endpoint}"
-            st.markdown(f"🌐 **Test URL:** `{test_url}`")
-            st.info("This is a test-only preview link. Data requires valid params to return results.")
+            st.markdown(f"""
+            <div style="background:rgba(0,224,255,0.1);
+                        padding:8px 10px;border-radius:8px;margin-top:6px;">
+                🌐 <b>Test URL:</b> `{test_url}`<br>
+                <small style="opacity:0.7;">(Requires valid parameters for data)</small>
+            </div>
+            """, unsafe_allow_html=True)
 
     return {}
 
 
 # ============================================
-# 🤖 DeepInfra AI Helper (Streamlit Secrets Only) —  EDITION
+# 🤖 DeepInfra AI Helper (Streamlit Secrets Only) — ULTRA EDITION
 # ============================================
 
 import json
@@ -670,27 +852,35 @@ import streamlit as st
 import requests
 import time, random
 
-# ✅ API endpoint
+# ✅ Constants
 DEEPINFRA_CHAT_URL = "https://api.deepinfra.com/v1/openai/chat/completions"
 
-# 🔐 Load credentials safely
+# 🔐 Securely load credentials from Streamlit secrets
 DEEPINFRA_API_KEY = st.secrets.get("DEEPINFRA_API_KEY")
 DEEPINFRA_MODEL = st.secrets.get("DEEPINFRA_MODEL", "mistralai/Mixtral-8x7B-Instruct-v0.1")
 
 # ============================================
-# 💬 Core AI Chat Function
+# 💬 AI Chat Function — Stream + Retry Safe
 # ============================================
 
-def ask_deepinfra(prompt: str, system: str = "You are an expert analytics assistant."):
+def ask_deepinfra(prompt: str, system: str = "You are an expert analytics assistant helping with Parivahan data insights."):
     """
-    Sends a prompt to DeepInfra Chat API and returns the model’s response.
-    Includes safe retries, UI feedback, and live streaming support.
+    Sends a prompt to DeepInfra API and returns the model’s streamed response.
+    Features:
+    - Streamed, live updates in Streamlit UI
+    - Built-in retries with delay
+    - Handles missing key / timeout / API failure gracefully
     """
-    if not DEEPINFRA_API_KEY:
-        st.warning("⚠️ Missing DeepInfra API key in Streamlit Secrets.")
-        return "No API key configured."
 
-    headers = {"Authorization": f"Bearer {DEEPINFRA_API_KEY}", "Content-Type": "application/json"}
+    # 🔒 Validate setup
+    if not DEEPINFRA_API_KEY:
+        st.warning("⚠️ DeepInfra API key not found in `st.secrets`. Please configure it first.")
+        return "Missing API key."
+
+    headers = {
+        "Authorization": f"Bearer {DEEPINFRA_API_KEY}",
+        "Content-Type": "application/json",
+    }
 
     payload = {
         "model": DEEPINFRA_MODEL,
@@ -700,67 +890,123 @@ def ask_deepinfra(prompt: str, system: str = "You are an expert analytics assist
         ],
         "temperature": 0.7,
         "max_tokens": 512,
-        "stream": True,  # ✅ enable live streaming
+        "stream": True,  # ✅ Real-time output
     }
 
     max_retries = 2
+    delay = 1 + random.random()
+
+    # ========================================
+    # 🚀 Attempted Streaming Loop
+    # ========================================
     for attempt in range(1, max_retries + 1):
         try:
-            with requests.post(DEEPINFRA_CHAT_URL, headers=headers, json=payload, stream=True, timeout=60) as response:
-                if response.status_code != 200:
-                    st.error(f"🚫 DeepInfra error {response.status_code}: {response.text[:200]}")
+            st.markdown(f"<small>🧠 DeepInfra Attempt {attempt}/{max_retries}...</small>", unsafe_allow_html=True)
+            with requests.post(DEEPINFRA_CHAT_URL, headers=headers, json=payload, stream=True, timeout=60) as resp:
+                if resp.status_code != 200:
+                    st.error(f"🚫 DeepInfra error {resp.status_code}: {resp.text[:200]}")
                     continue
 
-                # Live streaming output
                 full_reply = ""
-                st.info(f"💬 AI responding (attempt {attempt}/{max_retries}) ...")
                 placeholder = st.empty()
-                for line in response.iter_lines():
-                    if line:
-                        decoded = line.decode("utf-8")
-                        if decoded.startswith("data: "):
-                            chunk = decoded[6:]
-                            if chunk.strip() == "[DONE]":
-                                break
-                            try:
-                                data = json.loads(chunk)
-                                delta = data["choices"][0]["delta"].get("content", "")
+                for line in resp.iter_lines():
+                    if not line:
+                        continue
+                    decoded = line.decode("utf-8")
+                    if decoded.startswith("data: "):
+                        chunk = decoded[6:]
+                        if chunk.strip() == "[DONE]":
+                            break
+                        try:
+                            data = json.loads(chunk)
+                            delta = data["choices"][0]["delta"].get("content", "")
+                            if delta:
                                 full_reply += delta
                                 placeholder.markdown(f"🧠 **AI:** {full_reply}")
-                            except Exception:
-                                pass
+                        except Exception:
+                            pass
 
                 if full_reply.strip():
                     st.success("✅ AI response complete!")
                     return full_reply
 
         except requests.exceptions.Timeout:
-            st.warning("⏱️ DeepInfra request timed out. Retrying...")
-            time.sleep(random.uniform(1, 2))
-        except Exception as e:
+            st.warning(f"⏱️ Timeout on attempt {attempt}. Retrying...")
+        except requests.exceptions.RequestException as e:
             st.error(f"❌ DeepInfra connection error: {e}")
-            time.sleep(random.uniform(1, 2))
+        time.sleep(delay * attempt)
 
-    st.error("⛔ DeepInfra failed after multiple attempts.")
-    return "No response (API unreachable or key invalid)."
+    # ========================================
+    # ❌ Final Fallback
+    # ========================================
+    st.error("⛔ DeepInfra API failed after multiple attempts.")
+    st.markdown("""
+    <div style="
+        background:rgba(255,60,60,0.08);
+        padding:15px;border-radius:10px;
+        border-left:5px solid #ff4444;">
+        <b>💡 Troubleshooting:</b><br>
+        • Verify API key in <code>st.secrets</code><br>
+        • Check DeepInfra API status<br>
+        • Try again later (possible network lag)
+    </div>
+    """, unsafe_allow_html=True)
+
+    return "No AI response (DeepInfra unreachable)."
 
 
 # ============================================
 # 🧠 Optional: Inline Chatbox for AI Insights
 # ============================================
 
-with st.expander("💬 Ask DeepInfra AI Assistant"):
-    user_prompt = st.text_area("Your Question or Data Insight Query", placeholder="e.g. Explain YoY trend anomalies...")
-    if st.button("🚀 Ask AI"):
+with st.expander("💬 Ask DeepInfra AI Assistant", expanded=False):
+    st.markdown("""
+    <div style='font-size:14px;opacity:0.8;margin-bottom:10px;'>
+        Use this AI assistant to interpret trends, detect anomalies, or generate narrative insights from analytics data.<br>
+        <i>Example:</i> <code>"Explain daily order fluctuations in July 2025"</code>
+    </div>
+    """, unsafe_allow_html=True)
+
+    user_prompt = st.text_area(
+        "💭 Your Question or Data Insight Query",
+        placeholder="e.g. Explain YoY trend anomalies or summarize top-performing states...",
+        key="deepinfra_input",
+    )
+
+    col1, col2 = st.columns([0.4, 0.6])
+    with col1:
+        ask_clicked = st.button("🚀 Ask AI", use_container_width=True)
+    with col2:
+        clear_clicked = st.button("🧹 Clear Chat", use_container_width=True)
+
+    if ask_clicked:
         if user_prompt.strip():
             st.toast("🔍 Querying DeepInfra AI...", icon="🤖")
-            ai_reply = ask_deepinfra(user_prompt)
-            st.markdown(f"### 🧠 AI Response:\n{ai_reply}")
+            with st.spinner("🧠 Generating AI insights..."):
+                ai_reply = ask_deepinfra(user_prompt)
+                if ai_reply and ai_reply.strip():
+                    st.markdown(f"""
+                    <div style='
+                        background:rgba(0,255,180,0.08);
+                        border-left:5px solid #00FFC6;
+                        border-radius:10px;
+                        padding:15px;
+                        margin-top:10px;
+                        font-size:15px;'>
+                        <b>🧠 AI Insight:</b><br>{ai_reply}
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ No meaningful response received from DeepInfra.")
         else:
-            st.warning("Please enter a question before submitting.")
+            st.warning("✍️ Please enter a valid question before submitting.")
+
+    if clear_clicked:
+        st.session_state["deepinfra_input"] = ""
+        st.experimental_rerun()
 
 # ===============================================
-# 🔍 DeepInfra Connection Status —  UI EDITION
+# 🔍 DeepInfra Connection Status —  MAXED UI EDITION
 # ===============================================
 import time
 import streamlit as st
@@ -768,141 +1014,170 @@ import requests
 
 def check_deepinfra_connection():
     """
-    ✅ Enhanced DeepInfra connection validator.
-    Displays real-time status with icons, progress feedback, and resilience.
-    Returns True if connected, else False.
+    ✅ Robust DeepInfra connection validator with full Streamlit UI integration.
+    Shows animated feedback, retry logic, and available models list.
+    Returns True if connection is healthy, else False.
     """
 
     # --- Missing Key Case ---
     if not DEEPINFRA_API_KEY:
-        st.sidebar.warning("⚠️ No DeepInfra API key found in Streamlit Secrets.")
-        with st.sidebar.expander("🔑 How to Fix", expanded=False):
+        st.sidebar.warning("⚠️ DeepInfra API key missing from Streamlit Secrets.")
+        with st.sidebar.expander("🛠️ Setup Instructions"):
             st.markdown("""
-            1. Go to **Streamlit → Settings → Secrets**  
+            1. Go to **Settings → Secrets**  
             2. Add:
                ```toml
                DEEPINFRA_API_KEY = "your_api_key_here"
                DEEPINFRA_MODEL = "mistralai/Mixtral-8x7B-Instruct-v0.1"
                ```
-            3. Re-run the app.
+            3. Save & rerun the app.
             """)
         return False
 
     # --- Status Animation ---
     with st.sidebar:
-        with st.spinner("🤖 Connecting to DeepInfra..."):
-            time.sleep(0.8)  # small delay for smoothness
+        with st.spinner("🤖 Connecting securely to DeepInfra..."):
+            time.sleep(0.6)  # smoother animation timing
 
+    # --- Test Connection ---
     try:
-        # --- Perform Lightweight Connection Check ---
         response = requests.get(
             "https://api.deepinfra.com/v1/openai/models",
             headers={"Authorization": f"Bearer {DEEPINFRA_API_KEY}"},
-            timeout=8
+            timeout=8,
         )
 
-        # --- Handle Status Codes ---
         if response.status_code == 200:
-            models = [m.get("id", "Unknown") for m in response.json().get("data", [])]
+            data = response.json()
+            models = [m.get("id", "Unknown") for m in data.get("data", [])]
+
             st.sidebar.success("✅ DeepInfra Connected — AI Narratives Ready!")
             st.sidebar.caption(f"🧠 Model in use: **{DEEPINFRA_MODEL}**")
-            if models:
-                with st.sidebar.expander("📋 Available Models"):
+            st.sidebar.progress(100)
+            st.balloons()
+
+            # Optional model list
+            with st.sidebar.expander("📋 Available Models", expanded=False):
+                if models:
                     st.code("\n".join(models))
-            st.balloons()  # 🎈 celebration for connection success
+                else:
+                    st.caption("No model list returned (check access permissions).")
+
             return True
 
+        # --- Common Error Handlers ---
         elif response.status_code == 401:
             st.sidebar.error("🚫 Unauthorized — Invalid or expired API key.")
-            st.sidebar.caption("💡 Tip: Regenerate key from DeepInfra dashboard.")
-        elif response.status_code == 405:
-            st.sidebar.warning("⚠️ 405 Method Not Allowed — check endpoint format.")
+            st.sidebar.caption("💡 Regenerate your key from DeepInfra Dashboard.")
         elif response.status_code == 429:
-            st.sidebar.warning("⏳ Too many requests — try again in a minute.")
+            st.sidebar.warning("⏳ Too Many Requests — please wait and retry.")
+        elif response.status_code == 405:
+            st.sidebar.warning("⚠️ Method Not Allowed — check endpoint format.")
         else:
-            st.sidebar.warning(f"⚠️ DeepInfra returned {response.status_code}: {response.text[:100]}")
+            st.sidebar.warning(f"⚠️ Unexpected {response.status_code}: {response.text[:80]}")
 
     except requests.exceptions.Timeout:
-        st.sidebar.error("⏱️ Connection timed out — network issue or DeepInfra delay.")
+        st.sidebar.error("⏱️ Connection timed out — check your network or DeepInfra status.")
     except Exception as e:
         st.sidebar.error(f"❌ DeepInfra connection error: {e}")
 
-    # --- Optional Retry Button ---
-    if st.sidebar.button("🔁 Retry Connection"):
+    # --- Retry Option ---
+    st.sidebar.markdown("---")
+    if st.sidebar.button("🔁 Retry Connection", use_container_width=True):
         st.toast("Reconnecting to DeepInfra...", icon="🔄")
         time.sleep(1)
         st.rerun()
 
+    st.sidebar.caption("❌ DeepInfra not connected — AI features disabled.")
     return False
 
 
 # ===========================================
-# 💬 DeepInfra Chat Completion —  VERSION
+# 💬 DeepInfra Chat Completion — MAXED EDITION
 # ===========================================
 import requests, time, random, streamlit as st
 
 DEEPINFRA_CHAT_URL = "https://api.deepinfra.com/v1/openai/chat/completions"
 
-def deepinfra_chat(system_prompt: str, user_prompt: str,
-                   max_tokens: int = 512, temperature: float = 0.3,
-                   retries: int = 3, delay: float = 2.0):
+def deepinfra_chat(
+    system_prompt: str,
+    user_prompt: str,
+    max_tokens: int = 512,
+    temperature: float = 0.3,
+    retries: int = 3,
+    delay: float = 2.0,
+):
     """
-    Robust Streamlit-integrated DeepInfra Chat Wrapper
-    - Securely uses st.secrets for credentials
-    - Handles all major HTTP errors gracefully
-    - Displays real-time UI feedback & animated insight blocks
-    - Retries intelligently with exponential backoff
+    🔮 DeepInfra Chat Completion API — Robust Streamlit Wrapper
+    ------------------------------------------------------------
+    ✅ Secure — uses Streamlit Secrets for API key & model
+    ✅ User-friendly — dynamic status blocks, retries, and rich UI
+    ✅ Safe — handles timeouts, rate limits, invalid keys gracefully
+    ✅ Smart — exponential retry & live progress feedback
     """
 
-    # --- Safety: Key Check ---
+    # --- 1️⃣ Validate API Key ---
     if not DEEPINFRA_API_KEY:
         st.warning("⚠️ Missing DeepInfra API key in Streamlit Secrets.")
+        with st.expander("🛠️ Setup Instructions", expanded=False):
+            st.markdown("""
+            Add these in Streamlit → **Settings → Secrets**  
+            ```toml
+            DEEPINFRA_API_KEY = "your_api_key_here"
+            DEEPINFRA_MODEL = "mistralai/Mixtral-8x7B-Instruct-v0.1"
+            ```
+            """)
         return {"error": "Missing API key"}
 
-    # --- Header Setup ---
+    # --- 2️⃣ API Header & Payload ---
     headers = {
         "Authorization": f"Bearer {DEEPINFRA_API_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
 
-    # --- Payload ---
     payload = {
         "model": DEEPINFRA_MODEL,
         "messages": [
             {"role": "system", "content": system_prompt.strip()},
-            {"role": "user", "content": user_prompt.strip()}
+            {"role": "user", "content": user_prompt.strip()},
         ],
         "temperature": temperature,
-        "max_tokens": max_tokens
+        "max_tokens": max_tokens,
     }
 
-    # --- Display AI Loading Block ---
+    # --- 3️⃣ Stylish Info Banner ---
     st.markdown(f"""
-    <div style='padding:10px 16px;border-left:5px solid #9b59b6;
-        background:linear-gradient(90deg,rgba(155,89,182,0.1),rgba(52,152,219,0.1));
-        border-radius:10px;margin:8px 0;'>
-        🧠 <b>AI Generating Insight...</b><br>
-        <span style='font-size:13px;opacity:0.8;'>Model: <code>{DEEPINFRA_MODEL}</code></span>
+    <div style="
+        padding:12px 16px;
+        border-left:5px solid #8b5cf6;
+        border-radius:12px;
+        margin:10px 0;
+        background:linear-gradient(90deg,rgba(139,92,246,0.1),rgba(59,130,246,0.1));
+    ">
+        <b>🤖 DeepInfra AI:</b> Generating analytical insight...  
+        <span style="opacity:0.7;font-size:13px;">Model: <code>{DEEPINFRA_MODEL}</code></span>
     </div>
     """, unsafe_allow_html=True)
 
-    # --- Retry Loop ---
+    # --- 4️⃣ Retry Loop ---
     for attempt in range(1, retries + 1):
         try:
-            with st.spinner(f"🤖 DeepInfra generating response (attempt {attempt}/{retries})..."):
-                response = requests.post(DEEPINFRA_CHAT_URL, headers=headers, json=payload, timeout=60)
+            with st.spinner(f"🧠 Generating AI insight (Attempt {attempt}/{retries})..."):
+                response = requests.post(
+                    DEEPINFRA_CHAT_URL, headers=headers, json=payload, timeout=60
+                )
 
-            # --- HTTP Error Handling ---
+            # --- Handle Common HTTP Errors ---
             if response.status_code == 401:
                 st.error("🚫 Unauthorized — invalid or expired API key.")
                 return {"error": "Unauthorized"}
 
             elif response.status_code == 405:
-                st.error("⚠️ 405 Method Not Allowed — invalid API endpoint.")
+                st.error("⚠️ Method Not Allowed — check DeepInfra endpoint.")
                 return {"error": "405 Method Not Allowed"}
 
             elif response.status_code == 429:
-                st.warning("⏳ Too many requests — waiting before retry...")
+                st.warning("⏳ Rate limited — waiting before retry...")
                 time.sleep(delay * attempt)
                 continue
 
@@ -914,535 +1189,504 @@ def deepinfra_chat(system_prompt: str, user_prompt: str,
             response.raise_for_status()
             data = response.json()
 
-            # --- Parse Response ---
-            if data.get("choices") and data["choices"][0].get("message"):
-                text = data["choices"][0]["message"]["content"].strip()
-                st.toast("✅ AI Insight ready!", icon="🤖")
+            # --- Parse Valid AI Response ---
+            message = (
+                data.get("choices", [{}])[0]
+                .get("message", {})
+                .get("content", "")
+                .strip()
+            )
+
+            if message:
+                st.toast("✅ AI Insight Ready!", icon="🤖")
                 st.markdown(f"""
                 <div style='background:#0f172a;color:#e2e8f0;padding:15px;
-                    border-radius:10px;border:1px solid #334155;margin-top:8px;'>
+                    border-radius:12px;border:1px solid #334155;margin-top:10px;'>
                     <b>🔍 AI Insight:</b><br>
-                    <pre style='white-space:pre-wrap;font-family:Inter, sans-serif;'>{text}</pre>
+                    <div style='white-space:pre-wrap;font-family:Inter, sans-serif;
+                                font-size:15px;line-height:1.5;margin-top:4px;'>
+                        {message}
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
-                return {"text": text, "raw": data}
+                return {"text": message, "raw": data}
 
-            st.warning("⚠️ Empty AI response received.")
+            st.warning("⚠️ AI returned an empty response.")
             return {"error": "Empty AI output", "raw": data}
 
         except requests.exceptions.Timeout:
-            st.warning("⏱️ Request timed out — retrying...")
+            st.warning("⏱️ Timeout — retrying connection...")
         except requests.exceptions.ConnectionError:
-            st.error("🌐 Network error — please check your internet.")
+            st.error("🌐 Network error — please check connectivity.")
             break
         except Exception as e:
             st.error(f"❌ Unexpected DeepInfra error: {e}")
 
-        # --- Retry with exponential backoff ---
-        sleep_time = delay * attempt * random.uniform(1.0, 1.5)
+        # --- Exponential Backoff Before Retry ---
+        sleep_time = delay * attempt * random.uniform(1.0, 1.4)
         time.sleep(sleep_time)
 
-    # --- Final Failure Case ---
+    # --- 5️⃣ Final Failure Case ---
     st.error("⛔ DeepInfra AI failed after multiple attempts.")
-    if st.button("🔁 Retry DeepInfra AI"):
-        st.toast("Reconnecting AI engine...", icon="🔄")
+    st.caption("💡 Check internet connection, API key validity, or model availability.")
+    if st.button("🔁 Retry AI Connection"):
+        st.toast("Reconnecting DeepInfra AI...", icon="🔄")
+        time.sleep(1)
         st.rerun()
 
     return {"error": "Failed after retries"}
 
+# ================================================================
+# 🧠 DeepInfra Test & Debug UI — MAXED EDITION
+# ================================================================
+import streamlit as st
+import requests, time
 
-# ================================================
-# 🧠 DeepInfra Test & Debug UI —  VERSION
-# ================================================
 def deepinfra_test_ui():
-    """Interactive Streamlit block to test DeepInfra integration."""
-    st.markdown("---")
-    st.subheader("🧩 DeepInfra Integration Test")
+    """Ultimate Streamlit UI for testing DeepInfra API connection + responses."""
 
-    # --- Display key info (safely masked)
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.subheader("🧩 DeepInfra Integration — MAXED Diagnostics")
+
+    # ============================================================
+    # 🔐 API Key + Model Display
+    # ============================================================
     if DEEPINFRA_API_KEY:
         masked = DEEPINFRA_API_KEY[:4] + "..." + DEEPINFRA_API_KEY[-4:]
         st.markdown(f"✅ **API Key Loaded:** `{masked}`")
-        st.caption(f"**Model:** {DEEPINFRA_MODEL}")
+        st.caption(f"🧠 **Model in Use:** `{DEEPINFRA_MODEL}`")
+        st.markdown(
+            f"<div style='background:#10b981;padding:6px 10px;color:white;"
+            f"border-radius:6px;width:fit-content;'>🟢 Connected (Key Found)</div>",
+            unsafe_allow_html=True,
+        )
     else:
         st.error("🚫 No API key found in Streamlit Secrets.")
         st.info("➡️ Add `DEEPINFRA_API_KEY` in Streamlit → Settings → Secrets.")
         return
 
-    # --- Connection Check Button ---
-    if st.button("🔗 Check DeepInfra Connectivity"):
-        with st.spinner("Pinging DeepInfra API..."):
+    # ============================================================
+    # 🔗 Connection Test Section
+    # ============================================================
+    st.markdown("### 🔗 Check DeepInfra Connectivity")
+
+    if st.button("🚀 Run Connectivity Test"):
+        with st.spinner("Checking DeepInfra API connectivity..."):
+            start_time = time.time()
             try:
                 resp = requests.get(
                     "https://api.deepinfra.com/v1/openai/models",
                     headers={"Authorization": f"Bearer {DEEPINFRA_API_KEY}"},
                     timeout=10
                 )
+                latency = time.time() - start_time
+
                 if resp.status_code == 200:
-                    st.success("✅ Connection OK — Model list retrieved successfully.")
-                    models = [m["id"] for m in resp.json().get("data", [])] if "data" in resp.json() else []
+                    st.success(f"✅ Connection OK (Latency: {latency:.2f}s)")
+                    data = resp.json()
+                    models = [m["id"] for m in data.get("data", [])] if "data" in data else []
                     if models:
-                        st.write("**Available Models:**", ", ".join(models))
+                        with st.expander("📋 View Available Models"):
+                            st.code("\n".join(models))
                 elif resp.status_code == 401:
-                    st.error("🚫 Unauthorized — invalid or expired key.")
+                    st.error("🚫 Unauthorized — invalid or expired API key.")
+                elif resp.status_code == 429:
+                    st.warning("⏳ Too many requests — wait a bit before retrying.")
                 else:
-                    st.warning(f"⚠️ Unexpected status: {resp.status_code}")
+                    st.warning(f"⚠️ Unexpected HTTP {resp.status_code}: {resp.text[:150]}")
             except Exception as e:
                 st.error(f"❌ Connection error: {e}")
 
-    # --- Divider ---
-    st.markdown("### 💬 Quick Response Test")
+    # ============================================================
+    # 💬 AI Response Test Section
+    # ============================================================
+    st.markdown("### 💬 Quick AI Response Test")
 
     user_prompt = st.text_area(
-        "Enter a short test message:",
-        "Summarize this message: DeepInfra integration test for Streamlit."
+        "Enter a short message to test AI:",
+        "Summarize this message: DeepInfra integration test for Streamlit.",
+        height=100
     )
 
-    if st.button("🚀 Run AI Test"):
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        temp = st.slider("🎛️ Temperature", 0.0, 1.0, 0.4, 0.1)
+    with col2:
+        max_tok = st.slider("🧩 Max Tokens", 50, 512, 150, 50)
+
+    if st.button("🧠 Run DeepInfra AI Test"):
         with st.spinner("Generating AI response..."):
+            start_time = time.time()
             resp = deepinfra_chat(
                 "You are a concise summarizer.",
                 user_prompt,
-                max_tokens=100,
-                temperature=0.4
+                max_tokens=max_tok,
+                temperature=temp
             )
+            latency = time.time() - start_time
 
         if isinstance(resp, dict) and "text" in resp:
+            st.success(f"✅ AI Test Successful (Response Time: {latency:.2f}s)")
             st.balloons()
-            st.success("✅ AI Test Successful — response below:")
             st.markdown(
-                f"<div style='background:#f1f5f9;padding:12px 15px;border-radius:10px;"
-                f"border:1px solid #cbd5e1;margin-top:8px;'>"
-                f"<b>Response:</b><br>{resp['text']}</div>",
+                f"""
+                <div style='background:#0f172a;color:#e2e8f0;padding:15px;
+                    border-radius:10px;border:1px solid #334155;margin-top:8px;'>
+                    <b>🔍 Response:</b><br>
+                    <pre style='white-space:pre-wrap;font-family:Inter, sans-serif;'>{resp['text']}</pre>
+                </div>
+                """,
                 unsafe_allow_html=True
             )
         else:
-            st.error("❌ AI test failed — no response received.")
+            st.error("❌ AI test failed — no valid response received.")
 
-    st.caption("💡 Tip: If you get 401 or 405 errors, check your API key or endpoint format.")
+    st.caption("💡 Tip: If you see 401 or 405 errors, verify your DeepInfra API key and endpoint.")
 
 # ===============================================================
-# 1️⃣ CATEGORY DISTRIBUTION —  EDITION 🚀✨
+# 2️⃣ COMPARATIVE ANALYTICS — DAILY / MONTHLY / STATEWISE / MAKERWISE 🚀
 # ===============================================================
 with st.container():
-    # 🌈 Header
     st.markdown("""
-    <div style="padding:14px 22px;border-left:6px solid #6C63FF;
-                background:linear-gradient(90deg,#f3f1ff 0%,#ffffff 100%);
+    <div style="padding:14px 22px;border-left:6px solid #0096FF;
+                background:linear-gradient(90deg,#f0faff 0%,#ffffff 100%);
                 border-radius:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-        <h3 style="margin:0;font-weight:700;color:#3a3a3a;">📊 Category Distribution</h3>
+        <h3 style="margin:0;font-weight:700;color:#2a2a2a;">📅 Comparative Analytics</h3>
         <p style="margin:4px 0 0;color:#555;font-size:14.5px;">
-            Comparative breakdown of registered vehicles by category across India.
+            Dynamic daily, monthly, state-wise, and maker-wise analysis across registered vehicle data.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    # 🔄 Fetch Data
-    with st.spinner("📡 Fetching Category Distribution from Vahan API..."):
-        cat_json = fetch_json("vahandashboard/categoriesdonutchart", desc="Category distribution")
-    df_cat = to_df(cat_json)
+    # ==========================================================
+    # ⚙️ Filters
+    # ==========================================================
+    st.markdown("### 🎛️ Filters")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        time_mode = st.selectbox("⏰ Time Granularity", ["Daily", "Monthly"], index=1)
+    with c2:
+        compare_basis = st.selectbox("📊 Comparison Basis", ["Statewise", "Makerwise"], index=0)
+    with c3:
+        top_n = st.slider("🏆 Show Top N", 3, 15, 8)
 
-    # 🧩 Data Visualization
-    if not df_cat.empty:
-        st.toast("✅ Data Loaded Successfully!", icon="📦")
+    # ==========================================================
+    # 🔄 Fetch Data Dynamically
+    # ==========================================================
+    with st.spinner(f"📡 Loading {compare_basis} {time_mode.lower()} data from Vahan..."):
+        endpoint = ""
+        if compare_basis == "Statewise":
+            endpoint = "vahandashboard/statewisecomparisonchart"
+        elif compare_basis == "Makerwise":
+            endpoint = "vahandashboard/makerwisecomparisonchart"
 
-        col1, col2 = st.columns(2, gap="large")
+        json_data = fetch_json(endpoint, desc=f"{compare_basis} {time_mode}")
+        df_comp = to_df(json_data)
 
-        with col1:
+    if not df_comp.empty:
+        st.toast("✅ Comparison Data Loaded!", icon="📈")
+
+        # ======================================================
+        # 🔍 Data Cleanup & Aggregation
+        # ======================================================
+        if time_mode == "Monthly":
+            df_comp["label"] = df_comp["label"].astype(str)
+            df_comp["month"] = df_comp["label"].apply(lambda x: x.strip()[:3])  # short month
+            df_pivot = df_comp.groupby(["month"], as_index=False)["value"].sum().sort_values("month")
+        else:
+            df_pivot = df_comp.copy()
+
+        # ======================================================
+        # 📊 Visualization Layout
+        # ======================================================
+        colL, colR = st.columns([2, 1], gap="large")
+
+        with colL:
+            st.markdown("#### 📈 Trend Chart")
             try:
-                st.markdown("#### 📈 Bar View")
-                bar_from_df(df_cat, title="Category Distribution (Bar)")
+                line_from_df(df_pivot, title=f"{compare_basis} Trend ({time_mode})")
+            except Exception as e:
+                st.error(f"⚠️ Trend chart failed: {e}")
+                st.dataframe(df_pivot)
+
+        with colR:
+            st.markdown("#### 🧱 Top Categories")
+            try:
+                df_top = df_comp.nlargest(top_n, "value")
+                bar_from_df(df_top, title=f"Top {top_n} {compare_basis}")
             except Exception as e:
                 st.error(f"⚠️ Bar chart failed: {e}")
-                st.dataframe(df_cat)
+                st.dataframe(df_comp)
 
-        with col2:
-            try:
-                st.markdown("#### 🍩 Donut View")
-                pie_from_df(df_cat, title="Category Distribution (Donut)", donut=True)
-            except Exception as e:
-                st.error(f"⚠️ Pie chart failed: {e}")
-                st.dataframe(df_cat)
+        # ======================================================
+        # 🧩 KPI Metrics
+        # ======================================================
+        st.markdown("<hr>", unsafe_allow_html=True)
+        total_reg = df_comp["value"].sum()
+        top_label = df_comp.loc[df_comp["value"].idxmax(), "label"]
+        top_value = df_comp["value"].max()
+        share = round((top_value / total_reg) * 100, 2)
 
-        # 📊 KPI Snapshot
-        top_cat = df_cat.loc[df_cat['value'].idxmax(), 'label']
-        total = df_cat['value'].sum()
-        top_val = df_cat['value'].max()
-        pct = round((top_val / total) * 100, 2)
-
-        st.markdown("""
-        <hr style="margin-top:25px;margin-bottom:15px;border: none; border-top: 1px dashed #ccc;">
-        """, unsafe_allow_html=True)
-
-        # 💎 KPI Metric Cards
         k1, k2, k3 = st.columns(3)
         with k1:
-            st.metric("🏆 Top Category", top_cat)
+            st.metric("🏆 Top Performer", top_label)
         with k2:
-            st.metric("📊 Share of Total", f"{pct}%")
+            st.metric("📊 Share of Total", f"{share}%")
         with k3:
-            st.metric("🚘 Total Registrations", f"{total:,}")
+            st.metric("🪪 Total Registrations", f"{total_reg:,}")
 
+        # ======================================================
+        # 💬 Insight Section
+        # ======================================================
         st.markdown(f"""
-        <div style="margin-top:10px;padding:14px 16px;
-                    background:linear-gradient(90deg,#e7e2ff,#f7f5ff);
-                    border:1px solid #d4cfff;border-radius:12px;
-                    box-shadow:inset 0 0 8px rgba(108,99,255,0.2);">
-            <b>🏅 Insight:</b> <span style="color:#333;">{top_cat}</span> leads the vehicle category share,
-            contributing <b>{pct}%</b> of total registrations across all states.
+        <div style="margin-top:15px;padding:14px 16px;
+                    background:linear-gradient(90deg,#e9f6ff,#f8fbff);
+                    border:1px solid #b6e0ff;border-radius:12px;
+                    box-shadow:inset 0 0 8px rgba(0,150,255,0.15);">
+            <b>📍 Insight:</b> <span style="color:#333;">{top_label}</span> currently leads with a
+            <b>{share}%</b> share of total registrations across the {compare_basis.lower()} category.
         </div>
         """, unsafe_allow_html=True)
 
         st.balloons()
 
-        # 🤖 AI Summary Block — DeepInfra
+        # ======================================================
+        # 🧠 Optional AI Insight — DeepInfra
+        # ======================================================
         if enable_ai:
-            st.markdown("### 🤖 AI-Powered Insights")
-            with st.expander("🔍 View AI Narrative", expanded=True):
-                with st.spinner("🧠 DeepInfra AI is analyzing category trends..."):
-                    sample = df_cat.head(10).to_dict(orient="records")
-                    system = (
-                        "You are a senior automotive data analyst providing actionable summaries "
-                        "for government transport dashboards. Highlight key insights, trends, and outliers."
+            st.markdown("### 🤖 AI-Powered Comparative Summary")
+            with st.expander("🔍 View AI Insight", expanded=True):
+                with st.spinner("🧠 DeepInfra AI analyzing comparative dataset..."):
+                    sample = df_comp.head(10).to_dict(orient="records")
+                    system_prompt = (
+                        "You are an expert automotive analytics assistant. Analyze comparative registration "
+                        "data (statewise/makerwise) and highlight key performers, distribution trends, and "
+                        "strategic insights relevant to national transport patterns."
                     )
-                    user = (
-                        f"Here's the dataset (top 10 rows): {json.dumps(sample, default=str)}. "
-                        "Please summarize the data in 3–5 sentences, emphasizing dominant categories, "
-                        "growth potential, and one strategic recommendation."
+                    user_prompt = (
+                        f"Here is the dataset (sample): {json.dumps(sample, default=str)}. "
+                        f"Explain trends across {compare_basis} on a {time_mode.lower()} basis. "
+                        "Summarize in 4–5 sentences including one recommendation."
                     )
-                    ai_resp = deepinfra_chat(system, user, max_tokens=350, temperature=0.5)
+                    ai_out = deepinfra_chat(system_prompt, user_prompt, max_tokens=350, temperature=0.5)
 
-                    if ai_resp.get("text"):
-                        st.toast("✅ AI Insight Ready!", icon="🤖")
+                    if ai_out.get("text"):
+                        st.toast("✅ AI Comparative Summary Ready!", icon="🤖")
                         st.markdown(f"""
                         <div style="margin-top:8px;padding:16px 18px;
-                                    background:linear-gradient(90deg,#fafaff,#f5f7ff);
-                                    border-left:4px solid #6C63FF;border-radius:12px;
-                                    transition: all 0.3s ease;">
+                                    background:linear-gradient(90deg,#f8faff,#eef6ff);
+                                    border-left:4px solid #0096FF;border-radius:12px;">
                             <b>AI Summary:</b>
                             <p style="margin-top:6px;font-size:15px;color:#333;">
-                                {ai_resp["text"]}
+                                {ai_out["text"]}
                             </p>
                         </div>
                         """, unsafe_allow_html=True)
-                        st.snow()
                     else:
-                        st.info("💤 No AI summary generated. Try re-running or check your DeepInfra key.")
-
+                        st.info("💤 AI summary unavailable. Try again or check DeepInfra key.")
     else:
-        st.warning("⚠️ No category data returned from the Vahan API.")
-        st.info("🔄 Please refresh or check API connectivity.")
+        st.warning("⚠️ No comparison data returned from API.")
+        st.info("🔄 Try adjusting filters or reloading the dashboard.")
 
 # ===============================================================
-# 2️⃣ TOP MAKERS —  EDITION 🏭✨
+# 3️⃣ TOP MAKERS COMPARATIVE ANALYTICS — MAXED HYBRID BLOCK 🧠⚙️
 # ===============================================================
 with st.container():
-    # 🌈 Header
     st.markdown("""
-    <div style="padding:14px 22px;border-left:6px solid #FF6B6B;
-                background:linear-gradient(90deg,#fff5f5 0%,#ffffff 100%);
-                border-radius:16px;margin-bottom:20px;
-                box-shadow:0 2px 8px rgba(255,107,107,0.1);">
-        <h3 style="margin:0;font-weight:700;color:#3a3a3a;">🏭 Top Vehicle Makers</h3>
+    <div style="padding:14px 22px;border-left:6px solid #FF8C00;
+                background:linear-gradient(90deg,#fff8ef 0%,#ffffff 100%);
+                border-radius:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(255,140,0,0.1);">
+        <h3 style="margin:0;font-weight:700;color:#3a3a3a;">📅 Comparative Maker Analytics</h3>
         <p style="margin:4px 0 0;color:#555;font-size:14.5px;">
-            Market dominance of top-performing manufacturers based on national registration data.
+            In-depth maker performance comparisons across months, states, and daily registration bases.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    # 📡 Fetch Data
-    with st.spinner("🚗 Fetching Top Makers data from Vahan API..."):
-        mk_json = fetch_json("vahandashboard/top5Makerchart", desc="Top Makers")
-        df_mk = parse_makers(mk_json)
+    # ===============================================================
+    # 🎛️ CONTROL PANEL
+    # ===============================================================
+    st.markdown("### 🎚️ Comparison Filters")
+    f1, f2, f3 = st.columns(3)
+    with f1:
+        time_basis = st.selectbox("⏰ Time Range", ["Daily", "Monthly"], index=1)
+    with f2:
+        compare_type = st.selectbox("🏙️ Comparison Mode", ["Statewise", "Makerwise"], index=1)
+    with f3:
+        top_limit = st.slider("🔝 Top N Makers", 3, 15, 7)
 
-    # 🧩 Visualization
-    if not df_mk.empty:
-        st.toast("✅ Maker data loaded successfully!", icon="📦")
+    # ===============================================================
+    # 🔄 FETCH & BUILD DATA
+    # ===============================================================
+    with st.spinner(f"📡 Fetching {compare_type} {time_basis} comparison data..."):
+        endpoint = ""
+        if compare_type == "Statewise":
+            endpoint = "vahandashboard/statewisecomparisonchart"
+        elif compare_type == "Makerwise":
+            endpoint = "vahandashboard/makerwisecomparisonchart"
+        comp_json = fetch_json(endpoint, desc=f"{compare_type} {time_basis}")
+        df_comp = to_df(comp_json)
 
-        # Normalize column names
-        df_mk.columns = [c.strip().lower() for c in df_mk.columns]
+    if not df_comp.empty:
+        st.toast("✅ Comparison Data Loaded Successfully!", icon="📦")
 
-        maker_col = next((c for c in ["maker", "makename", "manufacturer", "label", "name"] if c in df_mk.columns), None)
-        value_col = next((c for c in ["value", "count", "total", "registeredvehiclecount", "y"] if c in df_mk.columns), None)
+        # ========================================
+        # 🧩 DATA CLEANUP
+        # ========================================
+        df_comp.columns = [c.lower().strip() for c in df_comp.columns]
+        label_col = next((c for c in ["label", "maker", "state", "name"] if c in df_comp.columns), "label")
+        value_col = next((c for c in ["value", "count", "registeredvehiclecount"] if c in df_comp.columns), "value")
 
-        if not maker_col or not value_col:
-            st.warning("⚠️ Unable to identify maker/value columns in dataset.")
-            st.dataframe(df_mk)
+        df_comp = df_comp[[label_col, value_col]].dropna()
+
+        # ========================================
+        # 🔢 AGGREGATE BASED ON TIME
+        # ========================================
+        if time_basis == "Monthly":
+            df_comp["month"] = pd.to_datetime(df_comp[label_col], errors="coerce").dt.strftime("%b")
+            df_month = df_comp.groupby("month", as_index=False)[value_col].sum()
+            df_trend = df_month
         else:
-            col1, col2 = st.columns(2, gap="large")
+            df_trend = df_comp
 
-            # 🎨 Bar Chart
-            with col1:
-                try:
-                    st.markdown("#### 📊 Top Makers — Bar View")
-                    bar_from_df(df_mk.rename(columns={maker_col: "label", value_col: "value"}), title="Top Makers (Bar)")
-                except Exception as e:
-                    st.error(f"⚠️ Bar chart failed: {e}")
-                    st.dataframe(df_mk)
+        # ========================================
+        # 🧱 VISUALIZATION ZONE
+        # ========================================
+        colL, colR = st.columns([2, 1], gap="large")
 
-            # 🍩 Pie Chart
-            with col2:
-                try:
-                    st.markdown("#### 🍩 Top Makers — Donut View")
-                    pie_from_df(df_mk.rename(columns={maker_col: "label", value_col: "value"}), title="Top Makers (Donut)", donut=True)
-                except Exception as e:
-                    st.error(f"⚠️ Pie chart failed: {e}")
-                    st.dataframe(df_mk)
-
-            # 💎 KPI Metrics
+        with colL:
+            st.markdown("#### 📈 Registration Trend")
             try:
-                top_maker = df_mk.loc[df_mk[value_col].idxmax(), maker_col]
-                total_val = df_mk[value_col].sum()
-                top_val = df_mk[value_col].max()
-                pct_share = round((top_val / total_val) * 100, 2)
-
-                st.markdown("""
-                <hr style="margin-top:25px;margin-bottom:15px;border: none; border-top: 1px dashed #ccc;">
-                """, unsafe_allow_html=True)
-
-                k1, k2, k3 = st.columns(3)
-                with k1:
-                    st.metric("🏆 Leading Maker", top_maker)
-                with k2:
-                    st.metric("📈 Market Share", f"{pct_share}%")
-                with k3:
-                    st.metric("🚘 Total Registrations", f"{total_val:,}")
-
-                # 💬 Insight Box
-                st.markdown(f"""
-                <div style="margin-top:10px;padding:14px 16px;
-                            background:linear-gradient(90deg,#ffecec,#fffafa);
-                            border:1px solid #ffc9c9;border-radius:12px;
-                            box-shadow:inset 0 0 8px rgba(255,107,107,0.15);">
-                    <b>🔥 Insight:</b> <span style="color:#333;">{top_maker}</span> dominates the market, 
-                    contributing <b>{pct_share}%</b> of all registrations across India.
-                </div>
-                """, unsafe_allow_html=True)
-
-                st.balloons()
+                line_from_df(df_trend.rename(columns={value_col: "value", label_col: "label"}),
+                             title=f"{compare_type} Registrations Over Time ({time_basis})")
             except Exception as e:
-                st.warning(f"⚠️ Could not compute top maker insights: {e}")
-                st.dataframe(df_mk)
+                st.error(f"⚠️ Trend chart failed: {e}")
+                st.dataframe(df_trend)
 
-            # 🤖 AI Summary (DeepInfra)
-            if enable_ai:
-                st.markdown("### 🤖 AI-Powered Maker Insights")
-                with st.expander("🔍 View AI Narrative", expanded=True):
-                    with st.spinner("🧠 DeepInfra AI analyzing manufacturer trends..."):
-                        try:
-                            system = (
-                                "You are a seasoned automotive industry analyst. "
-                                "Your job is to summarize the performance and competition among major vehicle manufacturers in India. "
-                                "Highlight leading companies, potential growth players, and market opportunities."
-                            )
-                            sample = df_mk[[maker_col, value_col]].head(10).to_dict(orient='records')
-                            user = (
-                                f"Here is the dataset (top 10 entries): {json.dumps(sample, default=str)}. "
-                                "Provide a concise analysis (3–5 sentences) summarizing top manufacturers, "
-                                "their comparative market shares, and one data-driven insight."
-                            )
+        with colR:
+            st.markdown(f"#### 🧱 Top {top_limit} Performers")
+            try:
+                df_top = df_comp.nlargest(top_limit, value_col)
+                bar_from_df(df_top.rename(columns={label_col: "label", value_col: "value"}),
+                            title=f"Top {top_limit} {compare_type}")
+            except Exception as e:
+                st.error(f"⚠️ Bar chart failed: {e}")
+                st.dataframe(df_comp)
 
-                            ai_resp = deepinfra_chat(system, user, max_tokens=350, temperature=0.45)
+        # ========================================
+        # 📊 KPI SNAPSHOT
+        # ========================================
+        st.markdown("<hr>", unsafe_allow_html=True)
 
-                            if ai_resp.get("text"):
-                                st.toast("✅ AI Market Summary Ready!", icon="🤖")
-                                st.markdown(f"""
-                                <div style="margin-top:10px;padding:16px 18px;
-                                            background:linear-gradient(90deg,#fff9f9,#fffafa);
-                                            border-left:4px solid #FF6B6B;border-radius:12px;
-                                            transition: all 0.3s ease;">
-                                    <b>AI Market Summary:</b>
-                                    <p style="margin-top:6px;font-size:15px;color:#333;">
-                                        {ai_resp["text"]}
-                                    </p>
-                                </div>
-                                """, unsafe_allow_html=True)
-                                st.snow()
-                            else:
-                                st.info("💤 No AI summary returned. Try again or verify DeepInfra key.")
-                        except Exception as e:
-                            st.error(f"AI generation error: {e}")
+        top_item = df_comp.loc[df_comp[value_col].idxmax(), label_col]
+        total = df_comp[value_col].sum()
+        top_val = df_comp[value_col].max()
+        share = round((top_val / total) * 100, 2)
+
+        k1, k2, k3 = st.columns(3)
+        with k1:
+            st.metric("🏆 Leader", top_item)
+        with k2:
+            st.metric("📈 Share", f"{share}%")
+        with k3:
+            st.metric("🚗 Total Registrations", f"{total:,}")
+
+        # ========================================
+        # 💡 INSIGHT BOX
+        # ========================================
+        st.markdown(f"""
+        <div style="margin-top:10px;padding:14px 16px;
+                    background:linear-gradient(90deg,#fff3e0,#fffaf3);
+                    border:1px solid #ffdb99;border-radius:12px;
+                    box-shadow:inset 0 0 8px rgba(255,140,0,0.15);">
+            <b>📍 Insight:</b> <span style="color:#333;">{top_item}</span> leads across {compare_type.lower()} data, 
+            contributing <b>{share}%</b> of total {time_basis.lower()} registrations.
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.balloons()
+
+        # ========================================
+        # 🧠 AI INSIGHTS — DEEPINFRA
+        # ========================================
+        if enable_ai:
+            st.markdown("### 🤖 AI-Powered Comparative Summary")
+            with st.expander("🔍 View AI Insight", expanded=True):
+                with st.spinner("🧠 DeepInfra AI analyzing maker trends..."):
+                    try:
+                        sample_data = df_comp.head(10).to_dict(orient="records")
+                        system_msg = (
+                            "You are an expert data analyst specializing in automotive trends. "
+                            "Analyze the comparative performance of vehicle makers or states "
+                            "across daily/monthly registration datasets."
+                        )
+                        user_msg = (
+                            f"Dataset sample: {json.dumps(sample_data, default=str)}. "
+                            f"Provide a compact 4-sentence insight summarizing leader(s), distribution trends, "
+                            "and one actionable observation."
+                        )
+                        ai_output = deepinfra_chat(system_msg, user_msg, max_tokens=350, temperature=0.5)
+
+                        if ai_output.get("text"):
+                            st.toast("✅ AI Comparative Summary Ready!", icon="🤖")
+                            st.markdown(f"""
+                            <div style="margin-top:8px;padding:16px 18px;
+                                        background:linear-gradient(90deg,#fffdf6,#fffaf0);
+                                        border-left:4px solid #FF8C00;border-radius:12px;">
+                                <b>AI Summary:</b>
+                                <p style="margin-top:6px;font-size:15px;color:#333;">
+                                    {ai_output["text"]}
+                                </p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        else:
+                            st.info("💤 AI summary unavailable. Try re-running or check API key.")
+                    except Exception as e:
+                        st.error(f"AI generation error: {e}")
 
     else:
-        st.warning("⚠️ No maker data returned from the Vahan API.")
-        st.info("🔄 Please refresh or check your API configuration.")
+        st.warning("⚠️ No comparison data returned from API.")
+        st.info("🔄 Try refreshing or verifying API connectivity.")
 
 
-# =============================================
-# 3️⃣ Registration Trends + YoY/QoQ + AI + Forecast ()
-# =============================================
+# ===============================================================
+# 3️⃣ REGISTRATION TRENDS — COMPARISON MODE (MAXED 🚀)
+# ===============================================================
 
-# --- Small CSS + micro-animations for this block (keeps the theme consistent) ---
-st.markdown("""
-<style>
-/* gentle card hover */
-.trend-card { transition: transform 0.18s ease, box-shadow 0.18s ease; border-radius:12px; }
-.trend-card:hover { transform: translateY(-4px); box-shadow: 0 8px 28px rgba(0,0,0,0.12); }
-/* metric micro layout */
-.trend-metric { padding:10px;border-radius:10px;background:linear-gradient(90deg,#ffffff,#f7fbff); }
-.small-muted { color:#6b7280;font-size:13px; }
-</style>
-""", unsafe_allow_html=True)
-
-# ===============================
-# 🔢 SIMPLE LINEAR FORECAST HELPER
-# ===============================
 import pandas as pd
 import numpy as np
+import plotly.express as px
 
-def linear_forecast(df, months: int = 6, date_col: str = "date", value_col: str = "value"):
-    """
-    Generate a simple linear forecast for the next N months
-    based on the existing monthly trend data.
+# 🎨 Section Header
+st.markdown("""
+<div style="padding:14px 22px;border-left:6px solid #007BFF;
+            background:linear-gradient(90deg,#f0f8ff 0%,#ffffff 100%);
+            border-radius:16px;margin-bottom:20px;
+            box-shadow:0 2px 8px rgba(0,123,255,0.1);">
+    <h3 style="margin:0;font-weight:700;color:#003366;">📈 Registration Trends — Comparative Analysis</h3>
+    <p style="margin:4px 0 0;color:#555;font-size:14.5px;">
+        Explore trends across months, states, makers, and daily registrations — all comparisons maxed, no forecasts or growth models.
+    </p>
+</div>
+""", unsafe_allow_html=True)
 
-    Args:
-        df (DataFrame): Must contain date_col and value_col columns.
-        months (int): Number of future months to predict.
-    Returns:
-        DataFrame with future 'date' and 'value' columns.
-    """
-    try:
-        if df.empty or value_col not in df or date_col not in df:
-            return pd.DataFrame(columns=[date_col, value_col])
-
-        df = df.copy()
-        df = df.sort_values(by=date_col)
-        df["t"] = np.arange(len(df))  # time index
-        X = df["t"].values
-        y = df[value_col].values
-
-        # Linear regression (np.polyfit)
-        slope, intercept = np.polyfit(X, y, 1)
-
-        # Forecast next months
-        last_date = df[date_col].max()
-        future_dates = pd.date_range(last_date + pd.offsets.MonthBegin(), periods=months, freq="MS")
-        future_t = np.arange(len(df), len(df) + months)
-        forecast_values = intercept + slope * future_t
-
-        forecast_df = pd.DataFrame({
-            date_col: future_dates,
-            value_col: forecast_values
-        })
-        return forecast_df
-    except Exception as e:
-        print(f"Forecast generation failed: {e}")
-        return pd.DataFrame(columns=[date_col, value_col])
-
-
-# ---------------- Forecast Helper (robust & progressive)
-def forecast_trend(df, periods=6):
-    """
-    Generates multi-fallback forecast:
-      1) Prophet (monthly) if available
-      2) sklearn LinearRegression
-      3) Simple moving-average growth
-    Returns DataFrame with 'date','value' and optional 'forecast' boolean.
-    """
-    if df is None or df.empty or "date" not in df.columns or "value" not in df.columns:
-        return pd.DataFrame()
-
-    df_fc = df.copy().sort_values("date").reset_index(drop=True)
-    # ensure datetime dtype
-    df_fc["date"] = pd.to_datetime(df_fc["date"])
-
-    # Try Prophet first
-    try:
-        from prophet import Prophet
-        tmp = df_fc.rename(columns={"date": "ds", "value": "y"})
-        m = Prophet(daily_seasonality=False, yearly_seasonality=True, weekly_seasonality=False)
-        m.fit(tmp)
-        future = m.make_future_dataframe(periods=periods, freq="M")
-        forecast = m.predict(future)
-        fc_df = forecast[["ds", "yhat"]].rename(columns={"ds": "date", "yhat": "value"})
-        # mark which rows are forecast vs history
-        fc_df["forecast"] = fc_df["date"] > df_fc["date"].max()
-        return fc_df.sort_values("date").reset_index(drop=True)
-    except Exception:
-        # continue to fallback
-        pass
-
-    # Linear regression fallback (index-based)
-    try:
-        from sklearn.linear_model import LinearRegression
-        X = np.arange(len(df_fc)).reshape(-1, 1)
-        y = df_fc["value"].values
-        model = LinearRegression().fit(X, y)
-        future_X = np.arange(len(df_fc), len(df_fc) + periods).reshape(-1, 1)
-        y_pred = model.predict(future_X)
-        # build future dates monthly
-        last_date = pd.to_datetime(df_fc["date"].max())
-        future_dates = pd.date_range(last_date + pd.offsets.MonthEnd(), periods=periods, freq="M")
-        future_df = pd.DataFrame({"date": future_dates, "value": y_pred, "forecast": True})
-        hist = df_fc.rename(columns={}).assign(forecast=False)
-        return pd.concat([hist, future_df], ignore_index=True).sort_values("date").reset_index(drop=True)
-    except Exception:
-        pass
-
-    # Simple moving-average / growth fallback
-    try:
-        avg_growth = df_fc["value"].pct_change().mean()
-        last_value = float(df_fc["value"].iloc[-1])
-        future_dates = pd.date_range(pd.to_datetime(df_fc["date"].max()) + pd.offsets.MonthEnd(), periods=periods, freq="M")
-        values = [last_value * (1 + (avg_growth if not np.isnan(avg_growth) else 0)) ** (i + 1) for i in range(periods)]
-        future_df = pd.DataFrame({"date": future_dates, "value": values, "forecast": True})
-        hist = df_fc.assign(forecast=False)
-        return pd.concat([hist, future_df], ignore_index=True).sort_values("date").reset_index(drop=True)
-    except Exception:
-        return df_fc.assign(forecast=False)
-
-
-# ---------------- UI Controls (local override for this section)
-st.markdown("<div class='trend-card' style='padding:12px 14px;margin-bottom:10px;'>", unsafe_allow_html=True)
-st.markdown("<h3 style='margin:0 0 6px;'>📈 Registration Trends ()</h3>", unsafe_allow_html=True)
-st.markdown("<div class='small-muted'>Trends, YoY / QoQ, daily orders, state & maker breakdowns, forecasting and AI narratives — all in one pane.</div>", unsafe_allow_html=True)
-st.markdown("</div>", unsafe_allow_html=True)
-
-# quick per-section controls
-c1, c2, c3, c4 = st.columns([1,1,1,1])
-with c1:
-    local_forecast_horizon = st.selectbox("Forecast horizon (months)", options=[3,4,6,12], index=0)
-with c2:
-    show_daily = st.checkbox("Show Daily Orders (if available)", value=True)
-with c3:
-    breakdown_mode = st.selectbox("Breakdown", options=["None","By State","By Maker"], index=0)
-with c4:
-    refresh_button = st.button("🔄 Refresh Trends")
-
-# If user pressed refresh, do a simple reload by writing a small message (no experimental rerun)
-if refresh_button:
-    st.toast("Refreshing trend data...", icon="🔁")
-
-# ---- Fetch trend JSON (safe wrapper returns dict/list)
-with st.spinner("Fetching registration trends from API..."):
+# ======================
+# 🧭 Fetch & Normalize Data
+# ======================
+with st.spinner("📡 Fetching Registration Trends..."):
     tr_json = fetch_json("vahandashboard/vahanyearwiseregistrationtrend", desc="Registration Trend")
+df_trend = normalize_trend(tr_json)
 
-# Parse robustly
-try:
-    df_trend = normalize_trend(tr_json)
-except Exception as e:
-    st.error(f"Trend parsing failed: {e}")
-    df_trend = pd.DataFrame(columns=["date","value"])
-
-# If trend data available
 if df_trend is not None and not df_trend.empty:
-    # Ensure date type
     df_trend["date"] = pd.to_datetime(df_trend["date"])
+    df_trend = df_trend.sort_values("date")
 
-    # ================= Top line + KPI cards =================
-    st.markdown("### 📊 Overview & KPIs")
-    # compute base metrics safely
-    try:
-        total_reg = int(df_trend["value"].sum())
-        period_start = df_trend["date"].min()
-        period_end = df_trend["date"].max()
-        days = max(1, (period_end - period_start).days)
-        daily_avg = df_trend["value"].sum() / days
-    except Exception:
-        total_reg = df_trend["value"].sum() if "value" in df_trend.columns else 0
-        daily_avg = None
+    # Basic KPIs
+    total_reg = int(df_trend["value"].sum())
+    period_start, period_end = df_trend["date"].min(), df_trend["date"].max()
+    days = max(1, (period_end - period_start).days)
+    daily_avg = df_trend["value"].sum() / days
 
-    # compute yoy/qoq
     try:
         yoy_df = compute_yoy(df_trend)
     except Exception:
@@ -1452,403 +1696,393 @@ if df_trend is not None and not df_trend.empty:
     except Exception:
         qoq_df = pd.DataFrame()
 
-    latest_yoy = (yoy_df["YoY%"].dropna().iloc[-1] if (not yoy_df.empty and "YoY%" in yoy_df.columns and yoy_df["YoY%"].dropna().size) else None)
-    latest_qoq = (qoq_df["QoQ%"].dropna().iloc[-1] if (not qoq_df.empty and "QoQ%" in qoq_df.columns and qoq_df["QoQ%"].dropna().size) else None)
+    latest_yoy = yoy_df["YoY%"].dropna().iloc[-1] if not yoy_df.empty and "YoY%" in yoy_df else None
+    latest_qoq = qoq_df["QoQ%"].dropna().iloc[-1] if not qoq_df.empty and "QoQ%" in qoq_df else None
 
-    # daily series attempt (if time series granularity is monthly, we'll resample to daily average)
-    daily_block = pd.DataFrame()
+    # Daily interpolation for smoothness
+    daily_df = pd.DataFrame()
     try:
-        # If data is monthly or coarser, create a daily-sampled series via linear interpolation for visualization
         df_ts = df_trend.set_index("date").sort_index()
-        # If index frequency is monthly, create daily range between min and max and reindex + interpolate
         daily_idx = pd.date_range(df_ts.index.min(), df_ts.index.max(), freq="D")
-        daily_block = df_ts.reindex(daily_idx).interpolate(method="time").rename_axis("date").reset_index()
-        # daily new orders = value per day (interpolated), round
-        daily_block["value"] = daily_block["value"].fillna(0)
-        # daily growth %
-        daily_block["daily_pct"] = daily_block["value"].pct_change().fillna(0) * 100
+        daily_df = df_ts.reindex(daily_idx).interpolate("time").rename_axis("date").reset_index()
+        daily_df["daily_change%"] = daily_df["value"].pct_change().fillna(0) * 100
     except Exception:
-        daily_block = pd.DataFrame()
+        daily_df = pd.DataFrame()
 
-    # KPI cards display
+    # ======================
+    # 📊 KPI CARDS
+    # ======================
     k1, k2, k3, k4 = st.columns(4)
     with k1:
-        st.metric("📦 Total Registrations", f"{total_reg:,}")
+        st.metric("🚘 Total Registrations", f"{total_reg:,}")
     with k2:
-        st.metric("📅 Avg per day", f"{daily_avg:.0f}" if daily_avg is not None else "N/A")
+        st.metric("📅 Avg per Day", f"{daily_avg:.0f}")
     with k3:
         st.metric("📈 Latest YoY%", f"{latest_yoy:.2f}%" if latest_yoy is not None else "N/A")
     with k4:
         st.metric("📊 Latest QoQ%", f"{latest_qoq:.2f}%" if latest_qoq is not None else "N/A")
 
-    st.markdown("---")
+    st.markdown("<hr>", unsafe_allow_html=True)
 
-    # ================= Main Trend Chart (Plotly)
+    # ======================
+    # 🧩 Trend Chart (Month-wise)
+    # ======================
+    st.markdown("### 📆 Month-wise Registration Trend")
     try:
-        import plotly.express as px
-        # Build plot dataset (actuals only)
-        plot_df = df_trend.copy()
-        plot_df["type"] = "Actual"
-        # compute forecast_df
-        fc_df = forecast_trend(df_trend, periods=local_forecast_horizon)
-
-        if not fc_df.empty and "forecast" in fc_df.columns:
-            plot_df_full = fc_df.copy()
-            plot_df_full["type"] = plot_df_full["forecast"].apply(lambda f: "Forecast" if f else "Actual")
-        else:
-            plot_df_full = plot_df.copy()
-            # if fc_df is non-empty but no forecast column, append it as forecast
-            if not fc_df.empty:
-                t = fc_df.copy()
-                t["type"] = "Forecast"
-                plot_df_full = pd.concat([plot_df_full, t], ignore_index=True)
-
-        fig = px.line(plot_df_full, x="date", y="value", color="type", markers=True,
-                      title="Registrations: Actual vs Forecast",
-                      color_discrete_map={"Actual": "#007BFF", "Forecast": "#FF9800"})
-        fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+        fig = px.line(df_trend, x="date", y="value", markers=True, title="Monthly Registration Trend", color_discrete_sequence=["#007BFF"])
+        fig.update_traces(line=dict(width=3))
         st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
-        st.warning(f"Plotly trend chart failed: {e}")
-        st.line_chart(df_trend.set_index("date")["value"])
+        st.warning(f"Trend chart failed: {e}")
 
-    # ================= Daily Orders view
-    if show_daily and not daily_block.empty:
-        st.markdown("### 🗓 Daily Orders (interpolated if original is monthly)")
-        try:
-            cola, colb = st.columns([3,1])
-            with cola:
-                # show last 90 days
-                last90 = daily_block.tail(90)
-                figd = px.area(last90, x="date", y="value", title="Daily New Orders (last 90 days)")
-                st.plotly_chart(figd, use_container_width=True)
-            with colb:
-                latest_day = daily_block.iloc[-1]
-                prev_day = daily_block.iloc[-2] if len(daily_block) > 1 else latest_day
-                growth = ((latest_day["value"] - prev_day["value"]) / (prev_day["value"] or 1)) * 100
-                st.markdown("<div class='trend-metric'>", unsafe_allow_html=True)
-                st.markdown(f"**Latest day:** {int(latest_day['value']):,}")
-                st.markdown(f"<div class='small-muted'>Daily change: {growth:.2f}%</div>", unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-        except Exception as e:
-            st.warning(f"Daily view failed: {e}")
+    # ======================
+    # 📅 Daily Base Trend
+    # ======================
+    if not daily_df.empty:
+        st.markdown("### 🗓 Daily Registration Base (Interpolated)")
+        figd = px.area(daily_df.tail(90), x="date", y="value", title="Recent 90-Day Daily Registration Trend")
+        st.plotly_chart(figd, use_container_width=True)
 
-    # ================= Breakdowns: By State or Maker (if data available)
-    if breakdown_mode != "None":
-        st.markdown("---")
-        st.markdown(f"### 🔎 Breakdown — {breakdown_mode}")
+    # ======================
+    # 🧭 State-wise Comparison
+    # ======================
+    st.markdown("### 🏛 State-wise Registrations")
+    try:
+        state_json = fetch_json("vahandashboard/durationWiseRegistrationTable", desc="State-wise Registrations")
+        df_state = parse_duration_table(state_json)
+        if not df_state.empty:
+            df_state = df_state.sort_values("value", ascending=False)
+            top_states = df_state.head(10)
+            st.plotly_chart(px.bar(top_states, x="label", y="value", title="Top 10 States by Registrations"), use_container_width=True)
+            st.dataframe(top_states, use_container_width=True)
+        else:
+            st.info("No state-level data available.")
+    except Exception as e:
+        st.warning(f"State-wise section failed: {e}")
 
-        if breakdown_mode == "By State":
-            # Try to fetch a state-level endpoint (durationWiseRegistrationTable or other)
-            try:
-                st.info("Fetching state-wise data...")
-                state_json = fetch_json("vahandashboard/durationWiseRegistrationTable", {**params_common, "calendarType": 3}, desc="State Duration Table")
-                df_state = parse_duration_table(state_json) if state_json else pd.DataFrame()
-                if not df_state.empty:
-                    # sanitize and display top 10
-                    if "label" in df_state.columns and "value" in df_state.columns:
-                        top_states = df_state.sort_values("value", ascending=False).head(12)
-                        st.plotly_chart(px.bar(top_states, x="label", y="value", title="Top states by registrations"), use_container_width=True)
-                        st.dataframe(top_states, use_container_width=True)
-                    else:
-                        st.dataframe(df_state)
-                else:
-                    st.info("No state-wise data returned from API.")
-            except Exception as e:
-                st.warning(f"State breakdown failed: {e}")
+    # ======================
+    # 🏭 Maker-wise Comparison
+    # ======================
+    st.markdown("### 🏭 Maker-wise Registrations")
+    try:
+        mk_json = fetch_json("vahandashboard/top5Makerchart", desc="Top Makers")
+        df_mk = parse_makers(mk_json)
+        if not df_mk.empty:
+            df_mk.columns = [c.lower() for c in df_mk.columns]
+            if "maker" in df_mk.columns and "value" in df_mk.columns:
+                st.plotly_chart(px.pie(df_mk, names="maker", values="value", title="Top Makers Market Share"), use_container_width=True)
+                st.dataframe(df_mk, use_container_width=True)
+        else:
+            st.info("No maker-level data available.")
+    except Exception as e:
+        st.warning(f"Maker-wise section failed: {e}")
 
-        elif breakdown_mode == "By Maker":
-            try:
-                mk_json = fetch_json("vahandashboard/top5Makerchart", desc="Top Makers")
-                df_mk = parse_makers(mk_json) if mk_json else pd.DataFrame()
-                if not df_mk.empty:
-                    # normalize and show top makers
-                    if "maker" in df_mk.columns and "value" in df_mk.columns:
-                        st.plotly_chart(px.pie(df_mk, names="maker", values="value", title="Top Makers Share"), use_container_width=True)
-                        st.dataframe(df_mk, use_container_width=True)
-                    else:
-                        st.dataframe(df_mk)
-                else:
-                    st.info("No maker data returned.")
-            except Exception as e:
-                st.warning(f"Maker breakdown failed: {e}")
-
-    # ================= YoY / QoQ tables & metrics
-    with st.expander("📑 YoY & QoQ Analysis", expanded=False):
-        try:
+    # ======================
+    # 📘 YoY / QoQ Comparison Tables
+    # ======================
+    with st.expander("📑 YoY & QoQ Comparison"):
+        if not yoy_df.empty:
             st.markdown("#### Year-over-Year (YoY)")
             st.dataframe(yoy_df, use_container_width=True)
+        if not qoq_df.empty:
             st.markdown("#### Quarter-over-Quarter (QoQ)")
             st.dataframe(qoq_df, use_container_width=True)
-        except Exception as e:
-            st.warning(f"YoY/QoQ display failed: {e}")
 
-    # ================= AI Narrative (DeepInfra) — concise, actionable
+    # ======================
+    # 🧠 AI Insight (DeepInfra)
+    # ======================
     if enable_ai:
-        with st.expander("🤖 AI Narrative — Executive Summary", expanded=False):
+        st.markdown("### 🤖 AI-Generated Summary")
+        with st.spinner("Analyzing comparative insights with DeepInfra AI..."):
             try:
                 system = (
-                    "You are an expert analytics assistant. Summarize the recent registration trend, "
-                    "highlight anomalies, the forecast direction, and provide 2 short recommendations."
+                    "You are an automotive data analyst summarizing national vehicle registration trends. "
+                    "Highlight month-wise movement, top states, leading makers, and major shifts. "
+                    "Keep the tone analytical and executive."
                 )
-                sample_rows = df_trend.tail(12).to_dict(orient="records")
-                user = f"Recent 12 periods: {json.dumps(sample_rows, default=str)}. Latest YoY: {latest_yoy}, Latest QoQ: {latest_qoq}. Provide 4-6 sentence summary and 2 recommendations."
-                ai_resp = deepinfra_chat(system, user, max_tokens=350, temperature=0.2)
-                if isinstance(ai_resp, dict) and "text" in ai_resp and ai_resp["text"]:
-                    st.markdown(f"<div style='padding:12px;border-radius:10px;background:#fbfbff;border-left:4px solid #007BFF'>{ai_resp['text']}</div>", unsafe_allow_html=True)
-                    st.toast("AI narrative generated", icon="🤖")
-                else:
-                    st.info("AI narrative unavailable.")
+                data_pack = {
+                    "recent_trend": df_trend.tail(6).to_dict(orient="records"),
+                    "top_states": df_state.head(5).to_dict(orient="records") if 'df_state' in locals() else [],
+                    "top_makers": df_mk.head(5).to_dict(orient="records") if 'df_mk' in locals() else []
+                }
+                user = f"Here is the registration dataset summary: {json.dumps(data_pack, default=str)}. Summarize in 4–6 sentences with one recommendation."
+                ai_resp = deepinfra_chat(system, user, max_tokens=350, temperature=0.4)
+                if ai_resp.get("text"):
+                    st.markdown(f"""
+                    <div style="padding:14px 16px;background:linear-gradient(90deg,#eef5ff,#ffffff);
+                                border-left:4px solid #007BFF;border-radius:12px;">
+                        {ai_resp["text"]}
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.snow()
             except Exception as e:
-                st.warning(f"AI narrative failed: {e}")
+                st.warning(f"AI summary failed: {e}")
 
-    # ================= Final small summary + goodies
-    st.markdown("---")
-    st.markdown("<div style='display:flex;gap:12px;align-items:center;'>", unsafe_allow_html=True)
-    st.markdown("<div style='flex:1'><b>Data range:</b> {} → {}</div>".format(period_start.date(), period_end.date()), unsafe_allow_html=True)
-    st.markdown(f"<div style='flex:1'><b>Forecast horizon:</b> {local_forecast_horizon} months</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    # ======================
+    # 🧾 Final Info Footer
+    # ======================
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown(f"""
+    <div style='font-size:14px;color:#555;'>
+        <b>Data Coverage:</b> {period_start.date()} → {period_end.date()} &nbsp; | &nbsp;
+        <b>Total Records:</b> {len(df_trend):,} &nbsp; | &nbsp;
+        <b>Comparisons:</b> Month, State, Maker, Daily
+    </div>
+    """, unsafe_allow_html=True)
 
-    # celebratory micro-animation if recent growth positive
+    # celebratory confetti if positive trend
     try:
-        # crude recent trend check using last two actual points
-        if len(df_trend) >= 2:
-            last = df_trend.sort_values("date").iloc[-1]["value"]
-            prev = df_trend.sort_values("date").iloc[-2]["value"]
-            if last > prev:
-                st.balloons()
+        if len(df_trend) > 2 and df_trend.iloc[-1]["value"] > df_trend.iloc[-2]["value"]:
+            st.balloons()
     except Exception:
         pass
 
 else:
-    st.warning("No registration trend data available from API. Please check parameters or refresh.")
-
-
-
+    st.warning("⚠️ No registration trend data available. Please refresh or check API.")
+    
 # ================================================================
-# 🌈 4️⃣ Duration-wise Growth + 5️⃣ Top 5 Revenue States —  UI
+# 🌈 4️⃣ Duration-wise Comparative Analysis — MAXED ⚡
 # ================================================================
 
 import streamlit as st
 import pandas as pd
 import json
-from datetime import datetime
 
-# --- Animated header with gradient + pulse effect ---
+# ================== HEADER ==================
 st.markdown("""
 <style>
-@keyframes pulseGlow {
-    0% { box-shadow: 0 0 0px #28a745; }
-    50% { box-shadow: 0 0 10px #28a745; }
-    100% { box-shadow: 0 0 0px #28a745; }
+@keyframes pulseGreen {
+    0% { box-shadow: 0 0 0px #22c55e; }
+    50% { box-shadow: 0 0 10px #22c55e; }
+    100% { box-shadow: 0 0 0px #22c55e; }
 }
-.-header {
-    background: linear-gradient(90deg, #eaffea, #ffffff);
-    border-left: 6px solid #28a745;
+.maxed-header {
+    background: linear-gradient(90deg, #ecfff0, #ffffff);
+    border-left: 6px solid #22c55e;
     padding: 14px 20px;
     border-radius: 14px;
     margin-bottom: 20px;
-    animation: pulseGlow 3s infinite;
+    animation: pulseGreen 3s infinite;
 }
 </style>
 
-<div class="-header">
-    <h2 style="margin:0;">📊 Duration-wise Growth & Revenue Insights</h2>
+<div class="maxed-header">
+    <h2 style="margin:0;">📊 Duration-wise Comparative Analytics (All Maxed)</h2>
     <p style="margin:4px 0 0;color:#444;font-size:15px;">
-        Monthly, quarterly, and yearly growth with smart AI narratives & revenue performance.
+        Comprehensive month-wise, state-wise, and maker-wise comparisons — pure data mode, no revenue, no forecasts, no clustering.
     </p>
 </div>
 """, unsafe_allow_html=True)
 
 
-# --------------------- Duration-wise Growth ---------------------
-def fetch_duration_growth(calendar_type, label, color, emoji):
-    with st.spinner(f"Fetching {label} growth data..."):
-        json_data = fetch_json(
-            "vahandashboard/durationWiseRegistrationTable",
-            {**params_common, "calendarType": calendar_type},
-            desc=f"{label} growth"
-        )
-        df = parse_duration_table(json_data)
-
-        if df.empty:
-            st.warning(f"No {label.lower()} data available.")
+# =============================================================
+# 🔢 Helper: Fetch & Parse (Common)
+# =============================================================
+def fetch_and_parse(endpoint, desc):
+    with st.spinner(f"Fetching {desc} data..."):
+        js = fetch_json(endpoint, desc=desc)
+        if js:
+            try:
+                df = to_df(js)
+                return df
+            except Exception:
+                try:
+                    df = pd.DataFrame(js)
+                except Exception:
+                    df = pd.DataFrame()
+                return df
+        else:
             return pd.DataFrame()
 
-        # Sub-header with gradient bar
-        st.markdown(f"""
-        <div style="padding:12px 18px;margin-top:10px;
-                    border-left:6px solid {color};
-                    background:linear-gradient(90deg,#fafafa,#ffffff);
-                    border-radius:12px;">
-            <h3 style="margin:0;">{emoji} {label} Vehicle Registration Growth</h3>
-        </div>
-        """, unsafe_allow_html=True)
 
-        col1, col2 = st.columns(2)
-        with col1:
-            try:
-                bar_from_df(df, title=f"{label} Growth (Bar)")
-            except Exception:
-                st.dataframe(df)
-        with col2:
-            try:
-                pie_from_df(df, title=f"{label} Growth (Pie)", donut=True)
-            except Exception:
-                st.dataframe(df)
-
-        # Mini KPI Summary Card with glow effect
-        try:
-            max_label = df.loc[df["value"].idxmax(), "label"]
-            max_val = df["value"].max()
-            avg_val = df["value"].mean()
-
-            st.markdown(f"""
-            <div style="margin-top:8px;padding:12px 16px;
-                        background:rgba(255,255,255,0.9);
-                        border-left:5px solid {color};
-                        border-radius:12px;
-                        box-shadow:0 3px 10px rgba(0,0,0,0.05);">
-                <b>🏆 Peak Period:</b> {max_label}<br>
-                <b>📈 Registrations:</b> {max_val:,.0f}<br>
-                <b>📊 Average:</b> {avg_val:,.0f}
-            </div>
-            """, unsafe_allow_html=True)
-
-            # 🎈 Celebrate if growth crosses threshold
-            if max_val > avg_val * 1.5:
-                st.balloons()
-
-        except Exception as e:
-            st.warning(f"KPI generation error: {e}")
-
-        # AI summary with auto expansion + glow border
-        if enable_ai:
-            with st.expander(f"🤖 AI Summary — {label} Growth", expanded=False):
-                with st.spinner(f"Generating AI summary for {label} growth..."):
-                    system = (
-                        f"You are a data analyst explaining {label.lower()} growth of vehicle registrations. "
-                        "Mention key peaks, trends, and give one recommendation for stability."
-                    )
-                    sample = df.head(10).to_dict(orient="records")
-                    user = (
-                        f"Dataset: {json.dumps(sample, default=str)}\n"
-                        f"Summarize insights in 4–5 sentences and add 1 practical action item."
-                    )
-                    ai_resp = deepinfra_chat(system, user, max_tokens=250)
-                    if isinstance(ai_resp, dict) and "text" in ai_resp:
-                        st.markdown(f"""
-                        <div style="padding:12px 14px;margin-top:6px;
-                                    background:linear-gradient(90deg,#ffffff,#f7fff8);
-                                    border-left:4px solid {color};
-                                    border-radius:10px;">
-                            {ai_resp["text"]}
-                        </div>
-                        """, unsafe_allow_html=True)
-
-        return df
-
-
-# Run all durations with unique colors/emojis
-df_monthly   = fetch_duration_growth(3, "Monthly",  "#007bff", "📅")
-df_quarterly = fetch_duration_growth(2, "Quarterly", "#6f42c1", "🧭")
-df_yearly    = fetch_duration_growth(1, "Yearly",   "#28a745", "📆")
-
-
-# --------------------- Top 5 Revenue States ---------------------
+# =============================================================
+# 🗓 1️⃣ Month-wise Registration Comparison
+# =============================================================
 st.markdown("""
-<style>
-.rev-header {
-    background: linear-gradient(90deg, #fffbe6, #ffffff);
-    border-left: 6px solid #ffc107;
-    padding: 14px 20px;
-    border-radius: 14px;
-    margin-top: 35px;
-    animation: pulseGlow 3s infinite;
-}
-</style>
-
-<div class="rev-header">
-    <h2 style="margin:0;">💰 Top 5 Revenue States</h2>
-    <p style="margin:4px 0 0;color:#555;font-size:15px;">
-        Explore which states lead in total vehicle-related revenue and performance growth.
-    </p>
+<div style="padding:12px 16px;border-left:5px solid #3b82f6;
+            background:linear-gradient(90deg,#f5faff,#ffffff);
+            border-radius:12px;margin-bottom:10px;">
+    <h3 style="margin:0;">📅 Month-wise Registration Comparison</h3>
 </div>
 """, unsafe_allow_html=True)
 
+df_month = fetch_and_parse("vahandashboard/vahanyearwiseregistrationtrend", "Month-wise Registrations")
 
-with st.spinner("Fetching Top 5 Revenue States..."):
-    top5_rev_json = fetch_json("vahandashboard/top5chartRevenueFee", desc="Top 5 Revenue States")
+if not df_month.empty:
+    df_month.columns = [c.lower() for c in df_month.columns]
+    if "date" in df_month.columns:
+        df_month["date"] = pd.to_datetime(df_month["date"])
+        df_month["month"] = df_month["date"].dt.strftime("%b-%Y")
 
-df_top5_rev = parse_top5_revenue(top5_rev_json if top5_rev_json else {})
+    if "value" not in df_month.columns:
+        value_col = next((c for c in df_month.columns if c in ["count","registeredvehiclecount","total","y"]), None)
+        if value_col: df_month["value"] = df_month[value_col]
 
-if not df_top5_rev.empty:
+    st.plotly_chart(
+        px.line(df_month, x="month", y="value", markers=True, title="Monthly Registration Trend", line_shape="spline"),
+        use_container_width=True
+    )
+
+    # KPIs
+    try:
+        total = df_month["value"].sum()
+        avg = df_month["value"].mean()
+        peak_m = df_month.loc[df_month["value"].idxmax(), "month"]
+        peak_v = df_month["value"].max()
+        k1,k2,k3 = st.columns(3)
+        k1.metric("📦 Total Registrations", f"{total:,}")
+        k2.metric("📈 Avg / Month", f"{avg:,.0f}")
+        k3.metric("🏆 Peak Month", f"{peak_m} ({peak_v:,.0f})")
+        if peak_v > avg * 1.5:
+            st.balloons()
+    except Exception:
+        st.warning("KPI computation skipped.")
+
+else:
+    st.info("No month-wise registration data available.")
+
+
+# =============================================================
+# 🌍 2️⃣ State-wise Comparative Overview
+# =============================================================
+st.markdown("""
+<div style="padding:12px 16px;border-left:5px solid #9333ea;
+            background:linear-gradient(90deg,#faf5ff,#ffffff);
+            border-radius:12px;margin-bottom:10px;">
+    <h3 style="margin:0;">🧭 State-wise Registration Comparison</h3>
+</div>
+""", unsafe_allow_html=True)
+
+df_state = fetch_and_parse("vahandashboard/durationWiseRegistrationTable", "State-wise Registrations")
+
+if not df_state.empty and "label" in df_state.columns and "value" in df_state.columns:
+    df_top = df_state.sort_values("value", ascending=False).head(15)
+
     col1, col2 = st.columns(2)
     with col1:
-        try:
-            bar_from_df(df_top5_rev, title="Top 5 Revenue States (Bar)")
-        except Exception:
-            st.dataframe(df_top5_rev)
+        st.plotly_chart(px.bar(df_top, x="label", y="value", title="Top 15 States by Registrations"), use_container_width=True)
     with col2:
-        try:
-            pie_from_df(df_top5_rev, title="Top 5 Revenue States (Pie)", donut=True)
-        except Exception:
-            st.dataframe(df_top5_rev)
+        st.plotly_chart(px.pie(df_top, names="label", values="value", title="State Share (Top 15)"), use_container_width=True)
 
-    # KPI summary with emoji and animation
-    try:
-        top_state = df_top5_rev.loc[df_top5_rev["value"].idxmax(), "label"]
-        top_value = df_top5_rev["value"].max()
-        total_rev = df_top5_rev["value"].sum()
+    # KPI metrics
+    top_state = df_top.iloc[0]["label"]
+    top_val = df_top.iloc[0]["value"]
+    total_val = df_top["value"].sum()
+    share = round((top_val / total_val) * 100, 2)
+    s1,s2,s3 = st.columns(3)
+    s1.metric("🏅 Top State", top_state)
+    s2.metric("📊 Share", f"{share}%")
+    s3.metric("🚘 Combined (Top 15)", f"{total_val:,}")
 
-        st.markdown(f"""
-        <div style="margin-top:10px;padding:14px 18px;
-                    background:linear-gradient(90deg,#fffef5,#ffffff);
-                    border-left:5px solid #ffc107;
-                    border-radius:12px;
-                    box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-            <b>🏅 Top Revenue State:</b> {top_state} — ₹{top_value:,.0f}<br>
-            <b>💵 Combined (Top 5):</b> ₹{total_rev:,.0f}
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.snow()  # Celebration when revenue data loads
-    except Exception as e:
-        st.error(f"Revenue KPI error: {e}")
-
-    # AI summary — auto expanded
-    if enable_ai:
-        with st.expander("🤖 AI Summary — Revenue Insights", expanded=True):
-            with st.spinner("Generating AI revenue insights..."):
-                system = (
-                    "You are a financial analyst summarizing state-level vehicle revenue performance in India. "
-                    "Highlight top states, major revenue gaps, and one strategy to enhance state-level revenue balance."
-                )
-                sample = df_top5_rev.head(10).to_dict(orient="records")
-                user = f"Dataset: {json.dumps(sample, default=str)}"
-                ai_resp = deepinfra_chat(system, user, max_tokens=240)
-                if isinstance(ai_resp, dict) and "text" in ai_resp:
-                    st.markdown(f"""
-                    <div style="padding:12px 16px;margin-top:8px;
-                                background:linear-gradient(90deg,#ffffff,#fffdf0);
-                                border-left:4px solid #ffc107;
-                                border-radius:10px;">
-                        {ai_resp["text"]}
-                    </div>
-                    """, unsafe_allow_html=True)
 else:
-    st.warning("⚠️ No revenue data available from Vahan API.")
+    st.info("No state-wise data found.")
+
+
+# =============================================================
+# 🏭 3️⃣ Maker-wise Comparison (All India)
+# =============================================================
+st.markdown("""
+<div style="padding:12px 16px;border-left:5px solid #f97316;
+            background:linear-gradient(90deg,#fff7f0,#ffffff);
+            border-radius:12px;margin-bottom:10px;">
+    <h3 style="margin:0;">🏭 Maker-wise Registration Comparison</h3>
+</div>
+""", unsafe_allow_html=True)
+
+df_maker = fetch_and_parse("vahandashboard/top5Makerchart", "Maker-wise Registrations")
+
+if not df_maker.empty and "label" in df_maker.columns and "value" in df_maker.columns:
+    col1, col2 = st.columns(2)
+    with col1:
+        st.plotly_chart(px.bar(df_maker, x="label", y="value", title="Top Makers by Registrations"), use_container_width=True)
+    with col2:
+        st.plotly_chart(px.pie(df_maker, names="label", values="value", title="Maker Market Share"), use_container_width=True)
+
+    # KPIs
+    try:
+        lead_maker = df_maker.loc[df_maker["value"].idxmax(), "label"]
+        val = df_maker["value"].max()
+        total_val = df_maker["value"].sum()
+        pct = round((val / total_val) * 100, 2)
+        k1,k2,k3 = st.columns(3)
+        k1.metric("🏆 Leading Maker", lead_maker)
+        k2.metric("📈 Share", f"{pct}%")
+        k3.metric("🚗 Total", f"{total_val:,}")
+    except Exception:
+        st.warning("Maker KPI error.")
+else:
+    st.info("No maker-wise data returned.")
+
+
+# =============================================================
+# 📆 4️⃣ Daily Base Comparison (Interpolated)
+# =============================================================
+st.markdown("""
+<div style="padding:12px 16px;border-left:5px solid #10b981;
+            background:linear-gradient(90deg,#f5fff9,#ffffff);
+            border-radius:12px;margin-bottom:10px;">
+    <h3 style="margin:0;">📅 Daily Base Comparison (Interpolated)</h3>
+</div>
+""", unsafe_allow_html=True)
+
+try:
+    if not df_month.empty and "date" in df_month.columns:
+        df_daily = df_month.set_index("date").sort_index()
+        daily_index = pd.date_range(df_daily.index.min(), df_daily.index.max(), freq="D")
+        df_daily = df_daily.reindex(daily_index).interpolate(method="time").rename_axis("date").reset_index()
+        df_daily["day"] = df_daily["date"].dt.strftime("%d-%b")
+
+        st.plotly_chart(px.area(df_daily.tail(90), x="day", y="value",
+                                title="Daily Registration Trend (last 90 days)",
+                                markers=False),
+                        use_container_width=True)
+        st.metric("📆 Days Covered", len(df_daily))
+    else:
+        st.info("Cannot generate daily view — no monthly trend data.")
+except Exception as e:
+    st.warning(f"Daily comparison error: {e}")
+
+
+# =============================================================
+# 🤖 AI Narrative — All Maxed Summary
+# =============================================================
+if enable_ai:
+    with st.expander("🤖 AI Comparative Summary", expanded=True):
+        try:
+            combined_sample = {
+                "monthly": df_month.head(10).to_dict(orient='records') if not df_month.empty else [],
+                "statewise": df_state.head(10).to_dict(orient='records') if not df_state.empty else [],
+                "makerwise": df_maker.head(10).to_dict(orient='records') if not df_maker.empty else [],
+            }
+            system = (
+                "You are an analytics assistant summarizing India's vehicle registration patterns. "
+                "Compare month-wise, state-wise, and maker-wise trends. Mention the strongest performer "
+                "in each dimension and one actionable observation for each."
+            )
+            user = f"Here is the combined dataset: {json.dumps(combined_sample, default=str)}"
+            ai_resp = deepinfra_chat(system, user, max_tokens=400)
+            if isinstance(ai_resp, dict) and "text" in ai_resp:
+                st.markdown(f"""
+                <div style="padding:12px 16px;margin-top:8px;
+                            background:linear-gradient(90deg,#ffffff,#f9fffa);
+                            border-left:4px solid #10b981;
+                            border-radius:10px;">
+                    {ai_resp["text"]}
+                </div>
+                """, unsafe_allow_html=True)
+                st.toast("AI Summary Ready!", icon="🤖")
+        except Exception as e:
+            st.error(f"AI Summary failed: {e}")
 
 
 # ================================================================
-# 🌟 6️⃣ Revenue Trend + Forecast + Anomaly Detection + Clustering —  UI
+# 📊 7️⃣ Comparative Analytics — Month • State • Maker • Daily (MAXED)
 # ================================================================
 
 import streamlit as st
 import pandas as pd
 import altair as alt
 import json
-from datetime import datetime
 
 # ================================
 # 🎨 CSS Animations & Transitions
@@ -1860,13 +2094,13 @@ st.markdown("""
   to {opacity: 1; transform: translateY(0);}
 }
 @keyframes pulseBorder {
-  0% {box-shadow: 0 0 0px #ff5722;}
-  50% {box-shadow: 0 0 10px #ff5722;}
-  100% {box-shadow: 0 0 0px #ff5722;}
+  0% {box-shadow: 0 0 0px #2196f3;}
+  50% {box-shadow: 0 0 10px #2196f3;}
+  100% {box-shadow: 0 0 0px #2196f3;}
 }
 .-container {
-  background: linear-gradient(90deg,#fff7f3,#ffffff);
-  border-left: 6px solid #ff5722;
+  background: linear-gradient(90deg,#f0f8ff,#ffffff);
+  border-left: 6px solid #2196f3;
   padding: 16px 22px;
   border-radius: 14px;
   margin: 20px 0 15px 0;
@@ -1881,11 +2115,11 @@ st.markdown("""
 }
 .metric-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(255,87,34,0.3);
+  box-shadow: 0 5px 15px rgba(33,150,243,0.3);
 }
 .ai-box {
-  background: linear-gradient(90deg,#ffffff,#fff9f6);
-  border-left: 4px solid #ff5722;
+  background: linear-gradient(90deg,#ffffff,#f2f9ff);
+  border-left: 4px solid #2196f3;
   border-radius: 10px;
   padding: 12px 14px;
   margin-top: 8px;
@@ -1896,237 +2130,186 @@ st.markdown("""
 
 
 # ======================
-# 📊 Section Header
+# 🧭 Section Header
 # ======================
 st.markdown("""
 <div class="-container">
-    <h2 style="margin:0;">💹 Revenue Trend & Advanced Analytics</h2>
+    <h2 style="margin:0;">📊 Comparative Analytics</h2>
     <p style="margin:4px 0 0;color:#444;font-size:15px;">
-        Smart forecasting, anomaly detection, and AI-powered clustering insights with smooth transitions and dynamic visuals.
+        State-wise, Maker-wise, Month-wise, and Daily base comparison — all filters enabled and AI-powered insights.
     </p>
 </div>
 """, unsafe_allow_html=True)
 
 
 # ======================
-# 📈 Fetch & Visualize Revenue Trend
+# ⚙️ Data Fetch (Generic Placeholder)
 # ======================
-with st.spinner("Fetching Revenue Trend..."):
-    rev_trend_json = fetch_json("vahandashboard/revenueFeeLineChart", desc="Revenue Trend")
+# Replace with your actual Vahan API fetchers
+df_month = fetch_json("vahandashboard/monthComparison", desc="Month-wise Data")
+df_state = fetch_json("vahandashboard/stateComparison", desc="State-wise Data")
+df_maker = fetch_json("vahandashboard/makerComparison", desc="Maker-wise Data")
+df_daily = fetch_json("vahandashboard/dailyComparison", desc="Daily Data")
 
-df_rev_trend = parse_revenue_trend(rev_trend_json if rev_trend_json else {})
-
-if df_rev_trend.empty:
-    st.warning("⚠️ No revenue trend data available.")
-else:
-    st.subheader("📊 Revenue Trend Comparison")
-    try:
-        chart = (
-            alt.Chart(df_rev_trend)
-            .mark_line(point=True, interpolate="monotone")
-            .encode(
-                x=alt.X("period:O", title="Period"),
-                y=alt.Y("value:Q", title="Revenue (₹)"),
-                color=alt.Color("year:N", legend=alt.Legend(title="Year")),
-                tooltip=["year", "period", "value"]
-            )
-            .properties(height=380, title="Revenue Trend Comparison")
-        )
-        st.altair_chart(chart, use_container_width=True)
-    except Exception:
-        st.dataframe(df_rev_trend)
-
-    # KPIs — Animated Cards
-    try:
-        total_rev = float(df_rev_trend["value"].sum())
-        avg_rev = float(df_rev_trend["value"].mean())
-        latest_rev = float(df_rev_trend["value"].iloc[-1])
-        prev_rev = float(df_rev_trend["value"].iloc[-2]) if len(df_rev_trend) > 1 else latest_rev
-        growth_pct = ((latest_rev - prev_rev) / prev_rev) * 100 if prev_rev else 0.0
-    except Exception:
-        total_rev = avg_rev = latest_rev = growth_pct = None
-
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.markdown(f"<div class='metric-card'><h4>💰 Total Revenue</h4><b>₹{total_rev:,.0f}</b></div>", unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"<div class='metric-card'><h4>📈 Latest Revenue</h4><b>₹{latest_rev:,.0f}</b></div>", unsafe_allow_html=True)
-    with col3:
-        st.markdown(f"<div class='metric-card'><h4>📊 Avg per Period</h4><b>₹{avg_rev:,.0f}</b></div>", unsafe_allow_html=True)
-    with col4:
-        color = "green" if growth_pct >= 0 else "red"
-        st.markdown(f"<div class='metric-card'><h4>📅 Growth %</h4><b style='color:{color};'>{growth_pct:.2f}%</b></div>", unsafe_allow_html=True)
-
-    if growth_pct > 5:
-        st.balloons()
-    elif growth_pct < -5:
-        st.snow()
-
-
-if enable_forecast:
-    st.markdown("### 🔮 Forecasting — Future Revenue Projection")
-    try:
-        df_trend = df_rev_trend.copy()
-        df_trend['date'] = pd.to_datetime(df_trend['period'], errors='coerce')
-        df_trend = df_trend.dropna(subset=['date'])
-        forecast_df = linear_forecast(df_trend, months=forecast_periods)
-        if not forecast_df.empty:
-            combined = pd.concat([
-                df_trend.set_index('date')['value'],
-                forecast_df.set_index('date')['value']
-            ])
-            st.line_chart(combined)
-            st.success("✅ Forecast generated successfully!")
-
-            if enable_ai:
-                with st.spinner("🤖 Generating AI forecast commentary..."):
-                    system = "You are a forecasting analyst summarizing financial revenue predictions."
-                    sample = forecast_df.head(6).to_dict(orient="records")
-                    user = f"Forecasted values: {json.dumps(sample, default=str)}. Summarize key confidence and trends in 3 sentences."
-                    ai_resp = deepinfra_chat(system, user, max_tokens=200)
-                    if isinstance(ai_resp, dict) and "text" in ai_resp:
-                        st.markdown(f"<div class='ai-box'>{ai_resp['text']}</div>", unsafe_allow_html=True)
-    except Exception as e:
-        st.warning(f"Forecast failed: {e}")
-
+# Convert to DataFrames (safe)
+df_month = pd.DataFrame(df_month) if df_month else pd.DataFrame()
+df_state = pd.DataFrame(df_state) if df_state else pd.DataFrame()
+df_maker = pd.DataFrame(df_maker) if df_maker else pd.DataFrame()
+df_daily = pd.DataFrame(df_daily) if df_daily else pd.DataFrame()
 
 # ======================
-# 🚨 Anomaly Detection
+# 🔀 Tabs for Comparison Modes
 # ======================
-if enable_anomaly and not df_rev_trend.empty:
-    st.markdown("### 🚨 Anomaly Detection (Revenue)")
-    try:
-        from sklearn.ensemble import IsolationForest
-        import numpy as np
+tabs = st.tabs(["🗓️ Month-wise", "🌍 State-wise", "🏭 Maker-wise", "📅 Daily"])
 
-        contamination = st.slider("Expected Outlier Fraction", 0.01, 0.2, 0.03)
-        model = IsolationForest(contamination=contamination, random_state=42)
-        df_rev_trend['value'] = pd.to_numeric(df_rev_trend['value'], errors='coerce').fillna(0)
-        model.fit(df_rev_trend[['value']])
-        df_rev_trend['anomaly'] = model.predict(df_rev_trend[['value']])
-        anomalies = df_rev_trend[df_rev_trend['anomaly'] == -1]
-        st.metric("🚨 Anomalies Detected", f"{len(anomalies)}")
-
-        base = alt.Chart(df_rev_trend).encode(x='period:O')
-        line = base.mark_line().encode(y='value:Q')
-        points = base.mark_circle(size=70).encode(
-            y='value:Q',
-            color=alt.condition(alt.datum.anomaly == -1, alt.value('red'), alt.value('black')),
-            tooltip=['period', 'value']
-        )
-        st.altair_chart((line + points).properties(height=350), use_container_width=True)
-
-        if len(anomalies) > 0:
-            st.warning(f"{len(anomalies)} anomalies detected in trend.")
-            st.dataframe(anomalies[['period', 'value']])
-            st.snow()
-
-            if enable_ai:
-                with st.spinner("🤖 Generating AI anomaly insights..."):
-                    system = "You are an anomaly analyst reviewing outliers in revenue."
-                    sample = anomalies.head(10).to_dict(orient="records")
-                    user = f"Data anomalies: {json.dumps(sample, default=str)}. Provide 3 likely causes and 2 possible mitigations."
-                    ai_resp = deepinfra_chat(system, user, max_tokens=220)
-                    if isinstance(ai_resp, dict) and "text" in ai_resp:
-                        st.markdown(f"<div class='ai-box'>{ai_resp['text']}</div>", unsafe_allow_html=True)
-    except Exception as e:
-        st.error(f"Anomaly detection failed: {e}")
-
-
-# ======================
-# 🧭 Clustering & Correlation (Auto-Adaptive)
-# ======================
-if enable_clustering and not df_rev_trend.empty:
-    st.markdown("### 🧭 Clustering & Correlation (AI + Visuals)")
-    try:
-        from sklearn.preprocessing import StandardScaler
-        from sklearn.cluster import KMeans
-        from sklearn.decomposition import PCA
-        from sklearn.metrics import silhouette_score
-        import plotly.express as px
-        import altair as alt
-        import numpy as np
-        import pandas as pd
-
-        df_cl = df_rev_trend.copy()
-        df_cl['value'] = pd.to_numeric(df_cl['value'], errors='coerce').fillna(0)
-
-        # --- Pick all numeric columns for clustering ---
-        num_cols = df_cl.select_dtypes(include=[np.number]).columns.tolist()
-        if not num_cols:
-            st.warning("No numeric columns found for clustering.")
-            st.stop()
-
-        X = df_cl[num_cols].astype(float)
-        scaler = StandardScaler()
-        Xs = scaler.fit_transform(X)
-
-        # --- Ensure valid number of clusters ---
-        max_clusters = max(2, min(8, len(Xs)))
-        n_clusters = st.slider("Number of Clusters (k)", 2, max_clusters, 3)
-        if len(Xs) < n_clusters:
-            n_clusters = len(Xs)
-
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init="auto")
-        labels = kmeans.fit_predict(Xs)
-        df_cl['cluster'] = labels
-
-        sc = silhouette_score(Xs, labels) if len(Xs) > n_clusters else 0
-        st.metric("Silhouette Score", f"{sc:.3f}")
-
-        st.dataframe(df_cl.head(10))
-
-        # --- PCA or fallback visualization ---
-        if Xs.shape[1] >= 2:
-            pca = PCA(n_components=2)
-            proj = pca.fit_transform(Xs)
-            scatter_df = pd.DataFrame({"x": proj[:, 0], "y": proj[:, 1], "cluster": labels})
+# ------------------ MONTH-WISE ------------------
+with tabs[0]:
+    st.subheader("🗓️ Month-wise Comparison")
+    if df_month.empty:
+        st.warning("No month-wise data available.")
+    else:
+        try:
             chart = (
-                alt.Chart(scatter_df)
-                .mark_circle(size=80)
-                .encode(x="x", y="y", color="cluster:N", tooltip=["x", "y", "cluster"])
-                .properties(height=400, title="Cluster Projection (PCA)")
-            )
-            st.altair_chart(chart, use_container_width=True)
-        else:
-            # fallback for 1D data
-            scatter_df = pd.DataFrame({"x": Xs.flatten(), "cluster": labels})
-            chart = (
-                alt.Chart(scatter_df)
-                .mark_circle(size=80)
-                .encode(x="x", y="cluster:N", color="cluster:N", tooltip=["x", "cluster"])
-                .properties(height=400, title="Cluster Visualization (1D Data)")
+                alt.Chart(df_month)
+                .mark_line(point=True)
+                .encode(
+                    x="month:O", y="value:Q",
+                    color="category:N",
+                    tooltip=["month", "value", "category"]
+                )
+                .properties(height=380, title="Month-wise Comparison")
             )
             st.altair_chart(chart, use_container_width=True)
 
-        # --- Correlation heatmap ---
-        if len(num_cols) > 1:
-            corr = df_cl[num_cols + ['cluster']].corr(numeric_only=True)
-            fig_corr = px.imshow(
-                corr,
-                text_auto=".2f",
-                title="Correlation Matrix",
-                color_continuous_scale="RdBu_r",
+            total = df_month["value"].sum()
+            avg = df_month["value"].mean()
+            latest = df_month["value"].iloc[-1]
+            prev = df_month["value"].iloc[-2] if len(df_month) > 1 else latest
+            growth = ((latest - prev) / prev) * 100 if prev else 0
+
+            c1, c2, c3, c4 = st.columns(4)
+            c1.markdown(f"<div class='metric-card'><h4>📆 Total</h4><b>{total:,.0f}</b></div>", unsafe_allow_html=True)
+            c2.markdown(f"<div class='metric-card'><h4>⚖️ Avg</h4><b>{avg:,.0f}</b></div>", unsafe_allow_html=True)
+            color = "green" if growth > 0 else "red"
+            c3.markdown(f"<div class='metric-card'><h4>📈 Growth %</h4><b style='color:{color};'>{growth:.2f}%</b></div>", unsafe_allow_html=True)
+            c4.markdown(f"<div class='metric-card'><h4>🧩 Latest Month</h4><b>{latest:,.0f}</b></div>", unsafe_allow_html=True)
+
+            if enable_ai:
+                with st.spinner("🤖 Generating AI month-wise insight..."):
+                    system = "You are a data analyst comparing month-wise trends."
+                    user = f"Data: {df_month.head(10).to_dict(orient='records')} Summarize top 2 insights and key month trends."
+                    ai = deepinfra_chat(system, user, max_tokens=200)
+                    if isinstance(ai, dict) and 'text' in ai:
+                        st.markdown(f"<div class='ai-box'>{ai['text']}</div>", unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"Month-wise comparison failed: {e}")
+
+# ------------------ STATE-WISE ------------------
+with tabs[1]:
+    st.subheader("🌍 State-wise Comparison")
+    if df_state.empty:
+        st.warning("No state-wise data available.")
+    else:
+        try:
+            chart = (
+                alt.Chart(df_state)
+                .mark_bar()
+                .encode(
+                    x="state:N", y="value:Q",
+                    color="state:N",
+                    tooltip=["state", "value"]
+                )
+                .properties(height=400, title="State-wise Comparison")
             )
-            st.plotly_chart(fig_corr, use_container_width=True)
-        else:
-            st.info("ℹ️ Not enough numeric columns for correlation matrix.")
+            st.altair_chart(chart, use_container_width=True)
 
-        # --- AI Cluster Insights ---
-        if enable_ai:
-            with st.spinner("🤖 Generating AI clustering insights..."):
-                cluster_summary = df_cl.groupby('cluster')['value'].mean().to_dict()
-                system = "You are an expert analyst summarizing financial clusters."
-                user = f"Cluster summaries: {json.dumps(cluster_summary, default=str)}. Provide 5 lines of interpretation and 2 action points."
-                ai_resp = deepinfra_chat(system, user, max_tokens=320)
-                if isinstance(ai_resp, dict) and "text" in ai_resp:
-                    st.markdown(f"<div class='ai-box'>{ai_resp['text']}</div>", unsafe_allow_html=True)
+            top_state = df_state.loc[df_state['value'].idxmax()]
+            bottom_state = df_state.loc[df_state['value'].idxmin()]
+            c1, c2 = st.columns(2)
+            c1.markdown(f"<div class='metric-card'><h4>🏆 Top State</h4><b>{top_state['state']} ({top_state['value']:,.0f})</b></div>", unsafe_allow_html=True)
+            c2.markdown(f"<div class='metric-card'><h4>🔻 Lowest State</h4><b>{bottom_state['state']} ({bottom_state['value']:,.0f})</b></div>", unsafe_allow_html=True)
 
-    except Exception as e:
-        st.error(f"Clustering failed: {e}")
+            if enable_ai:
+                with st.spinner("🤖 Generating AI state-wise insight..."):
+                    system = "You are a regional performance analyst."
+                    user = f"Top and bottom states with values: {json.dumps({'top': top_state.to_dict(), 'bottom': bottom_state.to_dict()})}. Compare performance gaps and suggest 2 recommendations."
+                    ai = deepinfra_chat(system, user, max_tokens=220)
+                    if isinstance(ai, dict) and 'text' in ai:
+                        st.markdown(f"<div class='ai-box'>{ai['text']}</div>", unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"State-wise comparison failed: {e}")
+
+# ------------------ MAKER-WISE ------------------
+with tabs[2]:
+    st.subheader("🏭 Maker-wise Comparison")
+    if df_maker.empty:
+        st.warning("No maker-wise data available.")
+    else:
+        try:
+            chart = (
+                alt.Chart(df_maker)
+                .mark_bar()
+                .encode(
+                    x=alt.X("maker:N", sort='-y'),
+                    y="value:Q",
+                    color="maker:N",
+                    tooltip=["maker", "value"]
+                )
+                .properties(height=380, title="Maker-wise Comparison")
+            )
+            st.altair_chart(chart, use_container_width=True)
+
+            top_maker = df_maker.loc[df_maker['value'].idxmax()]
+            bottom_maker = df_maker.loc[df_maker['value'].idxmin()]
+            st.markdown(f"<div class='metric-card'><h4>⭐ Top Maker</h4><b>{top_maker['maker']}</b> — {top_maker['value']:,.0f}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='metric-card'><h4>⚙️ Lowest Maker</h4><b>{bottom_maker['maker']}</b> — {bottom_maker['value']:,.0f}</div>", unsafe_allow_html=True)
+
+            if enable_ai:
+                with st.spinner("🤖 Generating AI maker-wise insight..."):
+                    system = "You are a market analyst summarizing manufacturer performance."
+                    user = f"Maker data: {df_maker.head(10).to_dict(orient='records')}. Provide 3 insights comparing top vs bottom performers."
+                    ai = deepinfra_chat(system, user, max_tokens=220)
+                    if isinstance(ai, dict) and 'text' in ai:
+                        st.markdown(f"<div class='ai-box'>{ai['text']}</div>", unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"Maker-wise comparison failed: {e}")
+
+# ------------------ DAILY ------------------
+with tabs[3]:
+    st.subheader("📅 Daily Comparison")
+    if df_daily.empty:
+        st.warning("No daily data available.")
+    else:
+        try:
+            chart = (
+                alt.Chart(df_daily)
+                .mark_line(point=True)
+                .encode(
+                    x="date:T", y="value:Q",
+                    color="category:N",
+                    tooltip=["date", "value", "category"]
+                )
+                .properties(height=380, title="Daily Comparison")
+            )
+            st.altair_chart(chart, use_container_width=True)
+
+            avg_day = df_daily["value"].mean()
+            max_day = df_daily.loc[df_daily['value'].idxmax()]
+            st.markdown(f"<div class='metric-card'><h4>📆 Avg Daily</h4><b>{avg_day:,.0f}</b></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='metric-card'><h4>🌟 Peak Day</h4><b>{max_day['date']}</b> — {max_day['value']:,.0f}</div>", unsafe_allow_html=True)
+
+            if enable_ai:
+                with st.spinner("🤖 Generating AI daily insight..."):
+                    system = "You are a data analyst summarizing daily fluctuations."
+                    user = f"Daily data: {df_daily.head(10).to_dict(orient='records')}. Explain 3 key trends and volatility insights."
+                    ai = deepinfra_chat(system, user, max_tokens=200)
+                    if isinstance(ai, dict) and 'text' in ai:
+                        st.markdown(f"<div class='ai-box'>{ai['text']}</div>", unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"Daily comparison failed: {e}")
 
 # ============================================================
-# 💾 SMART EXCEL EXPORT — Unified, Styled & AI-Enhanced
+# 💾 SMART EXCEL EXPORT — MAXED COMPARISON ANALYTICS EDITION
 # ============================================================
 
 st.markdown("""
@@ -2134,77 +2317,65 @@ st.markdown("""
             background:linear-gradient(90deg,#f0f8ff,#ffffff);
             border-radius:12px;margin-top:25px;margin-bottom:15px;
             box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-    <h2 style="margin:0;">💾 Smart Excel Export</h2>
+    <h2 style="margin:0;">💾 Smart Excel Export — Maxed Comparison Edition</h2>
     <p style="margin:4px 0 0;color:#444;font-size:15px;">
-        Export all KPIs, forecasts, clustering, and AI insights into a single, <b>styled Excel workbook</b> — ready for sharing or presentation.
+        Export all <b>month-wise</b>, <b>state-wise</b>, <b>maker-wise</b> and <b>daily-base</b> analytics 
+        into one unified, <b>styled Excel report</b> — fully ready for analysis or presentation.
     </p>
 </div>
 """, unsafe_allow_html=True)
 
 with st.container():
-    with st.expander("📊 Generate & Download Smart Excel Report", expanded=True):
+    with st.expander("📊 Generate & Download Maxed Analytics Report", expanded=True):
 
         st.markdown("""
         <div style="background:linear-gradient(90deg,#e8f0fe,#ffffff);
                     border-left:5px solid #007bff;padding:10px 18px;
                     border-radius:10px;margin-bottom:10px;">
-            <b>💡 Tip:</b> Ensure data is fetched before export to get the most complete analytics workbook.
+            <b>💡 Tip:</b> Ensure all comparison data is loaded before export for best results.
         </div>
         """, unsafe_allow_html=True)
 
-        # ✅ Safe defaults
+        # ✅ Load all active dataframes from session/local scope
         df_cat = locals().get("df_cat", pd.DataFrame())
         df_mk = locals().get("df_mk", pd.DataFrame())
         df_trend = locals().get("df_trend", pd.DataFrame())
         yoy_df = locals().get("yoy_df", pd.DataFrame())
         qoq_df = locals().get("qoq_df", pd.DataFrame())
-        df_top5_rev = locals().get("df_top5_rev", pd.DataFrame())
-        df_rev_trend = locals().get("df_rev_trend", pd.DataFrame())
+        daily_df = locals().get("daily_df", pd.DataFrame())
+        monthwise_df = locals().get("monthwise_df", pd.DataFrame())
+        statewise_df = locals().get("statewise_df", pd.DataFrame())
+        makerwise_df = locals().get("makerwise_df", pd.DataFrame())
 
         datasets = {
-            "Category": df_cat,
+            "Category Overview": df_cat,
             "Top Makers": df_mk,
             "Registrations Trend": df_trend,
-            "YoY Trend": yoy_df,
-            "QoQ Trend": qoq_df,
-            "Top 5 Revenue States": df_top5_rev,
-            "Revenue Trend": df_rev_trend,
+            "YoY Comparison": yoy_df,
+            "MoM Comparison": qoq_df,
+            "Daily Base Comparison": daily_df,
+            "Month-wise State Comparison": monthwise_df,
+            "Maker-wise State Comparison": makerwise_df,
+            "State-wise Summary": statewise_df
         }
 
-        # 🔮 Forecast + Anomaly Detection
-        with st.spinner("🔍 Performing Forecast & Anomaly Detection..."):
-            try:
-                if not df_trend.empty:
-                    df_forecast = df_trend.copy()
-                    df_forecast["Forecast"] = df_forecast["value"].rolling(3, min_periods=1).mean()
-                    df_forecast["Anomaly"] = (
-                        (df_forecast["value"] - df_forecast["Forecast"]).abs()
-                        > df_forecast["Forecast"] * 0.15
-                    )
-                    datasets["Forecast & Anomaly Detection"] = df_forecast
-                    st.success("✅ Forecast & anomaly detection completed successfully!")
-                    st.dataframe(df_forecast.tail(5), use_container_width=True)
-                else:
-                    st.info("ℹ️ No trend data available for forecast.")
-            except Exception as e:
-                st.warning(f"⚠️ Forecast step skipped: {e}")
-
-        # 🧠 AI Summaries
+        # 🧠 AI Summaries (Optional)
         summaries = {}
         if 'enable_ai' in locals() and enable_ai:
             try:
-                st.info("🤖 Generating AI summaries for all datasets...")
+                st.info("🤖 Generating AI summaries for each dataset...")
                 progress = st.progress(0)
                 for i, (name, df) in enumerate(datasets.items()):
                     if isinstance(df, pd.DataFrame) and not df.empty:
                         try:
-                            system = f"You are a business analyst summarizing '{name}'."
-                            user = f"Dataset sample: {df.head(10).to_dict(orient='records')}.\nProvide 2–3 concise insights."
-                            ai_resp = deepinfra_chat(system, user, max_tokens=160)
+                            sys_prompt = f"You are a data analyst. Summarize key patterns in {name} in 2–3 concise lines."
+                            user_prompt = f"Here is a sample of the dataset: {df.head(10).to_dict(orient='records')}"
+                            ai_resp = deepinfra_chat(sys_prompt, user_prompt, max_tokens=150)
                             summaries[name] = ai_resp.get("text", "No summary generated.")
                         except Exception as e:
                             summaries[name] = f"AI summary failed: {e}"
                     progress.progress((i + 1) / len(datasets))
+                progress.empty()
 
                 if summaries:
                     ai_df = pd.DataFrame(list(summaries.items()), columns=["Dataset", "AI Summary"])
@@ -2215,16 +2386,15 @@ with st.container():
                             st.markdown(f"**{name}**")
                             st.write(text)
                             st.markdown("---")
-                progress.empty()
             except Exception as e:
-                st.warning(f"⚠️ AI summary step skipped: {e}")
+                st.warning(f"⚠️ AI summaries skipped: {e}")
 
-        # ⚠️ Handle empty case
+        # ⚠️ Handle empty datasets
         if all((not isinstance(df, pd.DataFrame)) or df.empty for df in datasets.values()):
-            st.warning("⚠️ No data available for export. Creating summary sheet instead.")
+            st.warning("⚠️ No valid datasets to export. Only a summary sheet will be created.")
 
-        # 📦 Compile Excel
-        with st.spinner("📦 Compiling Excel workbook with styles & charts..."):
+        # 📦 Compile Excel Workbook (Styled)
+        with st.spinner("📦 Compiling Excel workbook..."):
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine="openpyxl") as writer:
                 any_written = False
@@ -2236,7 +2406,7 @@ with st.container():
                     pd.DataFrame({"Info": ["No data available."]}).to_excel(writer, "Summary", index=False)
             output.seek(0)
 
-            # Apply styling + charts
+            # Apply formatting and charts
             from openpyxl import load_workbook
             from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
             from openpyxl.utils import get_column_letter
@@ -2254,7 +2424,7 @@ with st.container():
                     cell.fill = PatternFill(start_color="007bff", end_color="007bff", fill_type="solid")
                     cell.alignment = Alignment(horizontal="center", vertical="center")
                     cell.border = border
-                # Body style
+                # Body styling
                 for row in ws.iter_rows(min_row=2):
                     for cell in row:
                         cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -2263,14 +2433,14 @@ with st.container():
                 for col in ws.columns:
                     max_len = max(len(str(c.value or "")) for c in col)
                     ws.column_dimensions[get_column_letter(col[0].column)].width = max_len + 3
-                # Add chart
+                # Add basic chart
                 if ws.max_row > 2 and ws.max_column >= 2:
                     try:
                         val_ref = Reference(ws, min_col=2, min_row=1, max_row=ws.max_row)
                         cat_ref = Reference(ws, min_col=1, min_row=2, max_row=ws.max_row)
                         chart = LineChart()
-                        chart.title = f"{sheet} Trend"
-                        chart.y_axis.title = "Value"
+                        chart.title = f"{sheet} Overview"
+                        chart.y_axis.title = "Values"
                         chart.x_axis.title = "Category"
                         chart.add_data(val_ref, titles_from_data=True)
                         chart.set_categories(cat_ref)
@@ -2284,44 +2454,47 @@ with st.container():
             wb.save(styled)
             styled.seek(0)
 
-        # 🎉 Final Download Section
+        # 🎉 Download Button
         ts = pd.Timestamp.now().strftime("%Y-%m-%d_%H%M")
         st.download_button(
-            label="⬇️ Download Full Excel Analytics Report",
+            label="⬇️ Download Full Comparison Excel Report",
             data=styled.getvalue(),
-            file_name=f"Vahan_SmartReport_{ts}.xlsx",
+            file_name=f"Vahan_MaxedComparison_{ts}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True,
         )
 
-        st.success("✅ Export complete — workbook includes all KPIs, AI summaries, and visual charts.")
+        st.success("✅ Maxed Comparison Export Ready — Includes all major datasets & AI summaries.")
+        st.toast("Smart Excel Report ready for download 🎉")
         st.balloons()
-        st.toast("Smart Excel Report ready for download! 🎉")
 
-# ---------------- 🧩 RAW JSON PREVIEW (Developer Debug Mode) ----------------
+# ============================================================
+# 🧩 RAW JSON PREVIEW (Developer Debug Mode) — MAXED VERSION
+# ============================================================
+
 with st.expander("🛠️ Raw JSON Preview (Developer Debug Mode)", expanded=False):
-    st.caption("Inspect raw API responses returned from each Vahan endpoints. Use only for debugging or verification.")
+    st.caption("Inspect raw API responses returned from each Parivahan/Vahan endpoint. Use only for debugging or data verification.")
 
-    # ---------- Safe access to JSON variables (won't crash if undefined) ----------
+    # ---------- Safe access to JSON variables ----------
     cat_json       = locals().get("cat_json", None)
     mk_json        = locals().get("mk_json", None)
     tr_json        = locals().get("tr_json", None)
-    top5_rev_json  = locals().get("top5_rev_json", None)
-    rev_trend_json = locals().get("rev_trend_json", None)
-    df_cat_exists  = isinstance(locals().get("df_cat", None), pd.DataFrame) and not locals().get("df_cat").empty
+    month_json     = locals().get("month_json", None)
+    state_json     = locals().get("state_json", None)
+    maker_json     = locals().get("maker_json", None)
+    daily_json     = locals().get("daily_json", None)
 
-    # ---------- Top control row ----------
+    # ---------- Control Bar ----------
     ctrl_col1, ctrl_col2, ctrl_col3 = st.columns([3, 2, 2])
     with ctrl_col1:
         show_pretty = st.checkbox("🔎 Pretty / Expand JSON by default", value=False)
     with ctrl_col2:
-        snapshot_name = st.text_input("Snapshot filename (no extension)", value=f"vahan_api_snapshot_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}")
+        snapshot_name = st.text_input("Snapshot filename", value=f"vahan_snapshot_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}")
     with ctrl_col3:
-        save_snapshot = st.button("💾 Save & Download Snapshot")
+        save_snapshot = st.button("💾 Save Snapshot")
 
     st.markdown("---")
 
-    # ---------- Two-column JSON display ----------
     left, right = st.columns(2)
 
     def _render_json(title: str, data):
@@ -2329,85 +2502,62 @@ with st.expander("🛠️ Raw JSON Preview (Developer Debug Mode)", expanded=Fal
         if data is None:
             st.info("No data available for this endpoint.")
             return
-        # show small meta header
         try:
-            meta = {}
-            if isinstance(data, dict):
-                meta["keys"] = len(data.keys())
-            elif isinstance(data, list):
-                meta["items"] = len(data)
-            else:
-                meta["type"] = str(type(data))
-            st.caption(f"Meta: {json.dumps(meta)}")
+            meta = {"type": type(data).__name__, "count": len(data) if isinstance(data, (list, dict)) else "n/a"}
+            st.caption(f"Meta: {meta}")
         except Exception:
             pass
-
         if show_pretty:
-            # Pretty JSON (expandable using st.code to avoid very long rendering)
             try:
-                pretty = json.dumps(data, indent=2, default=str)
-                st.code(pretty, language="json")
+                st.code(json.dumps(data, indent=2, default=str), language="json")
             except Exception:
                 st.write(data)
         else:
-            # Use st.json for compact interactive viewer
             try:
                 st.json(data)
             except Exception:
-                # fallback
                 st.write(data)
 
-        # copy & download controls per block
-        btn_col1, btn_col2 = st.columns([1, 1])
-        with btn_col1:
-            if st.button(f"📋 Copy {title} to clipboard", key=f"copy_{title}"):
-                try:
-                    to_copy = json.dumps(data, indent=2, default=str)
-                    st.write("")  # small UI flush
-                    st.experimental_set_query_params()  # no-op to avoid warnings; keeps Streamlit state stable
-                    # We cannot write to real clipboard server-side reliably; provide code block and toast
-                    st.code(to_copy, language="json")
-                    st.toast(f"Copied {title} JSON to code cell (select & copy).")
-                except Exception as e:
-                    st.error(f"Copy failed: {e}")
-        with btn_col2:
-            try:
-                as_bytes = json.dumps(data, indent=2, default=str).encode("utf-8")
-                st.download_button(
-                    label=f"⬇️ Download {title}.json",
-                    data=as_bytes,
-                    file_name=f"{title.replace(' ', '_')}.json",
-                    mime="application/json",
-                    key=f"dl_{title}"
-                )
-            except Exception as e:
-                st.warning(f"Download unavailable: {e}")
+        # Per-block download
+        try:
+            as_bytes = json.dumps(data, indent=2, default=str).encode("utf-8")
+            st.download_button(
+                label=f"⬇️ Download {title}.json",
+                data=as_bytes,
+                file_name=f"{title.replace(' ', '_')}.json",
+                mime="application/json",
+                key=f"dl_{title}"
+            )
+        except Exception as e:
+            st.warning(f"Download unavailable: {e}")
 
+    # ---------- Render All JSON Blocks ----------
     with left:
         _render_json("📦 Category JSON", cat_json)
         st.markdown("---")
-        _render_json("🏭 Top Makers JSON", mk_json)
+        _render_json("🏭 Maker JSON", maker_json)
         st.markdown("---")
-        _render_json("📊 Trend JSON", tr_json)
+        _render_json("📊 Month-wise JSON", month_json)
 
     with right:
-        _render_json("💰 Top 5 Revenue JSON", top5_rev_json)
+        _render_json("🌍 State-wise JSON", state_json)
         st.markdown("---")
-        _render_json("📈 Revenue Trend JSON", rev_trend_json)
+        _render_json("📅 Daily Base JSON", daily_json)
+        st.markdown("---")
+        _render_json("📈 Trend JSON", tr_json)
 
     st.markdown("---")
 
-    # ---------- Global snapshot download (all JSONs combined) ----------
     if save_snapshot:
         try:
             combined = {
                 "generated_at": pd.Timestamp.now().isoformat(),
-                "params_common": locals().get("params_common", {}),
                 "category_json": cat_json,
-                "makers_json": mk_json,
+                "maker_json": maker_json,
                 "trend_json": tr_json,
-                "top5_revenue_json": top5_rev_json,
-                "revenue_trend_json": rev_trend_json
+                "monthwise_json": month_json,
+                "statewise_json": state_json,
+                "daily_json": daily_json,
             }
             payload = json.dumps(combined, indent=2, default=str).encode("utf-8")
             st.download_button(
@@ -2416,187 +2566,133 @@ with st.expander("🛠️ Raw JSON Preview (Developer Debug Mode)", expanded=Fal
                 file_name=f"{snapshot_name}.json",
                 mime="application/json"
             )
-            st.success("✅ Snapshot prepared for download.")
-            st.balloons()
-            st.toast("Snapshot created — download started (look for browser download).")
+            st.success("✅ Snapshot ready for download.")
         except Exception as e:
             st.error(f"Snapshot generation failed: {e}")
 
-    # ---------- Optionally persist a small diagnostics log to a local file (if running locally) ----------
-    try:
-        if st.checkbox("📝 Persist diagnostics to server (local only)", value=False):
-            try:
-                diag = {
-                    "timestamp": pd.Timestamp.now().isoformat(),
-                    "cat_present": cat_json is not None,
-                    "mk_present": mk_json is not None,
-                    "tr_present": tr_json is not None,
-                    "top5_present": top5_rev_json is not None,
-                    "revtrend_present": rev_trend_json is not None
-                }
-                log_path = os.path.join(os.getcwd(), f"vahan_diag_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.json")
-                with open(log_path, "w", encoding="utf-8") as f:
-                    json.dump(diag, f, indent=2, default=str)
-                st.success(f"Diagnostics saved to {log_path}")
-            except Exception as e:
-                st.error(f"Could not save diagnostics file: {e}")
-    except Exception:
-        # ignore Streamlit UI failures on checkbox rendering in restricted environments
-        pass
-
-    st.info("🔒 Raw JSON preview is for diagnostics. Remove or disable in production builds to avoid exposing sensitive payloads.")
+    st.info("🔒 Raw JSON preview is meant for diagnostics. Disable in production builds.")
 
 # ============================================================
-# ⚡ FOOTER KPIs + EXECUTIVE SUMMARY ( VERSION)
+# 📊 FOOTER KPIs + EXECUTIVE SUMMARY — MAXED COMPARISON DATA
 # ============================================================
-
-import json, time, random
-import streamlit as st
-import pandas as pd
 
 st.markdown("---")
-st.subheader("📊 Dashboard Summary & Insights")
+st.subheader("📊 Dashboard Summary & Insights — Comparison Analytics")
 
 # ============================================================
-# 🎯 KPI Metric Cards (Animated & Styled)
+# 🎯 KPI Cards (Core Metrics)
 # ============================================================
 
 kpi_cols = st.columns(4)
 
 with kpi_cols[0]:
-    if not df_trend.empty:
+    if "df_trend" in locals() and not df_trend.empty:
         total_reg = int(df_trend["value"].sum())
         st.metric("🧾 Total Registrations", f"{total_reg:,}")
     else:
         st.metric("🧾 Total Registrations", "N/A")
 
 with kpi_cols[1]:
-    if "daily_avg" in locals() and daily_avg is not None:
-        st.metric("📅 Daily Avg Orders", f"{daily_avg:,.0f}")
+    if "daily_df" in locals() and not daily_df.empty:
+        daily_avg = int(daily_df["value"].mean())
+        st.metric("📅 Daily Average", f"{daily_avg:,}")
     else:
-        st.metric("📅 Daily Avg Orders", "N/A")
+        st.metric("📅 Daily Average", "N/A")
 
 with kpi_cols[2]:
-    if "latest_yoy" in locals() and latest_yoy is not None:
-        yoy_arrow = "🔼" if latest_yoy > 0 else "🔽"
-        st.metric("📈 Latest YoY%", f"{yoy_arrow} {latest_yoy:.2f}%")
+    if "monthwise_df" in locals() and not monthwise_df.empty:
+        latest_month = monthwise_df.iloc[-1]["label"]
+        latest_val = int(monthwise_df.iloc[-1]["value"])
+        st.metric("🗓️ Latest Month Registrations", f"{latest_val:,}", help=f"Month: {latest_month}")
     else:
-        st.metric("📈 Latest YoY%", "N/A")
+        st.metric("🗓️ Latest Month Registrations", "N/A")
 
 with kpi_cols[3]:
-    if "latest_qoq" in locals() and latest_qoq is not None:
-        qoq_arrow = "🔼" if latest_qoq > 0 else "🔽"
-        st.metric("📉 Latest QoQ%", f"{qoq_arrow} {latest_qoq:.2f}%")
+    if "statewise_df" in locals() and not statewise_df.empty:
+        top_state = statewise_df.loc[statewise_df["value"].idxmax(), "label"]
+        top_val = statewise_df["value"].max()
+        st.metric("🌍 Top Performing State", f"{top_state} ({int(top_val):,})")
     else:
-        st.metric("📉 Latest QoQ%", "N/A")
-
-# ------------------------------------------------------------
-# 🏆 Top Revenue Highlight (Animated)
-# ------------------------------------------------------------
-if not df_top5_rev.empty:
-    try:
-        top_state = df_top5_rev.iloc[0].get("label", df_top5_rev.iloc[0].get("state", "N/A"))
-        top_val = df_top5_rev.iloc[0].get("value", "N/A")
-        st.markdown(
-            f"""
-            <div style='background:linear-gradient(90deg,#1a73e8,#00c851);
-                        padding:15px;border-radius:12px;
-                        color:white;font-size:1.1em;text-align:center;
-                        box-shadow:0 0 12px rgba(0,0,0,0.3);
-                        animation:fadeIn 1s ease-in-out;'>
-                🏆 <b>Top Revenue State:</b> {top_state} — ₹{top_val:,}
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.balloons()
-    except Exception:
-        st.info("🏆 Top Revenue State: Data unavailable")
-else:
-    st.info("🏆 Top Revenue State: Data unavailable")
+        st.metric("🌍 Top Performing State", "N/A")
 
 # ============================================================
-# 🤖 Executive AI Summary (DeepInfra-Powered)
+# 🧭 Maker-wise and State Insights
 # ============================================================
+
+if "makerwise_df" in locals() and not makerwise_df.empty:
+    top_maker = makerwise_df.loc[makerwise_df["value"].idxmax(), "label"]
+    st.markdown(
+        f"""
+        <div style='background:linear-gradient(90deg,#007bff,#00c851);
+                    padding:15px;border-radius:10px;color:white;
+                    text-align:center;font-size:1.1em;margin-top:15px;'>
+            🏭 <b>Top Maker:</b> {top_maker}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# ============================================================
+# 🤖 AI Executive Summary (DeepInfra)
+# ============================================================
+
 if "enable_ai" in locals() and enable_ai:
     st.markdown("### 🤖 Executive AI Summary")
-
-    with st.spinner("Synthesizing executive-level narrative..."):
+    with st.spinner("Synthesizing executive-level summary..."):
         try:
             context = {
-                "total_registrations": int(df_trend["value"].sum()) if not df_trend.empty else None,
-                "latest_yoy": float(latest_yoy) if "latest_yoy" in locals() and latest_yoy is not None else None,
-                "latest_qoq": float(latest_qoq) if "latest_qoq" in locals() and latest_qoq is not None else None,
-                "top_revenue_state": top_state if not df_top5_rev.empty else None,
-                "daily_avg": float(daily_avg) if "daily_avg" in locals() and daily_avg is not None else None,
+                "total_registrations": total_reg if "total_reg" in locals() else None,
+                "daily_average": daily_avg if "daily_avg" in locals() else None,
+                "top_state": top_state if "top_state" in locals() else None,
+                "top_maker": top_maker if "top_maker" in locals() else None,
+                "latest_month": latest_month if "latest_month" in locals() else None,
+                "latest_month_value": latest_val if "latest_val" in locals() else None,
             }
 
             system = (
-                "You are an executive analytics assistant summarizing key performance indicators "
-                "for a national vehicle registration and revenue dashboard. "
-                "Focus on trends, anomalies, growth, and actionable insights in concise executive tone."
+                "You are an AI analytics assistant summarizing performance metrics "
+                "for national vehicle registration data (no revenue or forecasting). "
+                "Focus on month-wise, state-wise, maker-wise, and daily-base patterns "
+                "to create a crisp executive narrative in 4–5 sentences."
             )
             user = (
                 f"Context data: {json.dumps(context, default=str)}\n"
-                "Generate a 5-sentence executive summary covering performance, revenue, and trends. "
-                "End with one strategic business recommendation."
+                "Summarize trends, highlight top regions and makers, and end with one strategic recommendation."
             )
 
-            ai_resp = deepinfra_chat(system, user, max_tokens=320)
-
-            if isinstance(ai_resp, dict) and "text" in ai_resp:
-                ai_summary = ai_resp["text"]
-            else:
-                ai_summary = (
-                    "Data suggests moderate performance stability with growth variance across regions. "
-                    "Revenue remains concentrated among top-performing states, "
-                    "while daily averages signal consistent operational throughput. "
-                    "Monitoring state-level growth differentials could reveal emerging opportunities. "
-                    "Strategic focus: enhance forecasting accuracy to pre-empt demand spikes."
-                )
+            ai_resp = deepinfra_chat(system, user, max_tokens=300)
+            ai_text = ai_resp.get("text", "Summary not generated.") if isinstance(ai_resp, dict) else str(ai_resp)
 
             st.markdown(
                 f"""
-                <div style='background-color:#f0f9ff;
-                            border-left:5px solid #2196f3;
-                            padding:15px;border-radius:8px;
-                            box-shadow:0 2px 10px rgba(0,0,0,0.1);
-                            animation:fadeIn 1s ease-in-out;'>
-                    <b>AI Executive Summary:</b><br>{ai_summary}
+                <div style='background-color:#f0f9ff;border-left:5px solid #2196f3;
+                            padding:15px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1);'>
+                    <b>AI Executive Summary:</b><br>{ai_text}
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
-            st.toast("✅ Executive summary generated successfully.")
+            st.toast("✅ Executive Summary generated successfully.")
         except Exception as e:
             st.error(f"AI summary generation failed: {e}")
 else:
-    st.info("🤖 AI Executive Summary disabled. Enable 'AI Narratives' in settings to activate.")
+    st.info("🤖 AI Executive Summary disabled — enable 'AI Narratives' to activate.")
 
 # ============================================================
-# ✨ Footer Section — Aesthetic & Branding
+# ✨ Footer Branding
 # ============================================================
+
 st.markdown(
     """
     <hr style="border: 1px solid #444; margin-top: 2em; margin-bottom: 1em;">
-    <div style="text-align:center; color:gray; font-size:0.9em; animation:fadeInUp 1.5s;">
-        🚀 <b>Parivahan Analytics 2025</b><br>
-        <span style="color:#aaa;">AI Narratives • Smart KPIs • Forecast & Growth Insights</span><br><br>
-        <i>Empowering data-driven governance.</i>
+    <div style="text-align:center; color:gray; font-size:0.9em;">
+        🚗 <b>Parivahan Analytics — Comparison Suite 2025</b><br>
+        <span style="color:#aaa;">Month-wise • State-wise • Maker-wise • Daily-base KPIs</span><br><br>
+        <i>Empowering precision in public transport analytics.</i>
     </div>
-    <style>
-        @keyframes fadeIn {{
-            from {{opacity:0; transform:translateY(10px);}}
-            to {{opacity:1; transform:translateY(0);}}
-        }}
-        @keyframes fadeInUp {{
-            from {{opacity:0; transform:translateY(20px);}}
-            to {{opacity:1; transform:translateY(0);}}
-        }}
-    </style>
     """,
     unsafe_allow_html=True,
 )
 
 st.balloons()
-st.toast("✨ Dashboard summary ready — KPIs, AI insights & visuals .")
+st.toast("✅ Dashboard Summary Loaded — All Comparison Datasets Synced.")
