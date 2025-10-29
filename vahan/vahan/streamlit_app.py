@@ -66,105 +66,267 @@ load_dotenv()
 #   without adding external scripts or OS-specific services.
 
 # =====================================================
-# 🚀 PARIVAHAN ANALYTICS — MAXED HYBRID UI ENGINE
+# 🚀 PARIVAHAN ANALYTICS —  HYBRID UI ENGINE
 # =====================================================
+
 import streamlit as st
+import requests
+from datetime import date, datetime
+from urllib.parse import urlencode
+
+# =====================================================
+# ⚙️ PAGE CONFIG
+# =====================================================
+st.set_page_config(
+    page_title="🚗 Parivahan Analytics",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# =====================================================
+# 🎉 FIRST-LAUNCH WELCOME
+# =====================================================
+if "launched" not in st.session_state:
+    st.session_state.launched = True
+    st.toast("🚀 Welcome to Parivahan Analytics —  Hybrid Experience!", icon="🌍")
+    st.balloons()
+
+# =====================================================
+# 🧭 SIDEBAR — DYNAMIC FILTER PANEL ()
+# =====================================================
+today = date.today()
+default_from_year = max(2017, today.year - 1)
+
+# Sidebar style
+st.sidebar.markdown("""
+<style>
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+    color: #E2E8F0;
+    animation: fadeIn 1.2s ease-in;
+}
+@keyframes fadeIn {
+  from {opacity: 0; transform: translateY(-10px);}
+  to {opacity: 1; transform: translateY(0);}
+}
+.sidebar-section {
+    padding: 10px 5px 10px 5px;
+    margin-bottom: 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.05);
+    border-left: 3px solid #00E0FFAA;
+    transition: all 0.3s ease-in-out;
+}
+.sidebar-section:hover {
+    background: rgba(0,224,255,0.1);
+    transform: scale(1.02);
+}
+.sidebar-section h4 {
+    color: #00E0FF;
+    margin-bottom: 6px;
+    font-size: 16px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.sidebar.markdown("""
+<div style="text-align:center; padding:10px 0;">
+    <h2 style="color:#00E0FF;">⚙️ Control Panel</h2>
+    <p style="font-size:13px;color:#9CA3AF;">Customize analytics, filters, and AI insights.</p>
+</div>
+""", unsafe_allow_html=True)
+
+# --- Data Filters ---
+with st.sidebar.expander("📊 Data Filters", expanded=True):
+    from_year = st.number_input("📅 From Year", min_value=2012, max_value=today.year, value=default_from_year)
+    to_year = st.number_input("📆 To Year", min_value=from_year, max_value=today.year, value=today.year)
+    state_code = st.text_input("🏙️ State Code (blank = All-India)", value="")
+    rto_code = st.text_input("🏢 RTO Code (0 = aggregate)", value="0")
+    vehicle_classes = st.text_input("🚘 Vehicle Classes (e.g., 2W,3W,4W)", value="")
+    vehicle_makers = st.text_input("🏭 Vehicle Makers (comma-separated or IDs)", value="")
+    vehicle_type = st.text_input("🛻 Vehicle Type (optional)", value="")
+    time_period = st.selectbox("⏱️ Time Period", options=[0, 1, 2], index=0)
+    fitness_check = st.selectbox("🧾 Fitness Check", options=[0, 1], index=0)
+
+# --- Smart Analytics Toggles ---
+with st.sidebar.expander("🧠 Smart Analytics & AI", expanded=True):
+    enable_forecast = st.checkbox("📈 Enable Forecasting", value=True)
+    enable_anomaly = st.checkbox("⚠️ Enable Anomaly Detection", value=True)
+    enable_clustering = st.checkbox("🔍 Enable Clustering", value=True)
+    enable_ai = st.checkbox("🤖 Enable DeepInfra AI Narratives", value=False)
+    forecast_periods = st.number_input("⏳ Forecast Horizon (months)", min_value=1, max_value=36, value=3)
+
+# =====================================================
+# 🎨 UNIVERSAL HYBRID THEME ENGINE (STABLE + )
+# =====================================================
+THEMES = {    
+    "Light": {"bg": "#F9FAFB", "text": "#111827", "card": "#FFFFFF", "accent": "#2563EB"},
+    "Dark": {"bg": "#0B1120", "text": "#E2E8F0", "card": "#1E293B", "accent": "#38BDF8"},
+    "Glass": {"bg": "rgba(15,23,42,0.85)", "text": "#E0F2FE", "card": "rgba(255,255,255,0.06)", "accent": "#00E0FF"},
+    "Neumorphic": {"bg": "#E5E9F0", "text": "#1E293B", "card": "#F8FAFC", "accent": "#0078FF"},
+    "Gradient": {"bg": "linear-gradient(120deg,#0F172A,#1E3A8A)", "text": "#E0F2FE", "card": "rgba(255,255,255,0.05)", "accent": "#38BDF8"},
+    "High Contrast": {"bg": "#000000", "text": "#FFFFFF", "card": "#111111", "accent": "#FFDE00"},
+    "VSCode": {"bg": "#0E101A", "text": "#D4D4D4", "card": "#1E1E2E", "accent": "#007ACC"},
+    "Fluent": {"bg": "linear-gradient(120deg,#0E1624,#1B2838)", "text": "#E6F0FF", "card": "rgba(255,255,255,0.04)", "accent": "#0099FF"},
+    "MacOS": {"bg": "linear-gradient(120deg,#FFFFFF,#EEF2FF)", "text": "#111827", "card": "rgba(255,255,255,0.8)", "accent": "#007AFF"}
+}
+
+st.sidebar.markdown("## 🎨 Appearance & Layout")
+ui_mode = st.sidebar.selectbox("Theme", list(THEMES.keys()), index=0)
+font_size = st.sidebar.slider("Font Size", 12, 20, 15)
+radius = st.sidebar.slider("Corner Radius", 6, 24, 12)
+motion = st.sidebar.toggle("✨ Motion & Glow Effects", value=True)
+palette = THEMES[ui_mode]
+
+def build_css(palette, font_size, radius, motion):
+    accent, text, bg, card = palette["accent"], palette["text"], palette["bg"], palette["card"]
+    glow = "0 0 18px rgba(0,200,255,0.25)" if motion else "none"
+
+    return f"""
+    <style>
+    html, body, .stApp {{
+        background: {bg};
+        color: {text};
+        font-size: {font_size}px;
+        font-family: 'Inter', 'Segoe UI', 'SF Pro Display', sans-serif;
+        transition: all 0.4s ease-in-out;
+    }}
+    .block-container {{
+        max-width: 1300px;
+        padding: 1.5rem 2rem 3rem 2rem;
+    }}
+    h1, h2, h3, h4, h5 {{
+        color: {accent};
+        text-shadow: {glow};
+        font-weight: 800;
+    }}
+    div.stButton > button {{
+        background: {accent};
+        color: white;
+        border: none;
+        border-radius: {radius}px;
+        padding: 0.6rem 1.1rem;
+        transition: all 0.25s ease-in-out;
+        font-weight: 600;
+    }}
+    div.stButton > button:hover {{
+        transform: translateY(-2px);
+        box-shadow: 0 0 20px {accent}77;
+    }}
+    .glass-card {{
+        background: {card};
+        backdrop-filter: blur(10px);
+        border-radius: {radius}px;
+        padding: 20px;
+        margin-bottom: 1rem;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.15);
+        transition: all 0.3s ease;
+    }}
+    .glass-card:hover {{
+        transform: translateY(-4px);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+    }}
+    [data-testid="stSidebar"] {{
+        background: {card};
+        border-right: 1px solid {accent}33;
+        box-shadow: 4px 0 12px rgba(0,0,0,0.1);
+    }}
+    [data-testid="stMetricValue"] {{
+        color: {accent} !important;
+        font-size: 1.6rem !important;
+        font-weight: 800 !important;
+    }}
+    hr {{
+        border: none;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, {accent}66, transparent);
+        margin: 1rem 0;
+    }}
+    </style>
+    """
+
+# Apply CSS theme
+st.markdown(build_css(palette, font_size, radius, motion), unsafe_allow_html=True)
+    
+# =====================================================
+# 💹 DASHBOARD SECTION — PURE COMPARISON ANALYTICS
+# =====================================================
+
+st.markdown(
+    f"<h2 style='text-align:center;'>🚗 Parivahan Analytics — {ui_mode} Mode</h2>",
+    unsafe_allow_html=True
+)
+st.markdown(
+    "<p style='text-align:center;opacity:0.7;'>Month-wise • State-wise • Maker-wise • Daily Comparisons</p>",
+    unsafe_allow_html=True,
+)
+
+# -- Divider --
+st.markdown("<hr>", unsafe_allow_html=True)
+
+
+# =====================================================
+# 🧾 FOOTER
+# =====================================================
+st.markdown(
+    """
+    <hr>
+    <div style='text-align:center;opacity:0.7;margin-top:2rem;'>
+        ✨ Parivahan Analytics • Comparison Dashboard (State / Maker / Month / Daily)
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# =====================================================
+# 🚗 PARIVAHAN ANALYTICS — HEADER + LAYOUT
+# =====================================================
 from datetime import datetime
 import pytz
+import streamlit as st
 
 # ================= TIME (IST) =================
 ist = pytz.timezone("Asia/Kolkata")
 current_time = datetime.now(ist).strftime("%A, %d %B %Y • %I:%M %p")
 
-# ================= MAXED GLOBAL STYLES =================
+# ================= GLOBAL STYLES =================
 st.markdown("""
 <style>
-/* ====== GLOBAL RESET ====== */
-html, body, .stApp {
-    background: radial-gradient(circle at 30% 20%, #0f172a, #1e293b, #0a0f1f);
-    color: #E2E8F0;
-    font-family: 'Inter', 'Segoe UI', 'SF Pro Display', sans-serif;
-    transition: all 0.3s ease-in-out;
+/* Smooth fade + glassmorphism */
+.main {
+    background: radial-gradient(circle at 20% 20%, #0f2027, #203a43, #2c5364);
+    color: white;
 }
 [data-testid="stHeader"] {background: rgba(0,0,0,0); height: 0;}
-.block-container {max-width: 1350px; padding: 2rem 2.5rem 3rem 2.5rem;}
+hr {border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 1rem 0;}
+h1, h2, h3, p {color: white !important;}
 
-/* ====== ANIMATIONS ====== */
-@keyframes fadeIn {from {opacity: 0; transform: translateY(15px);} to {opacity: 1; transform: translateY(0);}}
-.fade-in {animation: fadeIn 1.4s ease-in-out;}
-@keyframes glowPulse {0% {box-shadow: 0 0 8px rgba(0,200,255,0.3);} 50% {box-shadow: 0 0 20px rgba(0,200,255,0.6);} 100% {box-shadow: 0 0 8px rgba(0,200,255,0.3);}}
-
-/* ====== HEADER ====== */
-.header {
+/* Card-style elements */
+.metric-box {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 20px;
+    border-radius: 20px;
     text-align: center;
-    padding: 40px;
-    border-radius: 25px;
-    background: rgba(255,255,255,0.06);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.45);
-    backdrop-filter: blur(12px);
-    margin-bottom: 40px;
-    animation: fadeIn 1.2s ease-in;
-}
-.header h1 {
-    font-size: 2.6rem;
-    margin-bottom: 10px;
-    background: linear-gradient(90deg, #38BDF8, #0EA5E9);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-.header p {
-    font-size: 15px;
-    opacity: 0.85;
-}
-
-/* ====== KPI CARDS ====== */
-.kpi-box {
-    background: rgba(255,255,255,0.08);
-    padding: 25px;
-    border-radius: 22px;
-    text-align: center;
-    box-shadow: 0 6px 25px rgba(0,0,0,0.25);
-    backdrop-filter: blur(12px);
-    transition: all 0.35s ease;
-    animation: fadeIn 1.3s ease-in;
-}
-.kpi-box:hover {
-    transform: translateY(-6px) scale(1.03);
-    animation: glowPulse 2s infinite;
-}
-.kpi-title {
-    font-weight: 600;
-    font-size: 1rem;
-    opacity: 0.8;
-    margin-bottom: 5px;
-}
-.kpi-value {
-    font-size: 1.8rem;
-    font-weight: 800;
-    color: #38BDF8;
-    text-shadow: 0 0 12px rgba(56,189,248,0.5);
-}
-
-/* ====== MAIN CHART AREA ====== */
-.main-box {
-    background: rgba(255,255,255,0.07);
-    padding: 30px;
-    border-radius: 25px;
-    backdrop-filter: blur(14px);
-    box-shadow: 0 10px 35px rgba(0,0,0,0.4);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    backdrop-filter: blur(10px);
     transition: all 0.3s ease;
 }
-.main-box:hover {transform: translateY(-5px);}
-.main-box h3 {color: #38BDF8; margin-bottom: 10px;}
-
-/* ====== FOOTER ====== */
+.metric-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+}
 .footer {
     text-align:center;
     opacity:0.65;
     font-size:13px;
-    margin-top:40px;
-    padding-top:20px;
-    border-top: 1px solid rgba(255,255,255,0.15);
+    margin-top:20px;
+}
+.fade-in {
+    animation: fadeIn 1.5s ease-in-out;
+}
+@keyframes fadeIn {
+    from {opacity: 0; transform: translateY(10px);}
+    to {opacity: 1; transform: translateY(0);}
 }
 </style>
 """, unsafe_allow_html=True)
@@ -173,65 +335,59 @@ html, body, .stApp {
 # 🧭 HEADER
 # =====================================================
 st.markdown(f"""
-<div class="header fade-in">
-    <h1>🚗 Parivahan Analytics Dashboard</h1>
-    <p>Updated: {current_time} (IST)</p>
+<div class="fade-in" style='text-align:center;padding:30px;border-radius:25px;
+background:rgba(255,255,255,0.05);
+box-shadow:0 8px 30px rgba(0,0,0,0.3);
+backdrop-filter:blur(10px);
+margin-bottom:35px;'>
+    <h1 style='font-size:2.5rem;margin-bottom:10px;'>🚗 Parivahan Analytics Dashboard</h1>
+    <p style='opacity:0.85;font-size:15px;margin:0;'>Updated: {current_time} (IST)</p>
 </div>
 """, unsafe_allow_html=True)
 
 # =====================================================
-# 📊 MAIN ANALYTICS LAYOUT (MAXED GRID)
+# 📊 MAIN SECTION
 # =====================================================
-st.markdown("""
-<div class='fade-in' style='text-align:center;margin-bottom:1.5rem;'>
-    <h2 style='font-size:1.9rem;color:#38BDF8;'>📈 Analytics Overview</h2>
-    <p style='opacity:0.75;'>Dynamic KPIs, charts, forecasts, and insights auto-refresh from live data.</p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown("<hr>", unsafe_allow_html=True)
 
-# --- KPIs Section ---
-kpi_cols = st.columns(4)
-kpis = [
-    ("🚘 Total Vehicles", "—"),
-    ("📅 Daily Growth", "—"),
-    ("📊 YoY Change", "—"),
-    ("💰 Revenue Trend", "—")
-]
-for col, (label, value) in zip(kpi_cols, kpis):
-    with col:
-        st.markdown(f"""
-        <div class='kpi-box'>
-            <div class='kpi-title'>{label}</div>
-            <div class='kpi-value'>{value}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-# --- Spacer ---
-st.markdown("<br>", unsafe_allow_html=True)
-
-# --- Main Chart and Insights Panels ---
-col1, col2 = st.columns([2.5, 1.2])
-with col1:
+layout = st.container()
+with layout:
     st.markdown("""
-    <div class='main-box'>
-        <h3>📉 Main Chart Area</h3>
-        <p style='opacity:0.75;'>Interactive trends, forecasts, and anomaly highlights will appear here.</p>
+    <div class="fade-in" style='text-align:center;margin-bottom:1.5rem;'>
+        <h2 style='font-size:1.8rem;'>📈 Analytics Overview</h2>
+        <p style='opacity:0.75;'>Dynamic KPIs, charts, forecasts, and insights update automatically from live data</p>
     </div>
     """, unsafe_allow_html=True)
 
-with col2:
-    st.markdown("""
-    <div class='main-box'>
-        <h3>🧠 Smart Insights</h3>
-        <p style='opacity:0.75;'>AI-generated summaries, clustering patterns, and actionable insights.</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # ================= KPIs =================
+    kpi_cols = st.columns(3)
+    with kpi_cols[0]:
+        with st.container():
+            st.markdown("<div class='metric-box'>🚘<br><b>Total Vehicles</b><br><span style='font-size:1.5rem;'>—</span></div>", unsafe_allow_html=True)
+    with kpi_cols[1]:
+        with st.container():
+            st.markdown("<div class='metric-box'>📅<br><b>Daily Growth</b><br><span style='font-size:1.5rem;'>—</span></div>", unsafe_allow_html=True)
+    with kpi_cols[2]:
+        with st.container():
+            st.markdown("<div class='metric-box'>📊<br><b>Yearly Comparison</b><br><span style='font-size:1.5rem;'>—</span></div>", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ================= MAIN VISUALS =================
+    left, right = st.columns([2, 1])
+    with left:
+        st.markdown("<div class='metric-box'>📈 Main Chart / Forecast Area</div>", unsafe_allow_html=True)
+    with right:
+        st.markdown("<div class='metric-box'>📋 Breakdown / Insights Panel</div>", unsafe_allow_html=True)
 
 # =====================================================
 # 🧩 FOOTER
 # =====================================================
-st.markdown("<div class='footer'>🌐 Parivahan Analytics • Maxed Hybrid Intelligence Engine</div>", unsafe_allow_html=True)
-
+st.markdown("<hr>", unsafe_allow_html=True)
+st.markdown(
+    "<div class='footer'>🌐 Parivahan Analytics • Hybrid Intelligence Engine</div>",
+    unsafe_allow_html=True,
+)
 
 
 # =====================================================
