@@ -547,15 +547,19 @@ import time
 import random
 from datetime import datetime
 
-# ================================
-# ⚙️ Build & Display Vahan Parameters —  EDITION
-# ================================
+# ============================================================
+# ⚙️ VAHAN PARAMETER BUILDER + API ENGINE — MAXED EDITION
+# ============================================================
+
 import json
 import streamlit as st
 import time
 import random
+import requests
 
-# --- Animated Header Banner ---
+# ============================================================
+# 🎨 HEADER — Animated Banner
+# ============================================================
 st.markdown("""
 <div style="
     background: linear-gradient(90deg, #0072ff, #00c6ff);
@@ -571,109 +575,14 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.write("")  # spacing
+st.write("")
 
-# --- Build Params Block ---
+# ============================================================
+# 🔧 PARAMETER BUILD EXECUTION
+# ============================================================
 with st.spinner("🚀 Generating dynamic request parameters..."):
     try:
-        params_common = build_params(
-            from_year, to_year,
-            state_code=state_code,
-            rto_code=rto_code,
-            vehicle_classes=vehicle_classes,
-            vehicle_makers=vehicle_makers,
-            time_period=time_period,
-            fitness_check=fitness_check,
-            vehicle_type=vehicle_type
-        )
-
-        # --- Animated “processing complete” effect ---
-        st.balloons()
-        st.toast("✨ Parameters generated successfully!", icon="⚙️")
-
-        # --- Show result in expander with style ---
-        with st.expander("🔧 View Generated Vahan Request Parameters (JSON)", expanded=True):
-            st.markdown("""
-            <div style="font-size:15px;color:#00E0FF;font-weight:600;margin-bottom:6px;">
-                📜 Parameter Payload Preview
-            </div>
-            """, unsafe_allow_html=True)
-
-            st.json(params_common)
-
-            # --- Copy-to-clipboard button ---
-            if st.button("📋 Copy Parameters JSON to Clipboard"):
-                st.toast("Copied successfully!", icon="✅")
-
-        # --- Context success banner ---
-        st.markdown(f"""
-        <div style="
-            margin-top:12px;
-            background: linear-gradient(90deg, #00c6ff, #0072ff);
-            padding: 14px 20px;
-            border-radius: 10px;
-            color: #fff;
-            font-weight:600;
-            display:flex;justify-content:space-between;align-items:center;">
-            <div>✅ Parameters built successfully for <b>{to_year}</b></div>
-            <div style="opacity:0.85;font-size:14px;">Ready to fetch data 📡</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    except Exception as e:
-        st.error(f"❌ Error while building Vahan parameters: {str(e)}")
-
-        col1, col2 = st.columns([1,1])
-        with col1:
-            if st.button("🔄 Auto-Retry Build"):
-                st.toast("Rebuilding parameters...", icon="🔁")
-                time.sleep(0.5)
-                st.rerun()
-        with col2:
-            if st.button("📘 View Troubleshooting Help"):
-                st.info("""
-                - Check if all filters are valid (e.g., correct year range or vehicle class).
-                - Ensure all mandatory fields are filled.
-                - Try again with fewer filters or reset defaults.
-                """)
-
-# --- Live Refresh Button ---
-st.markdown("<hr>", unsafe_allow_html=True)
-colA, colB, colC = st.columns([1.5,1,1.5])
-
-with colB:
-    if st.button("♻️ Rebuild Parameters with Latest Filters"):
-        emoji = random.choice(["🔁", "🚗", "⚙️", "🧠", "🛰️"])
-        st.toast(f"{emoji} Rebuilding dynamic params...", icon=emoji)
-        time.sleep(0.8)
-        st.rerun()
-
-# =====================================================
-# 🎨 HEADER — Live Banner
-# =====================================================
-st.markdown("""
-<div style="
-    background: linear-gradient(90deg, #0072ff, #00c6ff);
-    padding: 16px 26px;
-    border-radius: 14px;
-    color: #ffffff;
-    font-size: 18px;
-    font-weight: 700;
-    display: flex; justify-content: space-between; align-items: center;
-    box-shadow: 0 0 25px rgba(0,114,255,0.4);">
-    <div>🧩 Building Dynamic API Parameters for <b>Vahan Analytics</b></div>
-    <div style="font-size:14px;opacity:0.85;">Auto-synced with filters 🔁</div>
-</div>
-""", unsafe_allow_html=True)
-
-st.write("")  # spacing
-
-# =====================================================
-# ⚙️ PARAMETER BUILD EXECUTION
-# =====================================================
-with st.spinner("🚀 Generating dynamic request parameters..."):
-    try:
-        # 👇 assumes these variables exist in your app already
+        # assumes these variables exist upstream in your app
         params_common = build_params(
             from_year,
             to_year,
@@ -690,9 +599,15 @@ with st.spinner("🚀 Generating dynamic request parameters..."):
         st.toast("✨ Parameters generated successfully!", icon="⚙️")
 
         with st.expander("🔧 View Generated Vahan Request Parameters (JSON)", expanded=True):
+            st.markdown("""
+            <div style="font-size:15px;color:#00E0FF;font-weight:600;margin-bottom:6px;">
+                📜 Parameter Payload Preview
+            </div>
+            """, unsafe_allow_html=True)
             st.json(params_common)
+            if st.button("📋 Copy Parameters JSON to Clipboard"):
+                st.toast("Copied successfully!", icon="✅")
 
-        # ✅ success banner
         st.markdown(f"""
         <div style="
             margin-top:12px;
@@ -709,7 +624,6 @@ with st.spinner("🚀 Generating dynamic request parameters..."):
 
     except Exception as e:
         st.error(f"❌ Error while building Vahan parameters: {str(e)}")
-
         c1, c2 = st.columns(2)
         with c1:
             if st.button("🔄 Auto-Retry Build"):
@@ -719,46 +633,37 @@ with st.spinner("🚀 Generating dynamic request parameters..."):
         with c2:
             if st.button("📘 View Troubleshooting Help"):
                 st.info("""
-                - Check if your filters are correctly initialized.
-                - Ensure no variable (like from_year or vehicle_classes) is missing.
-                - Try resetting filters and rebuild.
+                - Ensure all filters are valid (year range, class, etc.)
+                - Make sure no required variable is missing
+                - Try again with default settings
                 """)
 
-# =====================================================
-# 🔁 LIVE REFRESH BUTTON
-# =====================================================
+# ============================================================
+# ♻️ LIVE REFRESH BUTTON
+# ============================================================
 st.markdown("<hr>", unsafe_allow_html=True)
-colA, colB, colC = st.columns([1.5,1,1.5])
+colA, colB, colC = st.columns([1.5, 1, 1.5])
 with colB:
     if st.button("♻️ Rebuild Parameters with Latest Filters"):
         emoji = random.choice(["🔁", "🚗", "⚙️", "🧠", "🛰️"])
         st.toast(f"{emoji} Rebuilding dynamic params...", icon=emoji)
         time.sleep(0.8)
         st.rerun()
-# ==========================================
-# ⚙️ UNIVERSAL VAHAN API ENGINE — MAXED
-# ==========================================
-import time, random, streamlit as st, requests, json
 
-# ----------------------------
-# 🎯 Universal Safe JSON Getter
-# ----------------------------
+# ============================================================
+# 🌐 UNIVERSAL API ENGINE — MAXED
+# ============================================================
 def get_json(endpoint, params=None, method="POST", headers=None, timeout=30):
-    """
-    Universal safe API request wrapper.
-    Handles JSON requests with full safety + Streamlit feedback.
-    """
+    """Universal safe API JSON getter with Streamlit feedback."""
     headers = headers or {
         "Content-Type": "application/json",
         "Accept": "application/json"
     }
-
     try:
         if method.upper() == "POST":
             res = requests.post(endpoint, json=params, headers=headers, timeout=timeout)
         else:
             res = requests.get(endpoint, params=params, headers=headers, timeout=timeout)
-
         if res.status_code == 200:
             try:
                 return res.json(), res.status_code
@@ -768,7 +673,6 @@ def get_json(endpoint, params=None, method="POST", headers=None, timeout=30):
         else:
             st.warning(f"⚠️ API responded with HTTP {res.status_code}")
             return {}, res.status_code
-
     except requests.exceptions.Timeout:
         st.error("⏳ Request timed out. Try again later.")
     except requests.exceptions.ConnectionError:
@@ -777,23 +681,12 @@ def get_json(endpoint, params=None, method="POST", headers=None, timeout=30):
         st.error(f"❌ Unexpected API error: {e}")
     return {}, 0
 
-
-# --------------------------------
-# 🧩 Visual Tag (Helper)
-# --------------------------------
 def _tag(text, color):
     """Utility: colored tag generator"""
     return f"<span style='background:{color};padding:4px 8px;border-radius:6px;color:white;font-size:12px;margin-right:6px;'>{text}</span>"
 
-
-# --------------------------------
-# 🔁 Dynamic Fetch Function — MAXED
-# --------------------------------
 def fetch_json(endpoint, params=None, desc=""):
-    """
-    Dynamic, safe, and beautiful API fetcher with retries + Streamlit UI feedback.
-    Fully integrated with get_json().
-    """
+    """Dynamic, safe, and beautiful API fetcher with retries + UI feedback."""
     if params is None:
         try:
             params = params_common
@@ -819,7 +712,6 @@ def fetch_json(endpoint, params=None, desc=""):
     """, unsafe_allow_html=True)
 
     json_data = None
-
     for attempt in range(1, max_retries + 1):
         with st.spinner(f"🔄 Attempt {attempt}/{max_retries} — Fetching `{desc}` ..."):
             try:
@@ -836,7 +728,6 @@ def fetch_json(endpoint, params=None, desc=""):
                 st.error(f"❌ Error fetching {desc}: {e}")
             time.sleep(delay * attempt * random.uniform(0.9, 1.3))
 
-    # ✅ Success
     if json_data:
         with st.expander(f"📦 View {desc} JSON Preview", expanded=False):
             st.json(json_data)
@@ -853,7 +744,6 @@ def fetch_json(endpoint, params=None, desc=""):
         """, unsafe_allow_html=True)
         return json_data
 
-    # ❌ Failure
     st.error(f"⛔ Failed to fetch {desc} after {max_retries} attempts.")
     st.markdown("""
     <div style="
@@ -869,13 +759,13 @@ def fetch_json(endpoint, params=None, desc=""):
     </div>
     """, unsafe_allow_html=True)
 
-    col1, col2 = st.columns(2)
-    with col1:
+    c1, c2 = st.columns(2)
+    with c1:
         if st.button(f"🔁 Retry {desc}", key=f"retry_{desc}_{random.randint(0,9999)}"):
             st.toast("Retrying API fetch...", icon="🔄")
             time.sleep(0.8)
             st.rerun()
-    with col2:
+    with c2:
         if st.button("📡 Test Endpoint", key=f"test_{desc}_{random.randint(0,9999)}"):
             st.info(f"🔗 Endpoint: `{endpoint}`")
 
