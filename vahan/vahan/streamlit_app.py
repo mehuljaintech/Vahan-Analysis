@@ -1414,11 +1414,13 @@ def deepinfra_test_ui():
     st.caption("💡 Tip: If you get 401 or 405 errors, check your API key or endpoint format.")
     
 # ===============================================================
-# 🚀 CATEGORY DISTRIBUTION — UNIFIED MULTI-YEAR + SINGLE-YEAR VIEW (NO CACHE)
+# 🚀 CATEGORY DISTRIBUTION + TOP MAKERS — UNIFIED MULTI-YEAR VIEW
 # ===============================================================
 
+# -----------------------------
+# 🧩 CATEGORY DISTRIBUTION
+# -----------------------------
 with st.container():
-    # 🌈 HEADER
     st.markdown("""
     <div style="padding:14px 22px;border-left:6px solid #6C63FF;
                 background:linear-gradient(90deg,#f3f1ff 0%,#ffffff 100%);
@@ -1430,23 +1432,19 @@ with st.container():
     </div>
     """, unsafe_allow_html=True)
 
-    # =====================================================
-# ⚙️ FILTER CONFIG
-# =====================================================
-with st.sidebar.expander("⚙️ Top Makers Filters", expanded=True):
-    top_n = st.slider("🔢 Show Top N Makers", 3, 25, 10, key="top_n_makers")
-    show_raw_json = st.checkbox("🧾 Show Raw API JSON", value=False, key="show_raw_json_makers")
-    ai_mode = st.selectbox(
-        "🤖 AI Analysis Mode",
-        ["None", "Summary", "Trends + Recommendations"],
-        index=1,
-        key="ai_mode_makers"
-    )
+    # ⚙️ FILTER CONFIG (Unique Keys)
+    with st.sidebar.expander("⚙️ Category Distribution Filters", expanded=True):
+        mode = st.radio("📅 Mode", ["Multi-Year", "Single-Year"], horizontal=True, key="cat_mode")
+        top_n = st.slider("🔢 Show Top N Categories", 3, 25, 10, key="cat_top_n")
+        show_raw_json = st.checkbox("🧾 Show Raw API JSON", value=False, key="cat_json")
+        ai_mode = st.selectbox(
+            "🤖 AI Analysis Mode",
+            ["None", "Summary", "Trends + Recommendations"],
+            index=1,
+            key="cat_ai_mode"
+        )
 
-
-    # =====================================================
-    # ⚡ API FETCHER — NO CACHE
-    # =====================================================
+    # ⚡ API Fetcher
     def live_fetch_json(endpoint, params, desc):
         try:
             return fetch_json(endpoint, params, desc)
@@ -1454,12 +1452,12 @@ with st.sidebar.expander("⚙️ Top Makers Filters", expanded=True):
             st.error(f"❌ API Fetch Error ({desc}): {e}")
             return None
 
-    # =====================================================
-    # 🧠 MULTI-YEAR MODE
-    # =====================================================
+    # ==============================
+    # MULTI-YEAR MODE
+    # ==============================
     if mode == "Multi-Year":
         all_dfs = []
-        spinner_scope = f"{state_code or 'All States'} | {vehicle_classes or 'All Classes'} | {vehicle_makers or 'All Makers'}"
+        spinner_scope = f"{state_code or 'All States'} | {vehicle_classes or 'All Classes'}"
 
         with st.spinner(f"📡 Fetching Multi-Year Category Distribution: {from_year}→{to_year} ({spinner_scope})"):
             for yr in range(from_year, to_year + 1):
@@ -1483,47 +1481,26 @@ with st.sidebar.expander("⚙️ Top Makers Filters", expanded=True):
                         df_temp["year"] = yr
                         all_dfs.append(df_temp)
 
-        # =========================
-        # 📊 AGGREGATION & DISPLAY
-        # =========================
         if all_dfs:
             df_cat_all = pd.concat(all_dfs, ignore_index=True)
             df_cat_all = df_cat_all.groupby(["label", "year"], as_index=False)["value"].sum()
             df_cat_all = df_cat_all.sort_values(["year", "value"], ascending=[True, False])
-
-            if not show_all:
-                df_cat_all = (
-                    df_cat_all.groupby("year")
-                    .apply(lambda x: x.nlargest(top_n, "value"))
-                    .reset_index(drop=True)
-                )
-
             years_list = sorted(df_cat_all["year"].unique())
+
             st.success(f"✅ Data Loaded for {len(years_list)} Years: {', '.join(map(str, years_list))}")
 
             col1, col2 = st.columns(2, gap="large")
             with col1:
-                st.markdown("#### 📈 Year-wise Comparison (Bar)")
-                try:
-                    fig = px.bar(df_cat_all, x="label", y="value", color="year",
-                                 barmode="group", title="Multi-Year Category Comparison", text_auto=True)
-                    fig.update_layout(xaxis_title="Vehicle Category", yaxis_title="Registrations", height=500)
-                    st.plotly_chart(fig, use_container_width=True)
-                except Exception as e:
-                    st.error(f"⚠️ Bar chart failed: {e}")
-                    st.dataframe(df_cat_all)
+                fig = px.bar(df_cat_all, x="label", y="value", color="year",
+                             barmode="group", title="Multi-Year Category Comparison", text_auto=True)
+                st.plotly_chart(fig, use_container_width=True)
 
             with col2:
-                st.markdown("#### 🍩 Latest Year Donut View")
-                try:
-                    latest_year = max(years_list)
-                    df_latest = df_cat_all[df_cat_all["year"] == latest_year]
-                    pie_from_df(df_latest, title=f"Category Distribution ({latest_year})", donut=True)
-                except Exception as e:
-                    st.error(f"⚠️ Donut chart failed: {e}")
-                    st.dataframe(df_cat_all)
+                latest_year = max(years_list)
+                df_latest = df_cat_all[df_cat_all["year"] == latest_year]
+                pie_from_df(df_latest, title=f"Category Distribution ({latest_year})", donut=True)
 
-            # 📋 KPIs
+            # KPIs
             total_all = df_cat_all["value"].sum()
             top_row = df_cat_all.loc[df_cat_all["value"].idxmax()]
             top_cat, top_val = top_row["label"], top_row["value"]
@@ -1533,23 +1510,10 @@ with st.sidebar.expander("⚙️ Top Makers Filters", expanded=True):
             k2.metric("📊 Share of Total", f"{pct}%")
             k3.metric("🚘 Total Registrations", f"{total_all:,}")
 
-            st.markdown(f"""
-            <div style="margin-top:10px;padding:14px 16px;
-                        background:linear-gradient(90deg,#e7e2ff,#f7f5ff);
-                        border:1px solid #d4cfff;border-radius:12px;
-                        box-shadow:inset 0 0 8px rgba(108,99,255,0.2);">
-                <b>🏅 Insight:</b> <span style="color:#333;">{top_cat}</span> dominates with <b>{pct}%</b> of total across {len(years_list)} years.
-            </div>
-            """, unsafe_allow_html=True)
-
-            with st.expander("📋 View Year-Wise Category Summary"):
-                st.dataframe(df_cat_all.pivot(index="label", columns="year", values="value").fillna(0).astype(int),
-                             use_container_width=True)
-
-            # 🤖 AI MODE
+            # AI
             if ai_mode != "None" and enable_ai:
                 with st.expander(f"🤖 DeepInfra AI — {ai_mode}", expanded=True):
-                    with st.spinner("🧠 DeepInfra AI is analyzing category distribution..."):
+                    with st.spinner("🧠 Analyzing category trends..."):
                         context = {
                             "years": years_list,
                             "top_category": top_cat,
@@ -1557,278 +1521,108 @@ with st.sidebar.expander("⚙️ Top Makers Filters", expanded=True):
                             "total_registrations": int(total_all),
                             "sample_data": df_cat_all.head(20).to_dict(orient="records"),
                         }
-                        system = (
-                            "You are an expert automotive analyst. "
-                            "Generate a concise but data-backed narrative summarizing category trends and dominant vehicle types."
-                        )
+                        system = "You are an expert automotive analyst. Summarize category trends and top categories."
                         if ai_mode == "Trends + Recommendations":
-                            system += " End with 2 actionable recommendations for policymakers and manufacturers."
-
-                        user = f"Analyze this context: {json.dumps(context, default=str)}"
-                        ai_resp = deepinfra_chat(system, user, max_tokens=450, temperature=0.5)
+                            system += " Include 2 recommendations."
+                        ai_resp = deepinfra_chat(system, f"Context: {json.dumps(context, default=str)}",
+                                                 max_tokens=450, temperature=0.45)
                         if ai_resp.get("text"):
                             st.markdown(f"""
                             <div style="margin-top:8px;padding:16px 18px;
-                                        background:linear-gradient(90deg,#fafaff,#f5f7ff);
-                                        border-left:4px solid #6C63FF;border-radius:12px;">
+                                        background:#f7f6ff;border-left:4px solid #6C63FF;border-radius:12px;">
                                 <b>AI Insight:</b>
-                                <p style="margin-top:6px;font-size:15px;color:#333;">{ai_resp["text"]}</p>
+                                <p>{ai_resp["text"]}</p>
                             </div>
                             """, unsafe_allow_html=True)
-                            st.balloons()
-                        else:
-                            st.info("💤 AI summary not generated.")
-        else:
-            st.warning("⚠️ No data returned for selected years.")
-            st.info("🔄 Try expanding filters or check API connectivity.")
 
-    # =====================================================
-    # 🧩 SINGLE-YEAR MODE (SIMPLE)
-    # =====================================================
+    # ==============================
+    # SINGLE-YEAR MODE
+    # ==============================
     else:
-        with st.spinner("📡 Fetching Category Distribution from Vahan API..."):
-            cat_json = fetch_json("vahandashboard/categoriesdonutchart", desc="Category distribution")
+        with st.spinner("📡 Fetching Single-Year Category Distribution..."):
+            cat_json = fetch_json("vahandashboard/categoriesdonutchart", desc="Category Distribution")
         df_cat = to_df(cat_json)
 
         if not df_cat.empty:
-            st.toast("✅ Data Loaded Successfully!", icon="📦")
             col1, col2 = st.columns(2, gap="large")
             with col1:
-                st.markdown("#### 📈 Bar View")
                 bar_from_df(df_cat, title="Category Distribution (Bar)")
             with col2:
-                st.markdown("#### 🍩 Donut View")
                 pie_from_df(df_cat, title="Category Distribution (Donut)", donut=True)
-
-            # KPIs
-            top_cat = df_cat.loc[df_cat['value'].idxmax(), 'label']
-            total, top_val = df_cat['value'].sum(), df_cat['value'].max()
-            pct = round((top_val / total) * 100, 2)
-
-            st.markdown("<hr style='margin-top:25px;margin-bottom:15px;border:none;border-top:1px dashed #ccc;'>",
-                        unsafe_allow_html=True)
-
-            k1, k2, k3 = st.columns(3)
-            k1.metric("🏆 Top Category", top_cat)
-            k2.metric("📊 Share of Total", f"{pct}%")
-            k3.metric("🚘 Total Registrations", f"{total:,}")
-
-            st.markdown(f"""
-            <div style="margin-top:10px;padding:14px 16px;
-                        background:linear-gradient(90deg,#e7e2ff,#f7f5ff);
-                        border:1px solid #d4cfff;border-radius:12px;
-                        box-shadow:inset 0 0 8px rgba(108,99,255,0.2);">
-                <b>🏅 Insight:</b> <span style="color:#333;">{top_cat}</span> contributes <b>{pct}%</b> of total registrations.
-            </div>
-            """, unsafe_allow_html=True)
-            st.balloons()
-
-            # 🤖 AI Summary
-            if enable_ai:
-                st.markdown("### 🤖 AI-Powered Insights")
-                with st.expander("🔍 View AI Narrative", expanded=True):
-                    with st.spinner("🧠 DeepInfra AI is analyzing category trends..."):
-                        sample = df_cat.head(10).to_dict(orient="records")
-                        system = (
-                            "You are a senior automotive data analyst. Highlight key insights, trends, and one recommendation."
-                        )
-                        user = f"Dataset: {json.dumps(sample, default=str)}"
-                        ai_resp = deepinfra_chat(system, user, max_tokens=350, temperature=0.5)
-
-                        if ai_resp.get("text"):
-                            st.toast("✅ AI Insight Ready!", icon="🤖")
-                            st.markdown(f"""
-                            <div style="margin-top:8px;padding:16px 18px;
-                                        background:linear-gradient(90deg,#fafaff,#f5f7ff);
-                                        border-left:4px solid #6C63FF;border-radius:12px;">
-                                <b>AI Summary:</b>
-                                <p style="margin-top:6px;font-size:15px;color:#333;">{ai_resp["text"]}</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            st.snow()
-                        else:
-                            st.info("💤 No AI summary generated. Try re-running or check your DeepInfra key.")
         else:
-            st.warning("⚠️ No category data returned from the Vahan API.")
-            st.info("🔄 Please refresh or check API connectivity.")
+            st.warning("⚠️ No category data found.")
 
-# ===============================================================
-# 🏭 TOP MAKERS — ALL-IN-ONE (Multi-Year + Latest Snapshot) 🚀✨
-# ===============================================================
+
+# -----------------------------
+# 🏭 TOP MAKERS SECTION
+# -----------------------------
 with st.container():
-    # 🌈 HEADER
     st.markdown("""
     <div style="padding:14px 22px;border-left:6px solid #FF6B6B;
                 background:linear-gradient(90deg,#fff5f5 0%,#ffffff 100%);
-                border-radius:16px;margin-bottom:20px;
-                box-shadow:0 2px 8px rgba(255,107,107,0.15);">
-        <h3 style="margin:0;font-weight:700;color:#3a3a3a;">🏭 Top Vehicle Makers — Unified Smart View</h3>
-        <p style="margin:4px 0 0;color:#555;font-size:14.5px;">
-            Explore manufacturer dominance across multiple years and view latest-year insights — fully dynamic, AI-ready, and filter-customizable.
-        </p>
+                border-radius:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(255,107,107,0.15);">
+        <h3 style="margin:0;font-weight:700;color:#3a3a3a;">🏭 Top Vehicle Makers — Multi-Year Smart View</h3>
     </div>
     """, unsafe_allow_html=True)
 
-    # =====================================================
-    # ⚙️ FILTER CONFIG — ALL MAXED
-    # =====================================================
-    with st.sidebar.expander("⚙️ Top Makers Filters", expanded=True):
-        top_n = st.slider("🔢 Show Top N Makers", 3, 25, 10, key="topmakers_topn_all")
-        ai_mode = st.selectbox("🤖 AI Analysis Mode", ["None", "Summary", "Trends + Recommendations"], index=1, key="topmakers_aimode_all")
+    with st.sidebar.expander("⚙️ Top Makers Filters (Unique)", expanded=True):
+        top_n_mk = st.slider("🔢 Show Top N Makers", 3, 25, 10, key="maker_topn")
+        ai_mode_mk = st.selectbox("🤖 AI Mode", ["None", "Summary", "Trends + Recommendations"],
+                                  index=1, key="maker_aimode")
+        state_code_mk = st.text_input("🏙️ State Code", key="maker_state")
+        rto_code_mk = st.text_input("🏢 RTO Code", key="maker_rto")
+        show_raw_json_mk = st.checkbox("🧾 Show Raw JSON", value=False, key="maker_json")
 
-        st.markdown("---")
-        st.markdown("### 🌍 Custom Filters")
-        state_code = st.text_input("🏙️ State Code (Optional)", key="topmakers_state_all")
-        rto_code = st.text_input("🏢 RTO Code (Optional)", key="topmakers_rto_all")
-        vehicle_type = st.text_input("🚗 Vehicle Type (Optional)", key="topmakers_type_all")
-        vehicle_classes = st.text_input("🛻 Vehicle Class (Optional)", key="topmakers_class_all")
-        vehicle_makers = st.text_input("🏭 Specific Makers (comma-separated, optional)", key="topmakers_makers_all")
-        time_period = st.selectbox("⏰ Time Period", ["YEARLY", "QUARTERLY", "MONTHLY"], key="topmakers_time_all")
-        fitness_check = st.selectbox("🧾 Fitness Check", ["ALL", "FIT", "UNFIT"], key="topmakers_fit_all")
-        show_raw_json = st.checkbox("🧾 Show Raw API JSON", value=False, key="topmakers_json_all")
-
-    # =====================================================
-    # 📡 MULTI-YEAR FETCH
-    # =====================================================
-    st.toast(f"📡 Fetching Top Makers: {from_year} → {to_year}", icon="🚀")
+    st.toast(f"📡 Fetching Top Makers: {from_year} → {to_year}", icon="🚗")
 
     all_maker_dfs = []
     with st.spinner(f"🚗 Fetching Top Makers data from {from_year} to {to_year}..."):
         for yr in range(from_year, to_year + 1):
-            try:
-                params = {
-                    "stateCd": state_code or "",
-                    "rtoCd": rto_code or "0",
-                    "year": yr,
-                    "vehicleClass": vehicle_classes or "",
-                    "vehicleMaker": vehicle_makers or "",
-                    "vehicleType": vehicle_type or "",
-                    "timePeriod": time_period,
-                    "fitnessCheck": fitness_check,
-                }
-                mk_json = fetch_json("vahandashboard/top5Makerchart", params, desc=f"Top Makers {yr}")
-                if show_raw_json:
-                    with st.expander(f"🧾 Raw JSON — {yr}", expanded=False):
-                        st.json(mk_json)
-                df_temp = parse_makers(mk_json)
-                if not df_temp.empty:
-                    df_temp["year"] = yr
-                    all_maker_dfs.append(df_temp)
-            except Exception as e:
-                st.error(f"⚠️ Fetch failed for {yr}: {e}")
+            params = {
+                "stateCd": state_code_mk or "",
+                "rtoCd": rto_code_mk or "0",
+                "year": yr,
+            }
+            mk_json = fetch_json("vahandashboard/top5Makerchart", params, desc=f"Top Makers {yr}")
+            if show_raw_json_mk:
+                with st.expander(f"🧾 Raw JSON — {yr}", expanded=False):
+                    st.json(mk_json)
+            df_temp = parse_makers(mk_json)
+            if not df_temp.empty:
+                df_temp["year"] = yr
+                all_maker_dfs.append(df_temp)
 
-    # =====================================================
-    # 📊 AGGREGATION + VISUALS
-    # =====================================================
     if all_maker_dfs:
         df_mk_all = pd.concat(all_maker_dfs, ignore_index=True)
         df_mk_all.columns = [c.strip().lower() for c in df_mk_all.columns]
-
-        maker_col = next((c for c in ["maker", "makename", "manufacturer", "label", "name"] if c in df_mk_all.columns), None)
+        maker_col = next((c for c in ["maker", "makename", "manufacturer", "label"] if c in df_mk_all.columns), None)
         value_col = next((c for c in ["value", "count", "total", "registeredvehiclecount", "y"] if c in df_mk_all.columns), None)
 
-        if not maker_col or not value_col:
-            st.warning("⚠️ Could not identify maker/value columns automatically.")
-            st.dataframe(df_mk_all)
-        else:
-            # Group + Sort
-            df_mk_all = (
-                df_mk_all.groupby([maker_col, "year"], as_index=False)[value_col]
-                .sum()
-                .sort_values(by=value_col, ascending=False)
-            )
+        df_mk_all = df_mk_all.groupby([maker_col, "year"], as_index=False)[value_col].sum()
+        df_mk_top = df_mk_all.groupby("year").apply(lambda x: x.nlargest(top_n_mk, value_col)).reset_index(drop=True)
 
-            df_mk_top = df_mk_all.groupby("year").apply(lambda x: x.nlargest(top_n, value_col)).reset_index(drop=True)
-            years_list = sorted(df_mk_all["year"].unique())
+        years_list = sorted(df_mk_all["year"].unique())
 
-            # =====================================================
-            # 🎨 VISUALS
-            # =====================================================
-            st.success(f"✅ Loaded data for {len(years_list)} years | Top {top_n} Makers per year")
+        col1, col2 = st.columns(2)
+        with col1:
+            fig = px.bar(df_mk_top, x=maker_col, y=value_col, color="year",
+                         barmode="group", title="Top Makers Comparison", text_auto=True)
+            st.plotly_chart(fig, use_container_width=True)
 
-            col1, col2 = st.columns(2, gap="large")
-            with col1:
-                st.markdown(f"#### 📊 Multi-Year Comparison (Top {top_n})")
-                fig = px.bar(
-                    df_mk_top,
-                    x=maker_col,
-                    y=value_col,
-                    color="year",
-                    barmode="group",
-                    text_auto=True,
-                    title=f"Top {top_n} Makers — {from_year} → {to_year}",
-                    height=460,
-                )
-                fig.update_layout(
-                    xaxis_title="Maker",
-                    yaxis_title="Registrations",
-                    legend_title="Year",
-                    margin=dict(t=60, b=40),
-                )
-                st.plotly_chart(fig, use_container_width=True)
+        with col2:
+            df_latest = df_mk_top[df_mk_top["year"] == max(years_list)]
+            pie_from_df(df_latest.rename(columns={maker_col: "label", value_col: "value"}), donut=True)
 
-            with col2:
-                st.markdown(f"#### 🍩 Latest Year ({max(years_list)}) — Market Share Donut")
-                df_latest = df_mk_top[df_mk_top["year"] == max(years_list)]
-                pie_from_df(df_latest.rename(columns={maker_col: "label", value_col: "value"}), donut=True)
+        total_val = df_mk_all[value_col].sum()
+        top_row = df_mk_all.loc[df_mk_all[value_col].idxmax()]
+        top_maker = top_row[maker_col]
+        top_val = top_row[value_col]
+        pct_share = round((top_val / total_val) * 100, 2)
 
-            # =====================================================
-            # 💎 KPIs — MAXED
-            # =====================================================
-            total_val = df_mk_all[value_col].sum()
-            top_row = df_mk_all.loc[df_mk_all[value_col].idxmax()]
-            top_maker = top_row[maker_col]
-            top_val = top_row[value_col]
-            pct_share = round((top_val / total_val) * 100, 2)
-
-            k1, k2, k3 = st.columns(3)
-            k1.metric("🏆 Leading Maker", top_maker)
-            k2.metric("📈 Share of Total", f"{pct_share}%")
-            k3.metric("🚘 Total Registrations", f"{total_val:,}")
-
-            st.markdown(f"""
-            <div style="margin-top:10px;padding:14px 16px;
-                        background:linear-gradient(90deg,#ffecec,#fffafa);
-                        border:1px solid #ffc9c9;border-radius:12px;">
-                <b>🔥 Insight:</b> <span style="color:#333;">{top_maker}</span> dominates with 
-                <b>{pct_share}%</b> share across <b>{len(years_list)} years</b>.
-            </div>
-            """, unsafe_allow_html=True)
-            st.balloons()
-
-            # =====================================================
-            # 🤖 AI INSIGHT (DeepInfra)
-            # =====================================================
-            if ai_mode != "None" and enable_ai:
-                with st.expander(f"🤖 DeepInfra AI — {ai_mode}", expanded=True):
-                    with st.spinner("🧠 DeepInfra AI analyzing manufacturer trends..."):
-                        sample = df_mk_top.head(15).to_dict(orient="records")
-                        system = (
-                            "You are an expert automotive analyst. "
-                            "Summarize trends in multi-year vehicle maker performance — highlight leaders, emerging players, and policy signals."
-                        )
-                        if ai_mode == "Trends + Recommendations":
-                            system += " End with 2 actionable recommendations for OEMs and policymakers."
-                        user = f"Dataset: {json.dumps(sample, default=str)}"
-                        ai_resp = deepinfra_chat(system, user, max_tokens=450, temperature=0.45)
-
-                        if ai_resp.get("text"):
-                            st.markdown(f"""
-                            <div style="margin-top:8px;padding:16px 18px;
-                                        background:linear-gradient(90deg,#fff9f9,#fffafa);
-                                        border-left:4px solid #FF6B6B;border-radius:12px;">
-                                <b>AI Summary:</b>
-                                <p style="margin-top:6px;font-size:15px;color:#333;">
-                                    {ai_resp["text"]}
-                                </p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            st.snow()
-                        else:
-                            st.info("💤 No AI summary generated.")
-    else:
-        st.warning("⚠️ No maker data found for selected years.")
-        st.info("🔄 Try adjusting filters or check API connectivity.")
+        k1, k2, k3 = st.columns(3)
+        k1.metric("🏆 Leading Maker", top_maker)
+        k2.metric("📈 Share of Total", f"{pct_share}%")
+        k3.metric("🚘 Total Registrations", f"{total_val:,}")
 
 # =============================================================
 # 3️⃣ REGISTRATION TRENDS — FULL CUSTOM FORECAST ⚡ (MAXED)
