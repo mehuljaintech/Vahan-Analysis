@@ -1,21 +1,35 @@
+# =====================================================
+# 🕒 GLOBAL TIMEZONE LOGGING — FORCE IST EVERYWHERE
+# =====================================================
 import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-# Force logging timestamps to IST
+# --- 1️⃣ Simple print-style IST logger for quick messages
+def log_ist(msg: str):
+    ist_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
+    print(f"[IST {ist_time}] {msg}")
+
+# --- 2️⃣ Global formatter to make all logging timestamps IST
 class ISTFormatter(logging.Formatter):
-    converter = lambda *args: datetime.now(ZoneInfo("Asia/Kolkata")).timetuple()
+    def converter(self, timestamp):
+        return datetime.fromtimestamp(timestamp, ZoneInfo("Asia/Kolkata"))
     def formatTime(self, record, datefmt=None):
-        dt = datetime.fromtimestamp(record.created, ZoneInfo("Asia/Kolkata"))
+        dt = self.converter(record.created)
         if datefmt:
             return dt.strftime(datefmt)
-        return dt.isoformat()
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
 
-# Apply globally
-for handler in logging.getLogger().handlers:
+# --- 3️⃣ Apply formatter globally
+root_logger = logging.getLogger()
+if not root_logger.handlers:
+    logging.basicConfig(level=logging.INFO)
+
+for handler in root_logger.handlers:
     handler.setFormatter(ISTFormatter("%(asctime)s | %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S"))
 
-logging.info("✅ Logging timezone set to IST")
+logging.info("✅ Logging timezone forced to IST")
+log_ist("🚀 App startup complete (Streamlit Boot Phase)")
 
 
 # =============================
