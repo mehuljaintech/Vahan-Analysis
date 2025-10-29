@@ -1,17 +1,25 @@
 # =====================================================
-# 🕒 GLOBAL TIMEZONE LOGGING — FORCE IST EVERYWHERE
+# 🌏 GLOBAL TIMEZONE ENFORCEMENT — IST LOGGING + STARTUP BANNER
 # =====================================================
 import logging
+import platform
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import streamlit as st
 
-# --- 1️⃣ Simple print-style IST logger for quick messages
+# =====================================================
+# 🕒 1️⃣ Universal IST print-based logger
+# =====================================================
 def log_ist(msg: str):
+    """Print message with current IST timestamp."""
     ist_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
     print(f"[IST {ist_time}] {msg}")
 
-# --- 2️⃣ Global formatter to make all logging timestamps IST
+# =====================================================
+# 🧭 2️⃣ Force all Python logging timestamps to IST
+# =====================================================
 class ISTFormatter(logging.Formatter):
+    """Custom logging formatter that forces timestamps to IST."""
     def converter(self, timestamp):
         return datetime.fromtimestamp(timestamp, ZoneInfo("Asia/Kolkata"))
     def formatTime(self, record, datefmt=None):
@@ -20,7 +28,7 @@ class ISTFormatter(logging.Formatter):
             return dt.strftime(datefmt)
         return dt.strftime("%Y-%m-%d %H:%M:%S")
 
-# --- 3️⃣ Apply formatter globally
+# Configure global logging
 root_logger = logging.getLogger()
 if not root_logger.handlers:
     logging.basicConfig(level=logging.INFO)
@@ -29,7 +37,45 @@ for handler in root_logger.handlers:
     handler.setFormatter(ISTFormatter("%(asctime)s | %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S"))
 
 logging.info("✅ Logging timezone forced to IST")
-log_ist("🚀 App startup complete (Streamlit Boot Phase)")
+log_ist("🚀 Streamlit App Initialization Started")
+
+# =====================================================
+# 🚀 3️⃣ Streamlit Startup Banner — Visual & Console Mirror
+# =====================================================
+def app_boot_banner():
+    ist_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
+    python_ver = platform.python_version()
+    streamlit_ver = st.__version__
+
+    # UI banner
+    st.markdown(f"""
+    <div style='
+        background:linear-gradient(90deg,#0072ff,#00c6ff);
+        color:white;
+        padding:14px 24px;
+        border-radius:14px;
+        margin:15px 0 25px 0;
+        box-shadow:0 4px 20px rgba(0,0,0,0.25);
+        font-family:monospace;'>
+        🕒 <b>App booted at:</b> {ist_time} (IST)<br>
+        ⚙️ <b>Environment:</b> Python {python_ver} | Streamlit {streamlit_ver}
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Console mirror
+    print("=" * 65)
+    print(f"[IST {ist_time}] ✅ Streamlit App Booted Successfully")
+    print(f"[IST {ist_time}] Python {python_ver} | Streamlit {streamlit_ver}")
+    print("=" * 65)
+
+app_boot_banner()
+
+# =====================================================
+# 🧩 Example Usage Anywhere Below
+# =====================================================
+# log_ist("Fetching data from API...")
+# logging.info("Data pull completed.")
+
 
 
 # =============================
