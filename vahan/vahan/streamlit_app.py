@@ -97,42 +97,103 @@ if "launched" not in st.session_state:
 today = date.today()
 default_from_year = max(2017, today.year - 1)
 
-# Sidebar style
+# =====================================================
+# 🌈 MAXED SIDEBAR — GLASS NEON THEME
+# =====================================================
 st.sidebar.markdown("""
 <style>
+/* Sidebar Container */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+    background: linear-gradient(180deg, #030712 0%, #0f172a 60%, #1e293b 100%);
     color: #E2E8F0;
-    animation: fadeIn 1.2s ease-in;
+    box-shadow: 0 0 25px rgba(0,255,255,0.15);
+    border-right: 1px solid rgba(0,255,255,0.1);
+    animation: slideIn 1.2s ease-in-out;
+    backdrop-filter: blur(20px);
 }
-@keyframes fadeIn {
-  from {opacity: 0; transform: translateY(-10px);}
-  to {opacity: 1; transform: translateY(0);}
+
+/* Smooth entrance animation */
+@keyframes slideIn {
+  from {opacity: 0; transform: translateX(-25px);}
+  to {opacity: 1; transform: translateX(0);}
 }
+
+/* Sidebar Sections */
 .sidebar-section {
-    padding: 10px 5px 10px 5px;
-    margin-bottom: 12px;
-    border-radius: 10px;
+    padding: 14px 10px;
+    margin: 10px 0;
+    border-radius: 14px;
     background: rgba(255,255,255,0.05);
-    border-left: 3px solid #00E0FFAA;
-    transition: all 0.3s ease-in-out;
+    border: 1px solid rgba(0,255,255,0.15);
+    box-shadow: 0 4px 18px rgba(0,255,255,0.08);
+    transition: all 0.35s ease-in-out;
 }
+
+/* Hover Glow Effect */
 .sidebar-section:hover {
     background: rgba(0,224,255,0.1);
-    transform: scale(1.02);
+    border-color: rgba(0,255,255,0.4);
+    box-shadow: 0 6px 20px rgba(0,255,255,0.3);
+    transform: translateY(-3px) scale(1.02);
 }
+
+/* Section Headings */
 .sidebar-section h4 {
     color: #00E0FF;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     font-size: 16px;
+    letter-spacing: 0.5px;
+    text-shadow: 0 0 12px rgba(0,255,255,0.6);
+}
+
+/* Input + Select fields */
+div[data-baseweb="input"], div[data-baseweb="select"] {
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.15);
+    transition: all 0.2s ease-in-out;
+}
+div[data-baseweb="input"]:hover, div[data-baseweb="select"]:hover {
+    border-color: rgba(0,255,255,0.4);
+    box-shadow: 0 0 12px rgba(0,255,255,0.2);
+}
+
+/* Toggle / Checkbox style */
+.stCheckbox, .stSwitch {
+    accent-color: #00E0FF !important;
+}
+
+/* Sidebar Title Block */
+.sidebar-header {
+    text-align: center;
+    padding: 15px 0 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 15px;
+}
+.sidebar-header h2 {
+    color: #00E0FF;
+    text-shadow: 0 0 18px rgba(0,255,255,0.8);
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+}
+.sidebar-header p {
+    font-size: 13px;
+    color: #9CA3AF;
+    opacity: 0.8;
+    margin: 0;
 }
 </style>
 """, unsafe_allow_html=True)
 
+# =====================================================
+# ✨ SIDEBAR HEADER
+# =====================================================
 st.sidebar.markdown("""
-<div style="text-align:center; padding:10px 0;">
-    <h2 style="color:#00E0FF;">⚙️ Control Panel</h2>
-    <p style="font-size:13px;color:#9CA3AF;">Customize analytics, filters, and AI insights.</p>
+<div class="sidebar-header">
+    <h2>⚙️ Control Panel</h2>
+    <p>Customize analytics, filters, and AI insights.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -157,30 +218,147 @@ with st.sidebar.expander("🧠 Smart Analytics & AI", expanded=True):
     forecast_periods = st.number_input("⏳ Forecast Horizon (months)", min_value=1, max_value=36, value=3)
 
 # =====================================================
-# 🎨 UNIVERSAL HYBRID THEME ENGINE (STABLE + )
+# 🎨 UNIVERSAL HYBRID THEME ENGINE — MAXED EDITION 🚀
 # =====================================================
-THEMES = {    
-    "Light": {"bg": "#F9FAFB", "text": "#111827", "card": "#FFFFFF", "accent": "#2563EB"},
-    "Dark": {"bg": "#0B1120", "text": "#E2E8F0", "card": "#1E293B", "accent": "#38BDF8"},
-    "Glass": {"bg": "rgba(15,23,42,0.85)", "text": "#E0F2FE", "card": "rgba(255,255,255,0.06)", "accent": "#00E0FF"},
-    "Neumorphic": {"bg": "#E5E9F0", "text": "#1E293B", "card": "#F8FAFC", "accent": "#0078FF"},
-    "Gradient": {"bg": "linear-gradient(120deg,#0F172A,#1E3A8A)", "text": "#E0F2FE", "card": "rgba(255,255,255,0.05)", "accent": "#38BDF8"},
-    "High Contrast": {"bg": "#000000", "text": "#FFFFFF", "card": "#111111", "accent": "#FFDE00"},
-    "VSCode": {"bg": "#0E101A", "text": "#D4D4D4", "card": "#1E1E2E", "accent": "#007ACC"},
-    "Fluent": {"bg": "linear-gradient(120deg,#0E1624,#1B2838)", "text": "#E6F0FF", "card": "rgba(255,255,255,0.04)", "accent": "#0099FF"},
-    "MacOS": {"bg": "linear-gradient(120deg,#FFFFFF,#EEF2FF)", "text": "#111827", "card": "rgba(255,255,255,0.8)", "accent": "#007AFF"}
+
+THEMES = {
+    "Light": {
+        "bg": "#F9FAFB",
+        "text": "#111827",
+        "card": "#FFFFFF",
+        "accent": "#2563EB",
+        "glow": "rgba(37,99,235,0.35)"
+    },
+    "Dark": {
+        "bg": "#0B1120",
+        "text": "#E2E8F0",
+        "card": "#1E293B",
+        "accent": "#38BDF8",
+        "glow": "rgba(56,189,248,0.4)"
+    },
+    "Glass": {
+        "bg": "rgba(15,23,42,0.9)",
+        "text": "#E0F2FE",
+        "card": "rgba(255,255,255,0.06)",
+        "accent": "#00E0FF",
+        "glow": "rgba(0,224,255,0.5)"
+    },
+    "Neumorphic": {
+        "bg": "#E5E9F0",
+        "text": "#1E293B",
+        "card": "#F8FAFC",
+        "accent": "#0078FF",
+        "glow": "rgba(0,120,255,0.35)"
+    },
+    "Gradient": {
+        "bg": "linear-gradient(135deg,#0F172A,#1E3A8A)",
+        "text": "#E0F2FE",
+        "card": "rgba(255,255,255,0.05)",
+        "accent": "#38BDF8",
+        "glow": "rgba(56,189,248,0.4)"
+    },
+    "High Contrast": {
+        "bg": "#000000",
+        "text": "#FFFFFF",
+        "card": "#111111",
+        "accent": "#FFDE00",
+        "glow": "rgba(255,222,0,0.6)"
+    },
+    "VSCode": {
+        "bg": "#0E101A",
+        "text": "#D4D4D4",
+        "card": "#1E1E2E",
+        "accent": "#007ACC",
+        "glow": "rgba(0,122,204,0.6)"
+    },
+    "Windows": {
+        "bg": "linear-gradient(120deg,#0078D7,#003C8F)",
+        "text": "#FFFFFF",
+        "card": "rgba(255,255,255,0.08)",
+        "accent": "#00B7FF",
+        "glow": "rgba(0,183,255,0.45)"
+    },
+    "MacOS": {
+        "bg": "linear-gradient(120deg,#FFFFFF,#EEF2FF)",
+        "text": "#111827",
+        "card": "rgba(255,255,255,0.85)",
+        "accent": "#007AFF",
+        "glow": "rgba(0,122,255,0.4)"
+    },
+    "Fluent": {
+        "bg": "linear-gradient(120deg,#0E1624,#1B2838)",
+        "text": "#E6F0FF",
+        "card": "rgba(255,255,255,0.04)",
+        "accent": "#0099FF",
+        "glow": "rgba(0,153,255,0.4)"
+    },
+    "Aurora": {
+        "bg": "linear-gradient(135deg,#0f172a,#312e81,#16a34a)",
+        "text": "#e0f2fe",
+        "card": "rgba(255,255,255,0.05)",
+        "accent": "#22d3ee",
+        "glow": "rgba(34,211,238,0.4)"
+    },
+    "Matrix": {
+        "bg": "#000000",
+        "text": "#00FF41",
+        "card": "rgba(0,255,65,0.05)",
+        "accent": "#00FF41",
+        "glow": "rgba(0,255,65,0.5)"
+    },
+    "Cyberpunk": {
+        "bg": "linear-gradient(135deg,#1a002b,#ff00ff,#00ffff)",
+        "text": "#E0E0E0",
+        "card": "rgba(255,255,255,0.08)",
+        "accent": "#00FFFF",
+        "glow": "rgba(0,255,255,0.5)"
+    },
+    "Neon Glass": {
+        "bg": "radial-gradient(circle at 20% 30%, #0f2027, #203a43, #2c5364)",
+        "text": "#E6F9FF",
+        "card": "rgba(255,255,255,0.05)",
+        "accent": "#00E0FF",
+        "glow": "rgba(0,224,255,0.45)"
+    },
+    "Terminal": {
+        "bg": "#000000",
+        "text": "#33FF00",
+        "card": "rgba(0,0,0,0.8)",
+        "accent": "#33FF00",
+        "glow": "rgba(51,255,0,0.5)"
+    },
+    "Solarized": {
+        "bg": "#002b36",
+        "text": "#93a1a1",
+        "card": "#073642",
+        "accent": "#b58900",
+        "glow": "rgba(181,137,0,0.4)"
+    },
+    "Monokai": {
+        "bg": "#272822",
+        "text": "#f8f8f2",
+        "card": "#383830",
+        "accent": "#f92672",
+        "glow": "rgba(249,38,114,0.4)"
+    }
 }
 
 st.sidebar.markdown("## 🎨 Appearance & Layout")
-ui_mode = st.sidebar.selectbox("Theme", list(THEMES.keys()), index=0)
+ui_mode = st.sidebar.selectbox("Theme", list(THEMES.keys()), index=5)
 font_size = st.sidebar.slider("Font Size", 12, 20, 15)
 radius = st.sidebar.slider("Corner Radius", 6, 24, 12)
 motion = st.sidebar.toggle("✨ Motion & Glow Effects", value=True)
 palette = THEMES[ui_mode]
 
+# =====================================================
+# 🧩 BUILD DYNAMIC CSS — Supports Motion / Glow / Themes
+# =====================================================
 def build_css(palette, font_size, radius, motion):
-    accent, text, bg, card = palette["accent"], palette["text"], palette["bg"], palette["card"]
-    glow = "0 0 18px rgba(0,200,255,0.25)" if motion else "none"
+    accent = palette["accent"]
+    text = palette["text"]
+    bg = palette["bg"]
+    card = palette["card"]
+    glow = palette["glow"] if motion else "none"
 
     return f"""
     <style>
@@ -189,15 +367,15 @@ def build_css(palette, font_size, radius, motion):
         color: {text};
         font-size: {font_size}px;
         font-family: 'Inter', 'Segoe UI', 'SF Pro Display', sans-serif;
-        transition: all 0.4s ease-in-out;
+        transition: all 0.5s ease-in-out;
     }}
     .block-container {{
-        max-width: 1300px;
+        max-width: 1350px;
         padding: 1.5rem 2rem 3rem 2rem;
     }}
     h1, h2, h3, h4, h5 {{
         color: {accent};
-        text-shadow: {glow};
+        text-shadow: 0 0 15px {glow};
         font-weight: 800;
     }}
     div.stButton > button {{
@@ -211,7 +389,7 @@ def build_css(palette, font_size, radius, motion):
     }}
     div.stButton > button:hover {{
         transform: translateY(-2px);
-        box-shadow: 0 0 20px {accent}77;
+        box-shadow: 0 0 22px {glow};
     }}
     .glass-card {{
         background: {card};
@@ -220,21 +398,23 @@ def build_css(palette, font_size, radius, motion):
         padding: 20px;
         margin-bottom: 1rem;
         box-shadow: 0 8px 22px rgba(0,0,0,0.15);
-        transition: all 0.3s ease;
+        transition: all 0.35s ease;
     }}
     .glass-card:hover {{
         transform: translateY(-4px);
-        box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+        box-shadow: 0 12px 28px {glow};
     }}
     [data-testid="stSidebar"] {{
         background: {card};
         border-right: 1px solid {accent}33;
         box-shadow: 4px 0 12px rgba(0,0,0,0.1);
+        backdrop-filter: blur(15px);
     }}
     [data-testid="stMetricValue"] {{
         color: {accent} !important;
         font-size: 1.6rem !important;
         font-weight: 800 !important;
+        text-shadow: 0 0 12px {glow};
     }}
     hr {{
         border: none;
@@ -242,10 +422,22 @@ def build_css(palette, font_size, radius, motion):
         background: linear-gradient(90deg, transparent, {accent}66, transparent);
         margin: 1rem 0;
     }}
+    .stTabs [data-baseweb="tab-list"] button {{
+        border-radius: {radius}px;
+        color: {text};
+        transition: all 0.3s ease;
+    }}
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {{
+        background-color: {accent}33;
+        color: {accent};
+        text-shadow: 0 0 10px {glow};
+    }}
     </style>
     """
 
-# Apply CSS theme
+# =====================================================
+# 💾 APPLY THEME
+# =====================================================
 st.markdown(build_css(palette, font_size, radius, motion), unsafe_allow_html=True)
     
 # =====================================================
@@ -256,11 +448,6 @@ st.markdown(
     f"<h2 style='text-align:center;'>🚗 Parivahan Analytics — {ui_mode} Mode</h2>",
     unsafe_allow_html=True
 )
-st.markdown(
-    "<p style='text-align:center;opacity:0.7;'>Month-wise • State-wise • Maker-wise • Daily Comparisons</p>",
-    unsafe_allow_html=True,
-)
-
 # -- Divider --
 st.markdown("<hr>", unsafe_allow_html=True)
 
@@ -272,8 +459,7 @@ st.markdown(
     """
     <hr>
     <div style='text-align:center;opacity:0.7;margin-top:2rem;'>
-        ✨ Parivahan Analytics • Comparison Dashboard (State / Maker / Month / Daily)
-    </div>
+        ✨ Parivahan Analytics • Comparison Dashboard</div>
     """,
     unsafe_allow_html=True,
 )
