@@ -1653,7 +1653,7 @@ with st.sidebar.expander("⚙️ Top Makers Filters", expanded=True):
             st.info("🔄 Please refresh or check API connectivity.")
 
 # ===============================================================
-# 2️⃣ TOP MAKERS — FULL CUSTOM + BASIC EDITION 🏭🚀✨
+# 🏭 TOP MAKERS — ALL-IN-ONE (Multi-Year + Latest Snapshot) 🚀✨
 # ===============================================================
 with st.container():
     # 🌈 HEADER
@@ -1662,9 +1662,9 @@ with st.container():
                 background:linear-gradient(90deg,#fff5f5 0%,#ffffff 100%);
                 border-radius:16px;margin-bottom:20px;
                 box-shadow:0 2px 8px rgba(255,107,107,0.15);">
-        <h3 style="margin:0;font-weight:700;color:#3a3a3a;">🏭 Top Vehicle Makers — Custom Multi-Year View</h3>
+        <h3 style="margin:0;font-weight:700;color:#3a3a3a;">🏭 Top Vehicle Makers — Unified Smart View</h3>
         <p style="margin:4px 0 0;color:#555;font-size:14.5px;">
-            Explore manufacturer dominance across multiple years, filters, and categories.
+            Explore manufacturer dominance across multiple years and view latest-year insights — fully dynamic, AI-ready, and filter-customizable.
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -1673,27 +1673,27 @@ with st.container():
     # ⚙️ FILTER CONFIG — ALL MAXED
     # =====================================================
     with st.sidebar.expander("⚙️ Top Makers Filters", expanded=True):
-        top_n = st.slider("🔢 Show Top N Makers", 3, 25, 10, key="topmakers_topn")
-        show_raw_json = st.checkbox("🧾 Show Raw API JSON", value=False, key="topmakers_showjson")
-        ai_mode = st.selectbox("🤖 AI Analysis Mode", ["None", "Summary", "Trends + Recommendations"], index=1, key="topmakers_aimode")
+        top_n = st.slider("🔢 Show Top N Makers", 3, 25, 10, key="topmakers_topn_all")
+        ai_mode = st.selectbox("🤖 AI Analysis Mode", ["None", "Summary", "Trends + Recommendations"], index=1, key="topmakers_aimode_all")
 
         st.markdown("---")
         st.markdown("### 🌍 Custom Filters")
-        state_code = st.text_input("🏙️ State Code (Optional)", key="topmakers_statecode")
-        rto_code = st.text_input("🏢 RTO Code (Optional)", key="topmakers_rtocode")
-        vehicle_type = st.text_input("🚗 Vehicle Type (Optional)", key="topmakers_vehicletype")
-        vehicle_classes = st.text_input("🛻 Vehicle Class (Optional)", key="topmakers_vehicleclass")
-        vehicle_makers = st.text_input("🏭 Specific Makers (comma-separated, optional)", key="topmakers_vehiclemakers")
-        time_period = st.selectbox("⏰ Time Period", ["YEARLY", "QUARTERLY", "MONTHLY"], key="topmakers_timeperiod")
-        fitness_check = st.selectbox("🧾 Fitness Check", ["ALL", "FIT", "UNFIT"], key="topmakers_fitnesscheck")
+        state_code = st.text_input("🏙️ State Code (Optional)", key="topmakers_state_all")
+        rto_code = st.text_input("🏢 RTO Code (Optional)", key="topmakers_rto_all")
+        vehicle_type = st.text_input("🚗 Vehicle Type (Optional)", key="topmakers_type_all")
+        vehicle_classes = st.text_input("🛻 Vehicle Class (Optional)", key="topmakers_class_all")
+        vehicle_makers = st.text_input("🏭 Specific Makers (comma-separated, optional)", key="topmakers_makers_all")
+        time_period = st.selectbox("⏰ Time Period", ["YEARLY", "QUARTERLY", "MONTHLY"], key="topmakers_time_all")
+        fitness_check = st.selectbox("🧾 Fitness Check", ["ALL", "FIT", "UNFIT"], key="topmakers_fit_all")
+        show_raw_json = st.checkbox("🧾 Show Raw API JSON", value=False, key="topmakers_json_all")
 
     # =====================================================
     # 📡 MULTI-YEAR FETCH
     # =====================================================
-    all_maker_dfs = []
     st.toast(f"📡 Fetching Top Makers: {from_year} → {to_year}", icon="🚀")
 
-    with st.spinner(f"🚗 Fetching data for {from_year} → {to_year} with filters..."):
+    all_maker_dfs = []
+    with st.spinner(f"🚗 Fetching Top Makers data from {from_year} to {to_year}..."):
         for yr in range(from_year, to_year + 1):
             try:
                 params = {
@@ -1718,7 +1718,7 @@ with st.container():
                 st.error(f"⚠️ Fetch failed for {yr}: {e}")
 
     # =====================================================
-    # 📊 DATA AGGREGATION + VISUALS
+    # 📊 AGGREGATION + VISUALS
     # =====================================================
     if all_maker_dfs:
         df_mk_all = pd.concat(all_maker_dfs, ignore_index=True)
@@ -1731,53 +1731,49 @@ with st.container():
             st.warning("⚠️ Could not identify maker/value columns automatically.")
             st.dataframe(df_mk_all)
         else:
+            # Group + Sort
             df_mk_all = (
                 df_mk_all.groupby([maker_col, "year"], as_index=False)[value_col]
                 .sum()
                 .sort_values(by=value_col, ascending=False)
             )
+
             df_mk_top = df_mk_all.groupby("year").apply(lambda x: x.nlargest(top_n, value_col)).reset_index(drop=True)
             years_list = sorted(df_mk_all["year"].unique())
-            st.success(f"✅ Loaded data for {len(years_list)} years | Top {top_n} Makers per year")
 
             # =====================================================
-            # 🎨 VISUALS — MAXED OUT
+            # 🎨 VISUALS
             # =====================================================
+            st.success(f"✅ Loaded data for {len(years_list)} years | Top {top_n} Makers per year")
+
             col1, col2 = st.columns(2, gap="large")
             with col1:
                 st.markdown(f"#### 📊 Multi-Year Comparison (Top {top_n})")
-                try:
-                    fig = px.bar(
-                        df_mk_top,
-                        x=maker_col,
-                        y=value_col,
-                        color="year",
-                        barmode="group",
-                        text_auto=True,
-                        title=f"Top {top_n} Makers — {from_year} → {to_year}",
-                        height=460,
-                    )
-                    fig.update_layout(
-                        xaxis_title="Maker",
-                        yaxis_title="Registrations",
-                        legend_title="Year",
-                        margin=dict(t=60, b=40),
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-                except Exception as e:
-                    st.error(f"⚠️ Chart failed: {e}")
-                    st.dataframe(df_mk_top)
+                fig = px.bar(
+                    df_mk_top,
+                    x=maker_col,
+                    y=value_col,
+                    color="year",
+                    barmode="group",
+                    text_auto=True,
+                    title=f"Top {top_n} Makers — {from_year} → {to_year}",
+                    height=460,
+                )
+                fig.update_layout(
+                    xaxis_title="Maker",
+                    yaxis_title="Registrations",
+                    legend_title="Year",
+                    margin=dict(t=60, b=40),
+                )
+                st.plotly_chart(fig, use_container_width=True)
 
             with col2:
                 st.markdown(f"#### 🍩 Latest Year ({max(years_list)}) — Market Share Donut")
-                try:
-                    df_latest = df_mk_top[df_mk_top["year"] == max(years_list)]
-                    pie_from_df(df_latest.rename(columns={maker_col: "label", value_col: "value"}), donut=True)
-                except Exception as e:
-                    st.error(f"⚠️ Donut chart failed: {e}")
+                df_latest = df_mk_top[df_mk_top["year"] == max(years_list)]
+                pie_from_df(df_latest.rename(columns={maker_col: "label", value_col: "value"}), donut=True)
 
             # =====================================================
-            # 💎 KPI ZONE — ALL MAXED
+            # 💎 KPIs — MAXED
             # =====================================================
             total_val = df_mk_all[value_col].sum()
             top_row = df_mk_all.loc[df_mk_all[value_col].idxmax()]
@@ -1831,63 +1827,8 @@ with st.container():
                         else:
                             st.info("💤 No AI summary generated.")
     else:
-        st.warning("⚠️ No multi-year maker data found.")
-        st.info("🔄 Try expanding filters or check API connectivity.")
-
-# ===============================================================
-# 2️⃣ TOP MAKERS — SINGLE-YEAR SNAPSHOT ✨
-# ===============================================================
-with st.container():
-    st.markdown("""
-    <div style="padding:14px 22px;border-left:6px solid #FF6B6B;
-                background:linear-gradient(90deg,#fff5f5,#ffffff);
-                border-radius:16px;margin-bottom:20px;">
-        <h3 style="margin:0;font-weight:700;color:#3a3a3a;">🏭 Top Vehicle Makers — Single-Year Snapshot</h3>
-        <p style="margin:4px 0 0;color:#555;font-size:14.5px;">
-            Quick view of national-level maker distribution for the latest available year.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    with st.spinner("🚗 Fetching Top Makers (latest year)..."):
-        mk_json = fetch_json("vahandashboard/top5Makerchart", desc="Top Makers — Single Year")
-        df_mk = parse_makers(mk_json)
-
-    if not df_mk.empty:
-        st.toast("✅ Latest-year maker data loaded!", icon="📦")
-
-        df_mk.columns = [c.strip().lower() for c in df_mk.columns]
-        maker_col = next((c for c in ["maker", "makename", "manufacturer", "label", "name"] if c in df_mk.columns), None)
-        value_col = next((c for c in ["value", "count", "total", "registeredvehiclecount", "y"] if c in df_mk.columns), None)
-
-        if maker_col and value_col:
-            col1, col2 = st.columns(2, gap="large")
-            with col1:
-                bar_from_df(df_mk.rename(columns={maker_col: "label", value_col: "value"}), title="Top Makers (Bar)")
-            with col2:
-                pie_from_df(df_mk.rename(columns={maker_col: "label", value_col: "value"}), title="Top Makers (Donut)", donut=True)
-
-            top_maker = df_mk.loc[df_mk[value_col].idxmax(), maker_col]
-            total_val = df_mk[value_col].sum()
-            top_val = df_mk[value_col].max()
-            pct_share = round((top_val / total_val) * 100, 2)
-
-            k1, k2, k3 = st.columns(3)
-            k1.metric("🏆 Leading Maker", top_maker)
-            k2.metric("📈 Market Share", f"{pct_share}%")
-            k3.metric("🚘 Total Registrations", f"{total_val:,}")
-
-            st.markdown(f"""
-            <div style="margin-top:10px;padding:14px 16px;
-                        background:linear-gradient(90deg,#ffecec,#fffafa);
-                        border:1px solid #ffc9c9;border-radius:12px;">
-                <b>🔥 Insight:</b> <span style="color:#333;">{top_maker}</span> dominates with <b>{pct_share}%</b> market share.
-            </div>
-            """, unsafe_allow_html=True)
-            st.balloons()
-    else:
-        st.warning("⚠️ No latest-year maker data returned.")
-
+        st.warning("⚠️ No maker data found for selected years.")
+        st.info("🔄 Try adjusting filters or check API connectivity.")
 
 # =============================================================
 # 3️⃣ REGISTRATION TRENDS — FULL CUSTOM FORECAST ⚡ (MAXED)
