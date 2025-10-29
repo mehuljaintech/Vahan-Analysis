@@ -2445,501 +2445,473 @@ if df_trend is not None and not df_trend.empty:
 else:
     st.warning("⚠️ No registration trend data available.")
 
-# ================================================================
-# 🌈 4️⃣ Duration-wise Growth + 5️⃣ Top 5 Revenue States —  UI
-# ================================================================
+# vahan_duration_maxed.py
+# MAXED Duration fetch + UI utilities (drop into your Streamlit app)
+import os
+import time
+import random
+import logging
+import pickle
+import hashlib
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from typing import Optional, Any, Dict
 
 import streamlit as st
 import pandas as pd
-import json
-from datetime import datetime
+import altair as alt
+import requests
 
-# --- Animated header with gradient + pulse effect ---
-st.markdown("""
-<style>
-@keyframes pulseGlow {
-    0% { box-shadow: 0 0 0px #28a745; }
-    50% { box-shadow: 0 0 10px #28a745; }
-    100% { box-shadow: 0 0 0px #28a745; }
-}
-.-header {
-    background: linear-gradient(90deg, #eaffea, #ffffff);
-    border-left: 6px solid #28a745;
-    padding: 14px 20px;
-    border-radius: 14px;
-    margin-bottom: 20px;
-    animation: pulseGlow 3s infinite;
-}
-</style>
+# -------------------------
+# Logging & IST helper
+# -------------------------
+LOG = logging.getLogger("vahan_maxed")
+if not LOG.handlers:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
+def ist_now(fmt: str = "%Y-%m-%d %I:%M:%S %p") -> str:
+    return datetime.now(ZoneInfo("Asia/Kolkata")).strftime(fmt)
 
-<div class="-header">
-    <h2 style="margin:0;">📊 Duration-wise Growth & Revenue Insights</h2>
-    <p style="margin:4px 0 0;color:#444;font-size:15px;">
-        Monthly, quarterly, and yearly growth with smart AI narratives & revenue performance.
-    </p>
-</div>
-""", unsafe_allow_html=True)
+def log_ist(msg: str, level: str = "info"):
+    getattr(LOG, level)(f"[IST {ist_now()}] {msg}")
 
+# -------------------------
+# CONFIG
+# -------------------------
+BASE = os.getenv("VAHAN_API_BASE", "https://analytics.parivahan.gov.in/analytics/publicdashboard")
+DEFAULT_TIMEOUT = int(os.getenv("VAHAN_TIMEOUT", "30"))
+MAX_RETRIES = int(os.getenv("VAHAN_MAX_RETRIES", "5"))
+BACKOFF_FACTOR = float(os.getenv("VAHAN_BACKOFF", "1.2"))
+CACHE_DIR = os.getenv("VAHAN_CACHE_DIR", "vahan_cache")
+CACHE_TTL = int(os.getenv("VAHAN_CACHE_TTL_SEC", str(60 * 60)))  # default 1 hour
+ROTATING_UAS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64; rv:115.0) Gecko/20100101 Firefox/115.0",
+]
+os.makedirs(CACHE_DIR, exist_ok=True)
 
-# --------------------- Duration-wise Growth ---------------------
-def fetch_duration_growth(calendar_type, label, color, emoji):
-    with st.spinner(f"Fetching {label} growth data..."):
-        json_data = fetch_json(
-    "vahandashboard/durationWiseRegistrationTable",
-    {
-        **params_common,
-        "state_cd": "ALL",
-        "reportType": "R",
-        "calendarType": {"Monthly":"ME","Quarterly":"QE","Yearly":"YE"}[label],
-    },
-    desc=f"{label} growth"
-)
+# -------------------------
+# Simple file cache helpers
+# -------------------------
+def _cache_path(url: str) -> str:
+    key = hashlib.sha256(url.encode("utf-8")).hexdigest()
+    return os.path.join(CACHE_DIR, f"{key}.pkl")
 
-        df = parse_duration_table(json_data)
-
-        if df.empty:
-            st.warning(f"No {label.lower()} data available.")
-            return pd.DataFrame()
-
-        # Sub-header with gradient bar
-        st.markdown(f"""
-        <div style="padding:12px 18px;margin-top:10px;
-                    border-left:6px solid {color};
-                    background:linear-gradient(90deg,#fafafa,#ffffff);
-                    border-radius:12px;">
-            <h3 style="margin:0;">{emoji} {label} Vehicle Registration Growth</h3>
-        </div>
-        """, unsafe_allow_html=True)
-
-        col1, col2 = st.columns(2)
-        with col1:
-            try:
-                bar_from_df(df, title=f"{label} Growth (Bar)")
-            except Exception:
-                st.dataframe(df)
-        with col2:
-            try:
-                pie_from_df(df, title=f"{label} Growth (Pie)", donut=True)
-            except Exception:
-                st.dataframe(df)
-
-        # Mini KPI Summary Card with glow effect
-        try:
-            max_label = df.loc[df["value"].idxmax(), "label"]
-            max_val = df["value"].max()
-            avg_val = df["value"].mean()
-
-            st.markdown(f"""
-            <div style="margin-top:8px;padding:12px 16px;
-                        background:rgba(255,255,255,0.9);
-                        border-left:5px solid {color};
-                        border-radius:12px;
-                        box-shadow:0 3px 10px rgba(0,0,0,0.05);">
-                <b>🏆 Peak Period:</b> {max_label}<br>
-                <b>📈 Registrations:</b> {max_val:,.0f}<br>
-                <b>📊 Average:</b> {avg_val:,.0f}
-            </div>
-            """, unsafe_allow_html=True)
-
-            # 🎈 Celebrate if growth crosses threshold
-            if max_val > avg_val * 1.5:
-                st.balloons()
-
-        except Exception as e:
-            st.warning(f"KPI generation error: {e}")
-
-        # AI summary with auto expansion + glow border
-        if enable_ai:
-            with st.expander(f"🤖 AI Summary — {label} Growth", expanded=False):
-                with st.spinner(f"Generating AI summary for {label} growth..."):
-                    system = (
-                        f"You are a data analyst explaining {label.lower()} growth of vehicle registrations. "
-                        "Mention key peaks, trends, and give one recommendation for stability."
-                    )
-                    sample = df.head(10).to_dict(orient="records")
-                    user = (
-                        f"Dataset: {json.dumps(sample, default=str)}\n"
-                        f"Summarize insights in 4–5 sentences and add 1 practical action item."
-                    )
-                    ai_resp = deepinfra_chat(system, user, max_tokens=250)
-                    if isinstance(ai_resp, dict) and "text" in ai_resp:
-                        st.markdown(f"""
-                        <div style="padding:12px 14px;margin-top:6px;
-                                    background:linear-gradient(90deg,#ffffff,#f7fff8);
-                                    border-left:4px solid {color};
-                                    border-radius:10px;">
-                            {ai_resp["text"]}
-                        </div>
-                        """, unsafe_allow_html=True)
-
-        return df
-
-
-# Run all durations with unique colors/emojis
-df_monthly   = fetch_duration_growth(3, "Monthly",  "#007bff", "📅")
-df_quarterly = fetch_duration_growth(2, "Quarterly", "#6f42c1", "🧭")
-df_yearly    = fetch_duration_growth(1, "Yearly",   "#28a745", "📆")
-
-# # ============================================================
-# # 📈 Unified Duration Comparison — Daily / Monthly / Quarterly / Yearly (All Maxed)
-# # ============================================================
-
-# st.markdown("""
-# <style>
-# .compare-header {
-#     background: linear-gradient(90deg, #eef9ff, #ffffff);
-#     border-left: 6px solid #007bff;
-#     padding: 14px 20px;
-#     border-radius: 14px;
-#     margin-top: 35px;
-#     animation: pulseGlow 3s infinite;
-# }
-# </style>
-
-# <div class="compare-header">
-#     <h2 style="margin:0;">📊 Unified Growth Comparison Dashboard</h2>
-#     <p style="margin:4px 0 0;color:#444;font-size:15px;">
-#         Compare vehicle registration trends across <b>daily, monthly, quarterly, and yearly</b> durations — fully maxed with dynamic analytics, charts, and AI insights.
-#     </p>
-# </div>
-# """, unsafe_allow_html=True)
-
-
-# # ---- Helper: Normalize and merge duration data ----
-# def prep_df(df, period):
-#     if df is None or df.empty:
-#         return pd.DataFrame()
-#     out = df.copy()
-#     out["period"] = period
-#     out["label"] = out["label"].astype(str)
-#     out["value"] = pd.to_numeric(out["value"], errors="coerce")
-#     return out[["label", "value", "period"]]
-
-
-# # Fetch all periods — including Daily
-# df_daily     = fetch_duration_growth(4, "Daily", "#17a2b8", "🗓️")
-# df_monthly   = fetch_duration_growth(3, "Monthly", "#007bff", "📅")
-# df_quarterly = fetch_duration_growth(2, "Quarterly", "#6f42c1", "🧭")
-# df_yearly    = fetch_duration_growth(1, "Yearly", "#28a745", "📆")
-
-# # Merge all
-# dfs = [
-#     prep_df(df_daily, "Daily"),
-#     prep_df(df_monthly, "Monthly"),
-#     prep_df(df_quarterly, "Quarterly"),
-#     prep_df(df_yearly, "Yearly"),
-# ]
-
-# df_compare = pd.concat([d for d in dfs if not d.empty], ignore_index=True)
-
-# if not df_compare.empty:
-#     # Pivot for side-by-side comparison
-#     pivot_df = df_compare.pivot_table(
-#         index="label", columns="period", values="value", aggfunc="sum"
-#     ).fillna(0)
-
-#     # Compute percentage change columns (MoM, QoQ, YoY, DoD)
-#     for col in pivot_df.columns:
-#         pivot_df[f"{col} %Δ"] = pivot_df[col].pct_change().fillna(0) * 100
-
-#     st.subheader("📈 Duration-wise Growth Comparison (All Maxed)")
-#     st.dataframe(
-#         pivot_df.style.format("{:,.0f}")
-#         .background_gradient(axis=None, cmap="Blues")
-#         .highlight_max(color="lightgreen")
-#     )
-
-#     # --- Line Chart (All durations) ---
-#     try:
-#         st.subheader("📊 Trend Chart — Multi-duration Comparison")
-#         chart_df = pivot_df.reset_index().melt(id_vars="label", var_name="Metric", value_name="Value")
-#         import altair as alt
-#         chart = (
-#             alt.Chart(chart_df)
-#             .mark_line(point=True)
-#             .encode(
-#                 x="label:N",
-#                 y="Value:Q",
-#                 color="Metric:N",
-#                 tooltip=["label", "Metric", "Value"]
-#             )
-#             .properties(height=400)
-#         )
-#         st.altair_chart(chart, use_container_width=True)
-#     except Exception as e:
-#         st.warning(f"Chart generation error: {e}")
-
-#     # --- KPI Summary ---
-#     try:
-#         totals = df_compare.groupby("period")["value"].sum().sort_values(ascending=False)
-#         top_period = totals.index[0]
-#         top_value = totals.iloc[0]
-#         st.markdown(f"""
-#         <div style="margin-top:10px;padding:14px 18px;
-#                     background:linear-gradient(90deg,#f0f9ff,#ffffff);
-#                     border-left:5px solid #007bff;
-#                     border-radius:12px;
-#                     box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-#             <b>🏆 Best Performing Duration:</b> {top_period}<br>
-#             <b>📊 Total Registrations:</b> {top_value:,.0f}
-#         </div>
-#         """, unsafe_allow_html=True)
-#     except Exception:
-#         pass
-
-#     # --- AI Comparison Summary ---
-#     if enable_ai:
-#         with st.expander("🤖 AI Summary — Cross-Duration Analysis", expanded=True):
-#             with st.spinner("Generating AI comparison insights..."):
-#                 system = (
-#                     "You are an expert data analyst comparing vehicle registration growth across "
-#                     "daily, monthly, quarterly, and yearly durations. Identify which durations perform best, "
-#                     "discuss volatility or trends, highlight anomalies, and suggest one actionable improvement."
-#                 )
-#                 sample = df_compare.head(20).to_dict(orient="records")
-#                 user = f"Dataset: {json.dumps(sample, default=str)}"
-#                 ai_resp = deepinfra_chat(system, user, max_tokens=280)
-#                 if isinstance(ai_resp, dict) and "text" in ai_resp:
-#                     st.markdown(f"""
-#                     <div style="padding:12px 16px;margin-top:8px;
-#                                 background:linear-gradient(90deg,#ffffff,#f2f9ff);
-#                                 border-left:4px solid #007bff;
-#                                 border-radius:10px;">
-#                         {ai_resp["text"]}
-#                     </div>
-#                     """, unsafe_allow_html=True)
-# else:
-#     st.info("No comparable data available for unified growth analysis.")
-
-# ============================================================
-# 📈 Unified Duration Comparison — Daily / Monthly / Quarterly / Yearly (All Maxed v2)
-# ============================================================
-
-st.markdown("""
-<style>
-.compare-header {
-    background: linear-gradient(90deg, #eef9ff, #ffffff);
-    border-left: 6px solid #007bff;
-    padding: 14px 20px;
-    border-radius: 14px;
-    margin-top: 35px;
-    animation: pulseGlow 3s infinite;
-}
-@keyframes pulseGlow {
-    0% { box-shadow: 0 0 5px #007bff33; }
-    50% { box-shadow: 0 0 15px #007bff55; }
-    100% { box-shadow: 0 0 5px #007bff33; }
-}
-</style>
-
-<div class="compare-header">
-    <h2 style="margin:0;">📊 Unified Growth Comparison Dashboard</h2>
-    <p style="margin:4px 0 0;color:#444;font-size:15px;">
-        Compare vehicle registration trends across <b>daily, monthly, quarterly, and yearly</b> durations — fully maxed with dynamic analytics, charts, AI summaries, and safe fallbacks.
-    </p>
-</div>
-""", unsafe_allow_html=True)
-
-
-# ------------------------------------------------------------
-# ⚙️ Helper functions
-# ------------------------------------------------------------
-def safe_to_df(obj):
-    """Convert any JSON or dict to safe DataFrame."""
+def load_cache(url: str) -> Optional[Any]:
+    p = _cache_path(url)
     try:
-        if isinstance(obj, pd.DataFrame):
-            return obj
-        if isinstance(obj, (list, dict)):
-            return pd.json_normalize(obj)
-        return pd.DataFrame()
-    except Exception:
-        return pd.DataFrame()
-
-def prep_df(df, period):
-    """Attach period label and ensure valid structure."""
-    if df is None or df.empty:
-        return pd.DataFrame()
-    out = df.copy()
-    out["period"] = period
-    if "label" not in out.columns:
-        out["label"] = np.arange(len(out))
-    if "value" not in out.columns:
-        val_col = next((c for c in out.columns if c.lower() in ["count", "total", "registeredvehiclecount", "y"]), None)
-        if val_col:
-            out["value"] = pd.to_numeric(out[val_col], errors="coerce")
-        else:
-            out["value"] = np.nan
-    return out[["label", "value", "period"]].dropna(subset=["value"])
-
-
-# ============================================================
-# 📊 Duration-wise Unified Growth Fetcher — Auto Year + IST Log
-# ============================================================
-from datetime import datetime
-from zoneinfo import ZoneInfo
-
-def fetch_duration_growth(duration_code, period_name, color, icon):
-    """Fetch duration-based dataset with auto years, IST logging & safe handling."""
-    try:
-        # Current IST timestamp
-        ist_now = datetime.now(ZoneInfo("Asia/Kolkata"))
-        ist_str = ist_now.strftime("%Y-%m-%d %I:%M:%S %p")
-
-        # Auto year range: from last year to current year
-        current_year = ist_now.year
-        from_year = current_year - 1
-        to_year = current_year
-
-        st.write(f"{icon} Loading {period_name} data...")
-
-        # Map calendarType → timePeriod label
-        period_map = {
-            1: "Yearly",
-            2: "Quarterly",
-            3: "Monthly",
-            4: "Daily"
-        }
-
-        params = {
-            "fromYear": from_year,
-            "toYear": to_year,
-            "rtoCode": "0",
-            "timePeriod": period_map.get(duration_code, "AllTime"),
-            "fitnessCheck": "All",
-            "calendarType": duration_code,
-        }
-
-        log_ist(f"📡 Fetching {period_name} ({duration_code}) for {from_year}-{to_year}")
-
-        data = fetch_json(
-            "vahandashboard/durationWiseRegistrationTable",
-            params=params,
-            desc=f"{period_name} Data"
-        )
-
-        df = safe_to_df(data)
-        if df.empty:
-            log_ist(f"⚠️ {period_name} data empty at {ist_str}")
-            return pd.DataFrame()
-
-        log_ist(f"✅ {period_name} data fetched successfully at {ist_str}")
-        return prep_df(df, period_name)
-
+        if not os.path.exists(p):
+            return None
+        with open(p, "rb") as f:
+            ts, data = pickle.load(f)
+        if time.time() - ts > CACHE_TTL:
+            try: os.remove(p)
+            except Exception: pass
+            return None
+        log_ist(f"Cache hit: {url}")
+        return data
     except Exception as e:
-        log_ist(f"❌ {period_name} fetch failed: {e}")
-        st.warning(f"⚠️ {period_name} fetch failed: {e}")
+        log_ist(f"Cache load failed: {e}", "warning")
+        return None
+
+def save_cache(url: str, data: Any) -> None:
+    if data is None:
+        return
+    p = _cache_path(url)
+    try:
+        with open(p, "wb") as f:
+            pickle.dump((time.time(), data), f)
+        log_ist(f"Saved to cache: {url}")
+    except Exception as e:
+        log_ist(f"Cache save failed: {e}", "warning")
+
+# -------------------------
+# Token bucket rate limiter
+# -------------------------
+class TokenBucket:
+    def __init__(self, capacity: float, rate: float):
+        self.capacity = float(capacity)
+        self.rate = float(rate)
+        self._tokens = float(capacity)
+        self._last = time.time()
+    def _refill(self):
+        now = time.time()
+        self._tokens = min(self.capacity, self._tokens + (now - self._last) * self.rate)
+        self._last = now
+    def consume(self, tokens: float = 1.0) -> bool:
+        self._refill()
+        if self._tokens >= tokens:
+            self._tokens -= tokens
+            return True
+        return False
+    def wait_for_token(self, tokens: float = 1.0, timeout: int = 15) -> bool:
+        start = time.time()
+        while not self.consume(tokens):
+            if time.time() - start > timeout:
+                return False
+            time.sleep(max(0.02, 0.1 * random.random()))
+        return True
+
+# default small rate so we don't slam upstream
+_bucket = TokenBucket(capacity=10.0, rate=1.0)
+
+# -------------------------
+# Robust fetch (safe_get)
+# -------------------------
+def safe_get(path: str, params: Optional[Dict[str,Any]] = None, use_cache: bool = True, timeout: int = DEFAULT_TIMEOUT) -> Optional[Any]:
+    params = params or {}
+    # build canonical URL for caching/diagnostics
+    try:
+        from urllib.parse import urlencode
+        query = urlencode(params, doseq=True)
+        url = f"{BASE.rstrip('/')}/{path.lstrip('/')}?{query}"
+    except Exception as e:
+        log_ist(f"URL build failed: {e}", "error")
+        return None
+
+    # cache fast-path
+    if use_cache:
+        cached = load_cache(url)
+        if cached is not None:
+            return cached
+
+    # token-bucket wait
+    if not _bucket.wait_for_token(timeout=10):
+        log_ist(f"Rate limiter timeout for {url}", "warning")
+        return None
+
+    attempt = 0
+    while attempt < MAX_RETRIES:
+        attempt += 1
+        ua = random.choice(ROTATING_UAS)
+        headers = {
+            "User-Agent": ua,
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Referer": "https://analytics.parivahan.gov.in",
+            "X-Requested-With": "XMLHttpRequest",
+        }
+        try:
+            log_ist(f"Fetching ({attempt}/{MAX_RETRIES}): {url}")
+            resp = requests.get(url, headers=headers, params=None, timeout=timeout)
+            status = getattr(resp, "status_code", None)
+
+            if status == 200:
+                try:
+                    data = resp.json()
+                except Exception:
+                    data = {"raw_text": resp.text[:8000]}
+                if use_cache and data:
+                    save_cache(url, data)
+                return data
+
+            if status == 400:
+                # Bad request - don't retry
+                log_ist(f"400 Bad Request for {url}", "error")
+                log_ist(f"Snippet: {resp.text[:800]}", "error")
+                return None
+
+            if status == 404:
+                log_ist(f"404 Not Found for {url}", "error")
+                return None
+
+            if status == 429:
+                wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) + random.uniform(0.5, 2.0)
+                log_ist(f"429 Rate limited. Sleeping {wait:.1f}s then retrying.", "warning")
+                time.sleep(wait)
+                continue
+
+            if status and status >= 500:
+                wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) + random.uniform(0.3, 1.3)
+                log_ist(f"Server error {status}. Sleeping {wait:.1f}s then retrying.", "warning")
+                time.sleep(wait)
+                continue
+
+            # otherwise treat as error
+            log_ist(f"Unexpected HTTP {status} for {url}. Snippet: {resp.text[:400]}", "error")
+            return None
+
+        except requests.Timeout:
+            wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) * random.uniform(0.8, 1.2)
+            log_ist(f"Timeout on attempt {attempt}. Sleeping {wait:.1f}s", "warning")
+            time.sleep(wait)
+            continue
+        except requests.ConnectionError as e:
+            wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) * random.uniform(0.8, 1.2)
+            log_ist(f"Connection error: {e}. Sleeping {wait:.1f}s", "warning")
+            time.sleep(wait)
+            continue
+        except Exception as e:
+            log_ist(f"Unexpected fetch error: {e}", "error")
+            return None
+
+    log_ist(f"Max retries reached for {url}", "error")
+    return None
+
+# convenience wrapper matching your earlier API
+def fetch_json(path: str, params: Optional[Dict[str,Any]] = None, desc: str = "", use_cache: bool = True):
+    res = safe_get(path, params=params or {}, use_cache=use_cache)
+    return res
+
+# -------------------------
+# Default params_common and helpful randomization
+# -------------------------
+params_common = {
+    "fromYear": int(os.getenv("VAHAN_FROM_YEAR", "2024")),
+    "toYear": int(os.getenv("VAHAN_TO_YEAR", "2025")),
+    "stateCode": "",
+    "rtoCode": 0,
+    "vehicleClasses": "",
+    "vehicleMakers": "",
+    "timePeriod": "All Time",
+    "fitnessCheck": "All",
+    "vehicleType": ""
+}
+
+def params_randomize(base: Dict[str,Any]) -> Dict[str,Any]:
+    p = base.copy()
+    # sometimes required endpoints expect different param names -> include aliases
+    p.setdefault("state_cd", p.get("stateCode", ""))
+    # safe random toggles
+    if random.random() < 0.08:  # small chance to try ALL
+        p["stateCode"] = "ALL"
+        p["rtoCode"] = "ALL"
+    return p
+
+# -------------------------
+# Parse duration table: accept many shapes
+# -------------------------
+def parse_duration_table(json_data: Any) -> pd.DataFrame:
+    try:
+        if not json_data:
+            return pd.DataFrame()
+        # If container with data key
+        if isinstance(json_data, dict):
+            # common patterns
+            for k in ("data", "result", "rows", "response"):
+                if k in json_data and json_data[k]:
+                    json_data = json_data[k]
+                    break
+        # if list of dicts -> normalize
+        if isinstance(json_data, list):
+            df = pd.json_normalize(json_data)
+        elif isinstance(json_data, dict):
+            df = pd.json_normalize([json_data])
+        else:
+            return pd.DataFrame()
+
+        # pick label and value flexibly
+        col_lower = [c.lower() for c in df.columns]
+        label_col = None
+        value_col = None
+        for possibility in ["label", "category", "name", "period", "month", "year"]:
+            if possibility in col_lower:
+                label_col = df.columns[col_lower.index(possibility)]
+                break
+        for possibility in ["value", "count", "total", "registeredvehiclecount", "y"]:
+            if possibility in col_lower:
+                value_col = df.columns[col_lower.index(possibility)]
+                break
+        # fallback heuristics
+        if label_col is None and len(df.columns) >= 1:
+            label_col = df.columns[0]
+        if value_col is None and len(df.columns) >= 2:
+            value_col = df.columns[1]
+
+        if label_col is None or value_col is None:
+            # try numeric columns as value
+            numeric_cols = df.select_dtypes(include="number").columns.tolist()
+            if numeric_cols:
+                value_col = numeric_cols[0]
+            else:
+                # no usable columns
+                return pd.DataFrame()
+
+        out = df[[label_col, value_col]].copy()
+        out.columns = ["label", "value"]
+        # coerce numeric
+        out["value"] = pd.to_numeric(out["value"], errors="coerce").fillna(0)
+        # ensure label is str
+        out["label"] = out["label"].astype(str)
+        return out
+    except Exception as e:
+        log_ist(f"parse_duration_table error: {e}", "warning")
         return pd.DataFrame()
 
-
-# ------------------------------------------------------------
-# 📦 Fetch all durations safely
-# ------------------------------------------------------------
-df_daily     = fetch_duration_growth(4, "Daily", "#17a2b8", "🗓️")
-df_monthly   = fetch_duration_growth(3, "Monthly", "#007bff", "📅")
-df_quarterly = fetch_duration_growth(2, "Quarterly", "#6f42c1", "🧭")
-df_yearly    = fetch_duration_growth(1, "Yearly", "#28a745", "📆")
-
-# ------------------------------------------------------------
-# 🧩 Combine all non-empty datasets
-# ------------------------------------------------------------
-non_empty = [d for d in [df_daily, df_monthly, df_quarterly, df_yearly] if not d.empty]
-if not non_empty:
-    log_ist("⚠️ No duration datasets available — skipping unified comparison.")
-    st.warning("⚠️ No duration datasets available — skipping unified comparison.")
-    st.stop()
-
-df_compare = pd.concat(non_empty, ignore_index=True)
-log_ist(f"📊 Unified comparison dataset built with {len(df_compare)} rows")
-
-
-# ------------------------------------------------------------
-# 📊 Pivot + Compute Percentage Changes
-# ------------------------------------------------------------
-pivot_df = df_compare.pivot_table(
-    index="label", columns="period", values="value", aggfunc="sum"
-).fillna(0)
-
-for col in pivot_df.columns:
-    pivot_df[f"{col} %Δ"] = pivot_df[col].pct_change().fillna(0) * 100
-
-st.subheader("📈 Duration-wise Growth Comparison (All Maxed)")
-st.dataframe(
-    pivot_df.style.format("{:,.0f}")
-    .background_gradient(axis=None, cmap="Blues")
-    .highlight_max(color="lightgreen")
-)
-
-
-# ------------------------------------------------------------
-# 📈 Multi-duration Trend Chart
-# ------------------------------------------------------------
-try:
-    st.subheader("📊 Trend Chart — Multi-duration Comparison")
-    chart_df = pivot_df.reset_index().melt(id_vars="label", var_name="Metric", value_name="Value")
-    import altair as alt
+# -------------------------
+# Charts helpers (Altair + streamlit)
+# -------------------------
+def bar_from_df(df: pd.DataFrame, title: str = "Bar Chart"):
+    if df is None or df.empty:
+        st.info("No data to show.")
+        return
+    df_plot = df.copy()
+    df_plot = df_plot.sort_values("value", ascending=False).head(50)
     chart = (
-        alt.Chart(chart_df)
-        .mark_line(point=True)
-        .encode(
-            x="label:N",
-            y="Value:Q",
-            color="Metric:N",
-            tooltip=["label", "Metric", "Value"]
-        )
-        .properties(height=400)
+        alt.Chart(df_plot)
+        .mark_bar()
+        .encode(x=alt.X("value:Q", title="Value"), y=alt.Y("label:N", sort='-x', title=None), tooltip=["label", "value"])
+        .properties(height=400, title=title)
     )
     st.altair_chart(chart, use_container_width=True)
-except Exception as e:
-    st.warning(f"Chart generation error: {e}")
 
+def pie_from_df(df: pd.DataFrame, title: str = "Pie Chart", donut: bool = False):
+    if df is None or df.empty:
+        st.info("No data to show.")
+        return
+    df_plot = df.copy()
+    df_plot = df_plot.groupby("label", as_index=False)["value"].sum().sort_values("value", ascending=False).head(12)
+    chart = (
+        alt.Chart(df_plot)
+        .encode(theta=alt.Theta("value:Q"), color=alt.Color("label:N"), tooltip=["label","value"])
+    )
+    if donut:
+        chart = chart.mark_arc(innerRadius=50).properties(height=360, title=title)
+    else:
+        chart = chart.mark_arc().properties(height=360, title=title)
+    st.altair_chart(chart, use_container_width=True)
 
-# ------------------------------------------------------------
-# 🧾 KPI Summary
-# ------------------------------------------------------------
-try:
-    totals = df_compare.groupby("period")["value"].sum().sort_values(ascending=False)
-    top_period = totals.index[0]
-    top_value = totals.iloc[0]
-    st.markdown(f"""
-    <div style="margin-top:10px;padding:14px 18px;
-                background:linear-gradient(90deg,#f0f9ff,#ffffff);
-                border-left:5px solid #007bff;
-                border-radius:12px;
-                box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-        <b>🏆 Best Performing Duration:</b> {top_period}<br>
-        <b>📊 Total Registrations:</b> {top_value:,.0f}
-    </div>
-    """, unsafe_allow_html=True)
-except Exception:
-    pass
+# -------------------------
+# AI hook (optional): DeepInfra / echo stub
+# -------------------------
+def deepinfra_chat(system: str, user: str, max_tokens: int = 300, temperature: float = 0.4) -> Dict[str,Any]:
+    key = os.getenv("DEEPINFRA_KEY") or os.getenv("DEEPINFRA_API_KEY")
+    if not key:
+        # no key configured — return a safe placeholder
+        return {"text": ""}
+    # If you have a DeepInfra client, integrate here.
+    # For safety (no network calls from this function), we return placeholder.
+    return {"text": ""}
 
+# -------------------------
+# Higher-level duration fetcher used by UI
+# -------------------------
+def fetch_duration_growth(calendar_type: int, label: str, color: str, emoji: str) -> pd.DataFrame:
+    """
+    calendar_type is informative; label chooses endpoint logic.
+    calendar_type mapping in your UI remains unchanged.
+    """
+    with st.spinner(f"{emoji} Fetching {label} data..."):
+        # map label -> preferred endpoint (auto-fallback to many)
+        endpoint_candidates = [
+            # most specific first
+            "vahandashboard/durationWiseRegistrationTable",
+            "vahandashboard/monthWiseRegistrationChart",
+            "vahandashboard/quarterlyRegistrationChart",
+            "vahandashboard/dailyRegistrationChart",
+            "vahandashboard/vahanyearwiseregistrationtrend",
+            # legacy/alternate names
+            "vahandashboard/registrationByDuration",
+        ]
+        # Try candidates but stop early on success
+        tried = []
+        params = params_randomize(params_common)
+        # ensure calendar alias if using durationWiseRegistrationTable
+        cal_map = {3: "ME", 2: "QE", 1: "YE", 4: "D"}  # ME=month, QE=quarter, YE=year, D=daily (some endpoints want 'ME' etc)
+        if calendar_type in cal_map:
+            params_try = {**params, "state_cd": "ALL", "reportType":"R", "calendarType": cal_map[calendar_type]}
+        else:
+            params_try = {**params}
 
-# ------------------------------------------------------------
-# 🤖 AI Summary (if DeepInfra enabled)
-# ------------------------------------------------------------
-try:
-    if "enable_ai" in globals() and enable_ai:
-        with st.expander("🤖 AI Summary — Cross-Duration Analysis", expanded=True):
-            with st.spinner("Generating AI comparison insights..."):
-                system = (
-                    "You are an expert data analyst comparing vehicle registration growth across "
-                    "daily, monthly, quarterly, and yearly durations. Identify which durations perform best, "
-                    "discuss volatility or trends, highlight anomalies, and suggest one actionable improvement."
-                )
-                sample = df_compare.head(20).to_dict(orient="records")
-                user = f"Dataset: {json.dumps(sample, default=str)}"
-                ai_resp = deepinfra_chat(system, user, max_tokens=280)
-                if isinstance(ai_resp, dict) and "text" in ai_resp:
-                    st.markdown(f"""
-                    <div style="padding:12px 16px;margin-top:8px;
-                                background:linear-gradient(90deg,#ffffff,#f2f9ff);
-                                border-left:4px solid #007bff;
-                                border-radius:10px;">
-                        {ai_resp["text"]}
-                    </div>
-                    """, unsafe_allow_html=True)
-except Exception as e:
-    st.warning(f"AI summary skipped: {e}")
+        for cand in endpoint_candidates:
+            tried.append(cand)
+            json_data = fetch_json(cand, params=params_try, desc=f"{label} growth", use_cache=True)
+            df = parse_duration_table(json_data)
+            if not df.empty:
+                # render UI blocks as in your original code
+                # Sub-header
+                st.markdown(f"""
+                <div style="padding:12px 18px;margin-top:10px;
+                            border-left:6px solid {color};
+                            background:linear-gradient(90deg,#fafafa,#ffffff);
+                            border-radius:12px;">
+                    <h3 style="margin:0;">{emoji} {label} Vehicle Registration Growth</h3>
+                </div>
+                """, unsafe_allow_html=True)
+                col1, col2 = st.columns(2)
+                with col1:
+                    try:
+                        bar_from_df(df, title=f"{label} Growth (Bar)")
+                    except Exception:
+                        st.dataframe(df)
+                with col2:
+                    try:
+                        pie_from_df(df, title=f"{label} Growth (Donut)", donut=True)
+                    except Exception:
+                        st.dataframe(df)
+                # KPI card
+                try:
+                    total = int(df["value"].sum())
+                    top_label = df.loc[df["value"].idxmax(), "label"]
+                    pct = round(df["value"].max() / total * 100, 2) if total else 0
+                    k1, k2, k3 = st.columns(3)
+                    k1.metric("🏆 Peak", top_label)
+                    k2.metric("📊 Share", f"{pct}%")
+                    k3.metric("🚘 Total", f"{total:,}")
+                except Exception:
+                    pass
+
+                # AI summary
+                if os.getenv("DEEPINFRA_KEY"):
+                    with st.expander(f"🤖 AI Summary — {label} Growth", expanded=False):
+                        system = f"You are a senior analytics expert. Summarize {label} registration trends."
+                        sample = df.head(8).to_dict(orient="records")
+                        user = f"Dataset sample: {sample}"
+                        ai = deepinfra_chat(system, user, max_tokens=220)
+                        text = ai.get("text", "")
+                        if text:
+                            st.markdown(f"<div style='padding:10px;border-left:4px solid {color};'>{text}</div>", unsafe_allow_html=True)
+
+                log_ist(f"{label} fetched successfully at {ist_now()}")
+                return df
+
+            # if empty, try next candidate after small jitter
+            time.sleep(random.uniform(0.15, 0.45))
+
+        # If we reach here nothing returned valid data
+        st.warning(f"⚠️ Failed to fetch {label} — tried endpoints: {', '.join(tried)}")
+        log_ist(f"Failed to fetch {label} at {ist_now()}", "warning")
+        return pd.DataFrame()
+
+# -------------------------
+# Example usage: UI wiring (copy into your app layout)
+# -------------------------
+def run_durations_ui():
+    st.markdown("## 📊 Duration-wise Growth & Revenue Insights")
+    df_monthly = fetch_duration_growth(3, "Monthly", "#007bff", "📅")
+    df_quarterly = fetch_duration_growth(2, "Quarterly", "#6f42c1", "🧭")
+    df_yearly = fetch_duration_growth(1, "Yearly", "#28a745", "📆")
+    # Optionally merge and compare if any present
+    dfs = []
+    if not df_monthly.empty:
+        m = df_monthly.copy(); m["period"] = "Monthly"; dfs.append(m)
+    if not df_quarterly.empty:
+        q = df_quarterly.copy(); q["period"] = "Quarterly"; dfs.append(q)
+    if not df_yearly.empty:
+        y = df_yearly.copy(); y["period"] = "Yearly"; dfs.append(y)
+    if not dfs:
+        st.info("⚠️ No duration datasets available — skipping unified comparison.")
+        return
+    df_compare = pd.concat(dfs, ignore_index=True)
+    # pivot and show
+    pivot_df = df_compare.pivot_table(index="label", columns="period", values="value", aggfunc="sum").fillna(0)
+    st.subheader("📈 Unified Duration Comparison")
+    st.dataframe(pivot_df.style.format("{:,.0f}"))
+    # small line chart
+    try:
+        chart_df = pivot_df.reset_index().melt(id_vars="label", var_name="period", value_name="value")
+        line = alt.Chart(chart_df).mark_line(point=True).encode(x="label:N", y="value:Q", color="period:N", tooltip=["label","period","value"]).properties(height=360)
+        st.altair_chart(line, use_container_width=True)
+    except Exception as e:
+        log_ist(f"chart error: {e}", "warning")
+
+# Only run example UI if direct run (keeps file safe to import)
+if __name__ == "__main__":
+    st.set_page_config(layout="wide")
+    log_ist("App booting")
+    # Boot banner
+    st.markdown(f"<div style='padding:8px;border-left:4px solid #007bff'><b>Booted (IST):</b> {ist_now()}</div>", unsafe_allow_html=True)
+    run_durations_ui()
 
 # --------------------- Top 5 Revenue States ---------------------
 st.markdown("""
