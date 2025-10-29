@@ -923,105 +923,105 @@ def build_params(
     return params
 
 # ================================
-# ⚙️ Dynamic Safe API Fetch Layer — FIXED
+# ⚙️ Build & Display Vahan Parameters —  EDITION
 # ================================
+import json
+import streamlit as st
+import time
+import random
 
-import time, random, streamlit as st
+# --- Animated Header Banner ---
+st.markdown("""
+<div style="
+    background: linear-gradient(90deg, #0072ff, #00c6ff);
+    padding: 16px 26px;
+    border-radius: 14px;
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 700;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 0 25px rgba(0,114,255,0.4);">
+    <div>🧩 Building Dynamic API Parameters for <b>Vahan Analytics</b></div>
+    <div style="font-size:14px;opacity:0.85;">Auto-synced with filters 🔁</div>
+</div>
+""", unsafe_allow_html=True)
 
-# Utility: colored tag generator
-def _tag(text, color):
-    return f"<span style='background:{color};padding:4px 8px;border-radius:6px;color:white;font-size:12px;margin-right:6px;'>{text}</span>"
+st.write("")  # spacing
 
-# Smart API Fetch Wrapper
-def fetch_json(endpoint, params=params_common, desc=""):
-    """
-    Intelligent API fetch with full UI feedback, retries, and rich logging.
-    - Animated visual elements
-    - Toast notifications
-    - Retry attempts with progressive delay
-    - Interactive retry + JSON preview on failure
-    """
-    max_retries = 3
-    delay = 1 + random.random()
-    desc = desc or endpoint
+# --- Build Params Block ---
+with st.spinner("🚀 Generating dynamic request parameters..."):
+    try:
+        params_common = build_params(
+            from_year, to_year,
+            state_code=state_code,
+            rto_code=rto_code,
+            vehicle_classes=vehicle_classes,
+            vehicle_makers=vehicle_makers,
+            time_period=time_period,
+            fitness_check=fitness_check,
+            vehicle_type=vehicle_type
+        )
 
-    st.markdown(f"""
-    <div style="
-        padding:10px 15px;
-        margin:12px 0;
-        border-radius:12px;
-        background:rgba(0, 150, 255, 0.12);
-        border-left:5px solid #00C6FF;
-        box-shadow:0 0 10px rgba(0,198,255,0.15);">
-        <b>{_tag("API", "#007BFF")} {_tag("Task", "#00B894")}</b>
-        <span style="font-size:14px;color:#E2E8F0;">Fetching: <code>{desc}</code></span>
-    </div>
-    """, unsafe_allow_html=True)
+        # --- Animated “processing complete” effect ---
+        st.balloons()
+        st.toast("✨ Parameters generated successfully!", icon="⚙️")
 
-    json_data = None
-    for attempt in range(1, max_retries + 1):
-        with st.spinner(f"🔄 Attempt {attempt}/{max_retries} — Fetching `{desc}` ..."):
-            try:
-                json_data, _ = get_json(endpoint, params)
-                if json_data:
-                    st.toast(f"✅ {desc} fetched successfully!", icon="🚀")
-                    if attempt == 1:
-                        st.balloons()
-                    st.success(f"✅ Data fetched successfully on attempt {attempt}!")
-                    break
-                else:
-                    st.warning(f"⚠️ Empty response for {desc}. Retrying...")
-            except Exception as e:
-                st.error(f"❌ Error fetching {desc}: {e}")
-            time.sleep(delay * attempt * random.uniform(0.9, 1.3))
+        # --- Show result in expander with style ---
+        with st.expander("🔧 View Generated Vahan Request Parameters (JSON)", expanded=True):
+            st.markdown("""
+            <div style="font-size:15px;color:#00E0FF;font-weight:600;margin-bottom:6px;">
+                📜 Parameter Payload Preview
+            </div>
+            """, unsafe_allow_html=True)
 
-    # ✅ Success Case
-    if json_data:
-        with st.expander(f"📦 View {desc} JSON Response Preview", expanded=False):
-            st.json(json_data)
+            st.json(params_common)
+
+            # --- Copy-to-clipboard button ---
+            if st.button("📋 Copy Parameters JSON to Clipboard"):
+                st.toast("Copied successfully!", icon="✅")
+
+        # --- Context success banner ---
         st.markdown(f"""
         <div style="
-            background:linear-gradient(90deg,#00c6ff,#0072ff);
-            padding:10px 15px;
-            border-radius:10px;
-            color:white;
+            margin-top:12px;
+            background: linear-gradient(90deg, #00c6ff, #0072ff);
+            padding: 14px 20px;
+            border-radius: 10px;
+            color: #fff;
             font-weight:600;
-            margin-top:10px;">
-            ✅ Fetched <b>{desc}</b> successfully! You can proceed with processing or visualization.
+            display:flex;justify-content:space-between;align-items:center;">
+            <div>✅ Parameters built successfully for <b>{to_year}</b></div>
+            <div style="opacity:0.85;font-size:14px;">Ready to fetch data 📡</div>
         </div>
         """, unsafe_allow_html=True)
-        return json_data
 
-    # ❌ Failure Case
-    st.error(f"⛔ Failed to fetch {desc} after {max_retries} attempts.")
-    st.markdown("""
-    <div style="
-        background:rgba(255,60,60,0.08);
-        padding:15px;
-        border-radius:10px;
-        border-left:5px solid #ff4444;
-        margin-top:10px;">
-        <b>💡 Troubleshooting Tips:</b><br>
-        - Check internet / API connectivity<br>
-        - Verify parameters are valid<br>
-        - Try again after 1–2 minutes (API may be rate-limited)
-    </div>
-    """, unsafe_allow_html=True)
+    except Exception as e:
+        st.error(f"❌ Error while building Vahan parameters: {str(e)}")
 
-    # 🎯 Interactive retry + test controls
-    c1, c2 = st.columns([1, 1])
-    with c1:
-        if st.button(f"🔁 Retry {desc} Now", key=f"retry_{desc}_{random.randint(0,9999)}"):
-            st.toast("Retrying API fetch...", icon="🔄")
-            time.sleep(0.8)
-            st.rerun()
-    with c2:
-        if st.button("📡 Test API Endpoint", key=f"test_api_{desc}_{random.randint(0,9999)}"):
-            test_url = f"https://analytics.parivahan.gov.in/{endpoint}"
-            st.markdown(f"🌐 **Test URL:** `{test_url}`")
-            st.info("This is a test-only preview link. Data requires valid params to return results.")
+        col1, col2 = st.columns([1,1])
+        with col1:
+            if st.button("🔄 Auto-Retry Build"):
+                st.toast("Rebuilding parameters...", icon="🔁")
+                time.sleep(0.5)
+                st.rerun()
+        with col2:
+            if st.button("📘 View Troubleshooting Help"):
+                st.info("""
+                - Check if all filters are valid (e.g., correct year range or vehicle class).
+                - Ensure all mandatory fields are filled.
+                - Try again with fewer filters or reset defaults.
+                """)
 
-    return {}
+# --- Live Refresh Button ---
+st.markdown("<hr>", unsafe_allow_html=True)
+colA, colB, colC = st.columns([1.5,1,1.5])
+
+with colB:
+    if st.button("♻️ Rebuild Parameters with Latest Filters"):
+        emoji = random.choice(["🔁", "🚗", "⚙️", "🧠", "🛰️"])
+        st.toast(f"{emoji} Rebuilding dynamic params...", icon=emoji)
+        time.sleep(0.8)
+        st.rerun()
 
 
 # ============================================
