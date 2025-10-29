@@ -222,20 +222,6 @@ with st.sidebar.expander("🧠 Smart Analytics & AI", expanded=True):
 # =====================================================
 
 THEMES = {
-    "Light": {
-        "bg": "#F9FAFB",
-        "text": "#111827",
-        "card": "#FFFFFF",
-        "accent": "#2563EB",
-        "glow": "rgba(37,99,235,0.35)"
-    },
-    "Dark": {
-        "bg": "#0B1120",
-        "text": "#E2E8F0",
-        "card": "#1E293B",
-        "accent": "#38BDF8",
-        "glow": "rgba(56,189,248,0.4)"
-    },
     "Glass": {
         "bg": "rgba(15,23,42,0.9)",
         "text": "#E0F2FE",
