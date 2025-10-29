@@ -635,8 +635,22 @@ h1, h2, h3, p {color: white !important;}
 """, unsafe_allow_html=True)
 
 # =====================================================
-# 🧭 HEADER
+# 🧭 HEADER (with IST Time & Runtime Logging — All Maxed)
 # =====================================================
+import pytz
+from datetime import datetime
+import time
+
+# --- Accurate Indian Standard Time (IST) ---
+ist = pytz.timezone("Asia/Kolkata")
+current_time = datetime.now(ist).strftime("%Y-%m-%d %I:%M:%S %p")
+
+# --- Record App Boot Time in Console ---
+if "app_start_time" not in st.session_state:
+    st.session_state["app_start_time"] = time.time()
+    print(f"🕒 Streamlit app booted at (IST): {current_time}")
+
+# --- Display Stylish Header with Time ---
 st.markdown(f"""
 <div class="fade-in" style='text-align:center;padding:30px;border-radius:25px;
 background:rgba(255,255,255,0.05);
@@ -644,9 +658,14 @@ box-shadow:0 8px 30px rgba(0,0,0,0.3);
 backdrop-filter:blur(10px);
 margin-bottom:35px;'>
     <h1 style='font-size:2.5rem;margin-bottom:10px;'>🚗 Parivahan Analytics Dashboard</h1>
-    <p style='opacity:0.85;font-size:15px;margin:0;'>Updated: {current_time} (IST)</p>
+    <p style='opacity:0.85;font-size:15px;margin:0;'>
+        🗓 Updated: <b>{current_time} (IST)</b>
+    </p>
 </div>
 """, unsafe_allow_html=True)
+
+# --- Console Timestamp Log for Each Run ---
+print(f"🔁 Refresh triggered — Current IST Time: {current_time}")
 
 # =====================================================
 # 📊 MAIN SECTION
