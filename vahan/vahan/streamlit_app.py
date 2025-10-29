@@ -2772,17 +2772,61 @@ def prep_df(df, period):
     return out[["label", "value", "period"]].dropna(subset=["value"])
 
 
-# ------------------------------------------------------------
-# 🧠 Safe fetch wrapper
-# ------------------------------------------------------------
+# ============================================================
+# 📊 Duration-wise Unified Growth Fetcher — Auto Year + IST Log
+# ============================================================
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 def fetch_duration_growth(duration_code, period_name, color, icon):
-    """Fetch duration-based dataset; never crash even if API fails."""
+    """Fetch duration-based dataset with auto years, IST logging & safe handling."""
     try:
+        # Current IST timestamp
+        ist_now = datetime.now(ZoneInfo("Asia/Kolkata"))
+        ist_str = ist_now.strftime("%Y-%m-%d %I:%M:%S %p")
+
+        # Auto year range: from last year to current year
+        current_year = ist_now.year
+        from_year = current_year - 1
+        to_year = current_year
+
         st.write(f"{icon} Loading {period_name} data...")
-        data = fetch_json("vahandashboard/durationWiseRegistrationTable", desc=f"{period_name} Data")
+
+        # Map calendarType → timePeriod label
+        period_map = {
+            1: "Yearly",
+            2: "Quarterly",
+            3: "Monthly",
+            4: "Daily"
+        }
+
+        params = {
+            "fromYear": from_year,
+            "toYear": to_year,
+            "rtoCode": "0",
+            "timePeriod": period_map.get(duration_code, "AllTime"),
+            "fitnessCheck": "All",
+            "calendarType": duration_code,
+        }
+
+        log_ist(f"📡 Fetching {period_name} ({duration_code}) for {from_year}-{to_year}")
+
+        data = fetch_json(
+            "vahandashboard/durationWiseRegistrationTable",
+            params=params,
+            desc=f"{period_name} Data"
+        )
+
         df = safe_to_df(data)
+        if df.empty:
+            log_ist(f"⚠️ {period_name} data empty at {ist_str}")
+            return pd.DataFrame()
+
+        log_ist(f"✅ {period_name} data fetched successfully at {ist_str}")
         return prep_df(df, period_name)
+
     except Exception as e:
+        log_ist(f"❌ {period_name} fetch failed: {e}")
         st.warning(f"⚠️ {period_name} fetch failed: {e}")
         return pd.DataFrame()
 
@@ -2795,13 +2839,17 @@ df_monthly   = fetch_duration_growth(3, "Monthly", "#007bff", "📅")
 df_quarterly = fetch_duration_growth(2, "Quarterly", "#6f42c1", "🧭")
 df_yearly    = fetch_duration_growth(1, "Yearly", "#28a745", "📆")
 
-# Combine datasets (safe concat)
+# ------------------------------------------------------------
+# 🧩 Combine all non-empty datasets
+# ------------------------------------------------------------
 non_empty = [d for d in [df_daily, df_monthly, df_quarterly, df_yearly] if not d.empty]
 if not non_empty:
+    log_ist("⚠️ No duration datasets available — skipping unified comparison.")
     st.warning("⚠️ No duration datasets available — skipping unified comparison.")
     st.stop()
 
 df_compare = pd.concat(non_empty, ignore_index=True)
+log_ist(f"📊 Unified comparison dataset built with {len(df_compare)} rows")
 
 
 # ------------------------------------------------------------
