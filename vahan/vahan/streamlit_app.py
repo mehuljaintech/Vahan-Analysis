@@ -1414,7 +1414,7 @@ def deepinfra_test_ui():
     st.caption("💡 Tip: If you get 401 or 405 errors, check your API key or endpoint format.")
     
 # ===============================================================
-# 1️⃣ CATEGORY DISTRIBUTION — MULTI-YEAR EDITION 🚀✨
+# 1️⃣ CATEGORY DISTRIBUTION — MULTI-YEAR EDITION 🚀✨ (NO CACHE)
 # ===============================================================
 with st.container():
     # 🌈 HEADER
@@ -1433,7 +1433,6 @@ with st.container():
     # ⚙️ USER CONFIG — FULLY CUSTOM FILTERS
     # =====================================================
     with st.sidebar.expander("⚙️ Category Distribution Filters", expanded=True):
-        # ✅ Avoid putting widgets in cached functions
         top_n = st.slider("🏅 Show Top N Categories", 3, 25, 10)
         show_all = st.checkbox("📦 Show All Categories (ignore Top N)", value=False)
         include_state_breakdown = st.checkbox("🏙️ Include State Breakdown", value=False)
@@ -1442,12 +1441,15 @@ with st.container():
         ai_mode = st.selectbox("🤖 AI Analysis Mode", ["None", "Summary", "Trends + Recommendations"], index=1)
 
     # =====================================================
-    # ⚡ OPTIMIZED MULTI-YEAR FETCHING (CACHED)
+    # ⚡ LIVE MULTI-YEAR FETCHING — NO CACHE
     # =====================================================
-    @st.cache_data(ttl=3600, show_spinner=False)
-    def cached_fetch_json(endpoint, params, desc):
-        """Fetch JSON safely and cache results for an hour."""
-        return fetch_json(endpoint, params, desc)
+    def live_fetch_json(endpoint, params, desc):
+        """Fetch JSON safely (no cache)."""
+        try:
+            return fetch_json(endpoint, params, desc)
+        except Exception as e:
+            st.error(f"❌ API Fetch Error ({desc}): {e}")
+            return None
 
     all_dfs = []
     spinner_scope = f"{state_code or 'All States'} | {vehicle_classes or 'All Classes'} | {vehicle_makers or 'All Makers'}"
@@ -1464,17 +1466,17 @@ with st.container():
                 "timePeriod": time_period,
                 "fitnessCheck": fitness_check,
             }
-            try:
-                json_data = cached_fetch_json("vahandashboard/categoriesdonutchart", params, desc=f"Category Distribution {yr}")
+
+            json_data = live_fetch_json("vahandashboard/categoriesdonutchart", params, desc=f"Category Distribution {yr}")
+            if json_data:
                 if show_raw_json:
                     with st.expander(f"🧾 Raw JSON — {yr}", expanded=False):
                         st.json(json_data)
+
                 df_temp = to_df(json_data)
                 if not df_temp.empty:
                     df_temp["year"] = yr
                     all_dfs.append(df_temp)
-            except Exception as e:
-                st.error(f"⚠️ API failed for {yr}: {e}")
 
     # =====================================================
     # 📊 DATA AGGREGATION
