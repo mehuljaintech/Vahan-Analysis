@@ -2773,7 +2773,7 @@ def fetch_duration_growth(duration_code, period_name, color, icon):
     """Fetch duration-based dataset; never crash even if API fails."""
     try:
         st.write(f"{icon} Loading {period_name} data...")
-        data = fetch_json("vahandashboard/categoriesdonutchart", desc=f"{period_name} Data")
+        data = fetch_json("vahandashboard/durationWiseRegistrationTable", desc=f"{period_name} Data")
         df = safe_to_df(data)
         return prep_df(df, period_name)
     except Exception as e:
