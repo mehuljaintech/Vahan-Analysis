@@ -2485,10 +2485,16 @@ st.markdown("""
 def fetch_duration_growth(calendar_type, label, color, emoji):
     with st.spinner(f"Fetching {label} growth data..."):
         json_data = fetch_json(
-            "vahandashboard/durationWiseRegistrationTable",
-            {**params_common, "calendarType": calendar_type},
-            desc=f"{label} growth"
-        )
+    "vahandashboard/durationWiseRegistrationTable",
+    {
+        **params_common,
+        "state_cd": "ALL",
+        "reportType": "R",
+        "calendarType": {"Monthly":"ME","Quarterly":"QE","Yearly":"YE"}[label],
+    },
+    desc=f"{label} growth"
+)
+
         df = parse_duration_table(json_data)
 
         if df.empty:
