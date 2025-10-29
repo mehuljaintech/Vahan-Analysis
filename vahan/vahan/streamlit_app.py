@@ -2743,7 +2743,3 @@ st.markdown(
 
 st.balloons()
 st.toast("✨ Dashboard summary ready — KPIs, AI insights & visuals .")
-
-comparisons all maxed data month wise statewise makerwise daily base requirement no revenue no forecast growth any filter no cluster and all maxed section and all maxed
-
-and all correct data
