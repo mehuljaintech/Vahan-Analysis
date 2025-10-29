@@ -1154,119 +1154,214 @@ with colB:
 
 #     return {}
 
-# ================================
-# ⚙️ Dynamic Safe API Fetch Layer — MAXED & RATE-SAFE
-# ================================
-
-import time, random, streamlit as st
+# safe_fetch.py  — safe, robust, "maxed" fetch layer (NO EVASION)
+import time
+import random
+import requests
+import logging
+import pickle
+import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from typing import Optional, Any, Dict
 
-# Utility: colored tag generator
-def _tag(text, color):
-    return f"<span style='background:{color};padding:4px 8px;border-radius:6px;color:white;font-size:12px;margin-right:6px;'>{text}</span>"
+# ---------------- CONFIG ----------------
+BASE = "https://analytics.parivahan.gov.in/analytics/publicdashboard"
+DEFAULT_TIMEOUT = 30
+MAX_RETRIES = 5
+BACKOFF_FACTOR = 1.2
+CACHE_DIR = "vahan_cache"
+CACHE_TTL = 60 * 60  # 1 hour
+TOKEN_BUCKET_CAPACITY = 10     # max tokens
+TOKEN_BUCKET_RATE = 1.0        # tokens per second (throttle)
+ROTATING_UAS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64; rv:115.0) Gecko/20100101 Firefox/115.0"
+]
 
-def _ist_now():
+os.makedirs(CACHE_DIR, exist_ok=True)
+logger = logging.getLogger("safe_fetch")
+logger.setLevel(logging.INFO)
+
+# ---------------- IST helpers ----------------
+def ist_now():
     return datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
 
-# Smart API Fetch Wrapper
-def fetch_json(endpoint, params=None, desc=""):
-    """
-    Intelligent API fetch with full UI feedback, retries, backoff & jitter, and IST logging.
-    """
-    from requests import HTTPError
-    desc = desc or endpoint
-    max_retries = 3
-    base_delay = random.uniform(0.8, 1.6)  # jittered base delay
+# ---------------- simple file cache ----------------
+def _cache_path(url: str) -> str:
+    import hashlib
+    return os.path.join(CACHE_DIR, hashlib.sha256(url.encode()).hexdigest() + ".pkl")
 
-    st.markdown(f"""
-    <div style="
-        padding:10px 15px;
-        margin:12px 0;
-        border-radius:12px;
-        background:rgba(0, 150, 255, 0.12);
-        border-left:5px solid #00C6FF;
-        box-shadow:0 0 10px rgba(0,198,255,0.15);">
-        <b>{_tag("API", "#007BFF")} {_tag("Task", "#00B894")}</b>
-        <span style="font-size:14px;color:#E2E8F0;">Fetching: <code>{desc}</code></span><br>
-        <span style="font-size:11px;opacity:0.7;">⏰ {_ist_now()}</span>
-    </div>
-    """, unsafe_allow_html=True)
+def load_cache(url: str) -> Optional[Any]:
+    p = _cache_path(url)
+    if not os.path.exists(p):
+        return None
+    try:
+        with open(p, "rb") as f:
+            ts, data = pickle.load(f)
+        if (time.time() - ts) > CACHE_TTL:
+            try: os.remove(p)
+            except: pass
+            return None
+        logger.info(f"[{ist_now()}] Cache hit: {url}")
+        return data
+    except Exception as e:
+        logger.warning(f"Cache load failed: {e}")
+        return None
 
-    json_data = None
-    for attempt in range(1, max_retries + 1):
+def save_cache(url: str, data: Any) -> None:
+    if data is None:
+        return
+    p = _cache_path(url)
+    try:
+        with open(p, "wb") as f:
+            pickle.dump((time.time(), data), f)
+        logger.info(f"[{ist_now()}] Saved to cache: {url}")
+    except Exception as e:
+        logger.warning(f"Cache save failed: {e}")
+
+# ---------------- token-bucket rate limiter ----------------
+class TokenBucket:
+    def __init__(self, capacity: int, rate: float):
+        self.capacity = float(capacity)
+        self.rate = float(rate)
+        self._tokens = float(capacity)
+        self._last = time.time()
+
+    def consume(self, tokens: float = 1.0) -> bool:
+        now = time.time()
+        # refill
+        self._tokens = min(self.capacity, self._tokens + (now - self._last) * self.rate)
+        self._last = now
+        if self._tokens >= tokens:
+            self._tokens -= tokens
+            return True
+        return False
+
+    def wait_for_token(self, tokens: float = 1.0, timeout: int = 30):
+        start = time.time()
+        while not self.consume(tokens):
+            if time.time() - start > timeout:
+                return False
+            sleep = max(0.05, 0.2 * random.random())
+            time.sleep(sleep)
+        return True
+
+_bucket = TokenBucket(TOKEN_BUCKET_CAPACITY, TOKEN_BUCKET_RATE)
+
+# ---------------- core safe fetch ----------------
+def safe_get(path: str, params: Optional[Dict[str, Any]] = None, use_cache: bool = True, timeout: int = DEFAULT_TIMEOUT) -> Optional[Any]:
+    """
+    Safe fetch wrapper:
+      - honors token-bucket throttling
+      - checks file cache
+      - exponential backoff with jitter
+      - handles 400/404/429/5xx sensibly
+      - returns parsed json or raw_text dict
+    """
+    if params is None:
+        params = {}
+
+    try:
+        # build URL (consistent canonical)
+        from urllib.parse import urlencode
+        query = urlencode(params, doseq=True)
+        url = f"{BASE.rstrip('/')}/{path.lstrip('/')}?{query}"
+    except Exception as e:
+        logger.error(f"[{ist_now()}] url build failed: {e}")
+        return None
+
+    # Cache fast-path
+    if use_cache:
+        cached = load_cache(url)
+        if cached is not None:
+            return cached
+
+    # Wait for token (throttle)
+    got = _bucket.wait_for_token()
+    if not got:
+        logger.warning(f"[{ist_now()}] Rate limiter timeout for {url}")
+        return None
+
+    # Retry loop
+    attempt = 0
+    while attempt < MAX_RETRIES:
+        attempt += 1
+        ua = random.choice(ROTATING_UAS)
+        headers = {
+            "User-Agent": ua,
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Referer": "https://analytics.parivahan.gov.in",
+        }
         try:
-            with st.spinner(f"🔄 Attempt {attempt}/{max_retries} — Fetching `{desc}` ..."):
-                # --- API call (your existing get_json)
-                json_data, _ = get_json(endpoint, params)
+            logger.info(f"[{ist_now()}] Fetching ({attempt}/{MAX_RETRIES}): {url}")
+            resp = requests.get(url, headers=headers, timeout=timeout)
+            status = getattr(resp, "status_code", None)
 
-            if json_data:
-                st.toast(f"✅ {desc} fetched successfully!", icon="🚀")
-                if attempt == 1:
-                    st.balloons()
-                st.success(f"✅ Data fetched successfully on attempt {attempt}!")
-                st.caption(f"🕒 Completed at {_ist_now()}")
-                break
+            # 200 OK
+            if status == 200:
+                try:
+                    data = resp.json()
+                except Exception:
+                    data = {"raw_text": resp.text[:4000]}
+                # save cache (avoid caching error or empty)
+                if use_cache and data:
+                    save_cache(url, data)
+                return data
 
-            else:
-                st.warning(f"⚠️ Empty response for {desc}. Retrying...")
+            # 400: bad request — don't retry; surface debug info
+            if status == 400:
+                logger.error(f"[{ist_now()}] 400 Bad Request for {url}")
+                logger.error(f"[{ist_now()}] Response text snippet: {resp.text[:800]}")
+                return None
 
-        except HTTPError as e:
-            st.warning(f"⚠️ HTTP Error: {e}")
+            # 404: endpoint wrong — do not retry
+            if status == 404:
+                logger.error(f"[{ist_now()}] 404 Not Found: {url}")
+                return None
+
+            # 429: rate limited — backoff with jitter
+            if status == 429:
+                wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) + random.uniform(0.5, 2.0)
+                logger.warning(f"[{ist_now()}] 429 Rate limited. Sleeping {wait:.1f}s then retrying.")
+                time.sleep(wait)
+                continue
+
+            # 5xx: server error — retry
+            if status and status >= 500:
+                wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) + random.uniform(0.3, 1.5)
+                logger.warning(f"[{ist_now()}] Server error {status}. Sleeping {wait:.1f}s then retrying.")
+                time.sleep(wait)
+                continue
+
+            # other unexpected status codes: return None
+            logger.error(f"[{ist_now()}] Unexpected HTTP {status} for {url}. Response head: {resp.text[:300]}")
+            return None
+
+        except requests.Timeout:
+            wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) * random.uniform(0.8, 1.3)
+            logger.warning(f"[{ist_now()}] Timeout on attempt {attempt}. sleeping {wait:.1f}s")
+            time.sleep(wait)
+            continue
+        except requests.ConnectionError as e:
+            wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) * random.uniform(0.8, 1.3)
+            logger.warning(f"[{ist_now()}] Connection error: {e}. sleeping {wait:.1f}s")
+            time.sleep(wait)
+            continue
         except Exception as e:
-            st.error(f"❌ Error fetching {desc}: {e}")
+            logger.exception(f"[{ist_now()}] Unexpected error during fetch: {e}")
+            return None
 
-        # --- Exponential backoff with jitter
-        sleep_for = base_delay * (attempt ** 2) * random.uniform(0.8, 1.4)
-        st.info(f"⏳ Waiting {sleep_for:.1f}s before retry...")
-        time.sleep(sleep_for)
+    logger.error(f"[{ist_now()}] Max retries reached for {url}")
+    return None
 
-    # ✅ Success
-    if json_data:
-        with st.expander(f"📦 View {desc} JSON Response Preview", expanded=False):
-            st.json(json_data)
-        st.markdown(f"""
-        <div style="
-            background:linear-gradient(90deg,#00c6ff,#0072ff);
-            padding:10px 15px;
-            border-radius:10px;
-            color:white;
-            font-weight:600;
-            margin-top:10px;">
-            ✅ Fetched <b>{desc}</b> successfully at {_ist_now()}!
-        </div>
-        """, unsafe_allow_html=True)
-        return json_data
-
-    # ❌ Failure Case
-    st.error(f"⛔ Failed to fetch {desc} after {max_retries} attempts.")
-    st.markdown("""
-    <div style="
-        background:rgba(255,60,60,0.08);
-        padding:15px;
-        border-radius:10px;
-        border-left:5px solid #ff4444;
-        margin-top:10px;">
-        <b>💡 Troubleshooting Tips:</b><br>
-        - Check internet / API connectivity<br>
-        - Verify parameters are valid<br>
-        - Wait 1–2 minutes (Parivahan API may be rate-limited)
-    </div>
-    """, unsafe_allow_html=True)
-
-    c1, c2 = st.columns([1, 1])
-    with c1:
-        if st.button(f"🔁 Retry {desc} Now", key=f"retry_{desc}_{random.randint(0,9999)}"):
-            st.toast("Retrying API fetch...", icon="🔄")
-            time.sleep(0.8)
-            st.rerun()
-    with c2:
-        if st.button("📡 Test API Endpoint", key=f"test_api_{desc}_{random.randint(0,9999)}"):
-            test_url = f"https://analytics.parivahan.gov.in/{endpoint}"
-            st.markdown(f"🌐 **Test URL:** `{test_url}`")
-            st.info("This is a preview only — API parameters required for full data.")
-
-    return {}
+# ---------------- convenience wrapper for your streamlit app ----------------
+def fetch_json(path: str, params: Optional[Dict[str, Any]] = None, desc: str = "", use_cache: bool = True):
+    res = safe_get(path, params=params or {}, use_cache=use_cache)
+    # optional: friendly UI messages can be displayed by the caller (streamlit)
+    return res
 
 # ============================================
 # 🤖 DeepInfra AI Helper (Streamlit Secrets Only) —  EDITION
