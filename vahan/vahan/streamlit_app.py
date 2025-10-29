@@ -1411,498 +1411,498 @@ def deepinfra_test_ui():
 
     st.caption("💡 Tip: If you get 401 or 405 errors, check your API key or endpoint format.")
     
-# # ===============================================================
-# # 1️⃣ CATEGORY DISTRIBUTION —  EDITION 🚀✨
-# # ===============================================================
-# with st.container():
-#     # 🌈 Header
-#     st.markdown("""
-#     <div style="padding:14px 22px;border-left:6px solid #6C63FF;
-#                 background:linear-gradient(90deg,#f3f1ff 0%,#ffffff 100%);
-#                 border-radius:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-#         <h3 style="margin:0;font-weight:700;color:#3a3a3a;">📊 Category Distribution</h3>
-#         <p style="margin:4px 0 0;color:#555;font-size:14.5px;">
-#             Comparative breakdown of registered vehicles by category across India.
-#         </p>
-#     </div>
-#     """, unsafe_allow_html=True)
-
-#     # 🔄 Fetch Data
-#     with st.spinner("📡 Fetching Category Distribution from Vahan API..."):
-#         cat_json = fetch_json("vahandashboard/categoriesdonutchart", desc="Category distribution")
-#     df_cat = to_df(cat_json)
-
-#     # 🧩 Data Visualization
-#     if not df_cat.empty:
-#         st.toast("✅ Data Loaded Successfully!", icon="📦")
-
-#         col1, col2 = st.columns(2, gap="large")
-
-#         with col1:
-#             try:
-#                 st.markdown("#### 📈 Bar View")
-#                 bar_from_df(df_cat, title="Category Distribution (Bar)")
-#             except Exception as e:
-#                 st.error(f"⚠️ Bar chart failed: {e}")
-#                 st.dataframe(df_cat)
-
-#         with col2:
-#             try:
-#                 st.markdown("#### 🍩 Donut View")
-#                 pie_from_df(df_cat, title="Category Distribution (Donut)", donut=True)
-#             except Exception as e:
-#                 st.error(f"⚠️ Pie chart failed: {e}")
-#                 st.dataframe(df_cat)
-
-#         # 📊 KPI Snapshot
-#         top_cat = df_cat.loc[df_cat['value'].idxmax(), 'label']
-#         total = df_cat['value'].sum()
-#         top_val = df_cat['value'].max()
-#         pct = round((top_val / total) * 100, 2)
-
-#         st.markdown("""
-#         <hr style="margin-top:25px;margin-bottom:15px;border: none; border-top: 1px dashed #ccc;">
-#         """, unsafe_allow_html=True)
-
-#         # 💎 KPI Metric Cards
-#         k1, k2, k3 = st.columns(3)
-#         with k1:
-#             st.metric("🏆 Top Category", top_cat)
-#         with k2:
-#             st.metric("📊 Share of Total", f"{pct}%")
-#         with k3:
-#             st.metric("🚘 Total Registrations", f"{total:,}")
-
-#         st.markdown(f"""
-#         <div style="margin-top:10px;padding:14px 16px;
-#                     background:linear-gradient(90deg,#e7e2ff,#f7f5ff);
-#                     border:1px solid #d4cfff;border-radius:12px;
-#                     box-shadow:inset 0 0 8px rgba(108,99,255,0.2);">
-#             <b>🏅 Insight:</b> <span style="color:#333;">{top_cat}</span> leads the vehicle category share,
-#             contributing <b>{pct}%</b> of total registrations across all states.
-#         </div>
-#         """, unsafe_allow_html=True)
-
-#         st.balloons()
-
-#         # 🤖 AI Summary Block — DeepInfra
-#         if enable_ai:
-#             st.markdown("### 🤖 AI-Powered Insights")
-#             with st.expander("🔍 View AI Narrative", expanded=True):
-#                 with st.spinner("🧠 DeepInfra AI is analyzing category trends..."):
-#                     sample = df_cat.head(10).to_dict(orient="records")
-#                     system = (
-#                         "You are a senior automotive data analyst providing actionable summaries "
-#                         "for government transport dashboards. Highlight key insights, trends, and outliers."
-#                     )
-#                     user = (
-#                         f"Here's the dataset (top 10 rows): {json.dumps(sample, default=str)}. "
-#                         "Please summarize the data in 3–5 sentences, emphasizing dominant categories, "
-#                         "growth potential, and one strategic recommendation."
-#                     )
-#                     ai_resp = deepinfra_chat(system, user, max_tokens=350, temperature=0.5)
-
-#                     if ai_resp.get("text"):
-#                         st.toast("✅ AI Insight Ready!", icon="🤖")
-#                         st.markdown(f"""
-#                         <div style="margin-top:8px;padding:16px 18px;
-#                                     background:linear-gradient(90deg,#fafaff,#f5f7ff);
-#                                     border-left:4px solid #6C63FF;border-radius:12px;
-#                                     transition: all 0.3s ease;">
-#                             <b>AI Summary:</b>
-#                             <p style="margin-top:6px;font-size:15px;color:#333;">
-#                                 {ai_resp["text"]}
-#                             </p>
-#                         </div>
-#                         """, unsafe_allow_html=True)
-#                         st.snow()
-#                     else:
-#                         st.info("💤 No AI summary generated. Try re-running or check your DeepInfra key.")
-
-#     else:
-#         st.warning("⚠️ No category data returned from the Vahan API.")
-#         st.info("🔄 Please refresh or check API connectivity.")
-
-# # ===============================================================
-# # 2️⃣ TOP MAKERS —  EDITION 🏭✨
-# # ===============================================================
-# with st.container():
-#     # 🌈 Header
-#     st.markdown("""
-#     <div style="padding:14px 22px;border-left:6px solid #FF6B6B;
-#                 background:linear-gradient(90deg,#fff5f5 0%,#ffffff 100%);
-#                 border-radius:16px;margin-bottom:20px;
-#                 box-shadow:0 2px 8px rgba(255,107,107,0.1);">
-#         <h3 style="margin:0;font-weight:700;color:#3a3a3a;">🏭 Top Vehicle Makers</h3>
-#         <p style="margin:4px 0 0;color:#555;font-size:14.5px;">
-#             Market dominance of top-performing manufacturers based on national registration data.
-#         </p>
-#     </div>
-#     """, unsafe_allow_html=True)
-
-#     # 📡 Fetch Data
-#     with st.spinner("🚗 Fetching Top Makers data from Vahan API..."):
-#         mk_json = fetch_json("vahandashboard/top5Makerchart", desc="Top Makers")
-#         df_mk = parse_makers(mk_json)
-
-#     # 🧩 Visualization
-#     if not df_mk.empty:
-#         st.toast("✅ Maker data loaded successfully!", icon="📦")
-
-#         # Normalize column names
-#         df_mk.columns = [c.strip().lower() for c in df_mk.columns]
-
-#         maker_col = next((c for c in ["maker", "makename", "manufacturer", "label", "name"] if c in df_mk.columns), None)
-#         value_col = next((c for c in ["value", "count", "total", "registeredvehiclecount", "y"] if c in df_mk.columns), None)
-
-#         if not maker_col or not value_col:
-#             st.warning("⚠️ Unable to identify maker/value columns in dataset.")
-#             st.dataframe(df_mk)
-#         else:
-#             col1, col2 = st.columns(2, gap="large")
-
-#             # 🎨 Bar Chart
-#             with col1:
-#                 try:
-#                     st.markdown("#### 📊 Top Makers — Bar View")
-#                     bar_from_df(df_mk.rename(columns={maker_col: "label", value_col: "value"}), title="Top Makers (Bar)")
-#                 except Exception as e:
-#                     st.error(f"⚠️ Bar chart failed: {e}")
-#                     st.dataframe(df_mk)
-
-#             # 🍩 Pie Chart
-#             with col2:
-#                 try:
-#                     st.markdown("#### 🍩 Top Makers — Donut View")
-#                     pie_from_df(df_mk.rename(columns={maker_col: "label", value_col: "value"}), title="Top Makers (Donut)", donut=True)
-#                 except Exception as e:
-#                     st.error(f"⚠️ Pie chart failed: {e}")
-#                     st.dataframe(df_mk)
-
-#             # 💎 KPI Metrics
-#             try:
-#                 top_maker = df_mk.loc[df_mk[value_col].idxmax(), maker_col]
-#                 total_val = df_mk[value_col].sum()
-#                 top_val = df_mk[value_col].max()
-#                 pct_share = round((top_val / total_val) * 100, 2)
-
-#                 st.markdown("""
-#                 <hr style="margin-top:25px;margin-bottom:15px;border: none; border-top: 1px dashed #ccc;">
-#                 """, unsafe_allow_html=True)
-
-#                 k1, k2, k3 = st.columns(3)
-#                 with k1:
-#                     st.metric("🏆 Leading Maker", top_maker)
-#                 with k2:
-#                     st.metric("📈 Market Share", f"{pct_share}%")
-#                 with k3:
-#                     st.metric("🚘 Total Registrations", f"{total_val:,}")
-
-#                 # 💬 Insight Box
-#                 st.markdown(f"""
-#                 <div style="margin-top:10px;padding:14px 16px;
-#                             background:linear-gradient(90deg,#ffecec,#fffafa);
-#                             border:1px solid #ffc9c9;border-radius:12px;
-#                             box-shadow:inset 0 0 8px rgba(255,107,107,0.15);">
-#                     <b>🔥 Insight:</b> <span style="color:#333;">{top_maker}</span> dominates the market, 
-#                     contributing <b>{pct_share}%</b> of all registrations across India.
-#                 </div>
-#                 """, unsafe_allow_html=True)
-
-#                 st.balloons()
-#             except Exception as e:
-#                 st.warning(f"⚠️ Could not compute top maker insights: {e}")
-#                 st.dataframe(df_mk)
-
-#             # 🤖 AI Summary (DeepInfra)
-#             if enable_ai:
-#                 st.markdown("### 🤖 AI-Powered Maker Insights")
-#                 with st.expander("🔍 View AI Narrative", expanded=True):
-#                     with st.spinner("🧠 DeepInfra AI analyzing manufacturer trends..."):
-#                         try:
-#                             system = (
-#                                 "You are a seasoned automotive industry analyst. "
-#                                 "Your job is to summarize the performance and competition among major vehicle manufacturers in India. "
-#                                 "Highlight leading companies, potential growth players, and market opportunities."
-#                             )
-#                             sample = df_mk[[maker_col, value_col]].head(10).to_dict(orient='records')
-#                             user = (
-#                                 f"Here is the dataset (top 10 entries): {json.dumps(sample, default=str)}. "
-#                                 "Provide a concise analysis (3–5 sentences) summarizing top manufacturers, "
-#                                 "their comparative market shares, and one data-driven insight."
-#                             )
-
-#                             ai_resp = deepinfra_chat(system, user, max_tokens=350, temperature=0.45)
-
-#                             if ai_resp.get("text"):
-#                                 st.toast("✅ AI Market Summary Ready!", icon="🤖")
-#                                 st.markdown(f"""
-#                                 <div style="margin-top:10px;padding:16px 18px;
-#                                             background:linear-gradient(90deg,#fff9f9,#fffafa);
-#                                             border-left:4px solid #FF6B6B;border-radius:12px;
-#                                             transition: all 0.3s ease;">
-#                                     <b>AI Market Summary:</b>
-#                                     <p style="margin-top:6px;font-size:15px;color:#333;">
-#                                         {ai_resp["text"]}
-#                                     </p>
-#                                 </div>
-#                                 """, unsafe_allow_html=True)
-#                                 st.snow()
-#                             else:
-#                                 st.info("💤 No AI summary returned. Try again or verify DeepInfra key.")
-#                         except Exception as e:
-#                             st.error(f"AI generation error: {e}")
-
-#     else:
-#         st.warning("⚠️ No maker data returned from the Vahan API.")
-#         st.info("🔄 Please refresh or check your API configuration.")
-
-
 # ===============================================================
-# 🚀 CATEGORY & MAKER DISTRIBUTION — MAXED + COMPARATIVE EDITION
-# ===============================================================
-import io
-import json
-import numpy as np
-import pandas as pd
-import streamlit as st
-from datetime import datetime
-
-# ---------------------------------------------------------------
-# ⚙️ Core Safe Utilities
-# ---------------------------------------------------------------
-def safe_to_df(obj):
-    try:
-        if isinstance(obj, pd.DataFrame):
-            return obj
-        if isinstance(obj, (list, dict)):
-            return pd.json_normalize(obj)
-        return pd.DataFrame()
-    except Exception as e:
-        st.warning(f"⚠️ Data conversion failed: {e}")
-        return pd.DataFrame()
-
-def safe_col(df, options):
-    if df is None or df.empty:
-        return None
-    cols = [c.strip().lower() for c in df.columns]
-    for opt in options:
-        if opt.lower() in cols:
-            return df.columns[cols.index(opt.lower())]
-    return None
-
-def normalize_df(df):
-    if df.empty:
-        return df
-    df.columns = [c.strip().lower() for c in df.columns]
-    label = safe_col(df, ["label", "category", "makename", "manufacturer", "type", "name"])
-    value = safe_col(df, ["value", "count", "total", "registeredvehiclecount", "y"])
-    period = safe_col(df, ["date", "month", "year", "period", "time", "updateddate"])
-    if label and value:
-        df = df.rename(columns={label: "label", value: "value"})
-    if period:
-        df = df.rename(columns={period: "period"})
-        df["period"] = pd.to_datetime(df["period"], errors="coerce")
-    return df
-
-def ai_summary_block(df, role_desc, user_prompt):
-    try:
-        if not enable_ai:
-            return
-        st.markdown("### 🤖 AI-Powered Insights")
-        with st.expander("🔍 AI Narrative", expanded=True):
-            with st.spinner("🧠 DeepInfra analyzing data..."):
-                sample = df.head(12).to_dict(orient="records")
-                system = (
-                    f"You are a senior analytics expert specializing in {role_desc}. "
-                    "Write clear, comparative insights (YoY, MoM, QoQ, daily) in 3–6 sentences."
-                )
-                user = user_prompt + f"\nDataset sample: {json.dumps(sample, default=str)}"
-                ai_resp = deepinfra_chat(system, user, max_tokens=380, temperature=0.45)
-                text = ai_resp.get("text", "").strip()
-                if text:
-                    st.toast("✅ AI Insight Ready!", icon="🤖")
-                    st.markdown(f"""
-                    <div style="margin-top:10px;padding:16px 18px;
-                                background:linear-gradient(90deg,#fafaff,#f5f7ff);
-                                border-left:4px solid #6C63FF;border-radius:12px;">
-                        <b>AI Summary:</b>
-                        <p style="margin-top:6px;font-size:15px;color:#333;">{text}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    st.snow()
-    except Exception as e:
-        st.error(f"AI generation error: {e}")
-
-# ---------------------------------------------------------------
-# 📊 Period Comparison Utilities
-# ---------------------------------------------------------------
-def compute_comparisons(df, value_col="value", period_col="period"):
-    """Add daily, monthly, quarterly, yearly comparisons."""
-    try:
-        if period_col not in df.columns:
-            return df
-        df = df.sort_values(period_col)
-        df["Year"] = df[period_col].dt.year
-        df["Month"] = df[period_col].dt.month
-        df["Quarter"] = df[period_col].dt.to_period("Q").astype(str)
-        df["Day"] = df[period_col].dt.date
-
-        comparisons = {}
-        for freq, label in [("D", "Daily"), ("M", "Monthly"), ("Q", "Quarterly"), ("Y", "Yearly")]:
-            period_df = df.groupby(pd.Grouper(key=period_col, freq=freq))[value_col].sum().reset_index()
-            if len(period_df) > 1:
-                prev, curr = period_df.iloc[-2][value_col], period_df.iloc[-1][value_col]
-                change = round(((curr - prev) / prev * 100), 2) if prev else 0
-                comparisons[label] = {"prev": prev, "curr": curr, "change": change}
-        return comparisons
-    except Exception as e:
-        st.warning(f"Comparison failed: {e}")
-        return {}
-
-# ===============================================================
-# 1️⃣ CATEGORY DISTRIBUTION
+# 1️⃣ CATEGORY DISTRIBUTION —  EDITION 🚀✨
 # ===============================================================
 with st.container():
+    # 🌈 Header
     st.markdown("""
     <div style="padding:14px 22px;border-left:6px solid #6C63FF;
                 background:linear-gradient(90deg,#f3f1ff 0%,#ffffff 100%);
-                border-radius:16px;margin-bottom:20px;">
+                border-radius:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
         <h3 style="margin:0;font-weight:700;color:#3a3a3a;">📊 Category Distribution</h3>
         <p style="margin:4px 0 0;color:#555;font-size:14.5px;">
-            Comparative breakdown and period-over-period trends of registered vehicles by category.
+            Comparative breakdown of registered vehicles by category across India.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    with st.spinner("📡 Fetching Category Distribution..."):
-        cat_json = fetch_json("vahandashboard/categoriesdonutchart", desc="Category Distribution")
-    df_cat = normalize_df(safe_to_df(cat_json))
+    # 🔄 Fetch Data
+    with st.spinner("📡 Fetching Category Distribution from Vahan API..."):
+        cat_json = fetch_json("vahandashboard/categoriesdonutchart", desc="Category distribution")
+    df_cat = to_df(cat_json)
 
-    if df_cat.empty:
-        st.warning("⚠️ No category data returned.")
-        st.stop()
+    # 🧩 Data Visualization
+    if not df_cat.empty:
+        st.toast("✅ Data Loaded Successfully!", icon="📦")
 
-    st.toast("✅ Category Data Loaded", icon="📦")
+        col1, col2 = st.columns(2, gap="large")
 
-    # ---- Charts ----
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("#### 📈 Bar View")
-        bar_from_df(df_cat, title="Category Distribution (Bar)")
-    with col2:
-        st.markdown("#### 🍩 Donut View")
-        pie_from_df(df_cat, title="Category Distribution (Donut)", donut=True)
+        with col1:
+            try:
+                st.markdown("#### 📈 Bar View")
+                bar_from_df(df_cat, title="Category Distribution (Bar)")
+            except Exception as e:
+                st.error(f"⚠️ Bar chart failed: {e}")
+                st.dataframe(df_cat)
 
-    # ---- KPI Snapshot ----
-    total = df_cat["value"].sum()
-    top_cat = df_cat.loc[df_cat["value"].idxmax(), "label"]
-    pct = round(df_cat["value"].max() / total * 100, 2)
-    k1, k2, k3 = st.columns(3)
-    k1.metric("🏆 Top Category", top_cat)
-    k2.metric("📊 Share of Total", f"{pct}%")
-    k3.metric("🚘 Total Registrations", f"{total:,}")
+        with col2:
+            try:
+                st.markdown("#### 🍩 Donut View")
+                pie_from_df(df_cat, title="Category Distribution (Donut)", donut=True)
+            except Exception as e:
+                st.error(f"⚠️ Pie chart failed: {e}")
+                st.dataframe(df_cat)
 
-    # ---- Period Comparisons ----
-    comps = compute_comparisons(df_cat)
-    if comps:
-        st.markdown("### 📅 Period Comparisons")
-        comp_df = pd.DataFrame([
-            {"Period": p, "Prev": v["prev"], "Curr": v["curr"], "Change (%)": v["change"]}
-            for p, v in comps.items()
-        ])
-        st.dataframe(comp_df, use_container_width=True)
-        for p, v in comps.items():
-            icon = "📈" if v["change"] >= 0 else "📉"
-            st.metric(f"{icon} {p} Change", f"{v['change']}%", f"{v['curr'] - v['prev']:+,.0f}")
+        # 📊 KPI Snapshot
+        top_cat = df_cat.loc[df_cat['value'].idxmax(), 'label']
+        total = df_cat['value'].sum()
+        top_val = df_cat['value'].max()
+        pct = round((top_val / total) * 100, 2)
 
-    # ---- Insight ----
-    st.markdown(f"""
-    <div style="margin-top:10px;padding:14px 16px;
-                background:linear-gradient(90deg,#e7e2ff,#f7f5ff);
-                border:1px solid #d4cfff;border-radius:12px;">
-        <b>🏅 Insight:</b> <span style="color:#333;">{top_cat}</span> leads with <b>{pct}%</b> share.
-    </div>
-    """, unsafe_allow_html=True)
-    st.balloons()
+        st.markdown("""
+        <hr style="margin-top:25px;margin-bottom:15px;border: none; border-top: 1px dashed #ccc;">
+        """, unsafe_allow_html=True)
 
-    ai_summary_block(
-        df_cat,
-        "vehicle category trend analysis",
-        "Provide YoY, MoM, and QoQ comparative insights for the category distribution and one key takeaway."
-    )
+        # 💎 KPI Metric Cards
+        k1, k2, k3 = st.columns(3)
+        with k1:
+            st.metric("🏆 Top Category", top_cat)
+        with k2:
+            st.metric("📊 Share of Total", f"{pct}%")
+        with k3:
+            st.metric("🚘 Total Registrations", f"{total:,}")
+
+        st.markdown(f"""
+        <div style="margin-top:10px;padding:14px 16px;
+                    background:linear-gradient(90deg,#e7e2ff,#f7f5ff);
+                    border:1px solid #d4cfff;border-radius:12px;
+                    box-shadow:inset 0 0 8px rgba(108,99,255,0.2);">
+            <b>🏅 Insight:</b> <span style="color:#333;">{top_cat}</span> leads the vehicle category share,
+            contributing <b>{pct}%</b> of total registrations across all states.
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.balloons()
+
+        # 🤖 AI Summary Block — DeepInfra
+        if enable_ai:
+            st.markdown("### 🤖 AI-Powered Insights")
+            with st.expander("🔍 View AI Narrative", expanded=True):
+                with st.spinner("🧠 DeepInfra AI is analyzing category trends..."):
+                    sample = df_cat.head(10).to_dict(orient="records")
+                    system = (
+                        "You are a senior automotive data analyst providing actionable summaries "
+                        "for government transport dashboards. Highlight key insights, trends, and outliers."
+                    )
+                    user = (
+                        f"Here's the dataset (top 10 rows): {json.dumps(sample, default=str)}. "
+                        "Please summarize the data in 3–5 sentences, emphasizing dominant categories, "
+                        "growth potential, and one strategic recommendation."
+                    )
+                    ai_resp = deepinfra_chat(system, user, max_tokens=350, temperature=0.5)
+
+                    if ai_resp.get("text"):
+                        st.toast("✅ AI Insight Ready!", icon="🤖")
+                        st.markdown(f"""
+                        <div style="margin-top:8px;padding:16px 18px;
+                                    background:linear-gradient(90deg,#fafaff,#f5f7ff);
+                                    border-left:4px solid #6C63FF;border-radius:12px;
+                                    transition: all 0.3s ease;">
+                            <b>AI Summary:</b>
+                            <p style="margin-top:6px;font-size:15px;color:#333;">
+                                {ai_resp["text"]}
+                            </p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        st.snow()
+                    else:
+                        st.info("💤 No AI summary generated. Try re-running or check your DeepInfra key.")
+
+    else:
+        st.warning("⚠️ No category data returned from the Vahan API.")
+        st.info("🔄 Please refresh or check API connectivity.")
 
 # ===============================================================
-# 2️⃣ TOP MAKERS
+# 2️⃣ TOP MAKERS —  EDITION 🏭✨
 # ===============================================================
 with st.container():
+    # 🌈 Header
     st.markdown("""
     <div style="padding:14px 22px;border-left:6px solid #FF6B6B;
                 background:linear-gradient(90deg,#fff5f5 0%,#ffffff 100%);
-                border-radius:16px;margin-bottom:20px;">
+                border-radius:16px;margin-bottom:20px;
+                box-shadow:0 2px 8px rgba(255,107,107,0.1);">
         <h3 style="margin:0;font-weight:700;color:#3a3a3a;">🏭 Top Vehicle Makers</h3>
         <p style="margin:4px 0 0;color:#555;font-size:14.5px;">
-            Comparative and temporal trends of leading manufacturers in India.
+            Market dominance of top-performing manufacturers based on national registration data.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    with st.spinner("🚗 Fetching Top Makers..."):
+    # 📡 Fetch Data
+    with st.spinner("🚗 Fetching Top Makers data from Vahan API..."):
         mk_json = fetch_json("vahandashboard/top5Makerchart", desc="Top Makers")
-    df_mk = normalize_df(safe_to_df(mk_json))
+        df_mk = parse_makers(mk_json)
 
-    if df_mk.empty:
-        st.warning("⚠️ No maker data returned.")
-        st.stop()
+    # 🧩 Visualization
+    if not df_mk.empty:
+        st.toast("✅ Maker data loaded successfully!", icon="📦")
 
-    st.toast("✅ Maker Data Loaded", icon="📦")
+        # Normalize column names
+        df_mk.columns = [c.strip().lower() for c in df_mk.columns]
 
-    # ---- Charts ----
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("#### 📊 Bar View")
-        bar_from_df(df_mk, title="Top Makers (Bar)")
-    with col2:
-        st.markdown("#### 🍩 Donut View")
-        pie_from_df(df_mk, title="Top Makers (Donut)", donut=True)
+        maker_col = next((c for c in ["maker", "makename", "manufacturer", "label", "name"] if c in df_mk.columns), None)
+        value_col = next((c for c in ["value", "count", "total", "registeredvehiclecount", "y"] if c in df_mk.columns), None)
 
-    # ---- KPI Snapshot ----
-    total = df_mk["value"].sum()
-    top_maker = df_mk.loc[df_mk["value"].idxmax(), "label"]
-    pct = round(df_mk["value"].max() / total * 100, 2)
-    k1, k2, k3 = st.columns(3)
-    k1.metric("🏆 Leading Maker", top_maker)
-    k2.metric("📈 Market Share", f"{pct}%")
-    k3.metric("🚘 Total Registrations", f"{total:,}")
+        if not maker_col or not value_col:
+            st.warning("⚠️ Unable to identify maker/value columns in dataset.")
+            st.dataframe(df_mk)
+        else:
+            col1, col2 = st.columns(2, gap="large")
 
-    # ---- Comparative Analysis ----
-    comps = compute_comparisons(df_mk)
-    if comps:
-        st.markdown("### 📅 Period Comparisons")
-        comp_df = pd.DataFrame([
-            {"Period": p, "Prev": v["prev"], "Curr": v["curr"], "Change (%)": v["change"]}
-            for p, v in comps.items()
-        ])
-        st.dataframe(comp_df, use_container_width=True)
-        for p, v in comps.items():
-            icon = "📈" if v["change"] >= 0 else "📉"
-            st.metric(f"{icon} {p} Change", f"{v['change']}%", f"{v['curr'] - v['prev']:+,.0f}")
+            # 🎨 Bar Chart
+            with col1:
+                try:
+                    st.markdown("#### 📊 Top Makers — Bar View")
+                    bar_from_df(df_mk.rename(columns={maker_col: "label", value_col: "value"}), title="Top Makers (Bar)")
+                except Exception as e:
+                    st.error(f"⚠️ Bar chart failed: {e}")
+                    st.dataframe(df_mk)
 
-    # ---- Insight ----
-    st.markdown(f"""
-    <div style="margin-top:10px;padding:14px 16px;
-                background:linear-gradient(90deg,#ffecec,#fffafa);
-                border:1px solid #ffc9c9;border-radius:12px;">
-        <b>🔥 Insight:</b> <span style="color:#333;">{top_maker}</span> leads with <b>{pct}%</b> market share.
-    </div>
-    """, unsafe_allow_html=True)
-    st.balloons()
+            # 🍩 Pie Chart
+            with col2:
+                try:
+                    st.markdown("#### 🍩 Top Makers — Donut View")
+                    pie_from_df(df_mk.rename(columns={maker_col: "label", value_col: "value"}), title="Top Makers (Donut)", donut=True)
+                except Exception as e:
+                    st.error(f"⚠️ Pie chart failed: {e}")
+                    st.dataframe(df_mk)
 
-    ai_summary_block(
-        df_mk,
-        "automotive manufacturer competition",
-        "Compare YoY, MoM, and QoQ growth patterns across top manufacturers, and summarize one strategic takeaway."
-    )
+            # 💎 KPI Metrics
+            try:
+                top_maker = df_mk.loc[df_mk[value_col].idxmax(), maker_col]
+                total_val = df_mk[value_col].sum()
+                top_val = df_mk[value_col].max()
+                pct_share = round((top_val / total_val) * 100, 2)
+
+                st.markdown("""
+                <hr style="margin-top:25px;margin-bottom:15px;border: none; border-top: 1px dashed #ccc;">
+                """, unsafe_allow_html=True)
+
+                k1, k2, k3 = st.columns(3)
+                with k1:
+                    st.metric("🏆 Leading Maker", top_maker)
+                with k2:
+                    st.metric("📈 Market Share", f"{pct_share}%")
+                with k3:
+                    st.metric("🚘 Total Registrations", f"{total_val:,}")
+
+                # 💬 Insight Box
+                st.markdown(f"""
+                <div style="margin-top:10px;padding:14px 16px;
+                            background:linear-gradient(90deg,#ffecec,#fffafa);
+                            border:1px solid #ffc9c9;border-radius:12px;
+                            box-shadow:inset 0 0 8px rgba(255,107,107,0.15);">
+                    <b>🔥 Insight:</b> <span style="color:#333;">{top_maker}</span> dominates the market, 
+                    contributing <b>{pct_share}%</b> of all registrations across India.
+                </div>
+                """, unsafe_allow_html=True)
+
+                st.balloons()
+            except Exception as e:
+                st.warning(f"⚠️ Could not compute top maker insights: {e}")
+                st.dataframe(df_mk)
+
+            # 🤖 AI Summary (DeepInfra)
+            if enable_ai:
+                st.markdown("### 🤖 AI-Powered Maker Insights")
+                with st.expander("🔍 View AI Narrative", expanded=True):
+                    with st.spinner("🧠 DeepInfra AI analyzing manufacturer trends..."):
+                        try:
+                            system = (
+                                "You are a seasoned automotive industry analyst. "
+                                "Your job is to summarize the performance and competition among major vehicle manufacturers in India. "
+                                "Highlight leading companies, potential growth players, and market opportunities."
+                            )
+                            sample = df_mk[[maker_col, value_col]].head(10).to_dict(orient='records')
+                            user = (
+                                f"Here is the dataset (top 10 entries): {json.dumps(sample, default=str)}. "
+                                "Provide a concise analysis (3–5 sentences) summarizing top manufacturers, "
+                                "their comparative market shares, and one data-driven insight."
+                            )
+
+                            ai_resp = deepinfra_chat(system, user, max_tokens=350, temperature=0.45)
+
+                            if ai_resp.get("text"):
+                                st.toast("✅ AI Market Summary Ready!", icon="🤖")
+                                st.markdown(f"""
+                                <div style="margin-top:10px;padding:16px 18px;
+                                            background:linear-gradient(90deg,#fff9f9,#fffafa);
+                                            border-left:4px solid #FF6B6B;border-radius:12px;
+                                            transition: all 0.3s ease;">
+                                    <b>AI Market Summary:</b>
+                                    <p style="margin-top:6px;font-size:15px;color:#333;">
+                                        {ai_resp["text"]}
+                                    </p>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                st.snow()
+                            else:
+                                st.info("💤 No AI summary returned. Try again or verify DeepInfra key.")
+                        except Exception as e:
+                            st.error(f"AI generation error: {e}")
+
+    else:
+        st.warning("⚠️ No maker data returned from the Vahan API.")
+        st.info("🔄 Please refresh or check your API configuration.")
+
+
+# # ===============================================================
+# # 🚀 CATEGORY & MAKER DISTRIBUTION — MAXED + COMPARATIVE EDITION
+# # ===============================================================
+# import io
+# import json
+# import numpy as np
+# import pandas as pd
+# import streamlit as st
+# from datetime import datetime
+
+# # ---------------------------------------------------------------
+# # ⚙️ Core Safe Utilities
+# # ---------------------------------------------------------------
+# def safe_to_df(obj):
+#     try:
+#         if isinstance(obj, pd.DataFrame):
+#             return obj
+#         if isinstance(obj, (list, dict)):
+#             return pd.json_normalize(obj)
+#         return pd.DataFrame()
+#     except Exception as e:
+#         st.warning(f"⚠️ Data conversion failed: {e}")
+#         return pd.DataFrame()
+
+# def safe_col(df, options):
+#     if df is None or df.empty:
+#         return None
+#     cols = [c.strip().lower() for c in df.columns]
+#     for opt in options:
+#         if opt.lower() in cols:
+#             return df.columns[cols.index(opt.lower())]
+#     return None
+
+# def normalize_df(df):
+#     if df.empty:
+#         return df
+#     df.columns = [c.strip().lower() for c in df.columns]
+#     label = safe_col(df, ["label", "category", "makename", "manufacturer", "type", "name"])
+#     value = safe_col(df, ["value", "count", "total", "registeredvehiclecount", "y"])
+#     period = safe_col(df, ["date", "month", "year", "period", "time", "updateddate"])
+#     if label and value:
+#         df = df.rename(columns={label: "label", value: "value"})
+#     if period:
+#         df = df.rename(columns={period: "period"})
+#         df["period"] = pd.to_datetime(df["period"], errors="coerce")
+#     return df
+
+# def ai_summary_block(df, role_desc, user_prompt):
+#     try:
+#         if not enable_ai:
+#             return
+#         st.markdown("### 🤖 AI-Powered Insights")
+#         with st.expander("🔍 AI Narrative", expanded=True):
+#             with st.spinner("🧠 DeepInfra analyzing data..."):
+#                 sample = df.head(12).to_dict(orient="records")
+#                 system = (
+#                     f"You are a senior analytics expert specializing in {role_desc}. "
+#                     "Write clear, comparative insights (YoY, MoM, QoQ, daily) in 3–6 sentences."
+#                 )
+#                 user = user_prompt + f"\nDataset sample: {json.dumps(sample, default=str)}"
+#                 ai_resp = deepinfra_chat(system, user, max_tokens=380, temperature=0.45)
+#                 text = ai_resp.get("text", "").strip()
+#                 if text:
+#                     st.toast("✅ AI Insight Ready!", icon="🤖")
+#                     st.markdown(f"""
+#                     <div style="margin-top:10px;padding:16px 18px;
+#                                 background:linear-gradient(90deg,#fafaff,#f5f7ff);
+#                                 border-left:4px solid #6C63FF;border-radius:12px;">
+#                         <b>AI Summary:</b>
+#                         <p style="margin-top:6px;font-size:15px;color:#333;">{text}</p>
+#                     </div>
+#                     """, unsafe_allow_html=True)
+#                     st.snow()
+#     except Exception as e:
+#         st.error(f"AI generation error: {e}")
+
+# # ---------------------------------------------------------------
+# # 📊 Period Comparison Utilities
+# # ---------------------------------------------------------------
+# def compute_comparisons(df, value_col="value", period_col="period"):
+#     """Add daily, monthly, quarterly, yearly comparisons."""
+#     try:
+#         if period_col not in df.columns:
+#             return df
+#         df = df.sort_values(period_col)
+#         df["Year"] = df[period_col].dt.year
+#         df["Month"] = df[period_col].dt.month
+#         df["Quarter"] = df[period_col].dt.to_period("Q").astype(str)
+#         df["Day"] = df[period_col].dt.date
+
+#         comparisons = {}
+#         for freq, label in [("D", "Daily"), ("M", "Monthly"), ("Q", "Quarterly"), ("Y", "Yearly")]:
+#             period_df = df.groupby(pd.Grouper(key=period_col, freq=freq))[value_col].sum().reset_index()
+#             if len(period_df) > 1:
+#                 prev, curr = period_df.iloc[-2][value_col], period_df.iloc[-1][value_col]
+#                 change = round(((curr - prev) / prev * 100), 2) if prev else 0
+#                 comparisons[label] = {"prev": prev, "curr": curr, "change": change}
+#         return comparisons
+#     except Exception as e:
+#         st.warning(f"Comparison failed: {e}")
+#         return {}
+
+# # ===============================================================
+# # 1️⃣ CATEGORY DISTRIBUTION
+# # ===============================================================
+# with st.container():
+#     st.markdown("""
+#     <div style="padding:14px 22px;border-left:6px solid #6C63FF;
+#                 background:linear-gradient(90deg,#f3f1ff 0%,#ffffff 100%);
+#                 border-radius:16px;margin-bottom:20px;">
+#         <h3 style="margin:0;font-weight:700;color:#3a3a3a;">📊 Category Distribution</h3>
+#         <p style="margin:4px 0 0;color:#555;font-size:14.5px;">
+#             Comparative breakdown and period-over-period trends of registered vehicles by category.
+#         </p>
+#     </div>
+#     """, unsafe_allow_html=True)
+
+#     with st.spinner("📡 Fetching Category Distribution..."):
+#         cat_json = fetch_json("vahandashboard/categoriesdonutchart", desc="Category Distribution")
+#     df_cat = normalize_df(safe_to_df(cat_json))
+
+#     if df_cat.empty:
+#         st.warning("⚠️ No category data returned.")
+#         st.stop()
+
+#     st.toast("✅ Category Data Loaded", icon="📦")
+
+#     # ---- Charts ----
+#     col1, col2 = st.columns(2)
+#     with col1:
+#         st.markdown("#### 📈 Bar View")
+#         bar_from_df(df_cat, title="Category Distribution (Bar)")
+#     with col2:
+#         st.markdown("#### 🍩 Donut View")
+#         pie_from_df(df_cat, title="Category Distribution (Donut)", donut=True)
+
+#     # ---- KPI Snapshot ----
+#     total = df_cat["value"].sum()
+#     top_cat = df_cat.loc[df_cat["value"].idxmax(), "label"]
+#     pct = round(df_cat["value"].max() / total * 100, 2)
+#     k1, k2, k3 = st.columns(3)
+#     k1.metric("🏆 Top Category", top_cat)
+#     k2.metric("📊 Share of Total", f"{pct}%")
+#     k3.metric("🚘 Total Registrations", f"{total:,}")
+
+#     # ---- Period Comparisons ----
+#     comps = compute_comparisons(df_cat)
+#     if comps:
+#         st.markdown("### 📅 Period Comparisons")
+#         comp_df = pd.DataFrame([
+#             {"Period": p, "Prev": v["prev"], "Curr": v["curr"], "Change (%)": v["change"]}
+#             for p, v in comps.items()
+#         ])
+#         st.dataframe(comp_df, use_container_width=True)
+#         for p, v in comps.items():
+#             icon = "📈" if v["change"] >= 0 else "📉"
+#             st.metric(f"{icon} {p} Change", f"{v['change']}%", f"{v['curr'] - v['prev']:+,.0f}")
+
+#     # ---- Insight ----
+#     st.markdown(f"""
+#     <div style="margin-top:10px;padding:14px 16px;
+#                 background:linear-gradient(90deg,#e7e2ff,#f7f5ff);
+#                 border:1px solid #d4cfff;border-radius:12px;">
+#         <b>🏅 Insight:</b> <span style="color:#333;">{top_cat}</span> leads with <b>{pct}%</b> share.
+#     </div>
+#     """, unsafe_allow_html=True)
+#     st.balloons()
+
+#     ai_summary_block(
+#         df_cat,
+#         "vehicle category trend analysis",
+#         "Provide YoY, MoM, and QoQ comparative insights for the category distribution and one key takeaway."
+#     )
+
+# # ===============================================================
+# # 2️⃣ TOP MAKERS
+# # ===============================================================
+# with st.container():
+#     st.markdown("""
+#     <div style="padding:14px 22px;border-left:6px solid #FF6B6B;
+#                 background:linear-gradient(90deg,#fff5f5 0%,#ffffff 100%);
+#                 border-radius:16px;margin-bottom:20px;">
+#         <h3 style="margin:0;font-weight:700;color:#3a3a3a;">🏭 Top Vehicle Makers</h3>
+#         <p style="margin:4px 0 0;color:#555;font-size:14.5px;">
+#             Comparative and temporal trends of leading manufacturers in India.
+#         </p>
+#     </div>
+#     """, unsafe_allow_html=True)
+
+#     with st.spinner("🚗 Fetching Top Makers..."):
+#         mk_json = fetch_json("vahandashboard/top5Makerchart", desc="Top Makers")
+#     df_mk = normalize_df(safe_to_df(mk_json))
+
+#     if df_mk.empty:
+#         st.warning("⚠️ No maker data returned.")
+#         st.stop()
+
+#     st.toast("✅ Maker Data Loaded", icon="📦")
+
+#     # ---- Charts ----
+#     col1, col2 = st.columns(2)
+#     with col1:
+#         st.markdown("#### 📊 Bar View")
+#         bar_from_df(df_mk, title="Top Makers (Bar)")
+#     with col2:
+#         st.markdown("#### 🍩 Donut View")
+#         pie_from_df(df_mk, title="Top Makers (Donut)", donut=True)
+
+#     # ---- KPI Snapshot ----
+#     total = df_mk["value"].sum()
+#     top_maker = df_mk.loc[df_mk["value"].idxmax(), "label"]
+#     pct = round(df_mk["value"].max() / total * 100, 2)
+#     k1, k2, k3 = st.columns(3)
+#     k1.metric("🏆 Leading Maker", top_maker)
+#     k2.metric("📈 Market Share", f"{pct}%")
+#     k3.metric("🚘 Total Registrations", f"{total:,}")
+
+#     # ---- Comparative Analysis ----
+#     comps = compute_comparisons(df_mk)
+#     if comps:
+#         st.markdown("### 📅 Period Comparisons")
+#         comp_df = pd.DataFrame([
+#             {"Period": p, "Prev": v["prev"], "Curr": v["curr"], "Change (%)": v["change"]}
+#             for p, v in comps.items()
+#         ])
+#         st.dataframe(comp_df, use_container_width=True)
+#         for p, v in comps.items():
+#             icon = "📈" if v["change"] >= 0 else "📉"
+#             st.metric(f"{icon} {p} Change", f"{v['change']}%", f"{v['curr'] - v['prev']:+,.0f}")
+
+#     # ---- Insight ----
+#     st.markdown(f"""
+#     <div style="margin-top:10px;padding:14px 16px;
+#                 background:linear-gradient(90deg,#ffecec,#fffafa);
+#                 border:1px solid #ffc9c9;border-radius:12px;">
+#         <b>🔥 Insight:</b> <span style="color:#333;">{top_maker}</span> leads with <b>{pct}%</b> market share.
+#     </div>
+#     """, unsafe_allow_html=True)
+#     st.balloons()
+
+#     ai_summary_block(
+#         df_mk,
+#         "automotive manufacturer competition",
+#         "Compare YoY, MoM, and QoQ growth patterns across top manufacturers, and summarize one strategic takeaway."
+#     )
 
 # # =============================================
 # 3️⃣ Registration Trends + YoY/QoQ/MoM/DoD + AI + Forecast (MAXED) 🚀
