@@ -599,33 +599,70 @@ with colB:
         st.toast(f"{emoji} Rebuilding dynamic params...", icon=emoji)
         time.sleep(0.8)
         st.rerun()
-# ================================
-# ⚙️ Dynamic Safe API Fetch Layer — FIXED
-# ================================
+# ==========================================
+# ⚙️ UNIVERSAL VAHAN API ENGINE — MAXED
+# ==========================================
+import time, random, streamlit as st, requests, json
 
-import time, random, streamlit as st
+# ----------------------------
+# 🎯 Universal Safe JSON Getter
+# ----------------------------
+def get_json(endpoint, params=None, method="POST", headers=None, timeout=30):
+    """
+    Universal safe API request wrapper.
+    Handles JSON requests with full safety + Streamlit feedback.
+    """
+    headers = headers or {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
 
+    try:
+        if method.upper() == "POST":
+            res = requests.post(endpoint, json=params, headers=headers, timeout=timeout)
+        else:
+            res = requests.get(endpoint, params=params, headers=headers, timeout=timeout)
+
+        if res.status_code == 200:
+            try:
+                return res.json(), res.status_code
+            except Exception:
+                st.warning("⚠️ API returned non-JSON response.")
+                return {}, res.status_code
+        else:
+            st.warning(f"⚠️ API responded with HTTP {res.status_code}")
+            return {}, res.status_code
+
+    except requests.exceptions.Timeout:
+        st.error("⏳ Request timed out. Try again later.")
+    except requests.exceptions.ConnectionError:
+        st.error("🚫 Connection error — check VPN/internet.")
+    except Exception as e:
+        st.error(f"❌ Unexpected API error: {e}")
+    return {}, 0
+
+
+# --------------------------------
+# 🧩 Visual Tag (Helper)
+# --------------------------------
 def _tag(text, color):
     """Utility: colored tag generator"""
     return f"<span style='background:{color};padding:4px 8px;border-radius:6px;color:white;font-size:12px;margin-right:6px;'>{text}</span>"
 
-# ✅ FIXED: No direct reference to params_common in the function signature
+
+# --------------------------------
+# 🔁 Dynamic Fetch Function — MAXED
+# --------------------------------
 def fetch_json(endpoint, params=None, desc=""):
     """
-    Intelligent API fetch with full UI feedback, retries, and rich logging.
-    - Animated visual elements
-    - Toast notifications
-    - Retry attempts with progressive delay
-    - Interactive retry + JSON preview on failure
+    Dynamic, safe, and beautiful API fetcher with retries + Streamlit UI feedback.
+    Fully integrated with get_json().
     """
-    import time, random
-
-    # ✅ If no params provided, fall back to global params_common (if defined)
     if params is None:
         try:
             params = params_common
         except NameError:
-            st.error("❌ Missing request parameters. Please build parameters first before fetching data.")
+            st.error("❌ Missing parameters — build them first before calling fetch_json().")
             return {}
 
     max_retries = 3
@@ -646,6 +683,7 @@ def fetch_json(endpoint, params=None, desc=""):
     """, unsafe_allow_html=True)
 
     json_data = None
+
     for attempt in range(1, max_retries + 1):
         with st.spinner(f"🔄 Attempt {attempt}/{max_retries} — Fetching `{desc}` ..."):
             try:
@@ -662,9 +700,9 @@ def fetch_json(endpoint, params=None, desc=""):
                 st.error(f"❌ Error fetching {desc}: {e}")
             time.sleep(delay * attempt * random.uniform(0.9, 1.3))
 
-    # ✅ Success Case
+    # ✅ Success
     if json_data:
-        with st.expander(f"📦 View {desc} JSON Response Preview", expanded=False):
+        with st.expander(f"📦 View {desc} JSON Preview", expanded=False):
             st.json(json_data)
         st.markdown(f"""
         <div style="
@@ -674,12 +712,12 @@ def fetch_json(endpoint, params=None, desc=""):
             color:white;
             font-weight:600;
             margin-top:10px;">
-            ✅ Fetched <b>{desc}</b> successfully! You can proceed with processing or visualization.
+            ✅ Successfully fetched <b>{desc}</b>! Proceed with visualization.
         </div>
         """, unsafe_allow_html=True)
         return json_data
 
-    # ❌ Failure Case
+    # ❌ Failure
     st.error(f"⛔ Failed to fetch {desc} after {max_retries} attempts.")
     st.markdown("""
     <div style="
@@ -689,23 +727,21 @@ def fetch_json(endpoint, params=None, desc=""):
         border-left:5px solid #ff4444;
         margin-top:10px;">
         <b>💡 Troubleshooting Tips:</b><br>
-        - Check internet / API connectivity<br>
+        - Check your network or VPN<br>
         - Verify parameters are valid<br>
-        - Try again after 1–2 minutes (API may be rate-limited)
+        - Retry after 1–2 minutes (server may throttle requests)
     </div>
     """, unsafe_allow_html=True)
 
-    c1, c2 = st.columns([1, 1])
-    with c1:
-        if st.button(f"🔁 Retry {desc} Now", key=f"retry_{desc}_{random.randint(0,9999)}"):
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button(f"🔁 Retry {desc}", key=f"retry_{desc}_{random.randint(0,9999)}"):
             st.toast("Retrying API fetch...", icon="🔄")
             time.sleep(0.8)
             st.rerun()
-    with c2:
-        if st.button("📡 Test API Endpoint", key=f"test_api_{desc}_{random.randint(0,9999)}"):
-            test_url = f"https://analytics.parivahan.gov.in/{endpoint}"
-            st.markdown(f"🌐 **Test URL:** `{test_url}`")
-            st.info("This is a test-only preview link. Data requires valid params to return results.")
+    with col2:
+        if st.button("📡 Test Endpoint", key=f"test_{desc}_{random.randint(0,9999)}"):
+            st.info(f"🔗 Endpoint: `{endpoint}`")
 
     return {}
 
