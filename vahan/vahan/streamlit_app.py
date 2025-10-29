@@ -188,34 +188,93 @@ div[data-baseweb="input"]:hover, div[data-baseweb="select"]:hover {
 """, unsafe_allow_html=True)
 
 # =====================================================
-# ✨ SIDEBAR HEADER
+# ✨ SIDEBAR HEADER — MAXED CONTROL PANEL
 # =====================================================
 st.sidebar.markdown("""
 <div class="sidebar-header">
     <h2>⚙️ Control Panel</h2>
-    <p>Customize analytics, filters, and AI insights.</p>
+    <p>Customize analytics, filters, and AI insights dynamically.</p>
 </div>
 """, unsafe_allow_html=True)
 
-# --- Data Filters ---
+# =====================================================
+# 📊 MAXED DATA FILTERS (Supports ANY filter)
+# =====================================================
 with st.sidebar.expander("📊 Data Filters", expanded=True):
     from_year = st.number_input("📅 From Year", min_value=2012, max_value=today.year, value=default_from_year)
     to_year = st.number_input("📆 To Year", min_value=from_year, max_value=today.year, value=today.year)
-    state_code = st.text_input("🏙️ State Code (blank = All-India)", value="")
-    rto_code = st.text_input("🏢 RTO Code (0 = aggregate)", value="0")
-    vehicle_classes = st.text_input("🚘 Vehicle Classes (e.g., 2W,3W,4W)", value="")
-    vehicle_makers = st.text_input("🏭 Vehicle Makers (comma-separated or IDs)", value="")
-    vehicle_type = st.text_input("🛻 Vehicle Type (optional)", value="")
-    time_period = st.selectbox("⏱️ Time Period", options=[0, 1, 2], index=0)
-    fitness_check = st.selectbox("🧾 Fitness Check", options=[0, 1], index=0)
 
-# --- Smart Analytics Toggles ---
-with st.sidebar.expander("🧠 Smart Analytics & AI", expanded=True):
+    col1, col2 = st.columns(2)
+    with col1:
+        state_code = st.text_input("🏙️ State Code", value="", placeholder="Blank = All-India")
+    with col2:
+        rto_code = st.text_input("🏢 RTO Code", value="0", placeholder="0 = aggregate")
+
+    vehicle_classes = st.text_input("🚘 Vehicle Classes", value="", placeholder="e.g. 2W, 3W, 4W")
+    vehicle_makers = st.text_input("🏭 Vehicle Makers", value="", placeholder="Comma-separated or IDs")
+    vehicle_type = st.text_input("🛻 Vehicle Type", value="", placeholder="Optional: EV/Diesel/Petrol")
+    region_filter = st.text_input("🗺️ Region Filter", value="", placeholder="North / South / East / West (optional)")
+    month_filter = st.selectbox("🗓️ Month Filter", ["All", "January", "February", "March", "April", "May", "June",
+                                                    "July", "August", "September", "October", "November", "December"], index=0)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        time_period = st.selectbox("⏱️ Time Period", ["All Time", "Yearly", "Monthly", "Daily"], index=0)
+    with col2:
+        fitness_check = st.selectbox("🧾 Fitness Check", ["All", "Only Fit", "Expired"], index=0)
+
+    vehicle_age = st.slider("📆 Vehicle Age (years)", 0, 20, (0, 10))
+    fuel_type = st.multiselect("⛽ Fuel Type", ["Petrol", "Diesel", "CNG", "Electric", "Hybrid"], default=[])
+
+    if st.button("🔄 Reset Filters"):
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.toast("♻️ Filters reset — applying defaults...", icon="🔁")
+        st.experimental_rerun()
+
+# =====================================================
+# 🧠 SMART ANALYTICS & AI ENGINE — MAXED
+# =====================================================
+with st.sidebar.expander("🧠 Smart Analytics & AI Engine", expanded=True):
     enable_forecast = st.checkbox("📈 Enable Forecasting", value=True)
     enable_anomaly = st.checkbox("⚠️ Enable Anomaly Detection", value=True)
     enable_clustering = st.checkbox("🔍 Enable Clustering", value=True)
-    enable_ai = st.checkbox("🤖 Enable DeepInfra AI Narratives", value=False)
+    enable_ai = st.checkbox("🤖 DeepInfra AI Narratives", value=False)
+
     forecast_periods = st.number_input("⏳ Forecast Horizon (months)", min_value=1, max_value=36, value=3)
+    enable_trend = st.checkbox("📊 Trend Line Overlay", value=True)
+    enable_comparison = st.checkbox("📅 Year/Month Comparison", value=True)
+
+    st.markdown("##### ⚡ AI Presets")
+    preset = st.radio(
+        "Choose Mode:",
+        ["Balanced (Default)", "Aggressive Forecasting", "Minimal Analysis", "Custom Maxed Mode"],
+        index=0,
+        horizontal=True
+    )
+
+    if preset == "Aggressive Forecasting":
+        enable_forecast, enable_anomaly, enable_clustering = True, True, True
+        forecast_periods = 12
+        st.toast("🚀 Aggressive Forecasting (12-month horizon) enabled!", icon="✨")
+
+    elif preset == "Minimal Analysis":
+        enable_forecast = enable_anomaly = enable_clustering = enable_ai = False
+        st.toast("💤 Minimal Analysis Mode Activated", icon="⚙️")
+
+    elif preset == "Custom Maxed Mode":
+        enable_forecast = enable_anomaly = enable_clustering = enable_ai = True
+        forecast_periods = 24
+        enable_comparison = enable_trend = True
+        st.toast("💎 Custom MAXED Mode — all analytics active!", icon="⚡")
+
+    st.markdown("""
+    <hr style='margin:10px 0;border:none;height:1px;
+    background:linear-gradient(90deg,transparent,#00E0FF66,transparent);'>
+    <p style='text-align:center;font-size:12px;opacity:0.7;'>
+        🧩 All filters and AI toggles auto-refresh dashboards instantly.
+    </p>
+    """, unsafe_allow_html=True)
 
 # =====================================================
 # 🎨 UNIVERSAL HYBRID THEME ENGINE — MAXED EDITION 🚀
