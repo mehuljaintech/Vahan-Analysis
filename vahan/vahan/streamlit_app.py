@@ -330,7 +330,7 @@ THEMES = {
 }
 
 st.sidebar.markdown("## 🎨 Appearance & Layout")
-ui_mode = st.sidebar.selectbox("Theme", list(THEMES.keys()), index=5)
+ui_mode = st.sidebar.selectbox("Theme", list(THEMES.keys()), index=1)
 font_size = st.sidebar.slider("Font Size", 12, 20, 15)
 radius = st.sidebar.slider("Corner Radius", 6, 24, 12)
 motion = st.sidebar.toggle("✨ Motion & Glow Effects", value=True)
