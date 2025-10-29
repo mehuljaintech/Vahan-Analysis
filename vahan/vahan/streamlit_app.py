@@ -1443,7 +1443,7 @@ with st.container():
                 }
                 json_data = live_fetch_json("vahandashboard/categoriesdonutchart", params, f"Category Distribution {yr}")
                 if json_data:
-                    if show_raw_json:
+                    if show_raw_json_cat:
                         with st.expander(f"🧾 Raw JSON — {yr}", expanded=False):
                             st.json(json_data)
                     df_temp = to_df(json_data)
