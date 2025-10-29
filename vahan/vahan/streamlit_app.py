@@ -1,3 +1,81 @@
+2024-2025 
+2025-2026
+comparisons all maxed 
+data month wise statewise makerwise
+daily base requirement
+no revenue
+no forecast
+growth
+any filter
+no cluster
+
+# =============================
+# 📚 Cleaned & Consolidated Imports
+# =============================
+# Standard library
+import os
+import sys
+import time
+import traceback
+import io
+import json
+import random
+from datetime import date, timedelta
+
+# Third-party
+import requests
+import numpy as np
+import pandas as pd
+import altair as alt
+import streamlit as st  # re-import is safe; already imported above
+from dotenv import load_dotenv
+
+# Excel / Openpyxl
+from openpyxl import load_workbook
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.chart import LineChart, Reference
+
+# Local vahan package modules (keep unchanged)
+from vahan.api import build_params, get_json
+from vahan.parsing import (
+    to_df, normalize_trend, parse_duration_table,
+    parse_top5_revenue, parse_revenue_trend, parse_makers
+)
+from vahan.metrics import compute_yoy, compute_qoq
+from vahan.charts import (
+    bar_from_df, pie_from_df, line_from_trend,
+    show_metrics, show_tables
+)
+
+# Optional advanced libraries (import gracefully)
+SKLEARN_AVAILABLE = False
+try:
+    from sklearn.ensemble import IsolationForest
+    from sklearn.cluster import KMeans
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.decomposition import PCA
+    from sklearn.linear_model import LinearRegression
+    SKLEARN_AVAILABLE = True
+except Exception:
+    SKLEARN_AVAILABLE = False
+
+PROPHET_AVAILABLE = False
+try:
+    from prophet import Prophet
+    PROPHET_AVAILABLE = True
+except Exception:
+    PROPHET_AVAILABLE = False
+
+# Load environment variables
+load_dotenv()
+
+# NOTE:
+# - If you want to trigger a programmatic restart from anywhere in the file,
+#   call: auto_restart(delay=3)
+# - Keep this top block intact. It ensures a self-restart behaves like an app reboot
+#   without adding external scripts or OS-specific services.
+
 # =====================================================
 # 🚀 PARIVAHAN ANALYTICS —  HYBRID UI ENGINE
 # =====================================================
