@@ -1431,14 +1431,18 @@ with st.container():
     """, unsafe_allow_html=True)
 
     # =====================================================
-    # ⚙️ USER FILTERS
-    # =====================================================
-    with st.sidebar.expander("⚙️ Category Distribution Filters", expanded=True):
-        mode = st.radio("📅 Mode", ["Multi-Year", "Single-Year"], index=0, horizontal=True)
-        top_n = st.slider("🏅 Show Top N Categories", 3, 25, 10)
-        show_all = st.checkbox("📦 Show All Categories (ignore Top N)", value=False)
-        show_raw_json = st.checkbox("🧾 Show Raw API JSON", value=False)
-        ai_mode = st.selectbox("🤖 AI Analysis Mode", ["None", "Summary", "Trends + Recommendations"], index=1)
+# ⚙️ FILTER CONFIG
+# =====================================================
+with st.sidebar.expander("⚙️ Top Makers Filters", expanded=True):
+    top_n = st.slider("🔢 Show Top N Makers", 3, 25, 10, key="top_n_makers")
+    show_raw_json = st.checkbox("🧾 Show Raw API JSON", value=False, key="show_raw_json_makers")
+    ai_mode = st.selectbox(
+        "🤖 AI Analysis Mode",
+        ["None", "Summary", "Trends + Recommendations"],
+        index=1,
+        key="ai_mode_makers"
+    )
+
 
     # =====================================================
     # ⚡ API FETCHER — NO CACHE
