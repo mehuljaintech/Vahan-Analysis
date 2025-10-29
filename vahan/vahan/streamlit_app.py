@@ -1436,7 +1436,9 @@ with st.container():
     with st.sidebar.expander("⚙️ Category Distribution Filters", expanded=True):
         mode = st.radio("📅 Mode", ["Multi-Year", "Single-Year"], horizontal=True, key="cat_mode")
         top_n = st.slider("🔢 Show Top N Categories", 3, 25, 10, key="cat_top_n")
-        show_raw_json = st.checkbox("🧾 Show Raw API JSON", value=False, key="cat_json")
+        # In Category Distribution section
+        show_raw_json = st.checkbox("🧾 Show Raw API JSON", value=False, key="show_raw_json_category")
+
         ai_mode = st.selectbox(
             "🤖 AI Analysis Mode",
             ["None", "Summary", "Trends + Recommendations"],
@@ -1571,7 +1573,8 @@ with st.container():
                                   index=1, key="maker_aimode")
         state_code_mk = st.text_input("🏙️ State Code", key="maker_state")
         rto_code_mk = st.text_input("🏢 RTO Code", key="maker_rto")
-        show_raw_json_mk = st.checkbox("🧾 Show Raw JSON", value=False, key="maker_json")
+        # In Top Makers section
+        show_raw_json = st.checkbox("🧾 Show Raw API JSON", value=False, key="show_raw_json_makers")
 
     st.toast(f"📡 Fetching Top Makers: {from_year} → {to_year}", icon="🚗")
 
