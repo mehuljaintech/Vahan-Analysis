@@ -222,6 +222,13 @@ with st.sidebar.expander("🧠 Smart Analytics & AI", expanded=True):
 # =====================================================
 
 THEMES = {
+    "VSCode": {
+        "bg": "#0E101A",
+        "text": "#D4D4D4",
+        "card": "#1E1E2E",
+        "accent": "#007ACC",
+        "glow": "rgba(0,122,204,0.6)"
+    },
     "Glass": {
         "bg": "rgba(15,23,42,0.9)",
         "text": "#E0F2FE",
@@ -249,13 +256,6 @@ THEMES = {
         "card": "#111111",
         "accent": "#FFDE00",
         "glow": "rgba(255,222,0,0.6)"
-    },
-    "VSCode": {
-        "bg": "#0E101A",
-        "text": "#D4D4D4",
-        "card": "#1E1E2E",
-        "accent": "#007ACC",
-        "glow": "rgba(0,122,204,0.6)"
     },
     "Windows": {
         "bg": "linear-gradient(120deg,#0078D7,#003C8F)",
@@ -329,12 +329,84 @@ THEMES = {
     }
 }
 
+# Sidebar controls
 st.sidebar.markdown("## 🎨 Appearance & Layout")
-ui_mode = st.sidebar.selectbox("Theme", list(THEMES.keys()), index=6)
+ui_mode = st.sidebar.selectbox("Theme", list(THEMES.keys()), index=list(THEMES.keys()).index("VSCode"))
 font_size = st.sidebar.slider("Font Size", 12, 20, 15)
 radius = st.sidebar.slider("Corner Radius", 6, 24, 12)
-motion = st.sidebar.toggle("✨ Motion & Glow Effects", value=False)
+motion = st.sidebar.toggle("✨ Motion & Glow Effects", value=True)
 palette = THEMES[ui_mode]
+
+# CSS builder
+def build_css(palette, font_size, radius, motion):
+    accent, text, bg, card, glow = palette["accent"], palette["text"], palette["bg"], palette["card"], palette["glow"]
+    effect = f"0 0 18px {glow}" if motion else "none"
+    return f"""
+    <style>
+    html, body, .stApp {{
+        background: {bg};
+        color: {text};
+        font-size: {font_size}px;
+        font-family: 'Inter', 'Segoe UI', 'SF Pro Display', sans-serif;
+        transition: all 0.4s ease-in-out;
+    }}
+    .block-container {{
+        max-width: 1300px;
+        padding: 1.5rem 2rem 3rem 2rem;
+    }}
+    h1, h2, h3, h4, h5 {{
+        color: {accent};
+        text-shadow: {effect};
+        font-weight: 800;
+    }}
+    div.stButton > button {{
+        background: {accent};
+        color: white;
+        border: none;
+        border-radius: {radius}px;
+        padding: 0.6rem 1.1rem;
+        transition: all 0.25s ease-in-out;
+        font-weight: 600;
+    }}
+    div.stButton > button:hover {{
+        transform: translateY(-2px);
+        box-shadow: 0 0 20px {accent}77;
+    }}
+    .glass-card {{
+        background: {card};
+        backdrop-filter: blur(10px);
+        border-radius: {radius}px;
+        padding: 20px;
+        margin-bottom: 1rem;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.15);
+        transition: all 0.3s ease;
+    }}
+    .glass-card:hover {{
+        transform: translateY(-4px);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+    }}
+    [data-testid="stSidebar"] {{
+        background: {card};
+        border-right: 1px solid {accent}33;
+        box-shadow: 4px 0 12px rgba(0,0,0,0.1);
+    }}
+    [data-testid="stMetricValue"] {{
+        color: {accent} !important;
+        font-size: 1.6rem !important;
+        font-weight: 800 !important;
+    }}
+    hr {{
+        border: none;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, {accent}66, transparent);
+        margin: 1rem 0;
+    }}
+    </style>
+    """
+
+# Apply dynamic CSS
+st.markdown(build_css(palette, font_size, radius, motion), unsafe_allow_html=True)
+
 
 # =====================================================
 # 🧩 BUILD DYNAMIC CSS — Supports Motion / Glow / Themes
