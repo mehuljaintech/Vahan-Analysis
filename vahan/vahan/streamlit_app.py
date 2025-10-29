@@ -668,6 +668,108 @@ with colB:
         time.sleep(0.8)
         st.rerun()
 
+# ================================
+# ⚙️ Dynamic Safe API Fetch Layer — FIXED
+# ================================
+
+import time, random, streamlit as st
+
+# Utility: colored tag generator
+def _tag(text, color):
+    return f"<span style='background:{color};padding:4px 8px;border-radius:6px;color:white;font-size:12px;margin-right:6px;'>{text}</span>"
+
+# Smart API Fetch Wrapper
+def fetch_json(endpoint, params=params_common, desc=""):
+    """
+    Intelligent API fetch with full UI feedback, retries, and rich logging.
+    - Animated visual elements
+    - Toast notifications
+    - Retry attempts with progressive delay
+    - Interactive retry + JSON preview on failure
+    """
+    max_retries = 3
+    delay = 1 + random.random()
+    desc = desc or endpoint
+
+    st.markdown(f"""
+    <div style="
+        padding:10px 15px;
+        margin:12px 0;
+        border-radius:12px;
+        background:rgba(0, 150, 255, 0.12);
+        border-left:5px solid #00C6FF;
+        box-shadow:0 0 10px rgba(0,198,255,0.15);">
+        <b>{_tag("API", "#007BFF")} {_tag("Task", "#00B894")}</b>
+        <span style="font-size:14px;color:#E2E8F0;">Fetching: <code>{desc}</code></span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    json_data = None
+    for attempt in range(1, max_retries + 1):
+        with st.spinner(f"🔄 Attempt {attempt}/{max_retries} — Fetching `{desc}` ..."):
+            try:
+                json_data, _ = get_json(endpoint, params)
+                if json_data:
+                    st.toast(f"✅ {desc} fetched successfully!", icon="🚀")
+                    if attempt == 1:
+                        st.balloons()
+                    st.success(f"✅ Data fetched successfully on attempt {attempt}!")
+                    break
+                else:
+                    st.warning(f"⚠️ Empty response for {desc}. Retrying...")
+            except Exception as e:
+                st.error(f"❌ Error fetching {desc}: {e}")
+            time.sleep(delay * attempt * random.uniform(0.9, 1.3))
+
+    # ✅ Success Case
+    if json_data:
+        with st.expander(f"📦 View {desc} JSON Response Preview", expanded=False):
+            st.json(json_data)
+        st.markdown(f"""
+        <div style="
+            background:linear-gradient(90deg,#00c6ff,#0072ff);
+            padding:10px 15px;
+            border-radius:10px;
+            color:white;
+            font-weight:600;
+            margin-top:10px;">
+            ✅ Fetched <b>{desc}</b> successfully! You can proceed with processing or visualization.
+        </div>
+        """, unsafe_allow_html=True)
+        return json_data
+
+    # ❌ Failure Case
+    st.error(f"⛔ Failed to fetch {desc} after {max_retries} attempts.")
+    st.markdown("""
+    <div style="
+        background:rgba(255,60,60,0.08);
+        padding:15px;
+        border-radius:10px;
+        border-left:5px solid #ff4444;
+        margin-top:10px;">
+        <b>💡 Troubleshooting Tips:</b><br>
+        - Check internet / API connectivity<br>
+        - Verify parameters are valid<br>
+        - Try again after 1–2 minutes (API may be rate-limited)
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 🎯 Interactive retry + test controls
+    c1, c2 = st.columns([1, 1])
+    with c1:
+        if st.button(f"🔁 Retry {desc} Now", key=f"retry_{desc}_{random.randint(0,9999)}"):
+            st.toast("Retrying API fetch...", icon="🔄")
+            time.sleep(0.8)
+            st.rerun()
+    with c2:
+        if st.button("📡 Test API Endpoint", key=f"test_api_{desc}_{random.randint(0,9999)}"):
+            test_url = f"https://analytics.parivahan.gov.in/{endpoint}"
+            st.markdown(f"🌐 **Test URL:** `{test_url}`")
+            st.info("This is a test-only preview link. Data requires valid params to return results.")
+
+    return {}
+
+
 # ============================================
 # 🤖 DeepInfra AI Helper (Streamlit Secrets Only) —  EDITION
 # ============================================
