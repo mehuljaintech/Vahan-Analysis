@@ -315,71 +315,113 @@ st.markdown(
 )
 
 # =====================================================
-# 🧭 HEADER — LIVE TIME + TITLE
+# 🚗 PARIVAHAN ANALYTICS — HEADER + LAYOUT
 # =====================================================
 from datetime import datetime
 import pytz
+import streamlit as st
 
-# Get current IST time
-ist = pytz.timezone('Asia/Kolkata')
+# ================= TIME (IST) =================
+ist = pytz.timezone("Asia/Kolkata")
 current_time = datetime.now(ist).strftime("%A, %d %B %Y • %I:%M %p")
 
-# Streamlit Header Block
-st.markdown(f"""
-<div style='text-align:center;padding:25px;border-radius:20px;
-background:linear-gradient(145deg, rgba(0,0,0,0.4), rgba(255,255,255,0.05));
-box-shadow:0 4px 20px rgba(0,0,0,0.2);
-margin-bottom:30px;backdrop-filter:blur(8px);'>
-    <h1 style='font-size:2.2rem;margin-bottom:5px;'>🚗 Parivahan Analytics Dashboard</h1>
-    <p style='opacity:0.8;font-size:14px;margin:0;'>Updated: {current_time} (IST)</p>
-    <p style='opacity:0.7;font-size:13px;margin-top:5px;'>
-        Year-Wise • Month-wise • State-wise • Maker-wise • Daily Base
-    </p>
-</div>
+# ================= GLOBAL STYLES =================
+st.markdown("""
+<style>
+/* Smooth fade + glassmorphism */
+.main {
+    background: radial-gradient(circle at 20% 20%, #0f2027, #203a43, #2c5364);
+    color: white;
+}
+[data-testid="stHeader"] {background: rgba(0,0,0,0); height: 0;}
+hr {border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 1rem 0;}
+h1, h2, h3, p {color: white !important;}
 
+/* Card-style elements */
+.metric-box {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 20px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+.metric-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+}
+.footer {
+    text-align:center;
+    opacity:0.65;
+    font-size:13px;
+    margin-top:20px;
+}
+.fade-in {
+    animation: fadeIn 1.5s ease-in-out;
+}
+@keyframes fadeIn {
+    from {opacity: 0; transform: translateY(10px);}
+    to {opacity: 1; transform: translateY(0);}
+}
+</style>
 """, unsafe_allow_html=True)
+
 # =====================================================
-# 📊 MAIN LAYOUT — PLACEHOLDER VISUAL AREA
+# 🧭 HEADER
+# =====================================================
+st.markdown(f"""
+<div class="fade-in" style='text-align:center;padding:30px;border-radius:25px;
+background:rgba(255,255,255,0.05);
+box-shadow:0 8px 30px rgba(0,0,0,0.3);
+backdrop-filter:blur(10px);
+margin-bottom:35px;'>
+    <h1 style='font-size:2.5rem;margin-bottom:10px;'>🚗 Parivahan Analytics Dashboard</h1>
+    <p style='opacity:0.85;font-size:15px;margin:0;'>Updated: {current_time} (IST)</p>
+</div>
+""", unsafe_allow_html=True)
+
+# =====================================================
+# 📊 MAIN SECTION
 # =====================================================
 st.markdown("<hr>", unsafe_allow_html=True)
 
 layout = st.container()
 with layout:
     st.markdown("""
-    <div style='text-align:center;margin-bottom:1.5rem;'>
-        <h2>📈 Analytics Overview</h2>
-        <p style='opacity:0.7;'>Dynamic KPIs, charts, forecasts, and insights will load here automatically</p>
+    <div class="fade-in" style='text-align:center;margin-bottom:1.5rem;'>
+        <h2 style='font-size:1.8rem;'>📈 Analytics Overview</h2>
+        <p style='opacity:0.75;'>Dynamic KPIs, charts, forecasts, and insights update automatically from live data</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # =================================================
-    # KPI PLACEHOLDERS — TOP ROW
-    # =================================================
+    # ================= KPIs =================
     kpi_cols = st.columns(3)
     with kpi_cols[0]:
-        kpi_1 = st.empty()
+        with st.container():
+            st.markdown("<div class='metric-box'>🚘<br><b>Total Vehicles</b><br><span style='font-size:1.5rem;'>—</span></div>", unsafe_allow_html=True)
     with kpi_cols[1]:
-        kpi_2 = st.empty()
+        with st.container():
+            st.markdown("<div class='metric-box'>📅<br><b>Daily Growth</b><br><span style='font-size:1.5rem;'>—</span></div>", unsafe_allow_html=True)
     with kpi_cols[2]:
-        kpi_3 = st.empty()
+        with st.container():
+            st.markdown("<div class='metric-box'>📊<br><b>Yearly Comparison</b><br><span style='font-size:1.5rem;'>—</span></div>", unsafe_allow_html=True)
 
-    # =================================================
-    # MAIN VISUAL AREA — CHARTS / INSIGHTS
-    # =================================================
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ================= MAIN VISUALS =================
     left, right = st.columns([2, 1])
     with left:
-        main_chart = st.empty()   # Placeholder for major chart (trend, forecast, etc.)
+        st.markdown("<div class='metric-box'>📈 Main Chart / Forecast Area</div>", unsafe_allow_html=True)
     with right:
-        side_chart = st.empty()   # Placeholder for comparison or breakdown visuals
+        st.markdown("<div class='metric-box'>📋 Breakdown / Insights Panel</div>", unsafe_allow_html=True)
 
 # =====================================================
-# 🧩 FOOTER — BRAND STRIP
+# 🧩 FOOTER
 # =====================================================
 st.markdown("<hr>", unsafe_allow_html=True)
 st.markdown(
-    "<div style='text-align:center;opacity:0.65;font-size:13px;margin-top:10px;'>"
-    "🌐 Parivahan Analytics • Hybrid Interface Engine"
-    "</div>",
+    "<div class='footer'>🌐 Parivahan Analytics • Hybrid Intelligence Engine</div>",
     unsafe_allow_html=True,
 )
 
