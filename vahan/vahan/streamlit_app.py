@@ -1,734 +1,985 @@
 # =====================================================
-# 🌏 GLOBAL INIT — MAXED OUT (IST, CACHING, USER, RETRY)
+# 🚀 VAHAN API MODULE — MAXED EDITION
 # =====================================================
 import os
-import sys
+import io
 import json
-import uuid
 import time
+import uuid
+import math
 import random
-import platform
 import logging
-import requests
 import traceback
-import streamlit as st
+import requests
 import pandas as pd
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from functools import wraps
+from functools import wraps, lru_cache
 from requests.adapters import HTTPAdapter, Retry
+import streamlit as st
 
 # =====================================================
-# 🕒 1️⃣ Universal IST print-based logger
+# 🕒 Universal IST Logger
 # =====================================================
 def log_ist(msg: str):
     ist_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
     print(f"[IST {ist_time}] {msg}")
 
 # =====================================================
-# 🧭 2️⃣ Force all logging timestamps to IST
+# ⚙️ API CONFIG
 # =====================================================
-class ISTFormatter(logging.Formatter):
-    def converter(self, timestamp):
-        return datetime.fromtimestamp(timestamp, ZoneInfo("Asia/Kolkata"))
-    def formatTime(self, record, datefmt=None):
-        dt = self.converter(record.created)
-        return dt.strftime(datefmt or "%Y-%m-%d %H:%M:%S")
-
-root_logger = logging.getLogger()
-if not root_logger.handlers:
-    logging.basicConfig(level=logging.INFO)
-
-for handler in root_logger.handlers:
-    handler.setFormatter(ISTFormatter("%(asctime)s | %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S"))
-
-logging.info("✅ Logging timezone forced to IST")
-log_ist("🚀 Streamlit App Initialization Started")
+BASE_URL = "https://vahan.parivahan.gov.in/vahan/vahandashboard"
+HEADERS = {
+    "User-Agent": f"VahanClient/{uuid.uuid4().hex[:8]}",
+    "Accept": "application/json, text/plain, */*",
+    "Referer": "https://vahan.parivahan.gov.in/vahan4dashboard/",
+}
+TIMEOUT = 25
+MAX_RETRIES = 3
 
 # =====================================================
-# 👤 3️⃣ Random User / Session Identity (Anti-limit)
+# 🧱 Robust Session with Retry
 # =====================================================
-if "user_id" not in st.session_state:
-    st.session_state["user_id"] = f"user_{uuid.uuid4().hex[:8]}_{random.randint(1000,9999)}"
-USER_ID = st.session_state["user_id"]
-
-log_ist(f"🎯 Session started for user: {USER_ID}")
-
-# # =====================================================
-# # ♻️ 4️⃣ Ultra-Reliable Caching System
-# # =====================================================
-# @st.cache_data(ttl=3600, show_spinner=False, max_entries=200)
-# def cached_json_fetch(url, params=None, headers=None):
-#     """Fetch API data with cache, retries, and IST logging."""
-#     log_ist(f"🌐 Fetching URL (cached): {url}")
-#     try:
-#         session = requests.Session()
-#         retries = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
-#         session.mount("https://", HTTPAdapter(max_retries=retries))
-#         resp = session.get(url, params=params, headers=headers, timeout=20)
-#         resp.raise_for_status()
-#         data = resp.json()
-#         log_ist(f"✅ API Success [{url}] — {len(str(data))} chars")
-#         return data
-#     except Exception as e:
-#         logging.error(f"❌ API Error @ {url}: {e}")
-#         st.warning(f"API temporarily unavailable: {url}")
-#         return {}
-
-# # =====================================================
-# # 🧱 5️⃣ Global Error-Safe Wrapper
-# # =====================================================
-# def safe_exec(fn):
-#     @wraps(fn)
-#     def wrapper(*args, **kwargs):
-#         try:
-#             return fn(*args, **kwargs)
-#         except Exception as e:
-#             err_msg = f"⚠️ Exception in {fn.__name__}: {e}"
-#             logging.error(err_msg)
-#             traceback.print_exc()
-#             st.error(f"An internal error occurred — {fn.__name__}")
-#             return None
-#     return wrapper
+session = requests.Session()
+retries = Retry(
+    total=MAX_RETRIES,
+    backoff_factor=1.2,
+    status_forcelist=[429, 500, 502, 503, 504],
+)
+session.mount("https://", HTTPAdapter(max_retries=retries))
 
 # =====================================================
-# 🚀 6️⃣ Streamlit Startup Banner (Visual + Console)
+# ♻️ Streamlit Caching Layer (1 hr TTL)
 # =====================================================
-def app_boot_banner():
-    ist_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
-    python_ver = platform.python_version()
-    streamlit_ver = st.__version__
-    os_info = f"{platform.system()} {platform.release()} ({platform.machine()})"
+@st.cache_data(ttl=3600, show_spinner=False, max_entries=200)
+def cached_request(endpoint: str, params=None):
+    url = f"{BASE_URL}/{endpoint.strip('/')}"
+    log_ist(f"🌐 API CALL (cached): {url}")
 
-    st.markdown(f"""
-    <div style='
-        background:linear-gradient(90deg,#0072ff,#00c6ff);
-        color:white;
-        padding:14px 24px;
-        border-radius:14px;
-        margin:15px 0 25px 0;
-        box-shadow:0 4px 20px rgba(0,0,0,0.25);
-        font-family:monospace;'>
-        🕒 <b>App Booted:</b> {ist_time} (IST)<br>
-        👤 <b>User:</b> {USER_ID}<br>
-        ⚙️ <b>Environment:</b> Python {python_ver} | Streamlit {streamlit_ver}<br>
-        🧠 <b>System:</b> {os_info}
-    </div>
-    """, unsafe_allow_html=True)
+    try:
+        resp = session.get(url, headers=HEADERS, params=params, timeout=TIMEOUT)
+        resp.raise_for_status()
+        data = resp.json()
 
-    print("=" * 70)
-    print(f"[IST {ist_time}] ✅ Streamlit App Booted Successfully")
-    print(f"[IST {ist_time}] User ID: {USER_ID}")
-    print(f"[IST {ist_time}] Python {python_ver} | Streamlit {streamlit_ver}")
-    print("=" * 70)
+        if not data:
+            raise ValueError("Empty response")
 
-app_boot_banner()
+        log_ist(f"✅ SUCCESS: {endpoint} [{len(str(data))} chars]")
+        return data
+
+    except Exception as e:
+        logging.error(f"❌ API Error ({endpoint}): {e}")
+        log_ist(f"⚠️ Retrying via fallback for {endpoint}")
+        return playwright_fallback(endpoint, params=params)
 
 # =====================================================
-# 💾 7️⃣ Example Usage
+# 🕸️ Playwright Fallback (Headless Fetch)
 # =====================================================
-# data = cached_json_fetch("https://api.example.com/data")
-# log_ist("📊 Data fetched successfully.")
-# logging.info("Processing completed.")
+def playwright_fallback(endpoint, params=None):
+    """Fallback if direct API fails — uses Playwright to render."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        log_ist("⚠️ Playwright not installed — skipping fallback")
+        return {}
 
+    try:
+        with sync_playwright() as p:
+            browser = p.firefox.launch(headless=True)
+            context = browser.new_context()
+            page = context.new_page()
+            url = f"{BASE_URL}/{endpoint.strip('/')}"
+            page.goto(url, wait_until="networkidle", timeout=40000)
+            time.sleep(2)
+            content = page.content()
+            browser.close()
 
+            if "{" not in content:
+                raise ValueError("Non-JSON HTML response")
+
+            json_str = content.split("{", 1)[1].rsplit("}", 1)[0]
+            json_data = json.loads("{" + json_str + "}")
+            log_ist(f"🧩 Playwright fallback succeeded for {endpoint}")
+            return json_data
+
+    except Exception as e:
+        logging.error(f"💀 Playwright fallback failed: {e}")
+        return {}
 
 # =====================================================
-# 🧠 CORE PYTHON UTILITIES
+# 🧠 Safe Wrapper (Error-Proof Execution)
 # =====================================================
-import io, math, logging
-import numpy as np
-import pandas as pd
-from functools import wraps, lru_cache
+def safe_exec(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:
+            logging.error(f"⚠️ Exception in {fn.__name__}: {e}")
+            traceback.print_exc()
+            st.error(f"An internal error occurred in {fn.__name__}")
+            return None
+    return wrapper
 
 # =====================================================
-# 🕒 GLOBAL IST LOGGER
+# 📦 Utility: to_df() — JSON → DataFrame
 # =====================================================
-class ISTFormatter(logging.Formatter):
-    def converter(self, timestamp):
-        return datetime.fromtimestamp(timestamp, ZoneInfo("Asia/Kolkata"))
-    def formatTime(self, record, datefmt=None):
-        dt = self.converter(record.created)
-        return dt.strftime(datefmt or "%Y-%m-%d %H:%M:%S")
-
-logging.basicConfig(level=logging.INFO)
-for h in logging.getLogger().handlers:
-    h.setFormatter(ISTFormatter("%(asctime)s | %(levelname)s | %(message)s"))
-
-def log_ist(msg): 
-    print(f"[IST {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %I:%M:%S %p')}] {msg}")
+@safe_exec
+def to_df(data):
+    if not data:
+        return pd.DataFrame()
+    if isinstance(data, dict):
+        for key in ["result", "data", "records"]:
+            if key in data and isinstance(data[key], list):
+                return pd.DataFrame(data[key])
+        return pd.DataFrame([data])
+    elif isinstance(data, list):
+        return pd.DataFrame(data)
+    return pd.DataFrame()
 
 # =====================================================
-# 🚀 PARIVAHAN ANALYTICS 2025 — MAXED-LITE (CLOUD SAFE)
+# 🔥 Unified Fetch Function
 # =====================================================
-import os, sys, time, platform, random, traceback, warnings
+@safe_exec
+def fetch_vahan(endpoint, params=None):
+    """Primary function to fetch data with retry + cache + fallback."""
+    cache_key = f"{endpoint}_{json.dumps(params or {}, sort_keys=True)}"
+    log_ist(f"📡 Fetching endpoint: {endpoint} | params: {params}")
+
+    data = cached_request(endpoint, params)
+    if not data:
+        st.warning(f"⚠️ No data returned for {endpoint}")
+    return data
+
+# =====================================================
+# 🧩 Example API Endpoints
+# =====================================================
+@safe_exec
+def fetch_registration_trend(state_code=None):
+    params = {"stateCode": state_code} if state_code else None
+    return fetch_vahan("registrationtrend", params=params)
+
+@safe_exec
+def fetch_category_distribution(state_code=None):
+    params = {"stateCode": state_code} if state_code else None
+    return fetch_vahan("categorywise", params=params)
+
+@safe_exec
+def fetch_top_makers(year=None):
+    params = {"year": year or datetime.now().year}
+    return fetch_vahan("topmakers", params=params)
+
+# =====================================================
+# 🧾 Example Usage (Test Mode)
+# =====================================================
+if __name__ == "__main__":
+    log_ist("🧪 Running self-test for MAXED API")
+    res = fetch_registration_trend()
+    df = to_df(res)
+    print(df.head())
+    log_ist("✅ Test completed")
+
+# maxed_init.py
+"""
+PARIVAHAN ANALYTICS — MAXED INIT (Cloud-safe, IST, caching, retries, fallback)
+Place this near the top of your Streamlit app and import as:
+    from maxed_init import *
+It initializes logging, caching, HTTP utilities, and helper functions.
+"""
+from __future__ import annotations
+import os
+import sys
+import time
+import uuid
+import json
+import math
+import random
+import platform
+import traceback
+import logging
+import warnings
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from functools import wraps
+from typing import Any, Callable, Optional, Dict
+
+# Streamlit & core
 import streamlit as st
+import pandas as pd
+import numpy as np
 
 warnings.filterwarnings("ignore")
 
-# # =====================================================
-# # ⚙️ AUTO REFRESH + CACHE CLEAR ON CODE CHANGE
-# # =====================================================
-# from watchdog.observers import Observer
-# from watchdog.events import FileSystemEventHandler
-
-# class _AutoReload(FileSystemEventHandler):
-#     def __init__(self, watch_dir="."):
-#         self.watch_dir = watch_dir
-#         self.last_reload = time.time()
-#     def on_any_event(self, event):
-#         # Limit frequency of restarts to prevent loops
-#         if time.time() - self.last_reload > 3:
-#             print("🔁 Code change detected — restarting Streamlit app...")
-#             try:
-#                 st.cache_data.clear()
-#                 st.cache_resource.clear()
-#                 time.sleep(1)
-#                 st.rerun()
-#             except Exception as e:
-#                 print(f"[auto-reload] Failed to rerun: {e}")
-#             self.last_reload = time.time()
-
-# def start_auto_reload():
-#     """Start watchdog observer to monitor file changes (even on Streamlit Cloud)."""
-#     watch_dir = os.path.dirname(os.path.abspath(__file__))
-#     event_handler = _AutoReload(watch_dir)
-#     observer = Observer()
-#     observer.schedule(event_handler, path=watch_dir, recursive=True)
-#     observer.daemon = True
-#     observer.start()
-
-# # Start watcher
-# start_auto_reload()
-
-# =====================================================
-# 🌱 ENVIRONMENT MANAGEMENT
-# =====================================================
-from dotenv import load_dotenv
-load_dotenv()
-
-# =====================================================
-# 📊 STREAMLIT + CORE VISUALIZATION
-# =====================================================
-import pandas as pd
-import numpy as np
-import plotly.express as px
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-# =====================================================
-# 📈 DATA & ML STACK
-# =====================================================
-import sklearn
-import statsmodels
+# === Environment / dotenv (optional) ===
 try:
-    from prophet import Prophet
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
+
+# === Detect optional libs ===
+try:
+    import requests
+except Exception:
+    requests = None
+
+try:
+    import aiohttp
+except Exception:
+    aiohttp = None
+
+try:
+    import tenacity
+    from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+except Exception:
+    tenacity = None
+
+try:
+    from diskcache import Cache
+    _DISKCACHE_AVAILABLE = True
+    diskcache = Cache(".cache")
+except Exception:
+    _DISKCACHE_AVAILABLE = False
+    diskcache = None
+
+try:
+    from playwright.sync_api import sync_playwright
+    _PLAYWRIGHT_AVAILABLE = True
+except Exception:
+    sync_playwright = None
+    _PLAYWRIGHT_AVAILABLE = False
+
+# ML libs
+try:
+    from prophet import Prophet  # type: ignore
     PROPHET_AVAILABLE = True
-except ImportError:
+except Exception:
     PROPHET_AVAILABLE = False
 
 try:
-    import torch, transformers
-except ImportError:
-    torch = transformers = None
+    import torch, transformers  # type: ignore
+    TORCH_AVAILABLE = True
+except Exception:
+    TORCH_AVAILABLE = False
 
-# =====================================================
-# 📁 FILE HANDLING + EXPORTS
-# =====================================================
-import openpyxl, xlsxwriter, reportlab, pypandoc
-from openpyxl import load_workbook
-from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-from openpyxl.utils import get_column_letter
+# === Timezone / IST helpers ===
+IST_ZONE = ZoneInfo("Asia/Kolkata")
 
-# =====================================================
-# ☁️ API / NETWORK UTILITIES
-# =====================================================
-import requests, aiohttp, tenacity, joblib, tqdm, psutil
+def now_ist(fmt: str = "%Y-%m-%d %I:%M:%S %p") -> str:
+    return datetime.now(IST_ZONE).strftime(fmt)
 
-# =====================================================
-# 🧭 CACHE SYSTEM
-# =====================================================
-try:
-    from diskcache import Cache
-    cache = Cache(".cache")
-except ImportError:
-    cache = None
+# === Logging forced to IST ===
+class ISTFormatter(logging.Formatter):
+    def converter(self, timestamp):
+        return datetime.fromtimestamp(timestamp, IST_ZONE)
+    def formatTime(self, record, datefmt=None):
+        dt = self.converter(record.created)
+        return dt.strftime(datefmt or "%Y-%m-%d %H:%M:%S")
 
-from functools import wraps
+# configure root logger (idempotent)
+_root_logger = logging.getLogger()
+if not _root_logger.handlers:
+    logging.basicConfig(level=logging.INFO)
+for h in _root_logger.handlers:
+    h.setFormatter(ISTFormatter("%(asctime)s | %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S"))
 
-def cached(ttl=3600):
-    """Universal cache decorator (diskcache or fallback)."""
+def log_ist(msg: str, level: str = "info") -> None:
+    """Console + logger friendly IST-stamped message (safe for cloud)."""
+    text = f"[IST {now_ist()}] {msg}"
+    if level.lower() == "debug":
+        logging.debug(text)
+    elif level.lower() == "warning":
+        logging.warning(text)
+    elif level.lower() == "error":
+        logging.error(text)
+    else:
+        logging.info(text)
+    # Also print for immediate console visibility
+    print(text)
+
+log_ist("✅ MAXED INIT booting...")
+
+# === Session / user identity (Streamlit-safe) ===
+if "maxed_user_id" not in st.session_state:
+    st.session_state["maxed_user_id"] = f"user_{uuid.uuid4().hex[:8]}_{random.randint(1000,9999)}"
+MAXED_USER_ID = st.session_state["maxed_user_id"]
+log_ist(f"Session identity: {MAXED_USER_ID}")
+
+# === Global config ===
+DEFAULT_TIMEOUT = int(os.getenv("MAXED_TIMEOUT", "30"))
+DEFAULT_CACHE_TTL = int(os.getenv("MAXED_CACHE_TTL_SEC", str(60 * 60)))  # 1 hour
+DEFAULT_MAX_RETRIES = int(os.getenv("MAXED_MAX_RETRIES", "4"))
+
+# === Hybrid caching decorator (diskcache preferred, fallback to st.cache_data) ===
+def cached(ttl: int = DEFAULT_CACHE_TTL, key_fn: Optional[Callable[..., str]] = None):
+    """
+    Decorator that uses diskcache (if available) else streamlit.cache_data.
+    key_fn receives (args, kwargs) and must return string key if provided.
+    """
     def decorator(fn):
-        @wraps(fn)
-        def wrapper(*args, **kwargs):
-            key = f"{fn.__name__}:{args}:{kwargs}"
-            if cache:
-                if key in cache and (time.time() - cache.created(key) < ttl):
-                    return cache[key]
-                val = fn(*args, **kwargs)
-                cache[key] = val
-                return val
-            return fn(*args, **kwargs)
-        return wrapper
+        if _DISKCACHE_AVAILABLE and diskcache is not None:
+            @wraps(fn)
+            def wrapper(*args, **kwargs):
+                try:
+                    if key_fn:
+                        key = key_fn(*args, **kwargs)
+                    else:
+                        # stable key: function name + serialized args
+                        key = f"{fn.__name__}:{json.dumps({'args': args, 'kwargs': kwargs}, default=str, sort_keys=True)}"
+                    # diskcache expiration handling
+                    if key in diskcache:
+                        created = diskcache.created(key)
+                        if time.time() - created < ttl:
+                            log_ist(f"💾 diskcache HIT: {fn.__name__}")
+                            return diskcache[key]
+                    val = fn(*args, **kwargs)
+                    diskcache.set(key, val)
+                    log_ist(f"💾 diskcache SET: {fn.__name__}")
+                    return val
+                except Exception as e:
+                    log_ist(f"cache wrapper error (diskcache): {e}", "warning")
+                    return fn(*args, **kwargs)
+            return wrapper
+        else:
+            # fallback to Streamlit cache_data (coarse-grained)
+            st_cache = st.cache_data(ttl=ttl, show_spinner=False)
+            return st_cache(fn)
     return decorator
 
-# =====================================================
-# 🧱 GLOBAL STARTUP LOG
-# =====================================================
-print("=" * 80)
-print("🚀 MAXED+ Boot Complete")
-print(f"🕒 Booted @ {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %I:%M:%S %p')} IST")
-print(f"🧠 Python {platform.python_version()} | Streamlit {st.__version__} | Pandas {pd.__version__}")
-print("=" * 80)
+def clear_all_caches() -> None:
+    "Clear diskcache and streamlit caches where available."
+    if _DISKCACHE_AVAILABLE and diskcache is not None:
+        try:
+            diskcache.clear()
+            log_ist("🧹 diskcache cleared")
+        except Exception as e:
+            log_ist(f"diskcache clear failed: {e}", "warning")
+    try:
+        st.cache_data.clear()
+        st.cache_resource.clear()
+        log_ist("🧹 streamlit caches cleared")
+    except Exception:
+        pass
+
+# === Auto-reload watcher (optional; no-op on cloud if watchdog missing) ===
+def start_autoreload(watch_dir: str = ".", debounce_seconds: float = 2.5):
+    """
+    Starts a background watchdog to auto-clear caches and attempt st.rerun() on local dev.
+    Safe: does nothing if watchdog not installed or if running on Streamlit Cloud where OS permissions might not allow it.
+    """
+    try:
+        from watchdog.observers import Observer
+        from watchdog.events import FileSystemEventHandler
+    except Exception:
+        log_ist("watchdog not available — autoreload disabled", "debug")
+        return None
+
+    class _Handler(FileSystemEventHandler):
+        def __init__(self):
+            self._last = 0.0
+        def on_any_event(self, event):
+            now = time.time()
+            if now - self._last < debounce_seconds:
+                return
+            self._last = now
+            try:
+                log_ist("🔁 Code change detected — clearing caches and attempting rerun")
+                clear_all_caches()
+                time.sleep(0.2)
+                try:
+                    st.experimental_rerun()
+                except Exception:
+                    # older streamlit versions / cloud may not support rerun call here
+                    log_ist("st.experimental_rerun() not permitted in this environment", "warning")
+            except Exception as e:
+                log_ist(f"Auto-reload handler error: {e}", "warning")
+
+    try:
+        observer = Observer()
+        handler = _Handler()
+        observer.schedule(handler, path=watch_dir, recursive=True)
+        observer.daemon = True
+        observer.start()
+        log_ist(f"Auto-reload watcher started on {watch_dir}")
+        return observer
+    except Exception as e:
+        log_ist(f"Could not start file watcher: {e}", "warning")
+        return None
+
+# Call start_autoreload only when in local dev (env var opt-in)
+if os.getenv("MAXED_ENABLE_AUTORELOAD", "false").lower() in ("1", "true", "yes"):
+    _watcher = start_autoreload(os.getenv("MAXED_AUTORELOAD_DIR", "."))
+
+# === HTTP clients & resilient fetchers ===
+# requests.Session with Retry adapter
+def create_requests_session(max_retries: int = DEFAULT_MAX_RETRIES, backoff: float = 1.5):
+    sess = requests.Session() if requests else None
+    if sess:
+        try:
+            from requests.adapters import HTTPAdapter
+            from urllib3.util.retry import Retry as URLLibRetry
+            r = URLLibRetry(
+                total=max_retries,
+                read=max_retries,
+                connect=max_retries,
+                backoff_factor=backoff,
+                status_forcelist=(429, 500, 502, 503, 504),
+                allowed_methods=frozenset(["GET","POST","PUT","DELETE","HEAD","OPTIONS"])
+            )
+            sess.mount("https://", HTTPAdapter(max_retries=r))
+            sess.mount("http://", HTTPAdapter(max_retries=r))
+        except Exception:
+            pass
+    return sess
+
+_requests_session = create_requests_session()
+
+# Tenacity-based decorator if available
+def tenacity_retry_decorator(max_attempts: int = DEFAULT_MAX_RETRIES):
+    if tenacity is None:
+        def _noop(fn):
+            return fn
+        return _noop
+
+    def _decor(fn):
+        return tenacity.retry(
+            stop=tenacity.stop_after_attempt(max_attempts),
+            wait=tenacity.wait_exponential(multiplier=1, min=1, max=10),
+            retry=tenacity.retry_if_exception_type(Exception),
+            reraise=True
+        )(fn)
+    return _decor
+
+# Generic safe fetch (sync) with optional Playwright fallback
+@tenacity_retry_decorator()
+def safe_get(url: str, params: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None, timeout: int = DEFAULT_TIMEOUT) -> Any:
+    """
+    Robust synchronous GET:
+     - uses requests with session & retries
+     - returns parsed JSON where possible, or raw text as fallback
+     - if 403/blocked and PLAYWRIGHT available, tries headless browser fallback
+    """
+    if requests is None:
+        raise RuntimeError("requests not installed in this environment")
+
+    hdrs = headers.copy() if headers else {}
+    hdrs.setdefault("User-Agent", os.getenv("MAXED_USER_AGENT", f"maxed-client/{uuid.uuid4().hex[:6]}"))
+    try:
+        log_ist(f"HTTP GET {url} params={params}")
+        resp = _requests_session.get(url, params=params, headers=hdrs, timeout=timeout)
+        status = getattr(resp, "status_code", None)
+        if status == 403 and _PLAYWRIGHT_AVAILABLE:
+            log_ist("403 detected; attempting Playwright fallback", "warning")
+            return playwright_get(url, params=params, headers=headers, timeout=timeout)
+        resp.raise_for_status()
+        # Attempt JSON decode
+        try:
+            return resp.json()
+        except Exception:
+            return {"raw_text": resp.text[:2000]}
+    except Exception as e:
+        log_ist(f"safe_get error: {e}", "warning")
+        # If Playwright available, try fallback
+        if _PLAYWRIGHT_AVAILABLE:
+            try:
+                return playwright_get(url, params=params, headers=headers, timeout=timeout)
+            except Exception as e2:
+                log_ist(f"playwright fallback failed: {e2}", "error")
+        raise
+
+def playwright_get(url: str, params: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None, timeout: int = DEFAULT_TIMEOUT) -> Any:
+    """
+    Uses Playwright to open URL and extract JSON payload from body innerText when APIs are blocked.
+    Returns parsed JSON when possible or raw text snippet.
+    """
+    if not _PLAYWRIGHT_AVAILABLE:
+        raise RuntimeError("Playwright not available")
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context(user_agent=headers.get("User-Agent") if headers and "User-Agent" in headers else None)
+            page = context.new_page()
+            log_ist(f"Playwright navigating to: {url}")
+            page.goto(url, wait_until="networkidle", timeout=timeout * 1000)
+            body = page.evaluate("() => document.body.innerText")
+            browser.close()
+            try:
+                return json.loads(body)
+            except Exception:
+                return {"raw_text_snippet": body[:2000]}
+    except Exception as e:
+        log_ist(f"playwright_get error: {e}", "error")
+        raise
+
+# Async fetch helper using aiohttp (if installed)
+async def async_get(url: str, params: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None, timeout: int = DEFAULT_TIMEOUT) -> Any:
+    if aiohttp is None:
+        raise RuntimeError("aiohttp not installed")
+    hdrs = headers.copy() if headers else {}
+    hdrs.setdefault("User-Agent", os.getenv("MAXED_USER_AGENT", f"maxed-async/{uuid.uuid4().hex[:6]}"))
+    try:
+        async with aiohttp.ClientSession(headers=hdrs) as sess:
+            async with sess.get(url, params=params, timeout=timeout) as resp:
+                text = await resp.text()
+                try:
+                    return await resp.json()
+                except Exception:
+                    return {"raw_text": text[:2000]}
+    except Exception as e:
+        log_ist(f"async_get error: {e}", "warning")
+        raise
+
+# === Utility helpers ===
+def safe_exec(fn: Callable):
+    """Decorator to catch exceptions, render friendly Streamlit error, and return None."""
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:
+            trace = traceback.format_exc()
+            log_ist(f"Exception in {fn.__name__}: {e}\n{trace}", "error")
+            try:
+                st.error(f"Internal error in `{fn.__name__}` — check logs.")
+            except Exception:
+                pass
+            return None
+    return wrapper
+
+def export_df(df: pd.DataFrame, prefix: str = "export") -> Dict[str, str]:
+    """
+    Export DataFrame to multiple formats and return paths (or string blobs).
+    In Cloud, returns in-memory bytes as strings for download buttons in Streamlit.
+    """
+    if df is None:
+        return {}
+    ts = datetime.now(IST_ZONE).strftime("%Y%m%d_%H%M%S")
+    name_base = f"{prefix}_{ts}"
+    # CSV
+    csv_bytes = df.to_csv(index=False).encode("utf-8")
+    # Excel (in-memory)
+    try:
+        import io
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="Sheet1")
+        xlsx_bytes = buf.getvalue()
+    except Exception:
+        xlsx_bytes = None
+    # JSON
+    json_str = df.to_json(orient="records", indent=2, date_format="iso")
+    return {"csv_name": f"{name_base}.csv", "csv_bytes": csv_bytes,
+            "xlsx_name": (f"{name_base}.xlsx" if xlsx_bytes else None), "xlsx_bytes": xlsx_bytes,
+            "json_name": f"{name_base}.json", "json_str": json_str}
+
+# === App boot banner for Streamlit UI ===
+def app_boot_banner(show_ui: bool = True):
+    python_ver = platform.python_version()
+    st_ver = getattr(st, "__version__", "unknown")
+    os_info = f"{platform.system()} {platform.release()} ({platform.machine()})"
+    banner_html = f"""
+    <div style='background:linear-gradient(90deg,#0f172a,#0ea5e9);padding:12px;border-radius:10px;color:white'>
+      <strong>PARIVAHAN ANALYTICS — MAXED</strong> &nbsp; • &nbsp; Booted @ {now_ist()} IST<br/>
+      <small>user: {MAXED_USER_ID} • python {python_ver} • streamlit {st_ver} • {os_info}</small>
+    </div>
+    """
+    if show_ui:
+        try:
+            st.markdown(banner_html, unsafe_allow_html=True)
+        except Exception:
+            pass
+    log_ist("App boot banner displayed")
+
+# === Example small usage helpers ===
+@cached(ttl=3600)
+def example_cached_fetch(url: str, params: Optional[Dict[str, Any]] = None):
+    """Simple cached GET wrapper that returns JSON or text snippet."""
+    return safe_get(url, params=params)
+
+@safe_exec
+def health_check():
+    """Return environment & feature checks."""
+    info = {
+        "time_ist": now_ist(),
+        "user_id": MAXED_USER_ID,
+        "python": platform.python_version(),
+        "streamlit": getattr(st, "__version__", "unknown"),
+        "diskcache": _DISKCACHE_AVAILABLE,
+        "playwright": _PLAYWRIGHT_AVAILABLE,
+        "aiohttp": aiohttp is not None,
+        "prophet": PROPHET_AVAILABLE,
+        "torch": TORCH_AVAILABLE,
+    }
+    return info
+
+# Boot banner (UI + console)
+try:
+    app_boot_banner(show_ui=True)
+except Exception:
+    log_ist("Failed to render app banner in UI", "warning")
+
+log_ist("MAXED INIT completed — ready.")
+
+# === Exports (for convenience import) ===
+__all__ = [
+    "now_ist", "log_ist", "MAXED_USER_ID", "DEFAULT_TIMEOUT", "DEFAULT_CACHE_TTL",
+    "cached", "clear_all_caches", "start_autoreload", "safe_get",
+    "async_get", "playwright_get", "safe_exec", "export_df", "example_cached_fetch",
+    "health_check", "app_boot_banner"
+]
 
 # =====================================================
-# ✅ VAHAN MODULES (KEEP YOUR ORIGINAL)
+# 🚀 VAHAN MODULES — MAXED IMPORT SYSTEM
 # =====================================================
-from vahan.api import build_params, get_json
-from vahan.parsing import (
-    to_df, normalize_trend, parse_duration_table,
-    parse_top5_revenue, parse_revenue_trend, parse_makers
-)
-from vahan.metrics import compute_yoy, compute_qoq
-from vahan.charts import (
-    bar_from_df, pie_from_df, line_from_trend,
-    show_metrics, show_tables
-)
-# # =====================================================
-# # 🔧 MAXED ERROR-HARDENED, STATELESS FETCHER — FULL HTTP ERROR HANDLING
-# # =====================================================
-# import threading
-# import collections
-# import random
-# import time
-# import requests
-# from requests.exceptions import RequestException, Timeout, ConnectionError, HTTPError
-# from typing import Optional, List, Dict
+import importlib, traceback
 
-# # ----------------------
-# # Configuration knobs
-# # ----------------------
-# MAX_ATTEMPTS = 6                         # absolute max tries across rotations
-# BASE_BACKOFF = 1.2                       # base multiplier for exponential backoff
-# JITTER = 0.35                            # jitter fraction
-# KEY_COOLDOWN_SECONDS = 300               # cooldown for a key after severe failure (5 minutes)
-# KEY_BLOCK_SECONDS = 3600                 # block a key after repeated critical failures (1 hour)
-# ENDPOINT_CIRCUIT_BREAK_SECONDS = 120     # circuit-break window for unhealthy endpoints
-# CIRCUIT_BREAK_THRESHOLD = 3              # failures before tripping circuit
-# MAX_PROXY_USAGE_RATIO = 0.35             # probability to use proxy if proxies exist
-# DISABLE_CACHE_FOR_STATLESS = False       # set True to always bypass cache for stateless calls
-
-# # ----------------------
-# # In-memory maps (ephemeral)
-# # ----------------------
-# _key_cooldowns: Dict[str, float] = {}            # key -> available_from_timestamp
-# _key_blocks: Dict[str, float] = {}               # key -> blocked_until_timestamp
-# _endpoint_failures: Dict[str, collections.deque] = {}  # endpoint -> deque[timestamps]
-# _endpoint_circuit: Dict[str, float] = {}         # endpoint -> circuit_tripped_until
-# _lock = threading.Lock()
-
-# # Ensure API_CONFIG supports mirrors list (optional)
-# # Example:
-# # API_CONFIG["parivahan"]["mirrors"] = ["https://backup1...", "https://backup2..."]
-# for svc in API_CONFIG.values():
-#     svc.setdefault("mirrors", [])
-
-# # ----------------------
-# # Helper utilities
-# # ----------------------
-# def _now_ts() -> float:
-#     return time.time()
-
-# def _is_key_available(key: str) -> bool:
-#     """Return True if key is not in cooldown or block."""
-#     now = _now_ts()
-#     if key in _key_blocks and _key_blocks[key] > now:
-#         return False
-#     if key in _key_cooldowns and _key_cooldowns[key] > now:
-#         return False
-#     return True
-
-# def _cooldown_key(key: str, seconds: int = KEY_COOLDOWN_SECONDS):
-#     with _lock:
-#         _key_cooldowns[key] = _now_ts() + seconds
-#     log_ist(f"🔒 Key cooldown applied for {seconds}s for key prefix: {str(key)[:6]}")
-
-# def _block_key(key: str, seconds: int = KEY_BLOCK_SECONDS):
-#     with _lock:
-#         _key_blocks[key] = _now_ts() + seconds
-#     log_ist(f"⛔ Key blocked for {seconds}s for key prefix: {str(key)[:6]}")
-
-# def _register_endpoint_failure(endpoint: str):
-#     """Register a failure and trip circuit if threshold reached."""
-#     now = _now_ts()
-#     dq = _endpoint_failures.setdefault(endpoint, collections.deque(maxlen=20))
-#     dq.append(now)
-#     # Count failures in last ENDPOINT_CIRCUIT_BREAK_SECONDS
-#     cutoff = now - ENDPOINT_CIRCUIT_BREAK_SECONDS
-#     recent = [t for t in dq if t >= cutoff]
-#     if len(recent) >= CIRCUIT_BREAK_THRESHOLD:
-#         _endpoint_circuit[endpoint] = now + ENDPOINT_CIRCUIT_BREAK_SECONDS
-#         log_ist(f"🛑 Circuit tripped for endpoint {endpoint} until {_endpoint_circuit[endpoint]}")
-
-# def _is_endpoint_available(endpoint: str) -> bool:
-#     until = _endpoint_circuit.get(endpoint, 0)
-#     return _now_ts() > until
-
-# def _choose_mirror(api_name: str) -> Optional[str]:
-#     cfg = API_CONFIG.get(api_name, {})
-#     mirrors = cfg.get("mirrors", []) or []
-#     base = cfg.get("base", "")
-#     candidates = [base] + mirrors
-#     random.shuffle(candidates)
-#     # Return first that is not currently under circuit break (use full candidate as key)
-#     for c in candidates:
-#         if _is_endpoint_available(c):
-#             return c
-#     return None
-
-# def _attempt_backoff(attempt: int, scale: float = BASE_BACKOFF):
-#     backoff = (scale ** attempt) + (random.random() * JITTER * scale)
-#     log_ist(f"⏳ Backing off {backoff:.2f}s (attempt {attempt})")
-#     time.sleep(backoff)
-
-# # ----------------------
-# # Key selection with cooldown awareness
-# # ----------------------
-# def _get_available_token(api_name: str) -> Optional[str]:
-#     """Pick an available token (not in cooldown/block)."""
-#     cfg = API_CONFIG.get(api_name, {})
-#     keys = list(cfg.get("keys", []) or [])
-#     random.shuffle(keys)
-#     for k in keys:
-#         if _is_key_available(k):
-#             return k
-#     return None
-
-# def _mark_key_failure(api_name: str, key: Optional[str], status_code: Optional[int] = None, fatal: bool = False):
-#     if not key:
-#         return
-#     # For certain status codes, escalate
-#     if status_code in (401,):
-#         # likely invalid token -> block for longer
-#         _block_key(key, seconds=KEY_BLOCK_SECONDS)
-#     elif status_code in (403,):
-#         # forbidden, cooldown the key and escalate if repeated
-#         _cooldown_key(key, seconds=KEY_COOLDOWN_SECONDS)
-#     elif status_code in (429,):
-#         # rate limit: cooldown key a bit
-#         _cooldown_key(key, seconds=max(KEY_COOLDOWN_SECONDS // 2, 60))
-#     else:
-#         # generic error -> short cooldown
-#         _cooldown_key(key, seconds=60)
-
-#     log_ist(f"⚠️ Marked failure for key prefix {str(key)[:6]} status={status_code} fatal={fatal}")
-
-# # ----------------------
-# # Full MAXED stateless fetcher
-# # ----------------------
-# def fetch_api_maxed(api_name: str,
-#                     endpoint: str,
-#                     params: dict = None,
-#                     method: str = "GET",
-#                     json_body: dict = None,
-#                     allow_redirects: bool = True,
-#                     disable_cache: bool = DISABLE_CACHE_FOR_STATLESS,
-#                     max_attempts: int = MAX_ATTEMPTS) -> dict:
-#     """
-#     The MAXED stateless fetcher:
-#       - rotates mirrors if available
-#       - respects endpoint circuit breaker
-#       - rotates keys but avoids keys in cooldown/block
-#       - special handling for 401/403/429
-#       - jittered exponential backoff
-#       - cookie-free, ephemeral sessions
-#     """
-#     # Optionally bypass cache completely when requested
-#     cache_bypass = disable_cache
-
-#     cfg = API_CONFIG.get(api_name, {})
-#     auth_type = cfg.get("auth_type", "bearer")
-
-#     attempt = 0
-#     tried_keys = set()
-#     last_exc = None
-
-#     # pick a mirror or base that is available
-#     base_choice = _choose_mirror(api_name)
-#     if not base_choice:
-#         log_ist(f"❌ No healthy endpoint available for service {api_name} (all circuits tripped).")
-#         return {}
-
-#     url_base = base_choice.rstrip("/")
-#     url = f"{url_base}/{endpoint.lstrip('/')}"
-
-#     while attempt < max_attempts:
-#         attempt += 1
-
-#         # choose token that is not in cooldown / block
-#         token = _get_available_token(api_name)
-#         if token is None:
-#             # no available keys — use a token-less request if allowed, else wait & retry
-#             log_ist(f"⚠️ No available API keys for {api_name} (attempt {attempt}) — trying without token or waiting shortly.")
-#             # small wait with jitter before retrying to allow keys to cool
-#             _attempt_backoff(attempt)
-#         else:
-#             tried_keys.add(token)
-
-#         # build ephemeral session + headers
-#         headers = build_spoofed_headers(api_name=api_name)
-#         if token and auth_type == "bearer":
-#             headers["Authorization"] = f"Bearer {token}"
-#         # if param-based, we'll inject later into params copy
-
-#         # ephemeral session (cookie-cleared)
-#         session = requests.Session()
-#         session.cookies.clear()
-#         session.trust_env = False
-#         # mount retry adapter but rely on our algorithm mostly
-#         session.mount("https://", requests.adapters.HTTPAdapter(max_retries=0))
-#         session.mount("http://", requests.adapters.HTTPAdapter(max_retries=0))
-
-#         # optionally select proxy for this single-request
-#         proxy = _choose_proxy()
-#         proxies = {"http": proxy, "https": proxy} if proxy else None
-#         if proxy:
-#             log_ist(f"🔀 (Proxy) Using proxy for this call: {proxy}")
-
-#         # prepare params copy
-#         req_params = dict(params or {})
-#         if auth_type == "param" and token:
-#             req_params["apikey"] = token
-
-#         try:
-#             log_ist(f"🌐 [{api_name.upper()}] Try#{attempt} -> {url} (token={'yes' if token else 'no'})")
-#             if method.upper() == "GET":
-#                 resp = session.get(url, headers=headers, params=req_params, timeout=30, allow_redirects=allow_redirects, proxies=proxies)
-#             else:
-#                 resp = session.request(method.upper(), url, headers=headers, params=req_params, json=json_body or {}, timeout=60, allow_redirects=allow_redirects, proxies=proxies)
-
-#             status = resp.status_code
-
-#             # Handle common statuses with dedicated logic
-#             if status == 204:
-#                 log_ist(f"⚪ 204 No Content for {url} — returning empty dict")
-#                 return {}
-
-#             if 200 <= status < 300:
-#                 # success
-#                 try:
-#                     payload = resp.json()
-#                 except ValueError:
-#                     payload = {"text": resp.text}
-#                 log_ist(f"✅ {api_name} success {status} -> {url}")
-#                 return payload
-
-#             # CLIENT ERRORS (400-499)
-#             if 400 <= status < 500:
-#                 if status == 400:
-#                     log_ist(f"❗ 400 Bad Request for {url}: {resp.text[:200]}")
-#                     _register_endpoint_failure(url)
-#                     _mark_key_failure(api_name, token, status_code=status)
-#                     # often user params wrong — do not retry infinitely
-#                     _attempt_backoff(attempt)
-#                     last_exc = HTTPError(f"400 Bad Request: {resp.text}")
-#                     # break loop if repeated
-#                     if attempt >= max_attempts:
-#                         break
-#                     continue
-
-#                 if status == 401:
-#                     # Unauthorized — token invalid. Block this key longer
-#                     log_ist(f"🔐 401 Unauthorized — token likely invalid for {api_name}")
-#                     _mark_key_failure(api_name, token, status_code=401, fatal=True)
-#                     _register_endpoint_failure(url)
-#                     # immediately rotate to next key and backoff
-#                     _attempt_backoff(attempt + 1)
-#                     continue
-
-#                 if status == 403:
-#                     # Forbidden — rotate key, escalate cooldown, try mirror endpoint
-#                     log_ist(f"⛔ 403 Forbidden — rotating token and possibly mirror (attempt {attempt})")
-#                     _mark_key_failure(api_name, token, status_code=403)
-#                     _register_endpoint_failure(url)
-#                     # try a different mirror immediately if available
-#                     base_choice = _choose_mirror(api_name)
-#                     if base_choice and base_choice.rstrip("/") != url_base:
-#                         url_base = base_choice.rstrip("/")
-#                         url = f"{url_base}/{endpoint.lstrip('/')}"
-#                         log_ist(f"🔁 Switching to mirror endpoint: {url_base}")
-#                     _attempt_backoff(attempt + 1)
-#                     continue
-
-#                 if status == 404:
-#                     log_ist(f"🔍 404 Not Found for {url}. Endpoint may be incorrect.")
-#                     # no point in repeating many times
-#                     _register_endpoint_failure(url)
-#                     last_exc = HTTPError("404 Not Found")
-#                     break
-
-#                 if status == 405:
-#                     log_ist(f"❌ 405 Method Not Allowed for {url}")
-#                     _register_endpoint_failure(url)
-#                     last_exc = HTTPError("405 Method Not Allowed")
-#                     break
-
-#                 # Other 4xx: log and backoff shorter
-#                 log_ist(f"⚠️ Client error {status} for {url}: {resp.text[:200]}")
-#                 _mark_key_failure(api_name, token, status_code=status)
-#                 _register_endpoint_failure(url)
-#                 _attempt_backoff(attempt)
-#                 continue
-
-#             # SERVER ERRORS (500-599)
-#             if 500 <= status < 600:
-#                 log_ist(f"🔥 Server error {status} from {url} — will retry with backoff")
-#                 _register_endpoint_failure(url)
-#                 # for some server errors, escalate key cooldown lightly
-#                 _mark_key_failure(api_name, token, status_code=status)
-#                 _attempt_backoff(attempt * 2)
-#                 continue
-
-#             # Rate-limit specifically
-#             if status == 429:
-#                 retry_after = None
-#                 try:
-#                     retry_after = int(resp.headers.get("Retry-After") or 0)
-#                 except Exception:
-#                     retry_after = None
-#                 wait = retry_after if retry_after and retry_after > 0 else (2 ** attempt) + random.random() * 2
-#                 log_ist(f"🔁 429 Rate limited. Waiting {wait}s then rotating key if needed.")
-#                 _mark_key_failure(api_name, token, status_code=429)
-#                 time.sleep(wait)
-#                 continue
-
-#             # Fallback for unknown statuses
-#             log_ist(f"❗ Unexpected HTTP status {status} for {url}. Body head: {str(resp.text)[:300]}")
-#             _register_endpoint_failure(url)
-#             _mark_key_failure(api_name, token, status_code=status)
-#             _attempt_backoff(attempt)
-#             continue
-
-#         except (Timeout, ConnectionError) as net_exc:
-#             log_ist(f"⚠️ Network error on attempt {attempt} for {url}: {net_exc}")
-#             _register_endpoint_failure(url)
-#             _mark_key_failure(api_name, token, fatal=False)
-#             _attempt_backoff(attempt)
-#             last_exc = net_exc
-#             continue
-
-#         except RequestException as req_exc:
-#             log_ist(f"⚠️ Requests exception on attempt {attempt} for {url}: {req_exc}")
-#             _register_endpoint_failure(url)
-#             _mark_key_failure(api_name, token, fatal=False)
-#             _attempt_backoff(attempt)
-#             last_exc = req_exc
-#             continue
-
-#         finally:
-#             try:
-#                 session.close()
-#             except Exception:
-#                 pass
-
-#     # exhausted attempts
-#     log_ist(f"❌ All attempts exhausted for {api_name} -> {endpoint}. Last error: {last_exc}")
-#     return {}
-
-# # ----------------------
-# # Small health & debug UI
-# # ----------------------
-# def maxed_fetcher_status():
-#     st.subheader("🛠 MAXED Fetcher Status")
-#     st.write("Key cooldowns (prefixes):")
-#     for k, t in list(_key_cooldowns.items())[:10]:
-#         st.write(f"- {str(k)[:8]} -> until {time.ctime(t)}")
-#     st.write("Key blocks (prefixes):")
-#     for k, t in list(_key_blocks.items())[:10]:
-#         st.write(f"- {str(k)[:8]} -> until {time.ctime(t)}")
-#     st.write("Endpoint circuits:")
-#     for ep, until in _endpoint_circuit.items():
-#         st.write(f"- {ep} -> tripped until {time.ctime(until)}")
-#     st.success("MAXED fetcher reporting ready.")
+def _safe_import(module_name, fallback=None):
+    """Safely import a module and handle missing/failed imports gracefully."""
+    try:
+        mod = importlib.import_module(module_name)
+        print(f"✅ Loaded {module_name}")
+        return mod
+    except Exception as e:
+        print(f"⚠️ Failed to import {module_name}: {e}")
+        traceback.print_exc()
+        return fallback
 
 # =====================================================
-# 🚀 STREAMLIT PAGE CONFIG — MAXED OUT EDITION
+# ✅ CORE VAHAN MODULES (MAXED)
 # =====================================================
-import streamlit as st
+vahan_api     = _safe_import("vahan.api")
+vahan_parsing = _safe_import("vahan.parsing")
+vahan_metrics = _safe_import("vahan.metrics")
+vahan_charts  = _safe_import("vahan.charts")
+
+# -----------------------------------------------------
+# 📦 SAFE FUNCTION EXTRACTION WITH FALLBACKS
+# -----------------------------------------------------
+def _extract(mod, name, default=lambda *a, **kw: None):
+    return getattr(mod, name, default) if mod else default
+
+# 🔌 API + PARAM HELPERS
+build_params  = _extract(vahan_api, "build_params")
+get_json      = _extract(vahan_api, "get_json")
+
+# 🧩 PARSING UTILITIES
+to_df              = _extract(vahan_parsing, "to_df")
+normalize_trend    = _extract(vahan_parsing, "normalize_trend")
+parse_duration_table = _extract(vahan_parsing, "parse_duration_table")
+parse_top5_revenue = _extract(vahan_parsing, "parse_top5_revenue")
+parse_revenue_trend = _extract(vahan_parsing, "parse_revenue_trend")
+parse_makers       = _extract(vahan_parsing, "parse_makers")
+
+# 📊 METRIC CALCULATIONS
+compute_yoy = _extract(vahan_metrics, "compute_yoy")
+compute_qoq = _extract(vahan_metrics, "compute_qoq")
+
+# 🎨 VISUALIZATION COMPONENTS
+bar_from_df   = _extract(vahan_charts, "bar_from_df")
+pie_from_df   = _extract(vahan_charts, "pie_from_df")
+line_from_trend = _extract(vahan_charts, "line_from_trend")
+show_metrics  = _extract(vahan_charts, "show_metrics")
+show_tables   = _extract(vahan_charts, "show_tables")
+
+# =====================================================
+# 🔁 AUTO-RELOAD (OPTIONAL)
+# =====================================================
+def reload_vahan():
+    """Reload all Vahan modules without restarting Streamlit."""
+    for mod in [vahan_api, vahan_parsing, vahan_metrics, vahan_charts]:
+        try:
+            if mod:
+                importlib.reload(mod)
+                print(f"🔁 Reloaded {mod.__name__}")
+        except Exception as e:
+            print(f"⚠️ Failed to reload {mod}: {e}")
+            traceback.print_exc()
+
+# =====================================================
+# 🧠 MAXED DIAGNOSTICS
+# =====================================================
+print("\n" + "=" * 80)
+print("🚀 VAHAN MODULES — MAXED import system active")
+print(f"📦 API: {'✅' if vahan_api else '❌'} | Parsing: {'✅' if vahan_parsing else '❌'} | "
+      f"Metrics: {'✅' if vahan_metrics else '❌'} | Charts: {'✅' if vahan_charts else '❌'}")
+print("=" * 80 + "\n")
+
+# =====================================================
+# 🔧 MAXED+ STATELESS FETCHER — FULL HTTP HARDENING
+# =====================================================
+import threading
+import collections
+import random
+import time
+import requests
+from requests.exceptions import RequestException, Timeout, ConnectionError, HTTPError
+from typing import Optional, Dict
+
+# =====================================================
+# ⚙️ CONFIGURATION KNOBS
+# =====================================================
+MAX_ATTEMPTS = 6
+BASE_BACKOFF = 1.4
+JITTER = 0.35
+KEY_COOLDOWN_SECONDS = 300        # cooldown after mild fail
+KEY_BLOCK_SECONDS = 3600          # block after repeated fail
+ENDPOINT_CIRCUIT_BREAK_SECONDS = 120
+CIRCUIT_BREAK_THRESHOLD = 3
+MAX_PROXY_USAGE_RATIO = 0.35
+DISABLE_CACHE_FOR_STATELESS = False
+
+# =====================================================
+# 🧠 IN-MEMORY RUNTIME MAPS
+# =====================================================
+_key_cooldowns: Dict[str, float] = {}
+_key_blocks: Dict[str, float] = {}
+_endpoint_failures: Dict[str, collections.deque] = {}
+_endpoint_circuit: Dict[str, float] = {}
+_lock = threading.Lock()
+
+# ensure mirrors field exists
+for svc in API_CONFIG.values():
+    svc.setdefault("mirrors", [])
+
+# =====================================================
+# 🧩 HELPERS
+# =====================================================
+def _now() -> float: return time.time()
+
+def _is_key_ok(k: str) -> bool:
+    t = _now()
+    return not (
+        (k in _key_blocks and _key_blocks[k] > t)
+        or (k in _key_cooldowns and _key_cooldowns[k] > t)
+    )
+
+def _cooldown_key(k: str, sec=KEY_COOLDOWN_SECONDS):
+    with _lock: _key_cooldowns[k] = _now() + sec
+    log_ist(f"🔒 cooldown {sec}s for key {k[:6]}")
+
+def _block_key(k: str, sec=KEY_BLOCK_SECONDS):
+    with _lock: _key_blocks[k] = _now() + sec
+    log_ist(f"⛔ blocked {sec}s for key {k[:6]}")
+
+def _fail_endpoint(ep: str):
+    now = _now()
+    dq = _endpoint_failures.setdefault(ep, collections.deque(maxlen=20))
+    dq.append(now)
+    recent = [t for t in dq if t > now - ENDPOINT_CIRCUIT_BREAK_SECONDS]
+    if len(recent) >= CIRCUIT_BREAK_THRESHOLD:
+        _endpoint_circuit[ep] = now + ENDPOINT_CIRCUIT_BREAK_SECONDS
+        log_ist(f"🛑 circuit trip for {ep}")
+
+def _ep_ok(ep: str) -> bool:
+    return _now() > _endpoint_circuit.get(ep, 0)
+
+def _mirror(api: str) -> Optional[str]:
+    cfg = API_CONFIG.get(api, {})
+    cand = [cfg.get("base", "")] + list(cfg.get("mirrors", []) or [])
+    random.shuffle(cand)
+    for c in cand:
+        if _ep_ok(c): return c
+    return None
+
+def _backoff(a: int, s: float = BASE_BACKOFF):
+    t = (s ** a) + (random.random() * JITTER * s)
+    log_ist(f"⏳ backoff {t:.1f}s (try {a})")
+    time.sleep(t)
+
+def _pick_token(api: str) -> Optional[str]:
+    ks = list(API_CONFIG.get(api, {}).get("keys", []) or [])
+    random.shuffle(ks)
+    for k in ks:
+        if _is_key_ok(k):
+            return k
+    return None
+
+def _mark_fail(api: str, k: Optional[str], code: Optional[int] = None):
+    if not k: return
+    if code == 401: _block_key(k)
+    elif code == 403: _cooldown_key(k, KEY_COOLDOWN_SECONDS)
+    elif code == 429: _cooldown_key(k, KEY_COOLDOWN_SECONDS // 2)
+    else: _cooldown_key(k, 60)
+    log_ist(f"⚠️ fail key {k[:6]} code={code}")
+
+# =====================================================
+# 🌐 MAIN FETCHER
+# =====================================================
+def fetch_api_maxed(api_name: str,
+                    endpoint: str,
+                    params: dict = None,
+                    method: str = "GET",
+                    json_body: dict = None,
+                    allow_redirects: bool = True,
+                    disable_cache: bool = DISABLE_CACHE_FOR_STATELESS,
+                    max_attempts: int = MAX_ATTEMPTS) -> dict:
+    """MAXED+ Stateless HTTP fetcher with key-rotation, mirrors, and circuit breaker."""
+    cfg = API_CONFIG.get(api_name, {})
+    auth_type = cfg.get("auth_type", "bearer")
+
+    base = _mirror(api_name)
+    if not base:
+        log_ist(f"❌ all endpoints tripped for {api_name}")
+        return {}
+
+    url = f"{base.rstrip('/')}/{endpoint.lstrip('/')}"
+    attempt, last_exc = 0, None
+
+    while attempt < max_attempts:
+        attempt += 1
+        token = _pick_token(api_name)
+        if not token:
+            log_ist(f"⚠️ no usable token for {api_name} try#{attempt}")
+            _backoff(attempt)
+            continue
+
+        headers = build_spoofed_headers(api_name)
+        if auth_type == "bearer": headers["Authorization"] = f"Bearer {token}"
+
+        session = requests.Session()
+        session.cookies.clear()
+        session.trust_env = False
+        proxy = _choose_proxy()
+        proxies = {"http": proxy, "https": proxy} if proxy else None
+        if proxy and random.random() < MAX_PROXY_USAGE_RATIO:
+            log_ist(f"🔀 proxy: {proxy}")
+
+        req_params = dict(params or {})
+        if auth_type == "param": req_params["apikey"] = token
+
+        try:
+            log_ist(f"🌐 [{api_name.upper()}] try#{attempt} -> {url}")
+            if method.upper() == "GET":
+                r = session.get(url, headers=headers, params=req_params,
+                                timeout=30, allow_redirects=allow_redirects, proxies=proxies)
+            else:
+                r = session.request(method.upper(), url, headers=headers,
+                                    params=req_params, json=json_body or {},
+                                    timeout=60, allow_redirects=allow_redirects, proxies=proxies)
+
+            c = r.status_code
+            if c == 204: return {}
+            if 200 <= c < 300:
+                try:
+                    return r.json()
+                except ValueError:
+                    return {"text": r.text}
+
+            if c in (400, 401, 403, 404, 405, 429) or 500 <= c < 600:
+                _fail_endpoint(url)
+                _mark_fail(api_name, token, c)
+                if c == 403:
+                    m = _mirror(api_name)
+                    if m and m.rstrip("/") != base.rstrip("/"):
+                        base, url = m, f"{m.rstrip('/')}/{endpoint.lstrip('/')}"
+                        log_ist(f"🔁 switched mirror {base}")
+                _backoff(attempt)
+                continue
+
+            log_ist(f"❗unexpected {c} {url}")
+            _fail_endpoint(url)
+            _mark_fail(api_name, token, c)
+            _backoff(attempt)
+
+        except (Timeout, ConnectionError, RequestException) as e:
+            last_exc = e
+            _fail_endpoint(url)
+            _mark_fail(api_name, token)
+            _backoff(attempt)
+        finally:
+            session.close()
+
+    log_ist(f"❌ exhausted {api_name}/{endpoint} after {max_attempts} tries ({last_exc})")
+    return {}
+
+# =====================================================
+# 🩺 STREAMLIT DEBUG PANEL
+# =====================================================
+def maxed_fetcher_status():
+    st.subheader("🛠 MAXED+ Fetcher Status")
+    st.write("### 🔑 Key Cooldowns")
+    for k, t in list(_key_cooldowns.items())[:10]:
+        st.write(f"{k[:8]} → until {time.ctime(t)}")
+    st.write("### ⛔ Key Blocks")
+    for k, t in list(_key_blocks.items())[:10]:
+        st.write(f"{k[:8]} → until {time.ctime(t)}")
+    st.write("### 🧩 Endpoint Circuits")
+    for e, t in _endpoint_circuit.items():
+        st.write(f"{e} → tripped until {time.ctime(t)}")
+    st.success("✅ MAXED+ fetcher operational")
+
+# =====================================================
+# 🚀 VAHAN STREAMLIT BOOT — MAXED++ EDITION
+# =====================================================
+import os
 import platform
 import random
 import psutil
 import socket
-from datetime import datetime
+from datetime import datetime, date
 from zoneinfo import ZoneInfo
+import streamlit as st
 
-# ---------------- PAGE CONFIG (HARDENED) ----------------
+APP_VERSION = "2025.10-MAXED++"
+BUILD_ID = random.randint(10000, 99999)
+
+# ---------------- PAGE CONFIG ----------------
 st.set_page_config(
-    page_title="🚀 Vahan Registrations — Parivahan Analytics Suite",
+    page_title="🚀 Vahan Registrations — MAXED++ Analytics Suite",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
         "Get Help": "https://parivahan.gov.in",
-        "About": "Vahan Analytics — Smart AI-Powered Registration Insights Dashboard",
+        "About": "Vahan Analytics — Smart AI-Powered Registration Dashboard (MAXED++ Build)",
     },
 )
 
-# ---------------- THEME OVERRIDE (CSS) ----------------
+# ---------------- THEME (CSS) ----------------
 st.markdown("""
-    <style>
-    /* Smooth fade-in */
-    .stApp {
-        animation: fadeIn 1s ease-in;
-    }
-    @keyframes fadeIn {
-        from {opacity: 0;}
-        to {opacity: 1;}
-    }
-    /* Headline glow */
-    .glow {
-        font-size: 30px;
-        font-weight: 700;
-        text-align: center;
-        color: white;
-        text-shadow: 0px 0px 12px rgba(0,255,255,0.9);
-        background: linear-gradient(90deg,#0072ff,#00c6ff);
-        padding: 14px 18px;
-        border-radius: 12px;
-        margin-bottom: 18px;
-        box-shadow: 0px 2px 14px rgba(0,0,0,0.3);
-    }
-    .subtext {
-        text-align:center;
-        color:#ccc;
-        font-size:15px;
-        margin-top:-8px;
-        margin-bottom:25px;
-    }
-    </style>
+<style>
+.stApp {animation: fadeIn 1s ease-in;}
+@keyframes fadeIn {from {opacity:0;} to {opacity:1;}}
+.glow {
+    font-size:30px;font-weight:700;text-align:center;color:white;
+    text-shadow:0px 0px 12px rgba(0,255,255,0.9);
+    background:linear-gradient(90deg,#0072ff,#00c6ff);
+    padding:14px 18px;border-radius:12px;margin-bottom:18px;
+    box-shadow:0px 2px 14px rgba(0,0,0,0.3);
+}
+.subtext {
+    text-align:center;color:#ccc;font-size:15px;
+    margin-top:-8px;margin-bottom:25px;
+}
+.sidebar-title {
+    font-size:20px;font-weight:700;
+    background:linear-gradient(90deg,#0072ff,#00c6ff);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+}
+.sidebar-sub {color:#aaa;font-size:13px;margin-top:-8px;margin-bottom:10px;}
+</style>
 """, unsafe_allow_html=True)
 
 # ---------------- RANDOM USER/DEVICE SPOOF ----------------
 def random_user_agent():
     browsers = ["Chrome", "Firefox", "Edge", "Safari", "Brave"]
-    platforms = ["Windows NT 10.0; Win64; x64", "Macintosh; Intel Mac OS X 13_0", "X11; Linux x86_64"]
-    versions = [str(random.randint(90, 120)) for _ in range(3)]
+    platforms = [
+        "Windows NT 10.0; Win64; x64",
+        "Macintosh; Intel Mac OS X 13_0",
+        "X11; Linux x86_64"
+    ]
     browser = random.choice(browsers)
-    platform_str = random.choice(platforms)
-    version_str = random.choice(versions)
-    return f"Mozilla/5.0 ({platform_str}) AppleWebKit/537.36 (KHTML, like Gecko) {browser}/{version_str}.0.{random.randint(1000,9999)} Safari/537.36"
+    version = random.randint(90, 130)
+    return f"Mozilla/5.0 ({random.choice(platforms)}) AppleWebKit/537.36 (KHTML, like Gecko) {browser}/{version}.0.{random.randint(1000,9999)} Safari/537.36"
 
 USER_AGENT = random_user_agent()
 CLIENT_ID = f"client_{random.randint(100000,999999)}"
 
-# ---------------- APP HEADER ----------------
+# ---------------- HEADER ----------------
 st.markdown(f"""
-<div class='glow'>🚀 Vahan Registrations Dashboard</div>
-<div class='subtext'>
-Parivahan Analytics — KPIs • AI Narratives (DeepInfra) • Forecasting • Clustering • Anomaly Detection • Smart Exports
-</div>
+<div class='glow'>🚀 Vahan Registrations Dashboard — MAXED++</div>
+<div class='subtext'>AI-Driven Insights • Forecasting • Clustering • Anomaly Detection • Smart Exports</div>
 """, unsafe_allow_html=True)
 
 # ---------------- ENVIRONMENT SNAPSHOT ----------------
@@ -744,200 +995,111 @@ try:
     - 🐍 **Python:** {py_ver}
     - 🧠 **Memory Used:** {mem.percent}%
     - 🧩 **User-Agent:** `{USER_AGENT[:35]}...`
+    - 🏗️ **Build:** `{APP_VERSION}` ({BUILD_ID})
     """)
 except Exception as e:
-    st.sidebar.error(f"Environment info unavailable: {e}")
+    st.sidebar.error(f"⚠️ Env info unavailable: {e}")
 
 # ---------------- RELOAD SAFETY ----------------
-if "page_loaded_once" not in st.session_state:
-    st.session_state["page_loaded_once"] = True
-    st.toast("✅ App Initialized — Welcome!", icon="🚀")
+if "session_id" not in st.session_state:
+    st.session_state.session_id = random.randint(100000, 999999)
+    st.toast("✅ App Initialized — MAXED session active", icon="🚀")
 else:
-    st.toast("🔄 Reloaded — All systems nominal", icon="🧠")
+    st.toast("🔄 Reloaded — session alive", icon="♻️")
 
-# ---------------- PREFETCH + CACHE CONFIG ----------------
-@st.cache_data(show_spinner=False, ttl=3600, max_entries=200)
+# ---------------- PREFETCH + CACHE ----------------
+@st.cache_data(show_spinner=False, ttl=3600, max_entries=300)
 def preload_static_assets():
-    """Load heavy static data once per session (fast reloads)."""
     return {"status": "cached", "timestamp": datetime.now().isoformat()}
 
 preload_static_assets()
 
-# ---------------- FINAL LOG LINE ----------------
-print(f"[IST {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %H:%M:%S')}] ✅ Streamlit UI Booted — {CLIENT_ID} — UA: {USER_AGENT}")
+print(f"[{datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %H:%M:%S')}] ✅ UI Booted — {CLIENT_ID} ({APP_VERSION}) — UA: {USER_AGENT}")
 
 # =====================================================
-# 🧭 SIDEBAR FILTERS — MAXED OUT EDITION
+# 🧭 SIDEBAR FILTERS — MAXED++ EDITION
 # =====================================================
-import streamlit as st
-import os
-import random
-import platform
-from datetime import date, datetime
-from zoneinfo import ZoneInfo
-
-# ---------------- SECTION HEADER ----------------
-st.sidebar.markdown("""
-<style>
-.sidebar-title {
-    font-size:20px;
-    font-weight:700;
-    background:linear-gradient(90deg,#0072ff,#00c6ff);
-    -webkit-background-clip:text;
-    -webkit-text-fill-color:transparent;
-}
-.sidebar-sub {
-    color:#aaa;
-    font-size:13px;
-    margin-top:-8px;
-    margin-bottom:10px;
-}
-</style>
-""", unsafe_allow_html=True)
-
 st.sidebar.markdown("<div class='sidebar-title'>⚙️ Filters & Options</div>", unsafe_allow_html=True)
-st.sidebar.markdown("<div class='sidebar-sub'>Customize data scope, analytics, and AI modes</div>", unsafe_allow_html=True)
+st.sidebar.markdown("<div class='sidebar-sub'>Customize analytics, AI, and forecasting modes</div>", unsafe_allow_html=True)
 
-# ---------------- BASE VARIABLES ----------------
 today = date.today()
 default_from_year = max(2017, today.year - 1)
+filters = st.session_state.setdefault("filters", {})
 
-# Cache last used filters across reruns
-if "filters" not in st.session_state:
-    st.session_state.filters = {}
+def getf(k, default): return filters.get(k, default)
+def setf(k, v): filters[k] = v
 
-def get_filter_value(key, default):
-    return st.session_state.filters.get(key, default)
+# --- Year Range
+from_year = st.sidebar.number_input("📅 From Year", 2012, today.year, getf("from_year", default_from_year))
+setf("from_year", from_year)
+to_year = st.sidebar.number_input("📆 To Year", from_year, today.year, getf("to_year", today.year))
+setf("to_year", to_year)
 
-def set_filter_value(key, value):
-    st.session_state.filters[key] = value
+# --- Location
+state_code = st.sidebar.text_input("🏛️ State Code", getf("state_code", ""))
+rto_code = st.sidebar.text_input("🏢 RTO Code", getf("rto_code", "0"))
+setf("state_code", state_code); setf("rto_code", rto_code)
 
-# ---------------- YEAR RANGE ----------------
-from_year = st.sidebar.number_input(
-    "📅 From Year",
-    min_value=2012,
-    max_value=today.year,
-    value=get_filter_value("from_year", default_from_year),
-    help="Start year for registration data (min: 2012)",
-)
-set_filter_value("from_year", from_year)
+# --- Vehicle Filters
+vehicle_classes = st.sidebar.text_input("🚗 Vehicle Classes", getf("vehicle_classes", ""))
+vehicle_makers = st.sidebar.text_input("🏭 Vehicle Makers", getf("vehicle_makers", ""))
+vehicle_type = st.sidebar.text_input("🚙 Vehicle Type", getf("vehicle_type", ""))
+for k, v in [("vehicle_classes", vehicle_classes), ("vehicle_makers", vehicle_makers), ("vehicle_type", vehicle_type)]:
+    setf(k, v)
 
-to_year = st.sidebar.number_input(
-    "📆 To Year",
-    min_value=from_year,
-    max_value=today.year,
-    value=get_filter_value("to_year", today.year),
-    help="End year for registration data (cannot be earlier than From Year)",
-)
-set_filter_value("to_year", to_year)
+# --- Time Period
+period_opts = {0: "Monthly", 1: "Quarterly", 2: "Yearly"}
+time_period = st.sidebar.selectbox("⏱️ Time Period", list(period_opts.keys()), index=getf("time_period", 0), format_func=lambda x: period_opts[x])
+setf("time_period", time_period)
 
-# ---------------- LOCATION FILTERS ----------------
-state_code = st.sidebar.text_input(
-    "🏛️ State Code (blank = All India)",
-    value=get_filter_value("state_code", ""),
-    help="Enter state code (e.g., MH, DL, TN). Leave blank for All-India aggregate.",
-)
-set_filter_value("state_code", state_code)
+# --- Fitness
+fitness_check = st.sidebar.selectbox("🧾 Fitness Check", [0, 1], index=getf("fitness_check", 0), format_func=lambda x: "No" if x == 0 else "Yes")
+setf("fitness_check", fitness_check)
 
-rto_code = st.sidebar.text_input(
-    "🏢 RTO Code (0 = Aggregate)",
-    value=get_filter_value("rto_code", "0"),
-    help="Specific RTO code, or 0 for state-level aggregation.",
-)
-set_filter_value("rto_code", rto_code)
-
-# ---------------- VEHICLE FILTERS ----------------
-vehicle_classes = st.sidebar.text_input(
-    "🚗 Vehicle Classes (e.g., 2W, 3W, 4W)",
-    value=get_filter_value("vehicle_classes", ""),
-)
-set_filter_value("vehicle_classes", vehicle_classes)
-
-vehicle_makers = st.sidebar.text_input(
-    "🏭 Vehicle Makers (comma-separated or IDs)",
-    value=get_filter_value("vehicle_makers", ""),
-)
-set_filter_value("vehicle_makers", vehicle_makers)
-
-vehicle_type = st.sidebar.text_input(
-    "🚙 Vehicle Type (optional)",
-    value=get_filter_value("vehicle_type", ""),
-)
-set_filter_value("vehicle_type", vehicle_type)
-
-# ---------------- TIME FILTERS ----------------
-time_period_labels = {
-    0: "Monthly",
-    1: "Quarterly",
-    2: "Yearly"
-}
-time_period = st.sidebar.selectbox(
-    "⏱️ Time Period",
-    options=list(time_period_labels.keys()),
-    index=get_filter_value("time_period", 0),
-    format_func=lambda x: time_period_labels[x],
-)
-set_filter_value("time_period", time_period)
-
-fitness_check = st.sidebar.selectbox(
-    "🧾 Fitness Check",
-    options=[0, 1],
-    index=get_filter_value("fitness_check", 0),
-    format_func=lambda x: "No" if x == 0 else "Yes",
-)
-set_filter_value("fitness_check", fitness_check)
-
-# ---------------- ADVANCED TOGGLES ----------------
+# --- Analytics Toggles
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🧠 Advanced Analytics")
+enable_forecast = st.sidebar.checkbox("📈 Forecasting", value=True)
+enable_anomaly = st.sidebar.checkbox("🚨 Anomaly Detection", value=True)
+enable_clustering = st.sidebar.checkbox("🔍 Clustering", value=True)
+enable_ai = st.sidebar.checkbox("🤖 DeepInfra AI Narratives", value=True)
+forecast_periods = st.sidebar.number_input("📅 Forecast Horizon (months)", 1, 36, 3)
 
-enable_forecast = st.sidebar.checkbox("📈 Enable Forecasting", value=True)
-enable_anomaly = st.sidebar.checkbox("🚨 Enable Anomaly Detection", value=True)
-enable_clustering = st.sidebar.checkbox("🔍 Enable Clustering", value=True)
-enable_ai = st.sidebar.checkbox("🤖 Enable DeepInfra AI Narratives", value=True)
-forecast_periods = st.sidebar.number_input("📅 Forecast Horizon (months)", min_value=1, max_value=36, value=3)
-
-# ---------------- DEEPINFRA CONFIG ----------------
+# --- DeepInfra Config
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🤖 DeepInfra Settings")
-
-# Try multiple key sources (env, secrets, fallback)
 DEEPINFRA_API_KEY = (
     os.environ.get("DEEPINFRA_API_KEY")
     or (st.secrets.get("DEEPINFRA_API_KEY") if "DEEPINFRA_API_KEY" in st.secrets else None)
 )
-
 DEEPINFRA_MODEL = os.environ.get("DEEPINFRA_MODEL", "mistralai/Mixtral-8x7B-Instruct-v0.1")
 
-# Validate key presence
 if enable_ai:
     if not DEEPINFRA_API_KEY:
-        st.sidebar.error("🚫 DeepInfra API key not found — AI features disabled.")
+        st.sidebar.error("🚫 No DeepInfra key — AI disabled.")
         enable_ai = False
     else:
-        st.sidebar.success(f"✅ DeepInfra connected ({DEEPINFRA_MODEL.split('/')[-1]})")
+        st.sidebar.success(f"✅ Connected to {DEEPINFRA_MODEL.split('/')[-1]}")
 
-# ---------------- DEV & DEBUG TOGGLES ----------------
+# --- Developer / Debug
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🧩 Developer Options")
 dev_mode = st.sidebar.toggle("🧪 Developer Mode", value=False)
-safe_mode = st.sidebar.toggle("🛡️ Safe Mode (disable risky ops)", value=True)
+safe_mode = st.sidebar.toggle("🛡️ Safe Mode", value=True)
 
-# ---------------- LIVE SUMMARY ----------------
-st.sidebar.markdown("---")
+# --- Summary
 summary_md = f"""
 **Active Filters:**
 - 📅 {from_year} → {to_year}
 - 🌍 State: `{state_code or 'All-India'}`, RTO: `{rto_code}`
 - 🚗 Classes: `{vehicle_classes or 'All'}`, Makers: `{vehicle_makers or 'All'}`
-- ⏱️ Period: `{time_period_labels[time_period]}`
+- ⏱️ Period: `{period_opts[time_period]}`
 - 🧾 Fitness: `{'Yes' if fitness_check else 'No'}`
 - 🤖 AI: `{'Enabled' if enable_ai else 'Disabled'}`
 """
 st.sidebar.info(summary_md)
 
-# ---------------- LOG CONFIRMATION ----------------
-print(f"[{datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %H:%M:%S')}] ✅ Sidebar filters loaded — Forecast:{enable_forecast} | Anomaly:{enable_anomaly} | AI:{enable_ai}")
+print(f"[{datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %H:%M:%S')}] ✅ Sidebar ready — Forecast:{enable_forecast} | Anomaly:{enable_anomaly} | AI:{enable_ai}")
 
 # =====================================================
 # ⚙️ VAHAN PARAMS + UNIVERSAL SAFE FETCHER — MAXED OUT
@@ -949,8 +1111,22 @@ import traceback
 import streamlit as st
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import requests
+from functools import lru_cache
 
-# ---------------- Build Params (Base) ----------------
+from vahan.api import build_params, get_json  # ✅ your core API helpers
+
+# =====================================================
+# 🌐 GLOBAL CONFIG
+# =====================================================
+VAHAN_ENDPOINT = "https://vahan.parivahan.gov.in/vahandashboard/registrationtrend"
+MAX_RETRIES = 5
+RETRY_DELAY = 2.5
+CACHE_TTL = 3600  # seconds
+
+# =====================================================
+# 🧩 BUILD BASE PARAMS (MAXED)
+# =====================================================
 params_common = build_params(
     from_year, to_year,
     state_code=state_code,
@@ -962,11 +1138,101 @@ params_common = build_params(
     vehicle_type=vehicle_type,
 )
 
-# =====================================================
-# 🌐 UNIVERSAL SAFE FETCH FUNCTION
-# =====================================================
+# Attach session + trace metadata
+params_common["client_id"] = st.session_state.get("session_id", random.randint(1000, 9999))
+params_common["request_ts"] = datetime.now(ZoneInfo("Asia/Kolkata")).isoformat()
 
-# Rotating headers to spoof browser requests
+# =====================================================
+# 🧠 SAFE FETCH FUNCTION — MAXED
+# =====================================================
+@st.cache_data(ttl=CACHE_TTL, show_spinner=False)
+def safe_fetch(endpoint: str = VAHAN_ENDPOINT, params: dict = None, retries: int = MAX_RETRIES):
+    """Universal fetcher with retry, caching, error resilience, and rich logging."""
+    if not params:
+        params = {}
+
+    headers = {
+        "User-Agent": st.session_state.get("user_agent", "Mozilla/5.0"),
+        "Accept": "application/json, text/plain, */*",
+        "Referer": "https://vahan.parivahan.gov.in/",
+        "Cache-Control": "no-cache",
+        "X-Session-ID": str(st.session_state.get("session_id", random.randint(1000, 9999))),
+    }
+
+    attempt = 0
+    while attempt < retries:
+        attempt += 1
+        try:
+            resp = requests.get(endpoint, params=params, headers=headers, timeout=20)
+            if resp.status_code == 200:
+                try:
+                    data = resp.json()
+                    if isinstance(data, dict) and data.get("data"):
+                        st.toast(f"✅ Data fetched on attempt {attempt}", icon="📦")
+                        return data
+                    else:
+                        st.warning(f"⚠️ Empty response on attempt {attempt}")
+                except Exception:
+                    st.error("❌ JSON parse failed")
+            elif resp.status_code in (403, 429):
+                wait = RETRY_DELAY * attempt * 2
+                st.warning(f"⏳ Rate limited (HTTP {resp.status_code}), retrying in {wait:.1f}s...")
+                time.sleep(wait)
+            else:
+                st.error(f"❌ HTTP {resp.status_code}: {resp.text[:100]}")
+        except requests.RequestException as e:
+            wait = RETRY_DELAY * attempt
+            st.warning(f"🌐 Attempt {attempt}/{retries} failed — {e.__class__.__name__}. Retrying in {wait:.1f}s...")
+            time.sleep(wait)
+        except Exception as e:
+            st.error(f"💥 Unexpected error: {e}")
+            traceback.print_exc()
+            break
+
+    st.error("🚫 Failed to fetch data after multiple retries.")
+    return {"error": True, "data": []}
+
+# =====================================================
+# 📦 FETCH WRAPPER — PRETTY LAYER
+# =====================================================
+def get_vahan_data(tag: str = "Trend", params: dict = None):
+    """Layered call with logging and timing."""
+    start = time.time()
+    st.info(f"🚀 Fetching {tag} data from Parivahan ...", icon="🛰️")
+    result = safe_fetch(VAHAN_ENDPOINT, params or params_common)
+    duration = time.time() - start
+
+    if result.get("error"):
+        st.error(f"❌ Fetch for {tag} failed in {duration:.2f}s.")
+    else:
+        st.success(f"✅ {tag} data fetched in {duration:.2f}s ({len(result.get('data', []))} records).")
+
+    print(f"[{datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%H:%M:%S')}] {tag} fetch complete — {duration:.2f}s")
+    return result
+
+# =====================================================
+# 🧾 EXAMPLE USAGE
+# =====================================================
+# trend_json = get_vahan_data("Registration Trend")
+# df_trend = to_df(trend_json)
+# st.dataframe(df_trend.head())
+
+# =====================================================
+# 🌐 UNIVERSAL SAFE FETCH FUNCTION — MAXED EDITION
+# =====================================================
+import random
+import time
+import json
+import traceback
+import requests
+import streamlit as st
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from functools import wraps
+
+# =====================================================
+# 🧩 HEADER + TOKEN ROTATION
+# =====================================================
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_1_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
@@ -975,7 +1241,6 @@ USER_AGENTS = [
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
 ]
 
-# Optional token rotation (DeepInfra / Parivahan)
 TOKEN_POOL = []
 try:
     if "api_keys" in st.secrets:
@@ -986,6 +1251,7 @@ except Exception:
     pass
 
 def random_headers():
+    """Generate spoofed headers for each fetch."""
     headers = {
         "User-Agent": random.choice(USER_AGENTS),
         "Accept": "application/json, text/plain, */*",
@@ -994,82 +1260,267 @@ def random_headers():
         "Connection": "keep-alive",
         "Cache-Control": "no-cache",
         "Pragma": "no-cache",
-        "X-Request-ID": f"{random.randint(100000,999999)}-{int(time.time())}",
         "Referer": "https://parivahan.gov.in/",
+        "X-Request-ID": f"{random.randint(100000,999999)}-{int(time.time())}",
+        "X-Client-ID": f"vahan-maxed-{random.randint(1000,9999)}",
     }
     if TOKEN_POOL:
         headers["Authorization"] = f"Bearer {random.choice(TOKEN_POOL)}"
     return headers
 
 # =====================================================
-# 🧠 Robust fetcher with exponential backoff + cache
+# ⚙️ UNIVERSAL SAFE FETCHER (CACHED + RETRY)
+# =====================================================
+def with_cache(ttl=3600):
+    """Decorator for Streamlit cache with TTL and safe fallback."""
+    def decorator(func):
+        @st.cache_data(ttl=ttl, show_spinner=False)
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+@with_cache(ttl=3600)
+def universal_fetch(
+    url: str,
+    params: dict = None,
+    method: str = "GET",
+    retries: int = 5,
+    backoff: float = 2.0,
+    timeout: int = 20,
+    json_body: dict = None,
+    verbose: bool = True,
+):
+    """MAXED safe network fetcher with retry, rotation, and caching."""
+    if not params:
+        params = {}
+
+    headers = random_headers()
+    session_id = f"SID-{random.randint(1000,9999)}"
+    attempt = 0
+    start = time.time()
+
+    if verbose:
+        st.toast(f"🌐 Fetching {url.split('/')[-1]} …", icon="🛰️")
+
+    while attempt < retries:
+        attempt += 1
+        try:
+            if method.upper() == "POST":
+                resp = requests.post(url, headers=headers, json=json_body, timeout=timeout)
+            else:
+                resp = requests.get(url, headers=headers, params=params, timeout=timeout)
+
+            code = resp.status_code
+            if code == 200:
+                try:
+                    data = resp.json()
+                    if isinstance(data, (dict, list)) and data:
+                        if verbose:
+                            st.toast(f"✅ Success on attempt {attempt}", icon="📦")
+                        duration = time.time() - start
+                        print(f"[{session_id}] ✅ {url} ({code}) in {duration:.2f}s")
+                        return data
+                    else:
+                        st.warning(f"⚠️ Empty JSON response (attempt {attempt})")
+                except json.JSONDecodeError:
+                    st.warning(f"⚠️ Invalid JSON — retrying ({attempt}/{retries})")
+            elif code in (403, 429):
+                wait = backoff * attempt
+                st.warning(f"⏳ Rate limited ({code}) — retrying in {wait:.1f}s...")
+                time.sleep(wait)
+            else:
+                st.error(f"❌ HTTP {code} — {resp.text[:120]}")
+        except requests.RequestException as e:
+            wait = backoff * attempt
+            st.warning(f"🌐 Network error ({e.__class__.__name__}) — retry {attempt}/{retries} in {wait:.1f}s")
+            time.sleep(wait)
+        except Exception as e:
+            st.error(f"💥 Unexpected error: {e}")
+            traceback.print_exc()
+            break
+
+    st.error("🚫 All fetch attempts failed.")
+    print(f"[{session_id}] ❌ Failed after {retries} retries")
+    return {"error": True, "data": []}
+
+# =====================================================
+# 🧠 FETCH WRAPPER FOR VAHAN — MAXED
+# =====================================================
+def get_vahan_json(tag: str = "RegistrationTrend", params: dict = None):
+    """Unified call for Parivahan endpoints with logging + retry safety."""
+    endpoint = f"https://vahan.parivahan.gov.in/vahandashboard/{tag.lower()}"
+    st.info(f"🚀 Fetching `{tag}` from Parivahan...", icon="🛰️")
+
+    data = universal_fetch(endpoint, params=params or {}, retries=5, backoff=2.5)
+    if data.get("error"):
+        st.error(f"❌ {tag} fetch failed.")
+    else:
+        st.success(f"✅ {tag} data fetched ({len(data.get('data', [])) if isinstance(data, dict) else 'OK'})")
+
+    return data
+
+# =====================================================
+# 📊 DIAGNOSTIC LOG
+# =====================================================
+print("=" * 90)
+print("🌐 UNIVERSAL SAFE FETCHER — MAXED Edition Active")
+print(f"🕒 {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %I:%M:%S %p')} | UA Pool: {len(USER_AGENTS)} | Token Pool: {len(TOKEN_POOL)}")
+print("=" * 90)
+
+# =====================================================
+# 🌐 UNIVERSAL MAXED FETCHER (Vahan API)
+# =====================================================
+import time
+import random
+import json
+import traceback
+from datetime import datetime
+from zoneinfo import ZoneInfo
+import requests
+import streamlit as st
+
+# =====================================================
+# 🧩 HEADER + TOKEN ROTATION
+# =====================================================
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_1_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64) Gecko/20100101 Firefox/123.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/122.0.0.0",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
+]
+
+TOKEN_POOL = []
+try:
+    if "api_keys" in st.secrets:
+        for kset in st.secrets["api_keys"].values():
+            if isinstance(kset, list):
+                TOKEN_POOL += kset
+except Exception:
+    pass
+
+def random_headers():
+    """Generate randomized spoof headers with optional token rotation."""
+    headers = {
+        "User-Agent": random.choice(USER_AGENTS),
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+        "Referer": "https://parivahan.gov.in/",
+        "X-Request-ID": f"{random.randint(100000,999999)}-{int(time.time())}",
+    }
+    if TOKEN_POOL:
+        headers["Authorization"] = f"Bearer {random.choice(TOKEN_POOL)}"
+    return headers
+
+
+# =====================================================
+# 🧠 MAXED Robust Fetcher with Cache, Backoff & Fallback
 # =====================================================
 @st.cache_data(show_spinner=False, ttl=900, max_entries=100)
-def fetch_json(endpoint: str, params: dict = params_common, desc: str = "") -> dict:
+def fetch_json(
+    endpoint: str,
+    params: dict = None,
+    desc: str = "",
+    base_url: str = "https://vahanapi.parivahan.gov.in/",
+    fallback_url: str = "https://vahan.parivahan.gov.in/vahandashboard/",
+    max_retries: int = 5,
+    timeout: int = 20,
+) -> dict:
     """
-    Universal safe API fetcher with retries, 403/429 handling,
-    randomized spoof headers, and silent fallback.
+    🌐 MAXED universal safe API fetcher:
+    - randomized spoof headers + optional token
+    - retries with exponential backoff
+    - auto fallback to secondary API endpoint
+    - TTL cache via Streamlit
+    - detailed diagnostics & toasts
     """
-    base_url = "https://vahanapi.parivahan.gov.in/"
-    url = base_url.rstrip("/") + "/" + endpoint.lstrip("/")
-    max_retries = 5
+    if params is None:
+        params = {}
+
     backoff_base = 2
-    timeout = 20
+    endpoint = endpoint.lstrip("/")
+    urls_to_try = [base_url.rstrip("/") + "/" + endpoint]
+    if fallback_url:
+        urls_to_try.append(fallback_url.rstrip("/") + "/" + endpoint)
 
-    for attempt in range(1, max_retries + 1):
-        headers = random_headers()
-        try:
-            response = requests.get(url, params=params, headers=headers, timeout=timeout)
-            code = response.status_code
-
-            # Handle rate limits / forbidden
-            if code == 403:
-                st.info(f"🚫 Forbidden (403) while fetching {desc}. Retrying with new headers...")
-                time.sleep(random.uniform(1.0, 3.0))
-                continue
-            elif code == 429:
-                wait = random.uniform(3.0, 7.0)
-                st.warning(f"⚠️ Rate limited (429). Retrying after {wait:.1f}s...")
-                time.sleep(wait)
-                continue
-            elif code >= 500:
-                wait = backoff_base ** attempt + random.uniform(0.2, 1.0)
-                st.warning(f"🌀 Server error {code}. Retry {attempt}/{max_retries} after {wait:.1f}s...")
-                time.sleep(wait)
-                continue
-            elif code not in (200, 201):
-                st.error(f"❌ Unexpected HTTP {code} for {desc}")
-                return {}
-
+    for url in urls_to_try:
+        for attempt in range(1, max_retries + 1):
+            headers = random_headers()
             try:
-                json_data = response.json()
-                if not json_data:
-                    st.warning(f"⚠️ Empty response for {desc}")
-                    return {}
-                print(f"[IST {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %H:%M:%S')}] ✅ {desc or endpoint} fetched OK")
-                return json_data
-            except Exception:
-                st.error(f"⚠️ Invalid JSON in {desc} response")
-                return {}
+                response = requests.get(url, params=params, headers=headers, timeout=timeout)
+                code = response.status_code
 
-        except requests.exceptions.Timeout:
-            st.warning(f"⏳ Timeout fetching {desc}. Retry {attempt}/{max_retries}...")
-            time.sleep(backoff_base ** attempt)
-        except requests.exceptions.ConnectionError:
-            st.warning(f"🔌 Connection error — retry {attempt}/{max_retries}...")
-            time.sleep(backoff_base ** attempt)
-        except Exception as e:
-            print(f"⚠️ {desc} — Unexpected error: {e}")
-            traceback.print_exc()
-            time.sleep(1.5)
+                # 🎯 Success
+                if code in (200, 201):
+                    try:
+                        json_data = response.json()
+                        if json_data:
+                            msg = f"✅ {desc or endpoint} fetched OK"
+                            print(f"[{datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%H:%M:%S')}] {msg}")
+                            st.toast(msg, icon="📦")
+                            return json_data
+                        else:
+                            st.warning(f"⚠️ Empty response for {desc}")
+                            return {}
+                    except json.JSONDecodeError:
+                        st.warning(f"⚠️ Invalid JSON for {desc}")
+                        continue
 
-    # After retries exhausted
+                # 🚫 Forbidden / Rate Limited
+                elif code == 403:
+                    st.info(f"🚫 Forbidden (403). Rotating headers & retrying…")
+                    time.sleep(random.uniform(1, 3))
+                elif code == 429:
+                    wait = random.uniform(3, 7)
+                    st.warning(f"⚠️ Rate limited (429). Retrying after {wait:.1f}s...")
+                    time.sleep(wait)
+
+                # 🌀 Server Error
+                elif code >= 500:
+                    wait = backoff_base ** attempt + random.uniform(0.3, 1.0)
+                    st.warning(f"🌀 Server error {code}. Retry {attempt}/{max_retries} after {wait:.1f}s...")
+                    time.sleep(wait)
+
+                else:
+                    st.error(f"❌ Unexpected HTTP {code} for {desc or endpoint}")
+                    break
+
+            except requests.exceptions.Timeout:
+                wait = backoff_base ** attempt
+                st.warning(f"⏳ Timeout fetching {desc}. Retry {attempt}/{max_retries} after {wait:.1f}s...")
+                time.sleep(wait)
+            except requests.exceptions.ConnectionError:
+                wait = backoff_base ** attempt
+                st.warning(f"🔌 Connection error — retry {attempt}/{max_retries} after {wait:.1f}s...")
+                time.sleep(wait)
+            except Exception as e:
+                print(f"⚠️ {desc} — Unexpected error: {e}")
+                traceback.print_exc()
+                time.sleep(1.5)
+
+        # 🔁 Try fallback URL if first base fails
+        st.warning(f"🔁 Switching to fallback endpoint for {desc or endpoint}")
+
     st.error(f"❗ Failed to fetch {desc or endpoint} after {max_retries} retries.")
     return {}
 
+
 # =====================================================
-# ✅ DUAL-YEAR + NEXT-YEAR PREDICTION & COMPARISON SUITE
-# (Drop this block immediately after your existing fetch_json)
+# 📊 DIAGNOSTIC LOG
+# =====================================================
+print("=" * 80)
+print("🌐 Vahan MAXED Fetcher Active")
+print(f"🕒 {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %I:%M:%S %p')} | UA Pool: {len(USER_AGENTS)} | Tokens: {len(TOKEN_POOL)}")
+print("=" * 80)
+
+# =====================================================
+# 🔮 DUAL-YEAR + NEXT-YEAR PREDICTION SUITE — MAXED
 # =====================================================
 import pandas as pd
 import numpy as np
@@ -1079,13 +1530,13 @@ import json
 import logging
 import altair as alt
 import plotly.express as px
-import plotly.graph_objects as go
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 import streamlit as st
 import time
+import traceback
 
-# optional sklearn/prophet usage (graceful fallback)
+# optional ML libs
 try:
     from sklearn.linear_model import LinearRegression
     SKLEARN_AVAILABLE = True
@@ -1098,444 +1549,243 @@ try:
 except Exception:
     PROPHET_AVAILABLE = False
 
-logger = logging.getLogger("vahan_dual_year")
+logger = logging.getLogger("vahan_dual_year_maxed")
+
+def ist_now():
+    return datetime.now(ZoneInfo("Asia/Kolkata"))
 
 def ist_now_str():
-    return datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
+    return ist_now().strftime("%Y-%m-%d %I:%M:%S %p")
 
-# ------------------ Helpers: safe JSON->DF normalizer ------------------
+# =====================================================
+# 🧩 NORMALIZER — accepts any trend-like JSON
+# =====================================================
 def normalize_trend_to_df(trend_json):
-    """
-    Accepts lots of shapes and returns DataFrame with columns ['date','value'] or ['year','value'].
-    If dates are parseable -> returns 'date' column (Timestamp). Else if year-based -> returns 'year' int.
-    """
+    """Convert various Vahan trend JSONs into a normalized DataFrame with date/year/value."""
     if not trend_json:
-        return pd.DataFrame(columns=["date","value"])
+        return pd.DataFrame(columns=["date", "value"])
+    try:
+        if isinstance(trend_json, dict) and "labels" in trend_json and "data" in trend_json:
+            df = pd.DataFrame({
+                "label": trend_json.get("labels", []),
+                "value": pd.to_numeric(trend_json.get("data", []), errors="coerce")
+            })
+        elif isinstance(trend_json, dict):
+            df = pd.DataFrame(list(trend_json.items()), columns=["label", "value"])
+        elif isinstance(trend_json, list):
+            df = pd.json_normalize(trend_json)
+            if "label" not in df.columns:
+                df.rename(columns={df.columns[0]: "label"}, inplace=True)
+            if "value" not in df.columns:
+                df.rename(columns={df.columns[-1]: "value"}, inplace=True)
+        else:
+            return pd.DataFrame(columns=["date", "value"])
 
-    # Many endpoints return {'labels': [...], 'data': [...]}
-    if isinstance(trend_json, dict) and "labels" in trend_json and "data" in trend_json:
-        labels = trend_json.get("labels") or []
-        data = trend_json.get("data") or []
-        rows = []
-        n = min(len(labels), len(data))
-        for i in range(n):
-            lbl = labels[i]
-            val = data[i]
-            # try parse as date, else year
-            try:
-                dt = pd.to_datetime(lbl, errors="coerce")
-                if not pd.isna(dt):
-                    rows.append({"date": dt, "value": pd.to_numeric(val, errors="coerce")})
-                    continue
-            except Exception:
-                pass
-            # fallback: label might be year or month-year string
-            try:
-                # try parse Month-Year strings like 'Jan-2024'
-                dt = pd.to_datetime(str(lbl), errors="coerce")
-                if not pd.isna(dt):
-                    rows.append({"date": dt, "value": pd.to_numeric(val, errors="coerce")})
-                    continue
-            except Exception:
-                pass
-            # if not parseable, treat as year
-            try:
-                y = int(str(lbl)[:4])
-                rows.append({"year": y, "value": pd.to_numeric(val, errors="coerce")})
-            except Exception:
-                # fallback to raw label
-                rows.append({"label": lbl, "value": pd.to_numeric(val, errors="coerce")})
+        df["value"] = pd.to_numeric(df["value"], errors="coerce")
+        df["date"] = pd.to_datetime(df["label"], errors="coerce")
+        df["year"] = df["date"].dt.year
+        df = df.dropna(subset=["value"]).sort_values(["date", "year"], na_position="last").reset_index(drop=True)
+        return df[["date", "year", "value"]].drop_duplicates()
+    except Exception as e:
+        logger.error(f"normalize_trend_to_df failed: {e}")
+        traceback.print_exc()
+        return pd.DataFrame(columns=["date", "value"])
 
-        df = pd.DataFrame(rows)
-        # normalize: prefer date if exists
-        if "date" in df.columns:
-            df = df.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
-            return df[["date","value"]]
-        if "year" in df.columns:
-            return df[["year","value"]].dropna().sort_values("year").reset_index(drop=True)
-        return df.dropna().reset_index(drop=True)
-
-    # If list of dicts: try to detect fields
-    if isinstance(trend_json, (list, tuple)):
-        rows = []
-        for it in trend_json:
-            if not isinstance(it, dict):
-                continue
-            # common keys
-            for label_key in ("date","period","label","monthYear","month", "Month-Year"):
-                if label_key in it:
-                    lbl = it[label_key]
-                    break
-            else:
-                lbl = _get_first_present(it, ("year","Year","yr"))
-
-            val = None
-            for vk in ("value","count","registrations","total","y"):
-                if vk in it:
-                    val = it[vk]; break
-            if val is None:
-                # try nested
-                val = it.get("data") or it.get("metrics") or None
-
-            try:
-                dt = pd.to_datetime(lbl, errors="coerce")
-                if not pd.isna(dt):
-                    rows.append({"date": dt, "value": pd.to_numeric(val, errors="coerce")})
-                    continue
-            except Exception:
-                pass
-            try:
-                y = int(str(lbl)[:4])
-                rows.append({"year": y, "value": pd.to_numeric(val, errors="coerce")})
-            except Exception:
-                rows.append({"label": lbl, "value": pd.to_numeric(val, errors="coerce")})
-
-        df = pd.DataFrame(rows)
-        if "date" in df.columns:
-            return df.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)[["date","value"]]
-        if "year" in df.columns:
-            return df.dropna(subset=["year"]).sort_values("year").reset_index(drop=True)[["year","value"]]
-        return df.dropna().reset_index(drop=True)
-
-    # If dict mapping period->value
-    if isinstance(trend_json, dict):
-        rows = []
-        for k,v in trend_json.items():
-            if k in ("labels","data"): continue
-            try:
-                dt = pd.to_datetime(k, errors="coerce")
-                if not pd.isna(dt):
-                    rows.append({"date": dt, "value": pd.to_numeric(v, errors="coerce")})
-                    continue
-            except Exception:
-                pass
-            # try year
-            try:
-                y = int(str(k)[:4])
-                rows.append({"year": y, "value": pd.to_numeric(v, errors="coerce")})
-            except Exception:
-                rows.append({"label": k, "value": pd.to_numeric(v, errors="coerce")})
-        df = pd.DataFrame(rows)
-        if "date" in df.columns:
-            return df.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)[["date","value"]]
-        if "year" in df.columns:
-            return df.dropna(subset=["year"]).sort_values("year").reset_index(drop=True)[["year","value"]]
-        return df.dropna().reset_index(drop=True)
-
-    return pd.DataFrame(columns=["date","value"])
-
-# small helper used above
-def _get_first_present(d, keys):
-    for k in keys:
-        if k in d and d[k] is not None:
-            return d[k]
-    return None
-
-# ------------------ Dual-year fetch convenience ------------------
+# =====================================================
+# ⚙️ PARAM HELPERS
+# =====================================================
 def build_dual_year_params(from_year, to_year, extra_params=None):
-    """Return param dict for prev-year & this-year requests (keeps your param names)"""
     extra = extra_params or {}
-    params_prev = params_common.copy()
-    params_this = params_common.copy()
-    # Attempt best-effort mapping - your build_params likely uses fromYear/toYear keys;
-    # ensure this block matches your real build_params keys if different.
-    for p in ("fromYear","toYear"):
-        if p in params_prev:
-            params_prev[p] = from_year
-            params_this[p] = to_year
-    # add extras
-    params_prev.update(extra)
-    params_this.update(extra)
-    return params_prev, params_this
+    prev, curr = params_common.copy(), params_common.copy()
+    for k in ("fromYear", "toYear"):
+        if k in prev:
+            prev[k] = from_year
+            curr[k] = to_year
+    prev.update(extra)
+    curr.update(extra)
+    return prev, curr
 
-def fetch_dual_year(endpoint, desc="", from_year=None, to_year=None, extra_params=None, use_cache=True):
-    """
-    Fetch endpoint twice: for prev_year and this_year. Returns tuple(prev_df, this_df)
-    Each returned object is the normalized DataFrame (with either date or year columns).
-    """
+# =====================================================
+# 🔄 FETCH + NORMALIZE — Dual-Year Mode
+# =====================================================
+@st.cache_data(show_spinner=False, ttl=600)
+def fetch_dual_year(endpoint, desc="", from_year=None, to_year=None, extra_params=None):
     now = ist_now_str()
-    if from_year is None or to_year is None:
-        today = date.today()
-        to_year = to_year or today.year
-        from_year = from_year or (to_year - 1)
+    today = date.today()
+    to_year = to_year or today.year
+    from_year = from_year or (to_year - 1)
 
+    st.info(f"📡 Fetching {desc or endpoint}: {from_year} & {to_year} ({now})")
     params_prev, params_this = build_dual_year_params(from_year, to_year, extra_params)
 
-    st.info(f"Fetching {desc or endpoint} — prev:{from_year} this:{to_year} — {now}")
-    # call your existing fetch_json (cached)
-    json_prev = fetch_json(endpoint, params=params_prev, desc=f"{desc} ({from_year})") or {}
-    json_this = fetch_json(endpoint, params=params_this, desc=f"{desc} ({to_year})") or {}
+    json_prev = fetch_json(endpoint, params=params_prev, desc=f"{desc} ({from_year})")
+    json_this = fetch_json(endpoint, params=params_this, desc=f"{desc} ({to_year})")
 
     df_prev = normalize_trend_to_df(json_prev)
     df_this = normalize_trend_to_df(json_this)
-
-    # unify to have 'date' or 'year' consistently
-    # If they are date-based but represent year aggregates, convert to year
-    if "date" in df_prev.columns and not df_prev.empty:
-        df_prev["year"] = pd.to_datetime(df_prev["date"]).dt.year
-    if "date" in df_this.columns and not df_this.empty:
-        df_this["year"] = pd.to_datetime(df_this["date"]).dt.year
-
-    # If only 'year' exists, ensure int
-    if "year" in df_prev.columns:
-        df_prev["year"] = df_prev["year"].astype(int)
-    if "year" in df_this.columns:
-        df_this["year"] = df_this["year"].astype(int)
-
-    logger.info(f"[{ist_now_str()}] fetched dual-year for {endpoint}")
     return df_prev, df_this
 
-# ------------------ Forecasting / Prediction ------------------
-def forecast_next_year_from_yearly_df(df_yearly, value_col="value", year_col="year", months_freq=False, periods=1):
-    """
-    Input: df_yearly with columns [year, value]. Performs a simple linear trend forecast for next 'periods' years.
-    Returns DataFrame with original + predicted rows with column 'type' marking 'Actual'/'Predicted'.
-    Uses sklearn LinearRegression if available; else linear slope.
-    """
-    if df_yearly is None or df_yearly.empty:
+# =====================================================
+# 🔮 FORECAST ENGINE — Linear / Prophet Hybrid
+# =====================================================
+def forecast_next_year(df, value_col="value", year_col="year", periods=1):
+    """Predict next-year value(s) using Prophet (if available) or LinearRegression fallback."""
+    if df is None or df.empty:
         return pd.DataFrame(columns=[year_col, value_col, "type"])
 
-    df = df_yearly.copy().dropna(subset=[year_col, value_col]).sort_values(year_col)
+    df = df.copy().dropna(subset=[year_col, value_col])
     df[year_col] = df[year_col].astype(int)
     df[value_col] = pd.to_numeric(df[value_col], errors="coerce")
-    df = df.dropna(subset=[value_col])
 
-    if df.empty:
-        return pd.DataFrame(columns=[year_col, value_col, "type"])
+    # --- Prophet path ---
+    if PROPHET_AVAILABLE and len(df) >= 3:
+        try:
+            prophet_df = df.rename(columns={year_col: "ds", value_col: "y"})
+            prophet_df["ds"] = pd.to_datetime(prophet_df["ds"], format="%Y")
+            model = Prophet(yearly_seasonality=True, daily_seasonality=False, weekly_seasonality=False)
+            model.fit(prophet_df)
+            future = model.make_future_dataframe(periods=periods, freq="Y")
+            forecast = model.predict(future)
+            out = forecast[["ds", "yhat"]].rename(columns={"ds": year_col, "yhat": value_col})
+            out[year_col] = out[year_col].dt.year
+            out["type"] = "Predicted"
+            df["type"] = "Actual"
+            return pd.concat([df, out.tail(periods)], ignore_index=True).drop_duplicates(subset=[year_col])
+        except Exception as e:
+            logger.warning(f"Prophet forecast failed: {e}")
 
-    X = df[[year_col]].values.reshape(-1,1)
-    y = df[value_col].values
-
+    # --- Linear Regression fallback ---
     if SKLEARN_AVAILABLE and len(df) >= 2:
         try:
-            model = LinearRegression()
-            model.fit(X, y)
-            last = int(df[year_col].iloc[-1])
-            preds = []
-            for i in range(1, periods+1):
-                ny = last + i
-                pred = float(model.predict([[ny]])[0])
-                preds.append({year_col: ny, value_col: pred, "type": "Predicted"})
+            X = df[[year_col]].values
+            y = df[value_col].values
+            model = LinearRegression().fit(X, y)
+            last = df[year_col].max()
+            preds = [{"year": last + i, "value": float(model.predict([[last + i]])[0]), "type": "Predicted"} for i in range(1, periods+1)]
             df["type"] = "Actual"
-            result = pd.concat([df[[year_col, value_col, "type"]], pd.DataFrame(preds)], ignore_index=True, sort=False)
-            return result.sort_values(year_col).reset_index(drop=True)
+            return pd.concat([df, pd.DataFrame(preds)], ignore_index=True)
         except Exception as e:
-            logger.warning(f"sklearn predict failed: {e}")
+            logger.warning(f"Linear regression failed: {e}")
 
-    # fallback: slope between last two years
+    # --- fallback simple slope ---
     if len(df) >= 2:
-        a, b = df[year_col].iloc[-2], df[value_col].iloc[-2]
-        c, d = df[year_col].iloc[-1], df[value_col].iloc[-1]
-        slope = (d - b) / (c - a) if (c - a) != 0 else 0.0
-        preds = []
-        last = int(df[year_col].iloc[-1])
-        for i in range(1, periods+1):
-            ny = last + i
-            pred = float(d + slope * i)
-            preds.append({year_col: ny, value_col: pred, "type": "Predicted"})
+        y1, y2 = df.iloc[-2][year_col], df.iloc[-1][year_col]
+        v1, v2 = df.iloc[-2][value_col], df.iloc[-1][value_col]
+        slope = (v2 - v1) / (y2 - y1 or 1)
+        last = y2
+        preds = [{"year": last + i, "value": v2 + slope * i, "type": "Predicted"} for i in range(1, periods+1)]
         df["type"] = "Actual"
-        result = pd.concat([df[[year_col, value_col, "type"]], pd.DataFrame(preds)], ignore_index=True, sort=False)
-        return result.sort_values(year_col).reset_index(drop=True)
+        return pd.concat([df, pd.DataFrame(preds)], ignore_index=True)
 
-    # if only one year, can't compute slope — duplicate last value
+    # --- fallback constant ---
     df["type"] = "Actual"
-    last = int(df[year_col].iloc[-1])
-    preds = [{year_col: last+1, value_col: float(df[value_col].iloc[-1]), "type":"Predicted"}]
-    result = pd.concat([df[[year_col, value_col, "type"]], pd.DataFrame(preds)], ignore_index=True, sort=False)
-    return result.sort_values(year_col).reset_index(drop=True)
+    preds = [{year_col: int(df[year_col].max()) + 1, value_col: float(df[value_col].iloc[-1]), "type": "Predicted"}]
+    return pd.concat([df, pd.DataFrame(preds)], ignore_index=True)
 
-# ------------------ Combined comparative table generator ------------------
-def build_prev_this_next_table(df_prev, df_this, value_col="value", year_col="year", predict_periods=1):
-    """
-    Accepts df_prev and df_this (may contain date/year). Returns a combined table with:
-      - prev_year total, this_year total, next_year predicted (value)
-      - growth% prev->this, this->next
-    """
-    # aggregate to yearly sums if date-based
+# =====================================================
+# 📈 COMPARISON BUILDER
+# =====================================================
+def build_prev_this_next(df_prev, df_this, periods=1):
+    """Combine prev & this year, add forecasted next."""
     def to_yearly(df):
-        if df is None or df.empty:
-            return pd.DataFrame(columns=[year_col, value_col])
-        if "year" in df.columns:
-            tmp = df[[year_col, value_col]].copy()
-        elif "date" in df.columns:
-            tmp = df.copy()
-            tmp[year_col] = pd.to_datetime(tmp["date"]).dt.year
-            tmp = tmp[[year_col, value_col]]
-        else:
-            # try best-effort columns
-            tmp = df.copy()
-            if year_col not in tmp.columns:
-                tmp[year_col] = pd.to_datetime(tmp.iloc[:,0], errors="coerce").dt.year
-            tmp = tmp[[year_col, value_col]]
-        tmp[value_col] = pd.to_numeric(tmp[value_col], errors="coerce").fillna(0)
-        return tmp.groupby(year_col, as_index=False)[value_col].sum().sort_values(year_col).reset_index(drop=True)
+        if "date" in df.columns:
+            df["year"] = pd.to_datetime(df["date"]).dt.year
+        df = df.groupby("year", as_index=False)["value"].sum()
+        return df
 
     y_prev = to_yearly(df_prev)
     y_this = to_yearly(df_this)
 
-    # determine prev_year and this_year values
-    prev_year = int(y_prev[year_col].max()) if not y_prev.empty else None
-    this_year = int(y_this[year_col].max()) if not y_this.empty else None
+    combined = pd.concat([y_prev, y_this]).drop_duplicates(subset=["year"]).sort_values("year")
+    forecasted = forecast_next_year(combined, periods=periods)
+    return forecasted
 
-    prev_val = float(y_prev.loc[y_prev[year_col] == prev_year, value_col].sum()) if prev_year else 0.0
-    this_val = float(y_this.loc[y_this[year_col] == this_year, value_col].sum()) if this_year else 0.0
-
-    # build base table
-    base_df = pd.DataFrame([
-        {"period": f"Prev ({prev_year})", year_col: prev_year, "value": prev_val, "type":"Actual" if prev_year else None},
-        {"period": f"This ({this_year})", year_col: this_year, "value": this_val, "type":"Actual" if this_year else None},
-    ])
-
-    # forecast next
-    # prefer to combine years (prev+this) to build trend
-    combined = pd.concat([y_prev, y_this], ignore_index=True).drop_duplicates(subset=[year_col])
-    combined = combined.sort_values(year_col)
-    df_forecasted = forecast_next_year_from_yearly_df(combined.rename(columns={year_col:year_col, value_col:value_col}),
-                                                      value_col=value_col, year_col=year_col, periods=predict_periods)
-
-    next_row = df_forecasted[df_forecasted["type"]=="Predicted"].iloc[-1] if "Predicted" in df_forecasted["type"].values else None
-    if next_row is not None:
-        base_df = pd.concat([base_df, pd.DataFrame([{"period": f"Next ({int(next_row[year_col])})", year_col:int(next_row[year_col]), "value":float(next_row[value_col]), "type":"Predicted"}])], ignore_index=True)
-
-    # compute growth columns
-    base_df["value"] = pd.to_numeric(base_df["value"], errors="coerce").fillna(0)
-    base_df["growth_vs_prev%"] = base_df["value"].pct_change() * 100
-    base_df.loc[0,"growth_vs_prev%"] = np.nan
-    return base_df
-
-# ------------------ Rendering helpers (charts & KPIs) ------------------
-def show_comparison_cards(summary_df, value_fmt="{:,.0f}"):
-    """
-    summary_df expected structure as build_prev_this_next_table output
-    """
-    if summary_df is None or summary_df.empty:
+# =====================================================
+# 🎯 DISPLAY SUITE
+# =====================================================
+def show_comparison_cards(df, fmt="{:,.0f}"):
+    if df is None or df.empty:
         st.info("No summary available")
         return
-    # display metrics side-by-side
-    cols = st.columns(len(summary_df))
-    for i, (_, row) in enumerate(summary_df.iterrows()):
-        k = row["period"]
-        v = row["value"]
-        g = row.get("growth_vs_prev%")
-        delta = f"{g:+.2f}%" if not (g is None or math.isnan(g)) else "—"
-        cols[i].metric(k, value_fmt.format(v), delta)
+    df = df.sort_values("year")
+    cols = st.columns(len(df))
+    prev_val = None
+    for i, (_, row) in enumerate(df.iterrows()):
+        growth = ""
+        if prev_val and not pd.isna(prev_val):
+            growth_val = ((row["value"] - prev_val) / prev_val) * 100 if prev_val else 0
+            growth = f"{growth_val:+.2f}%"
+        prev_val = row["value"]
+        cols[i].metric(f"{row['year']} ({row['type']})", fmt.format(row["value"]), growth)
 
-def show_yearly_bar_line(df_combined, year_col="year", value_col="value"):
-    """df_combined must have year & value & type (Actual/Predicted)"""
-    if df_combined is None or df_combined.empty:
+def show_forecast_chart(df):
+    if df is None or df.empty:
         st.info("No data for chart")
         return
-    # ensure year is int
-    df = df_combined.copy()
-    if year_col in df.columns:
-        df[year_col] = df[year_col].astype(int)
-    # altair line with predicted dashed style
-    df["type"] = df.get("type", "Actual")
-    chart = alt.Chart(df).mark_line(point=True).encode(
-        x=alt.X(f"{year_col}:O", title="Year"),
-        y=alt.Y(f"{value_col}:Q", title=value_col.capitalize()),
-        color=alt.Color("type:N", legend=alt.Legend(title="Type")),
-        tooltip=[year_col, value_col, "type"]
-    ).interactive().properties(height=350)
-    st.altair_chart(chart, use_container_width=True)
+    df = df.sort_values("year")
+    base = alt.Chart(df).mark_line(point=True).encode(
+        x=alt.X("year:O", title="Year"),
+        y=alt.Y("value:Q", title="Registrations"),
+        color="type:N",
+        tooltip=["year", "value", "type"]
+    )
+    st.altair_chart(base.properties(height=400), use_container_width=True)
+    st.plotly_chart(px.bar(df, x="year", y="value", color="type", title="Actual vs Predicted"), use_container_width=True)
 
-    # also plot as plotly for interactive hover & export
-    fig = px.bar(df, x=year_col, y=value_col, color="type", barmode="group", title="Yearly Actual vs Predicted")
-    st.plotly_chart(fig, use_container_width=True)
-
-# ------------------ Export helpers ------------------
-def export_summary_excel(dfs_dict, filename_prefix="vahan_summary"):
-    """
-    dfs_dict: {"tab name": DataFrame, ...}
-    returns bytes for download
-    """
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        for name, df in dfs_dict.items():
+# =====================================================
+# 📦 EXCEL EXPORTER
+# =====================================================
+def export_dual_year_excel(dfs_dict, filename="vahan_dual_year_maxed"):
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        for sheet, df in dfs_dict.items():
             try:
-                df.to_excel(writer, sheet_name=str(name)[:31], index=False)
+                df.to_excel(writer, sheet_name=str(sheet)[:31], index=False)
             except Exception:
-                # fallback to json dump if not DF
-                pd.DataFrame({"raw": [json.dumps(df, default=str)]}).to_excel(writer, sheet_name=str(name)[:31], index=False)
-    output.seek(0)
-    return output.getvalue()
+                pd.DataFrame({"raw": [json.dumps(df, default=str)]}).to_excel(writer, sheet_name=str(sheet)[:31], index=False)
+    buffer.seek(0)
+    return buffer.getvalue()
 
-# ------------------ One high-level orchestrator for pages ------------------
+# =====================================================
+# 🚀 MASTER ORCHESTRATOR
+# =====================================================
 def dual_year_analysis_and_ui(endpoint, desc, from_year=None, to_year=None, extra_params=None, predict_periods=1):
-    """
-    High-level function to:
-    - fetch prev & this year data (via fetch_dual_year)
-    - build combined summary with predicted next year
-    - show KPIs + charts + offer export
-    """
-    today = date.today()
-    to_year = int(to_year) if to_year else today.year
-    from_year = int(from_year) if from_year else to_year - 1
+    """Full Dual-Year + Forecast pipeline with Streamlit UI."""
+    st.header(f"📊 {desc}: {from_year or (date.today().year-1)} ↔ {to_year or date.today().year} ↔ 🔮 Predicted")
+    df_prev, df_this = fetch_dual_year(endpoint, desc, from_year, to_year, extra_params)
+    df_all = build_prev_this_next(df_prev, df_this, periods=predict_periods)
 
-    st.header(f"{desc} — Prev vs This vs Next ({from_year} ↔ {to_year} ↔ predicted)")
-    df_prev, df_this = fetch_dual_year(endpoint, desc=desc, from_year=from_year, to_year=to_year, extra_params=extra_params)
+    show_comparison_cards(df_all)
+    show_forecast_chart(df_all)
 
-    summary_table = build_prev_this_next_table(df_prev, df_this, value_col="value", year_col="year", predict_periods=predict_periods)
-    show_comparison_cards(summary_table)
+    with st.expander("📂 Raw Data"):
+        st.dataframe(df_prev, use_container_width=True)
+        st.dataframe(df_this, use_container_width=True)
 
-    # combine yearly actuals + predicted for charting (use combined aggregated)
-    def to_yearly(df):
-        if df is None or df.empty: return pd.DataFrame(columns=["year","value"])
-        if "year" in df.columns:
-            tmp = df[["year","value"]].copy()
-        elif "date" in df.columns:
-            tmp = df.copy(); tmp["year"]=pd.to_datetime(tmp["date"]).dt.year; tmp=tmp[["year","value"]]
-        else:
-            return pd.DataFrame(columns=["year","value"])
-        tmp["value"]=pd.to_numeric(tmp["value"],errors="coerce").fillna(0)
-        return tmp.groupby("year",as_index=False)["value"].sum().sort_values("year").reset_index(drop=True)
+    excel_bytes = export_dual_year_excel({
+        f"{desc}_prev": df_prev,
+        f"{desc}_this": df_this,
+        f"{desc}_combined": df_all
+    }, filename=desc.replace(" ", "_"))
 
-    y_prev = to_yearly(df_prev)
-    y_this = to_yearly(df_this)
-    combined = pd.concat([y_prev, y_this], ignore_index=True).drop_duplicates(subset=["year"]).sort_values("year")
-    combined_with_preds = forecast_next_year_from_yearly_df(combined.rename(columns={"year":"year","value":"value"}), value_col="value", year_col="year", periods=predict_periods)
+    ts = ist_now().strftime("%Y%m%d_%H%M%S")
+    st.download_button("⬇️ Download Excel Report", excel_bytes,
+                       file_name=f"{desc.replace(' ','_')}_{ts}.xlsx",
+                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-    # show chart
-    show_yearly_bar_line(combined_with_preds, year_col="year", value_col="value")
-
-    # show raw tables
-    with st.expander("Show raw yearly tables (prev / this)", expanded=False):
-        st.dataframe(y_prev, use_container_width=True)
-        st.dataframe(y_this, use_container_width=True)
-
-    # Export options
-    exportables = {
-        f"{desc} - summary": summary_table,
-        f"{desc} - prev_year": y_prev,
-        f"{desc} - this_year": y_this,
-        f"{desc} - combined_forecast": combined_with_preds
-    }
-
-    excel_bytes = export_summary_excel(exportables)
-    ts = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y%m%d_%H%M%S")
-    st.download_button("⬇️ Download full Excel report", excel_bytes, file_name=f"{desc.replace(' ','_')}_{ts}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-
-    # return objects for further programmatic usage
-    return {
-        "prev_df": df_prev,
-        "this_df": df_this,
-        "summary_table": summary_table,
-        "combined_forecast": combined_with_preds
-    }
-
-# End of block
+    return {"prev": df_prev, "this": df_this, "combined": df_all}
 
 
 # =====================================================
-# ⚙️ Dynamic Parameter Builder + Ultra Safe Fetch — VAHAN ANALYTICS MAX
+# 🚀 VAHAN ANALYTICS — API CORE (ALL MAXED EDITION)
 # =====================================================
 import os
 import time
-import random
 import json
 import pickle
-import requests
+import random
 import logging
+import requests
 import streamlit as st
 from urllib.parse import urlencode
 from datetime import datetime
@@ -1543,28 +1793,54 @@ from zoneinfo import ZoneInfo
 from typing import Any, Dict, Optional
 
 # =====================================================
-# 🎨 HEADER — Animated Banner
+# 🎨 STREAMLIT HEADER
 # =====================================================
 st.markdown("""
 <div style="
-    background: linear-gradient(90deg, #0072ff, #00c6ff);
-    padding: 16px 26px;
-    border-radius: 14px;
-    color: #ffffff;
-    font-size: 18px;
-    font-weight: 700;
-    display: flex; justify-content: space-between; align-items: center;
-    box-shadow: 0 0 25px rgba(0,114,255,0.4);">
-    <div>🧩 Building Dynamic API Parameters for <b>Vahan Analytics</b></div>
-    <div style="font-size:14px;opacity:0.85;">Auto-synced with filters 🔁</div>
+    background:linear-gradient(90deg,#0072ff,#00c6ff);
+    padding:16px 26px;
+    border-radius:14px;
+    color:#fff;
+    font-size:18px;
+    font-weight:700;
+    display:flex;justify-content:space-between;align-items:center;
+    box-shadow:0 0 25px rgba(0,114,255,0.4);">
+    <div>🧩 <b>VAHAN ANALYTICS — All-Maxed API Engine</b></div>
+    <div style="font-size:14px;opacity:0.9;">Auto-synced | Cached | Throttled | Resilient</div>
 </div>
 """, unsafe_allow_html=True)
 st.write("")
 
 # =====================================================
-# ⚙️ PARAMETER BUILDER
+# 🧠 PARAMETER BUILDER (DYNAMIC)
 # =====================================================
-with st.spinner("🚀 Generating dynamic request parameters..."):
+def build_params(
+    from_year: int,
+    to_year: int,
+    state_code: Optional[str] = None,
+    rto_code: Optional[str] = None,
+    vehicle_classes: Optional[list] = None,
+    vehicle_makers: Optional[list] = None,
+    time_period: Optional[str] = None,
+    fitness_check: Optional[str] = None,
+    vehicle_type: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Create parameter dictionary safely and dynamically."""
+    params = {
+        "fromYear": from_year,
+        "toYear": to_year,
+        "stateCd": state_code,
+        "rtoCd": rto_code,
+        "vehicleClass": vehicle_classes,
+        "vehicleMaker": vehicle_makers,
+        "timePeriod": time_period,
+        "fitnessCheck": fitness_check,
+        "vehicleType": vehicle_type,
+    }
+    return {k: v for k, v in params.items() if v not in (None, "", [], {}, " ")}
+
+
+with st.spinner("🚀 Building request parameters..."):
     try:
         params_common = build_params(
             from_year, to_year,
@@ -1576,38 +1852,19 @@ with st.spinner("🚀 Generating dynamic request parameters..."):
             fitness_check=fitness_check,
             vehicle_type=vehicle_type
         )
-
         st.balloons()
-        st.toast("✨ Parameters generated successfully!", icon="⚙️")
-
-        with st.expander("🔧 View Generated Vahan Request Parameters (JSON)", expanded=True):
+        st.toast("✨ Parameters built successfully!", icon="⚙️")
+        with st.expander("🔧 View Generated Parameters (JSON)", expanded=False):
             st.json(params_common)
-            if st.button("📋 Copy Parameters JSON to Clipboard"):
-                st.toast("Copied successfully!", icon="✅")
-
-        st.markdown(f"""
-        <div style="
-            margin-top:12px;
-            background: linear-gradient(90deg, #00c6ff, #0072ff);
-            padding: 14px 20px;
-            border-radius: 10px;
-            color: #fff;
-            font-weight:600;
-            display:flex;justify-content:space-between;align-items:center;">
-            <div>✅ Parameters built successfully for <b>{to_year}</b></div>
-            <div style="opacity:0.85;font-size:14px;">Ready to fetch data 📡</div>
-        </div>
-        """, unsafe_allow_html=True)
-
     except Exception as e:
-        st.error(f"❌ Error while building Vahan parameters: {str(e)}")
-        if st.button("🔁 Retry Building Parameters"):
+        st.error(f"❌ Error building parameters: {e}")
+        if st.button("🔁 Retry"):
             st.toast("Rebuilding...", icon="🔄")
             time.sleep(0.5)
             st.rerun()
 
 # =====================================================
-# 🛡️ SAFE FETCH — ULTRA ROBUST API LAYER
+# ⚙️ ULTRA-SAFE FETCHER CONFIG
 # =====================================================
 BASE = "https://analytics.parivahan.gov.in/analytics/publicdashboard"
 DEFAULT_TIMEOUT = 30
@@ -1622,17 +1879,19 @@ ROTATING_UAS = [
 ]
 os.makedirs(CACHE_DIR, exist_ok=True)
 
-logger = logging.getLogger("safe_fetch")
+logger = logging.getLogger("vahan_safe_fetch")
 logger.setLevel(logging.INFO)
 
-# -------------------- Utilities --------------------
-def ist_now():
+# =====================================================
+# 🧩 UTILS
+# =====================================================
+def ist_now() -> str:
     return datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
 
 def log_ist(msg: str):
-    msg = f"[IST {ist_now()}] {msg}"
-    print(msg)
-    logger.info(msg)
+    m = f"[IST {ist_now()}] {msg}"
+    print(m)
+    logger.info(m)
 
 def clean_params(params: Dict[str, Any]) -> Dict[str, Any]:
     return {k: v for k, v in params.items() if v not in (None, "", [], {}, " ")}
@@ -1651,20 +1910,21 @@ def load_cache(url: str) -> Optional[Any]:
         if (time.time() - ts) > CACHE_TTL:
             os.remove(p)
             return None
-        logger.info(f"[{ist_now()}] Cache hit: {url}")
+        log_ist(f"Cache hit ✅ {url}")
         return data
     except Exception:
         return None
 
-def save_cache(url: str, data: Any) -> None:
-    if data is None: return
+def save_cache(url: str, data: Any):
     try:
         with open(_cache_path(url), "wb") as f:
             pickle.dump((time.time(), data), f)
     except Exception as e:
         logger.warning(f"Cache save failed: {e}")
 
-# -------------------- Token Bucket --------------------
+# =====================================================
+# 🧱 TOKEN BUCKET (THROTTLING)
+# =====================================================
 class TokenBucket:
     def __init__(self, cap: int, rate: float):
         self.capacity = cap
@@ -1678,11 +1938,14 @@ class TokenBucket:
             self.last = now
             if self.tokens >= 1:
                 self.tokens -= 1
-                return True
-            time.sleep(0.2)
+                return
+            time.sleep(0.25)
+
 _bucket = TokenBucket(10, 1.0)
 
-# -------------------- Safe Fetch --------------------
+# =====================================================
+# 🧩 SAFE FETCH
+# =====================================================
 def safe_get(path: str, params: Optional[Dict[str, Any]] = None, use_cache=True):
     params = clean_params(params or {})
     query = urlencode(params, doseq=True)
@@ -1697,7 +1960,7 @@ def safe_get(path: str, params: Optional[Dict[str, Any]] = None, use_cache=True)
     for attempt in range(1, MAX_RETRIES + 1):
         headers = {
             "User-Agent": random.choice(ROTATING_UAS),
-            "Accept": "application/json, text/plain, */*",
+            "Accept": "application/json,text/plain,*/*",
             "Referer": "https://analytics.parivahan.gov.in"
         }
         try:
@@ -1712,17 +1975,19 @@ def safe_get(path: str, params: Optional[Dict[str, Any]] = None, use_cache=True)
                 return data
             elif resp.status_code in (429, 500, 502, 503):
                 wait = BACKOFF_FACTOR ** attempt + random.uniform(0.5, 2.0)
-                log_ist(f"Retrying after {wait:.1f}s due to {resp.status_code}")
+                log_ist(f"Retrying after {wait:.1f}s — {resp.status_code}")
                 time.sleep(wait)
             else:
-                log_ist(f"Unexpected {resp.status_code}: {resp.text[:200]}")
+                log_ist(f"Unexpected status {resp.status_code}: {resp.text[:200]}")
                 return None
         except Exception as e:
             log_ist(f"⚠️ Attempt {attempt} failed: {e}")
             time.sleep(BACKOFF_FACTOR * attempt)
     return None
 
-# -------------------- Streamlit Wrapper --------------------
+# =====================================================
+# 🧩 FETCH WRAPPER (STREAMLIT-FRIENDLY)
+# =====================================================
 def fetch_json(path: str, params: Optional[Dict[str, Any]] = None, desc: str = "", use_cache=True):
     data = safe_get(path, params=params, use_cache=use_cache)
     if data:
@@ -1736,7 +2001,7 @@ def fetch_json(path: str, params: Optional[Dict[str, Any]] = None, desc: str = "
     return data
 
 # =====================================================
-# 🧩 Streamlit Boot Banner
+# 🧩 FINAL BOOT MESSAGE
 # =====================================================
 st.markdown(f"""
 <div style='
@@ -1744,530 +2009,224 @@ st.markdown(f"""
     color:white;
     padding:10px 20px;
     border-radius:10px;
-    margin-bottom:15px;
+    margin-top:15px;
     box-shadow:0 4px 15px rgba(0,0,0,0.2);
     font-family:monospace;'>
-    🕒 App booted at <b>{ist_now()} (IST)</b><br>
-    🧠 safe_fetch active — caching, retries & throttling enabled.
+    🕒 Booted at <b>{ist_now()} (IST)</b><br>
+    🧠 safe_fetch active — caching, retries, throttling, and dynamic params enabled.
 </div>
 """, unsafe_allow_html=True)
-log_ist("🚀 Streamlit app fully initialized with maxed safe_fetch")
+
+log_ist("✅ All-Maxed Vahan API initialized.")
 
 # =====================================================
-# 🧠 DeepInfra Universal Chat Helper (Fully Maxed)
+# 🧠 DeepInfra Universal Chat Helper (ALL MAXED EDITION)
 # =====================================================
+import os
 import random
 import string
 import time
+import json
+import pickle
 import traceback
+import requests
+import streamlit as st
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
+# =====================================================
+# ⚙️ GLOBAL CONFIG
+# =====================================================
 DEEPINFRA_CHAT_URL = "https://api.deepinfra.com/v1/openai/chat/completions"
+DEEPINFRA_API_KEY = os.getenv("DEEPINFRA_API_KEY", "")
+DEEPINFRA_MODEL = os.getenv("DEEPINFRA_MODEL", "meta-llama/Meta-Llama-3.1-70B-Instruct")
+CACHE_TTL = 1800  # 30 minutes
+CACHE_DIR = "deepinfra_cache"
+os.makedirs(CACHE_DIR, exist_ok=True)
 
-# Possible user-agents for light spoofing
 _UA_POOL = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7)",
     "Mozilla/5.0 (X11; Linux x86_64)",
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2_1 like Mac OS X)",
     "Mozilla/5.0 (iPad; CPU OS 17_2 like Mac OS X)",
-    "Mozilla/5.0 (Android 14; Mobile)",
+    "Mozilla/5.0 (Android 14; Mobile)"
 ]
 
-# Robust DeepInfra client
+# =====================================================
+# ⏰ TIME HELPERS
+# =====================================================
+def ist_now():
+    return datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
+
+# =====================================================
+# 💾 CACHING HELPERS
+# =====================================================
+def _cache_key(prompt: str, model: str) -> str:
+    import hashlib
+    return os.path.join(CACHE_DIR, hashlib.sha256(f"{model}:{prompt}".encode()).hexdigest() + ".pkl")
+
+def load_cache(prompt: str, model: str):
+    p = _cache_key(prompt, model)
+    if not os.path.exists(p):
+        return None
+    try:
+        ts, data = pickle.load(open(p, "rb"))
+        if time.time() - ts > CACHE_TTL:
+            os.remove(p)
+            return None
+        return data
+    except Exception:
+        return None
+
+def save_cache(prompt: str, model: str, data: dict):
+    try:
+        pickle.dump((time.time(), data), open(_cache_key(prompt, model), "wb"))
+    except Exception:
+        pass
+
+# =====================================================
+# 🧠 UNIVERSAL CHAT FUNCTION
+# =====================================================
 def deepinfra_chat(
     system_prompt: str,
     user_prompt: str,
     max_tokens: int = 1024,
-    temperature: float = 0.2,
+    temperature: float = 0.3,
     retries: int = 5,
-    model: str = None
+    model: str = None,
+    use_cache: bool = True
 ):
     """
-    Ultra-resilient DeepInfra API client with retry, rotation, and full error capture.
-    Compatible with OpenAI-format responses.
+    Fully Maxed DeepInfra API client:
+    - Retries, exponential backoff, jitter
+    - Rotating User-Agent + Request ID spoof
+    - Caching layer
+    - Streamlit integration
     """
 
     if not DEEPINFRA_API_KEY:
-        return {"error": "🔑 DeepInfra API key not configured. Please set DEEPINFRA_API_KEY."}
+        return {"error": "🔑 Missing DeepInfra API key. Please configure DEEPINFRA_API_KEY."}
 
-    if not model:
-        model = DEEPINFRA_MODEL
+    model = model or DEEPINFRA_MODEL
+    cache_key = f"{system_prompt[:60]}::{user_prompt[:80]}"
+
+    if use_cache:
+        cached = load_cache(cache_key, model)
+        if cached:
+            st.info("💾 Loaded cached DeepInfra response.")
+            return cached
 
     payload = {
         "model": model,
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
+            {"role": "user", "content": user_prompt},
         ],
         "temperature": temperature,
         "max_tokens": max_tokens,
         "top_p": 0.95,
         "frequency_penalty": 0.2,
         "presence_penalty": 0.1,
-        "stream": False
+        "stream": False,
     }
 
-    # Randomized rotating headers to avoid fingerprinting
     def _rotating_headers():
         return {
             "Authorization": f"Bearer {DEEPINFRA_API_KEY}",
             "Content-Type": "application/json",
             "User-Agent": random.choice(_UA_POOL),
-            "X-Request-ID": ''.join(random.choices(string.ascii_letters + string.digits, k=12)),
+            "X-Request-ID": "".join(random.choices(string.ascii_letters + string.digits, k=12)),
             "Accept": "application/json",
             "Cache-Control": "no-cache",
         }
 
-    for attempt in range(retries):
+    # =================================================
+    # 🔁 RETRY LOOP
+    # =================================================
+    for attempt in range(1, retries + 1):
         headers = _rotating_headers()
+        start = time.time()
         try:
             resp = requests.post(
                 DEEPINFRA_CHAT_URL,
                 headers=headers,
                 json=payload,
-                timeout=60
+                timeout=60,
             )
             status = resp.status_code
+            latency = round(time.time() - start, 2)
 
-            # === Handle status codes ===
             if status == 200:
-                data = resp.json()
-                if "choices" in data and len(data["choices"]) > 0:
-                    content = data["choices"][0]["message"]["content"]
-                    return {"text": content, "raw": data, "status": 200}
-                else:
-                    return {"error": "Malformed response", "raw": data, "status": 200}
+                try:
+                    data = resp.json()
+                    content = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+                    final = {
+                        "text": content,
+                        "raw": data,
+                        "status": 200,
+                        "model": model,
+                        "latency": latency,
+                        "time": ist_now(),
+                    }
+                    if use_cache:
+                        save_cache(cache_key, model, final)
+                    st.success(f"✅ DeepInfra ({model}) responded in {latency}s")
+                    return final
+                except Exception as e:
+                    st.error(f"⚠️ Parsing error: {e}")
+                    return {"error": "Malformed DeepInfra response", "status": "parse_error"}
 
-            elif status in [429, 408, 500, 502, 503, 504]:  # rate limit or transient errors
-                wait = (2 ** attempt) + random.random()
-                st.info(f"⏳ DeepInfra retrying (attempt {attempt+1}/{retries}) after {wait:.1f}s due to transient error {status}")
+            elif status in [429, 500, 502, 503, 504]:
+                wait = (2 ** attempt) + random.uniform(0.5, 2.0)
+                st.warning(f"⏳ Retry {attempt}/{retries} after {wait:.1f}s (HTTP {status})")
                 time.sleep(wait)
                 continue
 
             elif status == 401:
-                return {"error": "🚫 Unauthorized — check DeepInfra API key", "status": 401}
+                return {"error": "🚫 Unauthorized — invalid API key", "status": 401}
             elif status == 403:
-                return {"error": "❌ Forbidden — key lacks access or is invalid", "status": 403}
+                return {"error": "❌ Forbidden — access denied", "status": 403}
             elif status == 404:
-                return {"error": "🔍 Model or endpoint not found", "status": 404}
+                return {"error": "🔍 Model not found or unavailable", "status": 404}
             else:
-                return {"error": f"HTTP {status}: {resp.text[:500]}", "status": status}
+                return {"error": f"Unexpected HTTP {status}", "details": resp.text[:300]}
 
         except requests.exceptions.Timeout:
-            st.warning(f"⚠️ Timeout on DeepInfra (attempt {attempt+1}/{retries}), retrying...")
+            st.warning(f"⚠️ Timeout (attempt {attempt}/{retries}), retrying...")
             time.sleep(2 ** attempt + random.random())
         except requests.exceptions.ConnectionError as ce:
             st.warning(f"🌐 Connection error: {ce}, retrying...")
             time.sleep(2 ** attempt + random.random())
         except Exception as e:
-            st.error(f"🔥 Unexpected DeepInfra error: {e}\n{traceback.format_exc()}")
-            if attempt < retries - 1:
-                time.sleep(2 ** attempt + random.random())
+            st.error(f"🔥 Unexpected error: {e}\n{traceback.format_exc()}")
+            if attempt < retries:
+                time.sleep(2 ** attempt)
             else:
-                return {"error": str(e), "trace": traceback.format_exc(), "status": "exception"}
+                return {"error": str(e), "trace": traceback.format_exc()}
 
-    return {"error": f"Failed after {retries} retries", "status": "exhausted"}
+    return {"error": f"❌ Failed after {retries} retries", "status": "exhausted"}
 
-# vahan_category_analysis_2024_2025_2026.py
-# Streamlit app — Category Distribution (Real & Maxed) for 2024 (prev), 2025 (this), 2026 (pred)
+# =====================================================
+# 🧩 BOOT BANNER
+# =====================================================
+st.markdown(f"""
+<div style='
+    background:linear-gradient(90deg,#8338ec,#3a86ff);
+    color:white;
+    padding:10px 20px;
+    border-radius:10px;
+    margin:10px 0;
+    box-shadow:0 4px 15px rgba(0,0,0,0.25);
+    font-family:monospace;'>
+    🔮 DeepInfra Chat Helper (All Maxed) — initialized at <b>{ist_now()}</b><br>
+    🔁 Caching + Retry + Adaptive Headers + Live Logging
+</div>
+""", unsafe_allow_html=True)
 
-import io
-import math
-import json
-from datetime import date, datetime
+print(f"[{ist_now()}] ✅ DeepInfra All-Maxed Client ready.")
 
-import numpy as np
-import pandas as pd
-import altair as alt
-import plotly.express as px
-import streamlit as st
-
-# -----------------------------
-# CONFIG / DEFAULT YEARS
-# -----------------------------
-# The user asked specifically for 2024 (prev), 2025 (this), 2026 (next)
-DEFAULT_PREV = 2024
-DEFAULT_THIS = 2025
-DEFAULT_NEXT = 2026
-
-st.set_page_config(page_title="Vahan Category Analysis (2024-2026)", layout="wide")
-
-# -----------------------------
-# Helpers
-# -----------------------------
-
-def normalize_cat_df(df, default_year=DEFAULT_THIS):
-    """Normalize a wide variety of category payloads into DataFrame with columns: category, date, value"""
-    if df is None:
-        return pd.DataFrame(columns=["category", "date", "value"]) 
-    df = df.copy()
-    if df.empty:
-        return pd.DataFrame(columns=["category", "date", "value"]) 
-
-    # lowercase column mapping
-    cols_map = {c: c.strip() for c in df.columns}
-    lower_cols = {c.lower(): c for c in df.columns}
-
-    # pick columns heuristically
-    cat_col = None
-    for k in ("category", "cat", "name", "label"):
-        if k in lower_cols:
-            cat_col = lower_cols[k]
-            break
-    if cat_col is None:
-        # any non-numeric first column
-        for c in df.columns:
-            if not pd.api.types.is_numeric_dtype(df[c]):
-                cat_col = c
-                break
-    if cat_col is None:
-        cat_col = df.columns[0]
-
-    val_col = None
-    for k in ("value", "count", "total", "registrations", "reg", "y", "cnt"):
-        if k in lower_cols:
-            val_col = lower_cols[k]
-            break
-    if val_col is None:
-        # pick first numeric column not equal to cat_col
-        for c in df.columns:
-            if c == cat_col:
-                continue
-            if pd.api.types.is_numeric_dtype(df[c]):
-                val_col = c
-                break
-    if val_col is None:
-        # fallback: last column
-        val_col = df.columns[-1]
-
-    date_col = None
-    for k in ("date", "day", "time", "period", "month", "ds"):
-        if k in lower_cols:
-            date_col = lower_cols[k]
-            break
-    if date_col is None:
-        # create synthetic date at Jan 1 of default year
-        df["_gen_date"] = datetime(default_year, 1, 1)
-        date_col = "_gen_date"
-
-    # coerce
-    df[date_col] = pd.to_datetime(df[date_col], errors="coerce").fillna(pd.to_datetime(datetime(default_year,1,1)))
-    df[cat_col] = df[cat_col].astype(str)
-    df[val_col] = pd.to_numeric(df[val_col], errors="coerce").fillna(0)
-
-    out = pd.DataFrame({
-        "category": df[cat_col],
-        "date": df[date_col],
-        "value": df[val_col]
-    })
-    return out
-
-
-def pct_change(a, b):
-    try:
-        if a == 0:
-            return 100.0 if b > 0 else 0.0
-        return ((b - a) / abs(a)) * 100.0
-    except Exception:
-        return 0.0
-
-
-# -----------------------------
-# Mockable fetch functions
-# -----------------------------
-# The app expects two helper functions to exist in the environment:
-# - fetch_json(endpoint, params, desc) -> dict/JSON
-# - to_df(json) -> pandas.DataFrame
-# If you have them in your project, keep them. For testing locally you can uncomment the mock below.
-
-# def fetch_json(endpoint, params, desc=None):
-#     # mock: return empty list (replace with your actual API call)
-#     return []
-#
-# def to_df(j):
-#     return pd.DataFrame(j)
-
-
-# -----------------------------
-# UI: Year selection override (defaults set per user request)
-# -----------------------------
-st.sidebar.header("Year selection (overrides)")
-PREV_YEAR = int(st.sidebar.number_input("Prev year (prev)", value=DEFAULT_PREV, step=1, min_value=2000, max_value=2100))
-THIS_YEAR = int(st.sidebar.number_input("This year (this)", value=DEFAULT_THIS, step=1, min_value=2000, max_value=2100))
-NEXT_YEAR = int(st.sidebar.number_input("Next year (pred)", value=DEFAULT_NEXT, step=1, min_value=2000, max_value=2100))
-
-st.sidebar.markdown("---")
-# toggle: use 'maxed' endpoints (if your API has separate maxed vs real)
-use_maxed = st.sidebar.checkbox("Use maxed endpoints (if available)", value=True)
-enable_ai = st.sidebar.checkbox("Enable AI narrative (deepinfra)", value=False)
-
-# params_common is expected in your app context. Provide a small default so fetch functions don't break in tests.
-params_common = {"region": "all"}
-
-# -----------------------------
-# Fetching multi-year category data
-# -----------------------------
-st.header("Category Distribution — Real & Maxed (2024/2025/2026 defaults)")
-with st.spinner("Fetching category data for selected years..."):
-    dfs = []
-    years_to_fetch = [PREV_YEAR, THIS_YEAR]
-    # if you want raw ALL years, include NEXT_YEAR as historical if available
-    for yr in years_to_fetch:
-        p = params_common.copy()
-        p["year"] = yr
-        # choose endpoint name depending on maxed flag — adjust to your backend
-        ep = "vahandashboard/categoriesdonutchart_maxed" if use_maxed else "vahandashboard/categoriesdonutchart"
-        try:
-            raw = fetch_json(ep, p, desc=f"Category distribution {yr}")
-        except Exception:
-            # fallback to non-maxed name
-            raw = fetch_json("vahandashboard/categoriesdonutchart", p, desc=f"Category distribution {yr}")
-        if raw:
-            df = to_df(raw)
-            if not df.empty:
-                df["_source_year"] = yr
-                dfs.append(df)
-
-    if not dfs:
-        st.warning("No data returned from endpoints for selected years. Make sure fetch_json/to_df are available and endpoint names are correct.")
-
-    cat_df_raw = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
-
-# normalize
-df_cat = normalize_cat_df(cat_df_raw, default_year=THIS_YEAR)
-
-if df_cat.empty:
-    st.error("No category data available after normalization. Provide data or check endpoints.")
-else:
-    # derive fields
-    df_cat["date"] = pd.to_datetime(df_cat["date"])  # already coerced but be safe
-    df_cat["year"] = df_cat["date"].dt.year
-    df_cat["month"] = df_cat["date"].dt.to_period("M").dt.to_timestamp()
-    df_cat["day"] = df_cat["date"].dt.floor("D")
-
-    # totals and pivots
-    total_by_cat = df_cat.groupby("category", as_index=False)["value"].sum().sort_values("value", ascending=False)
-    overall_total = float(total_by_cat["value"].sum())
-
-    monthly = df_cat.groupby(["month", "category"], as_index=False)["value"].sum()
-    monthly_totals = monthly.groupby("month", as_index=True)["value"].sum().sort_index()
-
-    yearly = df_cat.groupby(["year", "category"], as_index=False)["value"].sum()
-    yearly_pivot = yearly.pivot(index="year", columns="category", values="value").fillna(0)
-
-    totals_by_year = df_cat.groupby("year", as_index=False)["value"].sum().set_index("year")["value"]
-    prev_total = float(totals_by_year.get(PREV_YEAR, 0.0))
-    this_total = float(totals_by_year.get(THIS_YEAR, 0.0))
-
-    # -----------------------------
-    # Forecasting (Prophet preferred, linear fallback)
-    # -----------------------------
-    forecast_monthly = None
-    predicted_next_total = 0.0
-
-    try:
-        # detect prophet availability
-        try:
-            from prophet import Prophet
-            PROPHET_AVAILABLE = True
-        except Exception:
-            PROPHET_AVAILABLE = False
-
-        if PROPHET_AVAILABLE and len(monthly_totals) >= 12:
-            dfp = monthly_totals.reset_index().rename(columns={"month": "ds", "value": "y"})
-            m = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
-            m.fit(dfp)
-            future = m.make_future_dataframe(periods=12, freq='MS')
-            fc = m.predict(future)
-            forecast_monthly = fc[["ds", "yhat", "yhat_lower", "yhat_upper"]].set_index("ds")
-            predicted_next_total = float(forecast_monthly[forecast_monthly.index.year == NEXT_YEAR]["yhat"].sum())
-        else:
-            raise Exception("Prophet not available or insufficient history")
-    except Exception:
-        # linear fallback
-        try:
-            from sklearn.linear_model import LinearRegression
-            if len(monthly_totals) >= 3:
-                X = np.arange(len(monthly_totals)).reshape(-1, 1)
-                y = monthly_totals.values
-                lr = LinearRegression().fit(X, y)
-                future_idx = np.arange(len(monthly_totals), len(monthly_totals) + 12).reshape(-1, 1)
-                yhat = lr.predict(future_idx)
-                last_month = pd.to_datetime(monthly_totals.index.max())
-                next_months = pd.date_range(start=(last_month + pd.offsets.MonthBegin(1)).replace(day=1), periods=12, freq='MS')
-                forecast_monthly = pd.DataFrame({
-                    "yhat": np.maximum(yhat, 0),
-                    "yhat_lower": np.maximum(yhat * 0.85, 0),
-                    "yhat_upper": np.maximum(yhat * 1.15, 0),
-                }, index=next_months)
-                predicted_next_total = float(forecast_monthly["yhat"].sum())
-        except Exception:
-            predicted_next_total = 0.0
-
-    # small fallback if prediction missing but this_total exists
-    if (predicted_next_total == 0 or math.isnan(predicted_next_total)) and this_total > 0:
-        predicted_next_total = this_total * 1.05
-
-    # -----------------------------
-    # KPIs, charts, and comparison
-    # -----------------------------
-    kpi_prev_vs_this = pct_change(prev_total, this_total)
-    kpi_this_vs_next = pct_change(this_total, predicted_next_total)
-
-    st.subheader("Category Distribution — Real & Predicted (Maxed)")
-    k1, k2, k3, k4 = st.columns(4)
-    k1.metric(f"Prev Year ({PREV_YEAR})", f"{int(prev_total):,}", f"{kpi_prev_vs_this:.2f}% vs prev")
-    k2.metric(f"This Year ({THIS_YEAR})", f"{int(this_total):,}", f"{kpi_this_vs_next:.2f}% vs this")
-    k3.metric(f"Predicted Next Year ({NEXT_YEAR})", f"{int(predicted_next_total):,}", f"{pct_change(prev_total, predicted_next_total):.2f}% vs prev")
-    k4.metric("Overall (All-time)", f"{int(overall_total):,}")
-
-    # top categories — guard slider bounds
-    max_total_cats = max(3, len(total_by_cat))
-    default_topn = min(10, len(total_by_cat)) if len(total_by_cat) >= 3 else len(total_by_cat)
-    topn = st.slider("Top N categories to show", min_value=3 if len(total_by_cat) >=3 else 1, max_value=max_total_cats, value=default_topn)
-    top_cats = total_by_cat.head(topn)
-
-    st.markdown("### Top Categories — Real")
-    bar = alt.Chart(top_cats).mark_bar().encode(
-        x=alt.X("value:Q", title="Registrations"),
-        y=alt.Y("category:N", sort='-x', title="Category"),
-        tooltip=[alt.Tooltip("category:N"), alt.Tooltip("value:Q", format=",")] 
-    ).properties(height=40 * min(len(top_cats), 20), width=800)
-    st.altair_chart(bar, use_container_width=True)
-
-    pie = px.pie(top_cats, names="category", values="value", hole=0.45, title="Top Categories (Donut)")
-    pie.update_traces(textinfo='percent+label', hoverinfo='label+value')
-    st.plotly_chart(pie, use_container_width=True)
-
-    # time series with prediction ribbon
-    st.markdown("### Monthly Trend — Real + Predicted")
-    ts_real = monthly_totals.rename("real").reset_index().rename(columns={"month":"month","value":"value"})
-    ts_real["month"] = pd.to_datetime(ts_real["month"])
-    if forecast_monthly is not None and not forecast_monthly.empty:
-        fc = forecast_monthly.reset_index().rename(columns={"index":"month"})
-        fc["month"] = pd.to_datetime(fc["month"])
-        fc = fc.assign(type="predicted")
-        plot_df = pd.concat([
-            ts_real.assign(type="real").rename(columns={"value":"y"})[["month","y","type"]],
-            fc.rename(columns={"yhat":"y"})[["month","y","type","yhat_lower","yhat_upper"]].fillna(method='ffill')
-        ], ignore_index=True, sort=False)
-    else:
-        plot_df = ts_real.assign(type="real").rename(columns={"value":"y"})[["month","y","type"]]
-
-    fig = px.line(plot_df, x="month", y="y", color="type", markers=True, title="Monthly Registrations — Real vs Predicted")
-    # add ribbon if fc present
-    if forecast_monthly is not None and not forecast_monthly.empty:
-        fig.add_traces(px.line(fc, x="month", y="yhat_upper").data)
-        fig.add_traces(px.line(fc, x="month", y="yhat_lower").data)
-        # create filled area via scatter
-        fig.add_traces([{
-            'x': fc['month'], 'y': fc['yhat_upper'], 'mode': 'lines', 'line': {'width': 0}, 'showlegend': False
-        }, {
-            'x': fc['month'], 'y': fc['yhat_lower'], 'mode': 'lines', 'fill': 'tonexty', 'fillcolor': 'rgba(0,176,246,0.2)', 'line': {'width': 0}, 'showlegend': False
-        }])
-    fig.update_layout(legend_title_text="Series", xaxis_title="Month", yaxis_title="Registrations")
-    st.plotly_chart(fig, use_container_width=True)
-
-    # category-level comparisons
-    st.markdown("### Category-level Comparison: Prev vs This vs Predicted Next")
-    # historical share based on totals across historical years available (prefer THIS_YEAR totals if present)
-    hist_totals = df_cat.groupby("category", as_index=False)["value"].sum().set_index('category')
-    hist_totals['share'] = hist_totals['value'] / hist_totals['value'].sum() if hist_totals['value'].sum() > 0 else 0
-
-    # build per-category numbers
-    prev_per_cat = yearly_pivot.loc[PREV_YEAR] if PREV_YEAR in yearly_pivot.index else pd.Series(0, index=yearly_pivot.columns)
-    this_per_cat = yearly_pivot.loc[THIS_YEAR] if THIS_YEAR in yearly_pivot.index else pd.Series(0, index=yearly_pivot.columns)
-
-    cats = sorted(set(list(prev_per_cat.index) + list(this_per_cat.index) + list(hist_totals.index)))
-    rows = []
-    for c in cats:
-        prev_v = float(prev_per_cat.get(c, 0)) if c in prev_per_cat.index else 0.0
-        this_v = float(this_per_cat.get(c, 0)) if c in this_per_cat.index else 0.0
-        share = float(hist_totals.loc[c]['share']) if c in hist_totals.index else 0.0
-        pred_v = share * predicted_next_total
-        rows.append({
-            "category": c,
-            str(PREV_YEAR): prev_v,
-            str(THIS_YEAR): this_v,
-            f"{NEXT_YEAR} (pred)": pred_v,
-            "growth_prev_to_this %": pct_change(prev_v, this_v),
-            "growth_this_to_next %": pct_change(this_v, pred_v)
-        })
-
-    comp_df = pd.DataFrame(rows).sort_values(str(THIS_YEAR), ascending=False)
-
-    # display
-    st.dataframe(comp_df.style.format({str(PREV_YEAR): "{:,}", str(THIS_YEAR): "{:,}", f"{NEXT_YEAR} (pred)": "{:,}", "growth_prev_to_this %": "{:.2f}%", "growth_this_to_next %": "{:.2f}%"}), height=420)
-
-    # drilldowns
-    st.markdown("### Drilldowns & Extra Views")
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        show_daily = st.checkbox("Show daily trend", value=False)
-    with c2:
-        show_monthly_by_cat = st.checkbox("Show monthly stacked by category", value=True)
-    with c3:
-        show_yearly_heatmap = st.checkbox("Show yearly heatmap (category x year)", value=False)
-
-    if show_daily:
-        daily = df_cat.groupby(["day", "category"], as_index=False)["value"].sum()
-        top_cats_list = top_cats['category'].tolist()
-        daily_long = daily[daily['category'].isin(top_cats_list)]
-        fig_daily = px.line(daily_long, x='day', y='value', color='category', title='Daily Registrations — Top Categories')
-        fig_daily.update_layout(xaxis_title='Day', yaxis_title='Registrations')
-        st.plotly_chart(fig_daily, use_container_width=True)
-
-    if show_monthly_by_cat:
-        monthly_long = monthly.sort_values('month')
-        fig_monthly = px.area(monthly_long, x='month', y='value', color='category', title='Monthly Stacked by Category')
-        fig_monthly.update_layout(xaxis_title='Month', yaxis_title='Registrations')
-        st.plotly_chart(fig_monthly, use_container_width=True)
-
-    if show_yearly_heatmap:
-        heat_pivot = yearly_pivot.fillna(0)
-        if not heat_pivot.empty:
-            heat_map = px.imshow(heat_pivot.T, labels=dict(x='Year', y='Category', color='Registrations'), x=heat_pivot.index.astype(str).tolist(), y=heat_pivot.columns.tolist(), aspect='auto', title='Yearly Heatmap (Categories x Year)')
-            st.plotly_chart(heat_map, use_container_width=True)
-        else:
-            st.info('No yearly pivot data to show heatmap.')
-
-    # exports
-    st.markdown("### Export Data & Charts")
-    csv = df_cat.to_csv(index=False).encode('utf-8')
-    st.download_button("Download raw category CSV", csv, file_name=f"category_raw_{THIS_YEAR}.csv", mime='text/csv')
-
-    try:
-        excel_buffer = io.BytesIO()
-        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-            df_cat.to_excel(writer, sheet_name='raw', index=False)
-            comp_df.to_excel(writer, sheet_name='comparison', index=False)
-            monthly_totals.reset_index().to_excel(writer, sheet_name='monthly_totals', index=False)
-            if forecast_monthly is not None:
-                # ensure index column named
-                fm = forecast_monthly.reset_index()
-                fm.to_excel(writer, sheet_name='forecast_monthly', index=False)
-        excel_buffer.seek(0)
-        st.download_button("Download analysis Excel", excel_buffer, file_name=f"vahan_category_analysis_{THIS_YEAR}.xlsx", mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    except Exception as e:
-        st.warning(f"Excel export failed (openpyxl may be missing): {e}")
-
-    # optional AI summary: call deepinfra_chat if available
-    if enable_ai and "deepinfra_chat" in globals():
-        with st.spinner("Generating AI narrative..."):
-            sys = "You are a data analyst assistant. Summarize the real registration counts and predictions focusing on top categories, growth/decline and one recommendation."
-            sample_rows = comp_df.head(10).to_dict(orient='records')
-            user_prompt = f"Real totals: prev_year={int(prev_total):,}, this_year={int(this_total):,}, predicted_next_year={int(predicted_next_total):,}. Top categories sample: {json.dumps(sample_rows, default=str)}"
-            try:
-                ai_out = deepinfra_chat(sys, user_prompt, max_tokens=280)
-                if isinstance(ai_out, dict) and 'text' in ai_out:
-                    st.markdown('**AI Narrative (Live)**')
-                    st.write(ai_out['text'])
-                else:
-                    st.info('AI narrative unavailable or key missing.')
-            except Exception as e:
-                st.info(f'AI call failed: {e}')
-
-    st.success("✅ Category Distribution full analysis complete (real & predicted).")
+------------------------------------------------------------------
 
 
 # =====================================================
@@ -2285,6 +2244,8 @@ import altair as alt
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 import streamlit as st
+from vahan.api import fetch_json, deepinfra_chat, params_common
+from vahan.parsing import parse_makers
 warnings.filterwarnings("ignore")
 
 TODAY = date.today()
@@ -2292,60 +2253,32 @@ PREV_YEAR = TODAY.year - 1
 THIS_YEAR = TODAY.year
 NEXT_YEAR = THIS_YEAR + 1
 
-# ------------------ Helpers ------------------
-from datetime import datetime
-import pandas as pd
-import numpy as np
-
+# =====================================================
+# 🧩 Helpers
+# =====================================================
+@st.cache_data(show_spinner=False, ttl=900)
 def normalize_maker_df(df):
     """
     Normalize parse_makers output into canonical columns:
-    returns DataFrame with columns ['maker','date','value'] (date may be same for all rows).
-    If df already has time-series rows, parse date; otherwise set to THIS_YEAR start.
+    ['maker', 'date', 'value']
     """
     THIS_YEAR = datetime.now().year
-
-    # Handle empty / None input safely
     if df is None or len(df) == 0:
         return pd.DataFrame(columns=["maker", "date", "value"])
 
     df = df.copy()
     cols_lower = {c.lower(): c for c in df.columns}
 
-    # detect maker column
-    maker_col = next((cols_lower[k] for k in ("maker", "manufacturer", "label", "name") if k in cols_lower), None)
-    if maker_col is None and len(df.columns) > 0:
-        maker_col = df.columns[0]
-
-    # detect value column
-    value_col = next((cols_lower[k] for k in ("value", "count", "registrations", "total", "regcount", "y") if k in cols_lower), None)
-    if value_col is None:
-        num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-        if num_cols:
-            value_col = num_cols[0]
-        elif len(df.columns) >= 2:
-            value_col = df.columns[-1]
-
-    # detect date-like column
+    maker_col = next((cols_lower[k] for k in ("maker", "manufacturer", "label", "name") if k in cols_lower), df.columns[0])
+    value_col = next((cols_lower[k] for k in ("value", "count", "registrations", "total") if k in cols_lower), df.select_dtypes(include=[np.number]).columns[0])
     date_col = next((cols_lower[k] for k in ("date", "ds", "month", "period", "time") if k in cols_lower), None)
+
     if date_col is not None:
         df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
 
-    # fallback if missing
-    valid_cols = [c for c in [maker_col, value_col] if c in df.columns]
-    if len(valid_cols) < 2:
-        # not enough valid cols to continue
-        print(f"⚠️ normalize_maker_df: invalid cols — maker_col={maker_col}, value_col={value_col}, df_cols={df.columns.tolist()}")
-        return pd.DataFrame(columns=["maker", "date", "value"])
-
-    # if no date col, assign static date (current year start)
-    if date_col is None:
-        df = df[[maker_col, value_col]].rename(columns={maker_col: "maker", value_col: "value"})
-        df["date"] = pd.to_datetime(datetime(THIS_YEAR, 1, 1))
-    else:
-        df = df.rename(columns={maker_col: "maker", value_col: "value", date_col: "date"})
-        if "date" not in df.columns:
-            df["date"] = pd.to_datetime(datetime(THIS_YEAR, 1, 1))
+    df = df.rename(columns={maker_col: "maker", value_col: "value"})
+    if date_col: df = df.rename(columns={date_col: "date"})
+    else: df["date"] = pd.to_datetime(datetime(THIS_YEAR, 1, 1))
 
     df["maker"] = df["maker"].astype(str)
     df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
@@ -2355,251 +2288,212 @@ def normalize_maker_df(df):
 
 def pct_change(a, b):
     try:
-        if a == 0:
-            return float("inf") if b != 0 else 0.0
-        return ((b - a) / abs(a)) * 100.0
+        return ((b - a) / abs(a)) * 100.0 if a != 0 else (float("inf") if b != 0 else 0.0)
     except Exception:
         return 0.0
 
+@st.cache_data(show_spinner=False, ttl=1200)
 def forecast_monthly_series(series, periods=12):
-    """
-    series: pd.Series indexed by period timestamps (monthly) with numeric values
-    returns DataFrame index=forecast_months ts columns ['yhat','yhat_lower','yhat_upper']
-    Uses Prophet if available and enough history, else linear regression fallback. Returns None if insufficient data.
-    """
     try:
         s = series.dropna().sort_index()
         if len(s) < 6:
             return None
-        # prefer Prophet
-        if PROPHET_AVAILABLE and len(s) >= 12:
+
+        # Prophet preferred if available
+        try:
             from prophet import Prophet
-            df_prop = s.reset_index().rename(columns={s.index.name or 'index':'ds', 0:'y'})
-            # ensure columns named ds,y
-            df_prop.columns = ['ds','y']
-            m = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
+            df_prop = s.reset_index().rename(columns={s.index.name or 'index': 'ds', 0: 'y'})
+            df_prop.columns = ['ds', 'y']
+            m = Prophet(yearly_seasonality=True)
             m.fit(df_prop)
             future = m.make_future_dataframe(periods=periods, freq='MS')
-            fc = m.predict(future)[["ds","yhat","yhat_lower","yhat_upper"]].set_index("ds")
+            fc = m.predict(future)[["ds", "yhat", "yhat_lower", "yhat_upper"]].set_index("ds")
             return fc.tail(periods)
-        else:
-            # linear regression on index
+        except Exception:
+            # fallback: linear regression
             from sklearn.linear_model import LinearRegression
-            X = np.arange(len(s)).reshape(-1,1)
+            X = np.arange(len(s)).reshape(-1, 1)
             y = s.values
-            lr = LinearRegression()
-            lr.fit(X,y)
-            future_X = np.arange(len(s), len(s)+periods).reshape(-1,1)
+            lr = LinearRegression().fit(X, y)
+            future_X = np.arange(len(s), len(s) + periods).reshape(-1, 1)
             yhat = lr.predict(future_X)
-            last_ts = s.index.max()
-            next_months = pd.date_range(start=(pd.to_datetime(last_ts) + pd.offsets.MonthBegin(1)).replace(day=1), periods=periods, freq='MS')
-            fc = pd.DataFrame({
+            next_months = pd.date_range(start=s.index[-1] + pd.offsets.MonthBegin(1), periods=periods, freq='MS')
+            return pd.DataFrame({
                 "yhat": np.maximum(yhat, 0),
                 "yhat_lower": np.maximum(yhat * 0.85, 0),
-                "yhat_upper": np.maximum(yhat * 1.15, 0),
+                "yhat_upper": np.maximum(yhat * 1.15, 0)
             }, index=next_months)
-            return fc
     except Exception:
         return None
 
-# ------------------ Fetch & prepare ------------------
-with st.spinner("Fetching Top Makers (maxed)..."):
+# =====================================================
+# 🧠 Load Data — Full Safety Wrapper
+# =====================================================
+with st.spinner("🔄 Fetching Top Makers (MAXED Mode)..."):
     mk_json = fetch_json("vahandashboard/top5Makerchart", params_common, desc="Top Makers")
     mk_df_raw = parse_makers(mk_json) if mk_json else pd.DataFrame()
+
 df_mk = normalize_maker_df(mk_df_raw)
-
 if df_mk.empty:
-    st.warning("No Top Makers data available.")
-else:
-    # derive time buckets
-    df_mk["month"] = df_mk["date"].dt.to_period("M").dt.to_timestamp()
-    df_mk["year"] = df_mk["date"].dt.year
-    df_mk["day"] = df_mk["date"].dt.floor("D")
+    st.warning("⚠️ No data available for Top Makers.")
+    st.stop()
 
-    # overall totals and ranking (real)
-    totals_by_maker = df_mk.groupby("maker", as_index=False)["value"].sum().sort_values("value", ascending=False)
-    overall_total = totals_by_maker["value"].sum()
+# =====================================================
+# 📊 Computations & Forecasts
+# =====================================================
+df_mk["month"] = df_mk["date"].dt.to_period("M").dt.to_timestamp()
+df_mk["year"] = df_mk["date"].dt.year
+totals_by_maker = df_mk.groupby("maker", as_index=False)["value"].sum().sort_values("value", ascending=False)
+monthly_totals = df_mk.groupby("month", as_index=True)["value"].sum()
+yearly_pivot = df_mk.groupby(["year", "maker"], as_index=False)["value"].sum().pivot(index="year", columns="maker", values="value").fillna(0)
+monthly_pivot = df_mk.groupby(["month", "maker"], as_index=False)["value"].sum().pivot(index="month", columns="maker", values="value").fillna(0)
 
-    # monthly totals (all makers combined)
-    monthly_totals = df_mk.groupby("month", as_index=True)["value"].sum().sort_index()
+prev_total = float(monthly_totals[monthly_totals.index.year == PREV_YEAR].sum())
+this_total = float(monthly_totals[monthly_totals.index.year == THIS_YEAR].sum())
+fc_monthly_overall = forecast_monthly_series(monthly_totals, periods=12)
+predicted_next_total = float(fc_monthly_overall[fc_monthly_overall.index.year == NEXT_YEAR]["yhat"].sum()) if fc_monthly_overall is not None else 0.0
 
-    # yearly totals per maker (pivot)
-    yearly = df_mk.groupby(["year","maker"], as_index=False)["value"].sum()
-    yearly_pivot = yearly.pivot(index="year", columns="maker", values="value").fillna(0).sort_index()
+# Per-maker forecasts
+maker_forecasts, hist_share = {}, totals_by_maker.set_index("maker")["value"] / max(totals_by_maker["value"].sum(), 1)
+for mk in monthly_pivot.columns:
+    fc = forecast_monthly_series(monthly_pivot[mk], periods=12)
+    if fc is not None: maker_forecasts[mk] = fc
 
-    # per-maker monthly pivot
-    monthly_by_maker = df_mk.groupby(["month","maker"], as_index=False)["value"].sum()
-    monthly_pivot = monthly_by_maker.pivot(index="month", columns="maker", values="value").fillna(0).sort_index()
+maker_pred_next = {
+    mk: (float(maker_forecasts[mk][maker_forecasts[mk].index.year == NEXT_YEAR]["yhat"].sum())
+         if mk in maker_forecasts else float(hist_share.get(mk, 0.0) * predicted_next_total))
+    for mk in totals_by_maker["maker"]
+}
 
-    # KPI totals: prev / this / predicted next (global)
-    prev_total = float(monthly_totals[monthly_totals.index.year == PREV_YEAR].sum()) if not monthly_totals.empty else float(yearly_pivot.loc[PREV_YEAR].sum() if PREV_YEAR in yearly_pivot.index else 0.0)
-    this_total = float(monthly_totals[monthly_totals.index.year == THIS_YEAR].sum()) if not monthly_totals.empty else float(yearly_pivot.loc[THIS_YEAR].sum() if THIS_YEAR in yearly_pivot.index else 0.0)
+# =====================================================
+# 📈 Dashboard (MAXED)
+# =====================================================
+st.header("🏭 Top Makers — Real + Predicted (MAXED)")
+tabs = st.tabs(["📊 Overview", "📈 Trends", "📋 Detailed Table", "🤖 AI Narrative"])
 
-    # Forecast overall monthly -> next year
-    fc_monthly_overall = forecast_monthly_series(monthly_totals, periods=12)
-    predicted_next_total = float(fc_monthly_overall[fc_monthly_overall.index.year == NEXT_YEAR]["yhat"].sum()) if fc_monthly_overall is not None else 0.0
+with tabs[0]:
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric(f"{PREV_YEAR}", f"{int(prev_total):,}", delta=None)
+    col2.metric(f"{THIS_YEAR}", f"{int(this_total):,}", delta=f"{pct_change(prev_total, this_total):.2f}% vs prev")
+    col3.metric(f"{NEXT_YEAR} (pred)", f"{int(predicted_next_total):,}", delta=f"{pct_change(this_total, predicted_next_total):.2f}% vs this")
+    col4.metric("All-Time Total", f"{int(df_mk['value'].sum()):,}")
 
-    # Per-maker predicted allocation:
-    # If per-maker history is sufficient, forecast each maker individually (preferred).
-    maker_forecasts = {}
-    for maker in monthly_pivot.columns:
-        series = monthly_pivot[maker]
-        fc = forecast_monthly_series(series, periods=12)
-        if fc is not None:
-            maker_forecasts[maker] = fc
-    # For makers without individual forecast, distribute overall predicted_next_total proportional to historical share
-    hist_share = totals_by_maker.set_index("maker")["value"] / (totals_by_maker["value"].sum() if totals_by_maker["value"].sum()>0 else 1)
-    maker_predicted_next = {}
-    for maker in totals_by_maker["maker"].tolist():
-        if maker in maker_forecasts:
-            pred = float(maker_forecasts[maker][maker_forecasts[maker].index.year == NEXT_YEAR]["yhat"].sum()) if not maker_forecasts[maker].empty else 0.0
-            maker_predicted_next[maker] = pred
-        else:
-            maker_predicted_next[maker] = float(hist_share.get(maker, 0.0) * predicted_next_total)
+    st.altair_chart(
+        alt.Chart(totals_by_maker.head(10)).mark_bar().encode(
+            x=alt.X("value:Q", title="Registrations"),
+            y=alt.Y("maker:N", sort='-x'),
+            tooltip=["maker", "value"]
+        ).properties(title="Top 10 Makers (Total)"),
+        use_container_width=True
+    )
 
-    # totals by year (all categories)
-    totals_by_year = df_mk.groupby("year", as_index=True)["value"].sum().sort_index()
-    # ensure numeric defaults
-    prev_total = float(prev_total or 0.0)
-    this_total = float(this_total or 0.0)
-    predicted_next_total = float(predicted_next_total or 0.0)
-
-    # KPI comparisons
-    kpi_prev_vs_this = pct_change(prev_total, this_total)
-    kpi_this_vs_next = pct_change(this_total, predicted_next_total)
-
-    # ------------------ UI: KPIs ------------------
-    st.subheader("Top Makers — Real & Predicted (Maxed)")
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric(label=f"Prev Year ({PREV_YEAR})", value=f"{int(prev_total):,}", delta=f"{kpi_prev_vs_this:.2f}% vs prev")
-    c2.metric(label=f"This Year ({THIS_YEAR})", value=f"{int(this_total):,}", delta=f"{kpi_this_vs_next:.2f}% vs this")
-    c3.metric(label=f"Predicted Next Year ({NEXT_YEAR})", value=f"{int(predicted_next_total):,}", delta=f"{pct_change(prev_total, predicted_next_total):.2f}% vs prev")
-    c4.metric(label="Overall (All-time)", value=f"{int(overall_total):,}")
-
-    # ------------------ Top makers visuals ------------------
-    st.markdown("### Top Makers — Current Ranking")
-    top_n = st.slider("Top N makers to display", min_value=3, max_value=min(50, len(totals_by_maker)), value=min(10, len(totals_by_maker)))
-    top_makers = totals_by_maker.head(top_n)
-
-    # Bar chart (altair)
-    bar = alt.Chart(top_makers).mark_bar().encode(
-        x=alt.X("value:Q", title="Registrations"),
-        y=alt.Y("maker:N", sort='-x', title="Maker"),
-        tooltip=[alt.Tooltip("maker:N"), alt.Tooltip("value:Q", format=",")]
-    ).properties(height=40*min(len(top_makers),20), width=700, title=f"Top {top_n} Makers (Total)")
-    st.altair_chart(bar, use_container_width=True)
-
-    # Donut (plotly)
-    pie = px.pie(top_makers, names="maker", values="value", hole=0.45, title="Top Makers (Donut)")
-    pie.update_traces(textinfo='percent+label', hoverinfo='label+value')
-    st.plotly_chart(pie, use_container_width=True)
-
-    # ------------------ Monthly trend (overall) ------------------
-    st.markdown("### Monthly Registrations — Real vs Predicted (Overall)")
-    real_ts = monthly_totals.reset_index().rename(columns={"month":"ds","value":"y"})
+with tabs[1]:
+    real = monthly_totals.reset_index().rename(columns={"month": "ds", "value": "y"}).assign(type="real")
     if fc_monthly_overall is not None:
-        fc_df = fc_monthly_overall.reset_index().rename(columns={"index":"ds"})
-        fc_df["type"] = "predicted"
-        real_df = real_ts.assign(type="real")
-        plot_df = pd.concat([real_df.rename(columns={"ds":"month","y":"value"}).assign(type="real"),
-                             fc_df.rename(columns={"ds":"month","yhat":"value"}).assign(type="predicted")], ignore_index=True, sort=False)
+        fc_df = fc_monthly_overall.reset_index().rename(columns={"index": "ds", "yhat": "y"}).assign(type="predicted")
+        combined = pd.concat([real, fc_df])
     else:
-        plot_df = real_ts.rename(columns={"ds":"month","y":"value"}).assign(type="real")
+        combined = real
 
-    fig = px.line(plot_df, x="month", y="value", color="type", markers=True,
-                  title="Monthly Registrations — Real vs Predicted (Overall)")
-    fig.update_layout(xaxis_title="Month", yaxis_title="Registrations")
+    fig = px.line(combined, x="ds", y="y", color="type", title="Monthly Registrations — Real vs Predicted")
     st.plotly_chart(fig, use_container_width=True)
 
-    # ------------------ Per-maker comparisons table ------------------
-    st.markdown("### Maker-level: Prev vs This vs Predicted Next (detailed)")
+with tabs[2]:
     rows = []
-    for maker in totals_by_maker["maker"].tolist():
-        prev_v = float(yearly_pivot.loc[PREV_YEAR, maker]) if PREV_YEAR in yearly_pivot.index and maker in yearly_pivot.columns else 0.0
-        this_v = float(yearly_pivot.loc[THIS_YEAR, maker]) if THIS_YEAR in yearly_pivot.index and maker in yearly_pivot.columns else 0.0
-        pred_v = float(maker_predicted_next.get(maker, 0.0))
+    for mk in totals_by_maker["maker"]:
+        prev_v = yearly_pivot.loc[PREV_YEAR, mk] if PREV_YEAR in yearly_pivot.index else 0
+        this_v = yearly_pivot.loc[THIS_YEAR, mk] if THIS_YEAR in yearly_pivot.index else 0
+        pred_v = maker_pred_next.get(mk, 0)
         rows.append({
-            "maker": maker,
+            "maker": mk,
             f"{PREV_YEAR}": prev_v,
             f"{THIS_YEAR}": this_v,
             f"{NEXT_YEAR} (pred)": pred_v,
-            "growth_prev_to_this %": pct_change(prev_v, this_v),
-            "growth_this_to_next %": pct_change(this_v, pred_v),
-            "historical_share %": float(hist_share.get(maker, 0.0))*100
+            "growth_this_to_next %": pct_change(this_v, pred_v)
         })
-    maker_comp_df = pd.DataFrame(rows).sort_values(f"{THIS_YEAR}", ascending=False)
-    st.dataframe(maker_comp_df.style.format({f"{PREV_YEAR}":"{:,}", f"{THIS_YEAR}":"{:,}", f"{NEXT_YEAR} (pred)":"{:,}", "growth_prev_to_this %":"{:.2f}%", "growth_this_to_next %":"{:.2f}%", "historical_share %":"{:.2f}%"}), height=400)
+    table = pd.DataFrame(rows).sort_values(f"{THIS_YEAR}", ascending=False)
+    st.dataframe(table.style.format("{:,.0f}"))
 
-    # ------------------ Stacked monthly area by maker ------------------
-    st.markdown("### Monthly Stacked by Maker (Top makers)")
-    monthly_top = monthly_by_maker[monthly_by_maker["maker"].isin(top_makers["maker"].tolist())]
-    fig_area = px.area(monthly_top.sort_values("month"), x="month", y="value", color="maker", title="Monthly Stacked by Maker (Top)")
-    fig_area.update_layout(xaxis_title="Month", yaxis_title="Registrations")
-    st.plotly_chart(fig_area, use_container_width=True)
+    # Export
+    with st.expander("📤 Export Data"):
+        csv = df_mk.to_csv(index=False).encode("utf-8")
+        st.download_button("Download Raw CSV", csv, file_name=f"makers_raw_{THIS_YEAR}.csv", mime="text/csv")
 
-    # ------------------ Heatmap: makers x year ------------------
-    st.markdown("### Yearly Heatmap (Maker x Year)")
-    heat_pivot = yearly_pivot.fillna(0)
-    if not heat_pivot.empty:
-        heat_map = px.imshow(heat_pivot.T, labels=dict(x="Year", y="Maker", color="Registrations"),
-                             x=heat_pivot.index.astype(str).tolist(), y=heat_pivot.columns.tolist(),
-                             aspect="auto", title="Yearly Heatmap (Maker x Year)")
-        st.plotly_chart(heat_map, use_container_width=True)
+with tabs[3]:
+    if st.toggle("🧠 Generate AI Narrative"):
+        with st.spinner("Generating AI insights..."):
+            user_prompt = f"Analyze top makers for {THIS_YEAR} and predict {NEXT_YEAR}. Data: {table.head(8).to_dict(orient='records')}"
+            ai = deepinfra_chat("You are a senior automotive analyst.", user_prompt, max_tokens=400)
+            st.write(ai.get("text", "⚠️ No AI output available."))
 
-    # ------------------ Growth buckets & alerts ------------------
-    st.markdown("### Growth / Decline Buckets")
-    maker_comp_df["bucket"] = maker_comp_df["growth_this_to_next %"].apply(lambda p: "High growth" if p>25 else ("Moderate growth" if p>5 else ("Stable" if -5<=p<=5 else "Decline")))
-    buckets = maker_comp_df.groupby("bucket")["maker"].count().reset_index().rename(columns={"maker":"count"})
-    st.table(buckets)
-
-    # ------------------ Exports ------------------
-    st.markdown("### Export Data & Charts")
-    csv = df_mk.to_csv(index=False).encode("utf-8")
-    st.download_button("Download raw makers CSV", csv, file_name=f"top_makers_raw_{THIS_YEAR}.csv", mime="text/csv")
-    try:
-        excel_buffer = io.BytesIO()
-        with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
-            df_mk.to_excel(writer, sheet_name="raw", index=False)
-            maker_comp_df.to_excel(writer, sheet_name="comparison", index=False)
-            monthly_pivot.reset_index().to_excel(writer, sheet_name="monthly_by_maker", index=True)
-            if fc_monthly_overall is not None:
-                fc_monthly_overall.reset_index().to_excel(writer, sheet_name="forecast_overall", index=True)
-            # individual maker forecasts (if any)
-            for mk, fc in maker_forecasts.items():
-                safe_name = str(mk)[:25]
-                fc.reset_index().to_excel(writer, sheet_name=f"fc_{safe_name}", index=True)
-        excel_buffer.seek(0)
-        st.download_button("Download makers analysis Excel", excel_buffer, file_name=f"makers_analysis_{THIS_YEAR}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    except Exception:
-        st.warning("Excel export failed. CSV available.")
-
-    # ------------------ AI Narrative (optional) ------------------
-    if enable_ai:
-        with st.spinner("Generating AI narrative for Makers..."):
-            system = "You are a senior market analyst. Provide a concise, data-driven commentary on maker market shares and forecasts."
-            sample_rows = maker_comp_df.head(8).to_dict(orient="records")
-            user_prompt = (
-                f"Prev year total={int(prev_total):,}, this year total={int(this_total):,}, predicted next year total={int(predicted_next_total):,}."
-                f"Top makers sample: {json.dumps(sample_rows, default=str)}"
-                "Provide: (1) top 3 makers, (2) fastest growers, (3) makers in decline, (4) key risk signals, (5) 2 actionable recommendations, and (6) an executive 2-sentence summary."
-            )
-            ai_out = deepinfra_chat(system, user_prompt, max_tokens=360)
-            if isinstance(ai_out, dict) and "text" in ai_out:
-                st.markdown("**AI Narrative (Live)**")
-                st.write(ai_out["text"])
-            else:
-                st.info("AI narrative unavailable or key missing.")
-
-    # ------------------ Finalize ------------------
-    st.markdown("---")
-    st.success("✅ Top Makers analysis complete (real & predicted).")
-
+st.success("✅ Top Makers MAXED analysis complete.")
 
 # ============================================================
 # 🚀 3️⃣ FULLY MAXED — YEARLY / MONTHLY / DAILY TREND + FORECASTS
 # ============================================================
-with st.spinner("📡 Fetching full registration trend data..."):
-    tr_json = fetch_json("vahandashboard/vahanyearwiseregistrationtrend", desc="Registration Trend")
+import json
+import math
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import altair as alt
+from datetime import datetime, date
+from zoneinfo import ZoneInfo
+import streamlit as st
+from vahan.api import fetch_json, deepinfra_chat, params_common
+from vahan.parsing import normalize_trend
+from vahan.metrics import compute_yoy, compute_qoq
+
+TODAY = date.today()
+PREV_YEAR = TODAY.year - 1
+THIS_YEAR = TODAY.year
+NEXT_YEAR = THIS_YEAR + 1
+
+# =====================================================
+# 🔧 Helpers + Forecasting
+# =====================================================
+@st.cache_data(show_spinner=False, ttl=900)
+def forecast_series(series, periods=12):
+    """
+    Hybrid Prophet → LinearRegression fallback
+    """
+    s = series.dropna().sort_index()
+    if len(s) < 6:
+        return None
+    try:
+        from prophet import Prophet
+        df_prop = s.reset_index().rename(columns={s.index.name or 'index': 'ds', 0: 'y'})
+        m = Prophet(yearly_seasonality=True)
+        m.fit(df_prop)
+        future = m.make_future_dataframe(periods=periods, freq='MS')
+        fc = m.predict(future)[["ds", "yhat", "yhat_lower", "yhat_upper"]].set_index("ds")
+        return fc.tail(periods)
+    except Exception:
+        # fallback: linear regression
+        from sklearn.linear_model import LinearRegression
+        X = np.arange(len(s)).reshape(-1, 1)
+        y = s.values
+        lr = LinearRegression().fit(X, y)
+        future_X = np.arange(len(s), len(s) + periods).reshape(-1, 1)
+        yhat = lr.predict(future_X)
+        next_months = pd.date_range(start=s.index[-1] + pd.offsets.MonthBegin(1),
+                                    periods=periods, freq='MS')
+        return pd.DataFrame({
+            "yhat": np.maximum(yhat, 0),
+            "yhat_lower": np.maximum(yhat * 0.85, 0),
+            "yhat_upper": np.maximum(yhat * 1.15, 0)
+        }, index=next_months)
+
+def pct(a, b):
+    try: return ((b - a) / abs(a)) * 100 if a != 0 else 0
+    except: return 0
+
+# =====================================================
+# 🛰️ Fetch Data
+# =====================================================
+with st.spinner("📡 Fetching registration trend data (MAXED Mode)..."):
+    tr_json = fetch_json("vahandashboard/vahanyearwiseregistrationtrend",
+                         params_common, desc="Registration Trend")
 
 try:
     df_trend = normalize_trend(tr_json)
@@ -2607,145 +2501,148 @@ except Exception as e:
     st.error(f"❌ Trend parsing failed: {e}")
     df_trend = pd.DataFrame(columns=["date", "value"])
 
-if not df_trend.empty:
-    # 🧹 Basic cleanup
-    df_trend = df_trend.sort_values("date")
-    df_trend["year"] = df_trend["date"].dt.year
-    df_trend["month"] = df_trend["date"].dt.month_name()
-    df_trend["day"] = df_trend["date"].dt.day
+if df_trend.empty:
+    st.warning("⚠️ No trend data available.")
+    st.stop()
 
-    # ===============================
-    # 📈 Charts: Real Values
-    # ===============================
-    st.subheader("📊 Registration Trends (All Views)")
-    st.markdown("---")
+# =====================================================
+# 🧹 Cleanup
+# =====================================================
+df_trend = df_trend.sort_values("date")
+df_trend["year"] = df_trend["date"].dt.year
+df_trend["month"] = df_trend["date"].dt.month_name()
+df_trend["day"] = df_trend["date"].dt.day
 
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "📅 Yearly Overview",
-        "🗓️ Monthly Trends",
-        "📆 Daily View",
-        "🔮 Forecast & Prediction"
-    ])
+# =====================================================
+# 📈 Tabs: Yearly / Monthly / Daily / Forecast
+# =====================================================
+st.header("📊 Registration Trends — MAXED Edition")
+tabY, tabM, tabD, tabF, tabA = st.tabs([
+    "📅 Yearly Overview",
+    "🗓️ Monthly Trends",
+    "📆 Daily View",
+    "🔮 Forecast & Prediction",
+    "🤖 AI Insights"
+])
 
-    # ========== Yearly ==========
-    with tab1:
-        yearly_df = df_trend.groupby("year", as_index=False)["value"].sum()
-        yearly_df["YoY%"] = yearly_df["value"].pct_change() * 100
-        st.bar_chart(yearly_df.set_index("year")["value"])
-        st.dataframe(yearly_df.style.background_gradient("Blues"), use_container_width=True)
+# ---------------- YEARLY ----------------
+with tabY:
+    yearly_df = df_trend.groupby("year", as_index=False)["value"].sum()
+    yearly_df["YoY%"] = yearly_df["value"].pct_change() * 100
+    st.altair_chart(
+        alt.Chart(yearly_df).mark_bar().encode(
+            x=alt.X("year:O", title="Year"),
+            y=alt.Y("value:Q", title="Registrations"),
+            tooltip=["year", "value", "YoY%"]
+        ).properties(title="Yearly Registration Totals"),
+        use_container_width=True
+    )
+    st.dataframe(yearly_df.style.format({"value": ",", "YoY%": "{:.2f}"}).background_gradient("Blues"))
 
-    # ========== Monthly ==========
-    with tab2:
-        monthly_df = df_trend.copy()
-        monthly_df["ym"] = df_trend["date"].dt.to_period("M").astype(str)
-        monthly_sum = monthly_df.groupby("ym", as_index=False)["value"].sum()
-        st.line_chart(monthly_sum.set_index("ym")["value"])
-        st.dataframe(monthly_sum.tail(12).style.background_gradient("Greens"), use_container_width=True)
+# ---------------- MONTHLY ----------------
+with tabM:
+    df_trend["ym"] = df_trend["date"].dt.to_period("M").astype(str)
+    monthly_df = df_trend.groupby("ym", as_index=False)["value"].sum()
+    st.line_chart(monthly_df.set_index("ym")["value"])
+    st.dataframe(monthly_df.tail(12).style.background_gradient("Greens"))
 
-    # ========== Daily ==========
-    with tab3:
-        st.area_chart(df_trend.set_index("date")["value"])
-        st.dataframe(df_trend.tail(30).style.background_gradient("Oranges"), use_container_width=True)
+# ---------------- DAILY ----------------
+with tabD:
+    st.area_chart(df_trend.set_index("date")["value"])
+    st.dataframe(df_trend.tail(30).style.background_gradient("Oranges"))
 
-    # ===============================
-    # 🔮 Forecasting (Next Year)
-    # ===============================
-    with tab4:
-        try:
-            from sklearn.linear_model import LinearRegression
-            import numpy as np
+# ---------------- FORECAST ----------------
+with tabF:
+    monthly_series = df_trend.groupby(df_trend["date"].dt.to_period("M"))["value"].sum()
+    fc = forecast_series(monthly_series, periods=12)
 
-            df_pred = df_trend.copy()
-            df_pred["t"] = np.arange(len(df_pred))
-            model = LinearRegression().fit(df_pred[["t"]], df_pred["value"])
-            future_t = np.arange(len(df_pred), len(df_pred) + 365)
-            future_preds = model.predict(future_t.reshape(-1, 1))
+    if fc is not None:
+        real = monthly_series.reset_index().rename(columns={"date": "ds", "value": "y"})
+        fc_reset = fc.reset_index().rename(columns={"index": "ds"})
+        combined = pd.concat([
+            real.assign(type="Actual", y=real["y"]),
+            fc_reset.assign(type="Predicted", y=fc_reset["yhat"])
+        ])
 
-            df_future = pd.DataFrame({
-                "date": pd.date_range(df_pred["date"].max() + pd.Timedelta(days=1), periods=365),
-                "predicted": future_preds
-            })
+        fig = px.line(combined, x="ds", y="y", color="type",
+                      title="Real vs Forecast — Monthly Registrations")
+        st.plotly_chart(fig, use_container_width=True)
 
-            # Combine real + predicted
-            df_all = pd.concat([
-                df_pred.rename(columns={"value": "actual"})[["date", "actual"]],
-                df_future
-            ], ignore_index=True)
+        total_pred = int(fc["yhat"].sum())
+        avg_pred = int(fc["yhat"].mean())
+        col1, col2 = st.columns(2)
+        col1.metric("Predicted Total (Next 12 M)", f"{total_pred:,}")
+        col2.metric("Predicted Monthly Avg", f"{avg_pred:,}")
+        st.dataframe(fc.head(12).style.background_gradient("Purples"))
+    else:
+        st.warning("⚠️ Forecast unavailable (insufficient data).")
 
-            st.line_chart(df_all.set_index("date"))
+# =====================================================
+# 📊 Comparative Growth Metrics
+# =====================================================
+st.markdown("---")
+st.subheader("📉 Growth Metrics (YoY / QoQ / MoM / CAGR)")
+yoy_df = compute_yoy(df_trend)
+qoq_df = compute_qoq(df_trend)
 
-            # 📊 Metrics
-            total_pred = int(df_future["predicted"].sum())
-            avg_pred = int(df_future["predicted"].mean())
+latest_yoy = yoy_df["YoY%"].dropna().iloc[-1] if not yoy_df.empty else None
+latest_qoq = qoq_df["QoQ%"].dropna().iloc[-1] if not qoq_df.empty else None
 
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Predicted Total (Next Year)", f"{total_pred:,}")
-            with col2:
-                st.metric("Predicted Daily Avg (Next Year)", f"{avg_pred:,}")
+total_val = int(df_trend["value"].sum())
+avg_daily = df_trend["value"].mean()
+avg_monthly = df_trend.groupby(df_trend["date"].dt.to_period("M"))["value"].sum().mean()
 
-            st.dataframe(df_future.head(15).style.background_gradient("Purples"), use_container_width=True)
-        except Exception as e:
-            st.warning(f"Forecasting failed: {e}")
+colK1, colK2, colK3, colK4, colK5 = st.columns(5)
+colK1.metric("Total Registrations", f"{total_val:,}")
+colK2.metric("Daily Avg", f"{avg_daily:,.0f}")
+colK3.metric("Monthly Avg", f"{avg_monthly:,.0f}")
+colK4.metric("YoY Growth %", f"{latest_yoy:.2f}%" if latest_yoy else "N/A")
+colK5.metric("QoQ Growth %", f"{latest_qoq:.2f}%" if latest_qoq else "N/A")
 
-    # ===============================
-    # 🧾 YoY / QoQ / MoM / CAGR
-    # ===============================
-    st.subheader("📉 Comparative Growth Analysis")
-    yoy_df = compute_yoy(df_trend)
-    qoq_df = compute_qoq(df_trend)
+st.dataframe(yoy_df.tail(5).style.background_gradient("coolwarm"))
+st.dataframe(qoq_df.tail(5).style.background_gradient("coolwarm"))
 
-    latest_yoy = yoy_df["YoY%"].dropna().iloc[-1] if not yoy_df.empty else None
-    latest_qoq = qoq_df["QoQ%"].dropna().iloc[-1] if not qoq_df.empty else None
-
-    total_val = int(df_trend["value"].sum())
-    avg_daily = df_trend["value"].mean()
-    avg_monthly = df_trend.groupby(df_trend["date"].dt.to_period("M"))["value"].sum().mean()
-
-    colK1, colK2, colK3, colK4, colK5 = st.columns(5)
-    with colK1:
-        st.metric("Total Registrations", f"{total_val:,}")
-    with colK2:
-        st.metric("Daily Avg", f"{avg_daily:,.0f}")
-    with colK3:
-        st.metric("Monthly Avg", f"{avg_monthly:,.0f}")
-    with colK4:
-        st.metric("YoY Growth%", f"{latest_yoy:.2f}%" if latest_yoy else "N/A")
-    with colK5:
-        st.metric("QoQ Growth%", f"{latest_qoq:.2f}%" if latest_qoq else "N/A")
-
-    st.markdown("---")
-    st.dataframe(yoy_df.tail(5).style.background_gradient("coolwarm"), use_container_width=True)
-    st.dataframe(qoq_df.tail(5).style.background_gradient("coolwarm"), use_container_width=True)
-
-    # ===============================
-    # 🧠 AI-Driven Narrative + Insights
-    # ===============================
-    if enable_ai:
-        with st.spinner("🤖 Generating full AI-powered insight report..."):
-            system = (
-                "You are an expert automotive analyst. Use YoY, QoQ, MoM, and forecast data "
-                "to give an advanced, data-driven narrative including anomalies, growth, "
-                "comparisons between previous/current/next years, and 3 strategic recommendations."
+# =====================================================
+# 🧠 AI-Driven Narrative
+# =====================================================
+with tabA:
+    if st.toggle("🤖 Generate AI Insight Report"):
+        with st.spinner("Generating AI insights via DeepInfra ..."):
+            system_prompt = (
+                "You are a senior automotive market analyst. "
+                "Use trend, YoY, QoQ, and forecast data to produce an advanced, "
+                "data-driven report including insights, anomalies, growth patterns, "
+                "and 3 strategic recommendations."
             )
-
-            sample_data = df_trend.tail(24).to_dict(orient="records")
-            user = (
-                f"Dataset sample: {json.dumps(sample_data, default=str)}\n"
-                f"YoY: {latest_yoy}, QoQ: {latest_qoq}, DailyAvg: {avg_daily}, Forecast avg: {avg_pred}\n"
-                "Generate an advanced but readable report with trend analysis, growth drivers, "
-                "potential risks, and predictions for next year."
+            sample = df_trend.tail(24).to_dict(orient="records")
+            user_prompt = (
+                f"SampleData: {json.dumps(sample, default=str)}\n"
+                f"YoY: {latest_yoy}, QoQ: {latest_qoq}, AvgDaily: {avg_daily:,.0f}, ForecastAvg: {avg_pred if 'avg_pred' in locals() else 0}\n"
+                "Generate an executive summary."
             )
-
-            ai_resp = deepinfra_chat(system, user, max_tokens=900)
+            ai_resp = deepinfra_chat(system_prompt, user_prompt, max_tokens=900)
             if isinstance(ai_resp, dict) and "text" in ai_resp:
                 st.markdown("### 🧠 AI Trend Report")
                 st.info(ai_resp["text"])
             else:
                 st.info("⚠️ No AI response received.")
 
-else:
-    st.warning("⚠️ No trend data available.")
+# =====================================================
+# 📤 Export Data
+# =====================================================
+st.markdown("---")
+with st.expander("📤 Export Data"):
+    csv_bytes = df_trend.to_csv(index=False).encode("utf-8")
+    st.download_button("⬇️ Download CSV", csv_bytes,
+                       file_name=f"vahan_trend_{THIS_YEAR}.csv",
+                       mime="text/csv")
+    json_bytes = json.dumps(df_trend.to_dict(orient="records"),
+                            indent=2, default=str).encode("utf-8")
+    st.download_button("⬇️ Download JSON", json_bytes,
+                       file_name=f"vahan_trend_{THIS_YEAR}.json",
+                       mime="application/json")
+
+st.success("✅ Trend + Forecast MAXED analysis complete.")
 
 # =====================================================
 # 4️⃣ MAXED — Duration-wise Growth (Monthly / Quarterly / Yearly)
@@ -2753,14 +2650,17 @@ else:
 import io
 import math
 import json
+import time
+import random
+import traceback
 import numpy as np
 import pandas as pd
 import plotly.express as px
-import altair as alt
 import streamlit as st
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 import warnings
+
 warnings.filterwarnings("ignore")
 
 TODAY = date.today()
@@ -2768,328 +2668,180 @@ PREV_YEAR = TODAY.year - 1
 THIS_YEAR = TODAY.year
 NEXT_YEAR = THIS_YEAR + 1
 
-# -------------------------
-# Helper: normalize whatever parse_duration_table returns
-# Expected canonical output: columns ['duration_label','period','value']
-# period should be a datetime-like (monthly/quart/annual as timestamp)
-# -------------------------
+# =====================================================
+# ✅ Safe Fetcher with Retry & Auto-Logging (MAXED)
+# =====================================================
+@st.cache_data(show_spinner=False, ttl=300)
+def fetch_json(endpoint, params, desc="data", retries=3, delay=2):
+    """Universal JSON fetcher with retry + status reporting."""
+    try:
+        for i in range(retries):
+            try:
+                data = get_json(endpoint, params)
+                if data:
+                    return data
+            except Exception as e:
+                st.warning(f"⚠️ Fetch attempt {i+1}/{retries} for {desc} failed — {e}")
+                time.sleep(delay + random.random())
+        st.error(f"🚫 Failed to fetch {desc} after {retries} retries.")
+        return {}
+    except Exception as e:
+        st.error(f"🔥 Fatal fetch error for {desc}: {e}")
+        return {}
+
+# =====================================================
+# 🧮 Normalize Duration DataFrame
+# =====================================================
 def normalize_duration_df(df, calendar_type):
-    """
-    calendar_type: 3=Monthly, 2=Quarterly, 1=Yearly (per your API)
-    Attempts to return DataFrame with columns:
-      - duration_label (str): bucket or label
-      - period (datetime): timestamp to aggregate by (for monthly/quart/yr)
-      - value (numeric)
-    """
     if df is None or df.empty:
-        return pd.DataFrame(columns=["duration_label","period","value"])
+        return pd.DataFrame(columns=["duration_label", "period", "value"])
     d = df.copy()
-    cols_lower = {c.lower(): c for c in d.columns}
+    cols = {c.lower(): c for c in d.columns}
 
-    # Find candidate label column
-    label_candidates = [cols_lower.get(k) for k in ("duration","label","bucket","name") if k in cols_lower]
-    value_candidates = [cols_lower.get(k) for k in ("value","count","registrations","total","y") if k in cols_lower]
-    period_candidates = [cols_lower.get(k) for k in ("period","date","month","year","ds") if k in cols_lower]
+    label_col = next((cols[k] for k in ["duration", "label", "bucket", "name"] if k in cols), None)
+    val_col = next((cols[k] for k in ["value", "count", "registrations", "total"] if k in cols), None)
+    period_col = next((cols[k] for k in ["period", "date", "month", "year", "ds"] if k in cols), None)
 
-    label_col = label_candidates[0] if label_candidates else (d.columns[0] if len(d.columns)>0 else None)
-    value_col = value_candidates[0] if value_candidates else (d.select_dtypes(include=[np.number]).columns[0] if len(d.select_dtypes(include=[np.number]).columns)>0 else None)
-    period_col = period_candidates[0] if period_candidates else None
-
-    if label_col:
-        d = d.rename(columns={label_col: "duration_label"})
-    else:
-        d["duration_label"] = "all"
-
-    if value_col:
-        d = d.rename(columns={value_col: "value"})
-    else:
-        d["value"] = 0
-
+    d["duration_label"] = d[label_col] if label_col else "all"
+    d["value"] = pd.to_numeric(d[val_col], errors="coerce").fillna(0) if val_col else 0
     if period_col:
-        d = d.rename(columns={period_col: "period"})
-        # coerce to datetime
-        try:
-            d["period"] = pd.to_datetime(d["period"], errors="coerce")
-        except Exception:
-            d["period"] = pd.to_datetime(d["period"].astype(str), errors="coerce")
+        d["period"] = pd.to_datetime(d[period_col], errors="coerce")
     else:
-        # create synthetic period depending on calendar_type
-        default_ts = datetime(THIS_YEAR, 1, 1)
-        d["period"] = pd.to_datetime(d.get("period", default_ts))
+        d["period"] = pd.date_range(start=datetime(THIS_YEAR, 1, 1), periods=len(d), freq="M")
 
-    d["duration_label"] = d["duration_label"].astype(str)
-    d["value"] = pd.to_numeric(d["value"], errors="coerce").fillna(0)
-    return d[["duration_label","period","value"]]
+    return d[["duration_label", "period", "value"]]
 
-# -------------------------
-# Forecast helper (prophet preferred, linear fallback)
-# Input: series indexed by timestamp (monthly/quartly/yearly) returning forecast df
-# -------------------------
-def forecast_series(s: pd.Series, periods: int, freq: str = "MS"):
-    """
-    s: pd.Series indexed by pd.Timestamp
-    periods: number of future periods to forecast
-    freq: frequency string for future (e.g., 'MS' monthly start, 'QS' quarterly start, 'YS' yearly start)
-    returns DataFrame index=future timestamps with ['yhat','yhat_lower','yhat_upper'] or None on failure
-    """
+# =====================================================
+# 🔮 Forecast Helper (Prophet → Linear fallback)
+# =====================================================
+try:
+    from prophet import Prophet
+    PROPHET_AVAILABLE = True
+except ImportError:
+    PROPHET_AVAILABLE = False
+
+def forecast_series(s: pd.Series, periods: int, freq: str):
     try:
         s = s.dropna().sort_index()
-        if len(s) < 6:
+        if len(s) < 4:
             return None
-        # Prophet
         if PROPHET_AVAILABLE and len(s) >= 12:
-            from prophet import Prophet
-            dfp = s.reset_index().rename(columns={s.index.name or 'index':'ds', 0:'y'}) if isinstance(s, pd.Series) else s.reset_index().rename(columns={s.index.name or 'index':'ds', s.name:'y'})
-            dfp.columns = ['ds','y']
+            dfp = s.reset_index()
+            dfp.columns = ["ds", "y"]
             m = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
             m.fit(dfp)
             future = m.make_future_dataframe(periods=periods, freq=freq)
-            fc = m.predict(future)[["ds","yhat","yhat_lower","yhat_upper"]].set_index("ds")
+            fc = m.predict(future)[["ds", "yhat", "yhat_lower", "yhat_upper"]].set_index("ds")
             return fc.tail(periods)
         else:
-            # Linear regression fallback
             from sklearn.linear_model import LinearRegression
-            X = np.arange(len(s)).reshape(-1,1)
+            X = np.arange(len(s)).reshape(-1, 1)
             y = s.values
-            lr = LinearRegression()
-            lr.fit(X,y)
-            future_X = np.arange(len(s), len(s)+periods).reshape(-1,1)
+            lr = LinearRegression().fit(X, y)
+            future_X = np.arange(len(s), len(s)+periods).reshape(-1, 1)
             yhat = lr.predict(future_X)
-            last_ts = s.index.max()
-            next_periods = pd.date_range(start=(pd.to_datetime(last_ts) + pd.offsets.DateOffset(**({'months':1} if freq.startswith('M') else {'quarters':1} if freq.startswith('Q') else {'years':1}))), periods=periods, freq=freq)
-            fc = pd.DataFrame({
+            freq_map = {"MS": "M", "QS": "Q", "YS": "Y"}
+            next_idx = pd.date_range(s.index[-1] + pd.offsets.DateOffset(1),
+                                     periods=periods, freq=freq_map.get(freq, "M"))
+            return pd.DataFrame({
                 "yhat": np.maximum(yhat, 0),
-                "yhat_lower": np.maximum(yhat * 0.85, 0),
-                "yhat_upper": np.maximum(yhat * 1.15, 0)
-            }, index=next_periods)
-            return fc
+                "yhat_lower": np.maximum(yhat*0.85, 0),
+                "yhat_upper": np.maximum(yhat*1.15, 0)
+            }, index=next_idx)
     except Exception:
         return None
 
-# -------------------------
-# Single unified function that fetches and runs analysis for a single calendar type
-# -------------------------
-def analyze_duration(calendar_type: int, label: str, forecast_periods: int = 12):
-    """
-    calendar_type: 3 = monthly, 2 = quarterly, 1 = yearly
-    label: display label
-    forecast_periods: months/quarters/years to forecast (choose 12/4/1 respectively)
-    """
-    with st.spinner(f"Fetching {label} duration-wise growth..."):
-        json_data = fetch_json("vahandashboard/durationWiseRegistrationTable", {**params_common, "calendarType": calendar_type}, desc=f"{label} growth")
-        raw_df = parse_duration_table(json_data) if json_data else pd.DataFrame()
-    df = normalize_duration_df(raw_df, calendar_type)
+# =====================================================
+# 📊 Duration Analysis Core
+# =====================================================
+def analyze_duration(calendar_type: int, label: str, forecast_periods: int):
+    with st.spinner(f"Fetching {label} duration-wise data..."):
+        json_data = fetch_json("vahandashboard/durationWiseRegistrationTable",
+                               {**params_common, "calendarType": calendar_type},
+                               desc=f"{label} growth")
+        df_raw = parse_duration_table(json_data) if json_data else pd.DataFrame()
+
+    df = normalize_duration_df(df_raw, calendar_type)
     if df.empty:
         st.warning(f"No {label} duration data found.")
-        return pd.DataFrame()
+        return df
 
-    st.subheader(f"{label} Vehicle Registration Growth — Maxed Analysis")
+    st.subheader(f"📈 {label} Registration Growth (MAXED)")
 
-    # period normalization depending on calendar type
-    if calendar_type == 3:  # monthly
-        df["period_ts"] = df["period"].dt.to_period("M").dt.to_timestamp()
-        freq = "MS"
-        periods = forecast_periods  # months
-    elif calendar_type == 2:  # quarterly
-        df["period_ts"] = df["period"].dt.to_period("Q").dt.to_timestamp()
-        freq = "QS"
-        periods = max(4, min(forecast_periods, 8))
-    else:  # yearly
-        df["period_ts"] = df["period"].dt.to_period("Y").dt.to_timestamp()
-        freq = "YS"
-        periods = 1 if forecast_periods < 4 else forecast_periods // 12
-
-    # aggregate to period x duration_label
-    pivot = df.groupby(["period_ts","duration_label"], as_index=False)["value"].sum()
-    pivot_full = pivot.pivot(index="period_ts", columns="duration_label", values="value").fillna(0).sort_index()
-
-    # totals series (all durations)
-    totals_series = pivot_full.sum(axis=1).rename("total")
-
-    # per-duration totals (historical)
-    total_by_duration = df.groupby("duration_label", as_index=False)["value"].sum().sort_values("value", ascending=False)
-
-    # historical prev/this totals for this calendar perspective (by year)
-    # compute total per-year from df
+    # Frequency mapping
+    freq_map = {3: "MS", 2: "QS", 1: "YS"}
+    freq = freq_map.get(calendar_type, "MS")
+    df["period"] = pd.to_datetime(df["period"], errors="coerce")
     df["year"] = df["period"].dt.year
-    totals_by_year = df.groupby("year", as_index=True)["value"].sum().sort_index()
-    prev_total = float(totals_by_year.get(PREV_YEAR, 0.0))
-    this_total = float(totals_by_year.get(THIS_YEAR, 0.0))
 
-    # Forecast totals by forecasting the totals_series
-    fc = forecast_series(totals_series, periods=periods, freq=freq)
-    predicted_next_total = 0.0
-    if fc is not None:
-        # Sum predicted values that fall into NEXT_YEAR depending on freq
-        predicted_next_total = float(fc[fc.index.year == NEXT_YEAR]["yhat"].sum()) if any(fc.index.year == NEXT_YEAR) else float(fc["yhat"].sum())
+    # Aggregate
+    pivot = df.groupby(["period", "duration_label"], as_index=False)["value"].sum()
+    pivot_full = pivot.pivot(index="period", columns="duration_label", values="value").fillna(0)
 
-    # For per-duration predictions: try forecast per-duration if enough history else allocate proportionally
-    duration_forecasts = {}
-    for dur in pivot_full.columns:
-        series = pivot_full[dur]
-        dfc = forecast_series(series, periods=periods, freq=freq)
-        duration_forecasts[dur] = dfc
-
-    # Where forecasts missing, allocate using historical shares (last available year)
-    last_hist = total_by_duration.set_index("duration_label")["value"]
-    total_hist_sum = last_hist.sum() if last_hist.sum() > 0 else 1.0
-    hist_share = (last_hist / total_hist_sum).to_dict()
-
-    predicted_per_duration = {}
-    for dur in pivot_full.columns:
-        if duration_forecasts.get(dur) is not None:
-            dff = duration_forecasts[dur]
-            if any(dff.index.year == NEXT_YEAR):
-                predicted_per_duration[dur] = float(dff[dff.index.year == NEXT_YEAR]["yhat"].sum())
-            else:
-                predicted_per_duration[dur] = float(dff["yhat"].sum())
-        else:
-            predicted_per_duration[dur] = float(hist_share.get(dur, 0.0) * predicted_next_total)
+    totals = pivot_full.sum(axis=1)
+    fc = forecast_series(totals, forecast_periods, freq)
 
     # KPI calculations
-    def pct(a,b):
-        try:
-            if a == 0:
-                return float("inf") if b!=0 else 0.0
-            return ((b-a)/abs(a))*100.0
-        except Exception:
-            return 0.0
+    totals_by_year = df.groupby("year")["value"].sum()
+    prev_total = totals_by_year.get(PREV_YEAR, 0)
+    this_total = totals_by_year.get(THIS_YEAR, 0)
+    next_total = float(fc["yhat"].sum()) if fc is not None else this_total
 
-    kpi_prev_vs_this = pct(prev_total, this_total)
-    kpi_this_vs_next = pct(this_total, predicted_next_total)
+    def pct(a,b): return ((b-a)/a*100) if a else 0
 
-    # -----------------------
-    # UI: KPIs & Top buckets
-    # -----------------------
     k1,k2,k3,k4 = st.columns(4)
-    k1.metric(f"{label} Prev Year ({PREV_YEAR})", f"{int(prev_total):,}", delta=f"{kpi_prev_vs_this:.2f}%")
-    k2.metric(f"{label} This Year ({THIS_YEAR})", f"{int(this_total):,}", delta=f"{kpi_this_vs_next:.2f}%")
-    k3.metric(f"{label} Predicted Next ({NEXT_YEAR})", f"{int(predicted_next_total):,}", delta=f"{pct(prev_total,predicted_next_total):.2f}%")
-    k4.metric("Historical Total (all-time)", f"{int(total_by_duration['value'].sum()):,}")
+    k1.metric(f"Prev Year ({PREV_YEAR})", f"{int(prev_total):,}", delta=f"{pct(prev_total,this_total):.2f}%")
+    k2.metric(f"This Year ({THIS_YEAR})", f"{int(this_total):,}", delta=f"{pct(this_total,next_total):.2f}%")
+    k3.metric(f"Predicted Next ({NEXT_YEAR})", f"{int(next_total):,}", delta=f"{pct(prev_total,next_total):.2f}%")
+    k4.metric("Total Duration Buckets", len(df["duration_label"].unique()))
 
-    st.markdown("#### Top duration buckets (historical)")
-    st.dataframe(total_by_duration.head(20).style.format({"value":"{:,}"}), use_container_width=True)
-
-    # -----------------------
     # Charts
-    # -----------------------
-    st.markdown("### Trend: totals over time (real + prediction ribbon)")
-    # Build plot df
-    real_df = totals_series.reset_index().rename(columns={"period_ts":"period","total":"value"})
-    real_df["type"] = "actual"
-    plot_df = real_df.copy()
+    fig = px.line(totals, title=f"{label} — Real vs Predicted")
     if fc is not None:
-        fc_df = fc.reset_index().rename(columns={"index":"period","yhat":"value","yhat_lower":"lower","yhat_upper":"upper"})
-        fc_df["type"] = "predicted"
-        # plotly with ribbon
-        fig = px.line(pd.concat([real_df.assign(type="actual"), fc_df.assign(type="predicted")], sort=False),
-                      x="period", y="value", color="type", title=f"{label} — Total registrations: Real vs Predicted")
-        # ribbon
-        fig.add_traces([dict(x=fc_df["period"], y=fc_df["upper"], mode='lines', showlegend=False, line=dict(width=0)),
-                        dict(x=fc_df["period"], y=fc_df["lower"], mode='lines', fill='tonexty', fillcolor='rgba(0,176,246,0.15)', line=dict(width=0), showlegend=False)])
-    else:
-        fig = px.line(real_df, x="period", y="value", title=f"{label} — Total registrations (historical)")
-
-    fig.update_layout(xaxis_title="Period", yaxis_title="Registrations", legend_title="Series")
+        fc_df = fc.reset_index()
+        fc_df["type"] = "Predicted"
+        fig.add_scatter(x=fc_df["ds"], y=fc_df["yhat"], mode="lines", name="Forecast")
     st.plotly_chart(fig, use_container_width=True)
 
-    # Per-duration stacked area
-    st.markdown("### Stacked by duration bucket")
-    stacked_df = pivot.reset_index().rename(columns={"period_ts":"period"})
-    if not stacked_df.empty:
-        fig2 = px.area(stacked_df.sort_values("period"), x="period", y=[c for c in pivot_full.columns], title=f"{label} — Stacked by Duration Bucket")
-        fig2.update_layout(xaxis_title="Period", yaxis_title="Registrations")
-        st.plotly_chart(fig2, use_container_width=True)
+    # Duration bucket chart
+    st.markdown(f"### {label} — Stacked by Duration Bucket")
+    fig2 = px.area(pivot_full, x=pivot_full.index, y=pivot_full.columns, title=f"{label} — Stacked Trend")
+    st.plotly_chart(fig2, use_container_width=True)
 
-    # Per-duration comparison table: prev / this / predicted next
-    st.markdown("### Per-duration comparison: Prev vs This vs Predicted Next")
-    rows = []
-    # Build per-duration historical year totals
-    per_dur_year = df.groupby(["year","duration_label"], as_index=False)["value"].sum().pivot(index="duration_label", columns="year", values="value").fillna(0)
-    for dur in pivot_full.columns:
-        prev_v = float(per_dur_year.get(PREV_YEAR, {}).get(dur, per_dur_year.loc[dur][PREV_YEAR] if PREV_YEAR in per_dur_year.columns and dur in per_dur_year.index else 0.0)) if dur in per_dur_year.index else 0.0
-        this_v = float(per_dur_year.get(THIS_YEAR, {}).get(dur, per_dur_year.loc[dur][THIS_YEAR] if THIS_YEAR in per_dur_year.columns and dur in per_dur_year.index else 0.0)) if dur in per_dur_year.index else 0.0
-        pred_v = float(predicted_per_duration.get(dur, 0.0))
-        rows.append({
-            "duration_label": dur,
-            f"{PREV_YEAR}": prev_v,
-            f"{THIS_YEAR}": this_v,
-            f"{NEXT_YEAR} (pred)": pred_v,
-            "growth_prev_to_this %": pct(prev_v, this_v),
-            "growth_this_to_next %": pct(this_v, pred_v)
-        })
-    comp_df = pd.DataFrame(rows).sort_values(f"{THIS_YEAR}", ascending=False)
-    st.dataframe(comp_df.style.format({f"{PREV_YEAR}":"{:,}", f"{THIS_YEAR}":"{:,}", f"{NEXT_YEAR} (pred)":"{:,}", "growth_prev_to_this %":"{:.2f}%", "growth_this_to_next %":"{:.2f}%"}), use_container_width=True)
+    # Table comparison
+    per_dur_year = df.groupby(["year", "duration_label"])["value"].sum().unstack().fillna(0)
+    comp = per_dur_year.T
+    comp["Growth %"] = pct(comp.get(PREV_YEAR, 0), comp.get(THIS_YEAR, 0))
+    st.dataframe(comp.style.format("{:,.0f}"), use_container_width=True)
 
-    # Heatmap duration x year
-    st.markdown("### Heatmap: Duration bucket x Year")
-    if not per_dur_year.empty:
-        heat = per_dur_year.fillna(0)
-        # reorder rows by total
-        heat = heat.loc[heat.sum(axis=1).sort_values(ascending=False).index]
-        fig_heat = px.imshow(heat, labels=dict(x="Year", y="Duration Bucket", color="Registrations"),
-                             x=[str(x) for x in heat.columns.tolist()], y=heat.index.tolist(), aspect="auto",
-                             title=f"{label} — Duration buckets across years")
-        st.plotly_chart(fig_heat, use_container_width=True)
-
-    # Anomalies: detect large month-over-month or quarter-over-quarter jumps per duration
-    st.markdown("### Anomaly & Change Detection")
-    anomalies = []
-    for dur in pivot_full.columns:
-        s = pivot_full[dur].sort_index()
-        if len(s) >= 3:
-            mom = s.pct_change().fillna(0)
-            large = mom[mom.abs() > 0.5]  # >50% change flagged
-            for idx,v in large.items():
-                anomalies.append({"duration": dur, "period": idx, "mom_change_pct": v*100, "value": float(s.loc[idx])})
-    if anomalies:
-        anom_df = pd.DataFrame(anomalies).sort_values("period", ascending=False)
-        st.table(anom_df.head(20).assign(period=lambda df_: df_["period"].dt.strftime("%Y-%m-%d")))
-    else:
-        st.info("No large anomalies detected (threshold: 50% MoM/QtQ)")
-
-    # Exports
-    st.markdown("### Exports")
-    raw_csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button(f"Download raw {label} CSV", raw_csv, file_name=f"duration_{label.lower()}_raw.csv", mime="text/csv")
+    # Export
+    st.download_button("⬇️ Download CSV", df.to_csv(index=False).encode(), f"duration_{label.lower()}.csv")
     try:
-        excel_buffer = io.BytesIO()
-        with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
-            df.to_excel(writer, sheet_name="raw", index=False)
-            pivot_full.reset_index().to_excel(writer, sheet_name="pivot", index=True)
-            comp_df.to_excel(writer, sheet_name="comparison", index=False)
-            if fc is not None:
-                fc.reset_index().to_excel(writer, sheet_name="forecast_totals", index=True)
-            # per-duration forecasts
-            for dur, dfc in duration_forecasts.items():
-                if dfc is not None:
-                    safe = str(dur)[:28]
-                    dfc.reset_index().to_excel(writer, sheet_name=f"fc_{safe}", index=True)
-        excel_buffer.seek(0)
-        st.download_button(f"Download {label} Excel", excel_buffer, file_name=f"duration_{label.lower()}_analysis.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    except Exception:
-        st.warning("Excel export failed (openpyxl missing). CSV available.")
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="raw")
+            pivot_full.to_excel(writer, sheet_name="pivot")
+        buf.seek(0)
+        st.download_button("⬇️ Download Excel", buf, f"duration_{label.lower()}.xlsx")
+    except Exception as e:
+        st.warning(f"Excel export unavailable: {e}")
 
-    # AI summary
+    # AI Summary
     if enable_ai:
-        with st.spinner("Generating AI summary for duration growth..."):
-            system = "You are a data analyst. Summarize the duration-wise growth results, with emphasis on which duration buckets are growing/falling, anomaly signals, and recommended actions."
-            sample = comp_df.head(8).to_dict(orient="records")
-            user = f"Summary sample: {json.dumps(sample, default=str)}\nPrev total: {int(prev_total):,}, This total: {int(this_total):,}, Predicted next: {int(predicted_next_total):,}. Provide 6 bullet points: top 3 buckets, fastest growing, biggest decline, anomaly signals, one operational recommendation, short executive summary."
-            ai_out = deepinfra_chat(system, user, max_tokens=400)
-            if isinstance(ai_out, dict) and "text" in ai_out:
-                st.markdown("**AI Duration Narrative**")
+        with st.spinner("🧠 Generating AI summary..."):
+            sample = comp.head(5).to_dict()
+            prompt = f"Summarize {label} registration trends. Key stats: prev={int(prev_total)}, this={int(this_total)}, next_pred={int(next_total)}. Data={json.dumps(sample,default=str)}"
+            ai_out = deepinfra_chat("You are a Vahan analytics assistant.", prompt, max_tokens=350)
+            if ai_out and "text" in ai_out:
+                st.markdown("### 🤖 AI Summary")
                 st.write(ai_out["text"])
-            else:
-                st.info("AI narrative unavailable or key missing.")
 
-    st.markdown("---")
-    st.success(f"✅ {label} Duration analysis complete.")
+    st.success(f"✅ {label} Duration Analysis Complete.")
     return df
 
-# -------------------------
-# Run for Monthly / Quarterly / Yearly
-# -------------------------
+# =====================================================
+# 🚀 Run all duration types
+# =====================================================
 df_monthly = analyze_duration(3, "Monthly", forecast_periods=12)
 df_quarterly = analyze_duration(2, "Quarterly", forecast_periods=8)
 df_yearly = analyze_duration(1, "Yearly", forecast_periods=2)
@@ -3115,22 +2867,21 @@ PREV_YEAR = TODAY.year - 1
 THIS_YEAR = TODAY.year
 NEXT_YEAR = THIS_YEAR + 1
 
-# -------------------------
-# Local forecast helper (Prophet preferred, linear fallback)
-# -------------------------
+# =====================================================
+# 🧠 Local Forecast Helper (Prophet preferred, Linear fallback)
+# =====================================================
 def forecast_series_local(series: pd.Series, periods:int=12, freq:str="MS"):
     """
-    series: pd.Series indexed by timestamps (monthly) or yearly timestamps
-    returns DataFrame with index=future timestamps and columns ['yhat','yhat_lower','yhat_upper'] or None
+    Forecast a numeric time series using Prophet if available, else LinearRegression.
     """
     try:
         s = series.dropna().sort_index()
         if len(s) < 6:
             return None
+
         if PROPHET_AVAILABLE and len(s) >= 12:
             from prophet import Prophet
             dfp = s.reset_index().rename(columns={s.index.name or 'index':'ds', s.name:'y'})
-            dfp.columns = ['ds','y']
             m = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
             m.fit(dfp)
             future = m.make_future_dataframe(periods=periods, freq=freq)
@@ -3140,12 +2891,10 @@ def forecast_series_local(series: pd.Series, periods:int=12, freq:str="MS"):
             from sklearn.linear_model import LinearRegression
             X = np.arange(len(s)).reshape(-1,1)
             y = s.values
-            lr = LinearRegression().fit(X,y)
+            lr = LinearRegression().fit(X, y)
             future_X = np.arange(len(s), len(s)+periods).reshape(-1,1)
             yhat = lr.predict(future_X)
-            last_ts = s.index.max()
-            # build next timestamps using freq
-            next_idx = pd.date_range(start=(pd.to_datetime(last_ts) + pd.offsets.MonthBegin(1)).replace(day=1), periods=periods, freq=freq)
+            next_idx = pd.date_range(start=(pd.to_datetime(s.index.max()) + pd.offsets.MonthBegin(1)).replace(day=1), periods=periods, freq=freq)
             fc = pd.DataFrame({
                 "yhat": np.maximum(yhat, 0),
                 "yhat_lower": np.maximum(yhat*0.85, 0),
@@ -3155,225 +2904,244 @@ def forecast_series_local(series: pd.Series, periods:int=12, freq:str="MS"):
     except Exception:
         return None
 
-def pct_change(a,b):
+
+def pct_change(a, b):
     try:
         if a == 0:
             return float("inf") if b != 0 else 0.0
-        return ((b - a)/abs(a))*100.0
+        return ((b - a) / abs(a)) * 100.0
     except Exception:
         return 0.0
 
-# ------------------ Fetch & parse ------------------
-with st.spinner("Fetching Top 5 Revenue States (maxed)..."):
+
+# =====================================================
+# 🌐 Fetch & Normalize Data
+# =====================================================
+with st.spinner("📡 Fetching Top 5 Revenue States (MAXED)..."):
     top5_rev_json = fetch_json("vahandashboard/top5chartRevenueFee", params_common, desc="Top 5 Revenue States")
     raw_rev = parse_top5_revenue(top5_rev_json if top5_rev_json else {})
 
-# Normalize parse_top5_revenue output: try to produce ['state','date','revenue'] or ['state','value']
+
 def normalize_revenue_df(df):
+    """Normalize revenue dataframe into ['state','date','revenue'] format."""
     if df is None:
         return pd.DataFrame(columns=["state","date","revenue"])
+
     d = df.copy()
     cols = {c.lower():c for c in d.columns}
-    # find state
+
     state_col = cols.get("state") or cols.get("state_name") or cols.get("label") or (d.columns[0] if len(d.columns)>0 else None)
-    # find revenue/value
     rev_col = cols.get("revenue") or cols.get("value") or cols.get("amount") or cols.get("fee") or (d.select_dtypes(include=[np.number]).columns[0] if d.select_dtypes(include=[np.number]).shape[1]>0 else None)
-    # find date
     date_col = cols.get("date") or cols.get("period") or cols.get("month") or cols.get("year")
-    if state_col:
-        d = d.rename(columns={state_col:"state"})
-    else:
-        d["state"] = "Unknown"
-    if rev_col:
-        d = d.rename(columns={rev_col:"revenue"})
-    else:
-        d["revenue"] = 0.0
+
+    if state_col: d = d.rename(columns={state_col:"state"})
+    else: d["state"] = "Unknown"
+
+    if rev_col: d = d.rename(columns={rev_col:"revenue"})
+    else: d["revenue"] = 0.0
+
     if date_col:
         d = d.rename(columns={date_col:"date"})
         d["date"] = pd.to_datetime(d["date"], errors="coerce")
     else:
-        # if no date, assume THIS_YEAR snapshot
         d["date"] = pd.to_datetime(datetime(THIS_YEAR,1,1))
+
     d["state"] = d["state"].astype(str)
     d["revenue"] = pd.to_numeric(d["revenue"], errors="coerce").fillna(0.0)
     return d[["state","date","revenue"]]
 
+
 df_rev = normalize_revenue_df(raw_rev)
 
 if df_rev.empty:
-    st.warning("No revenue data available.")
+    st.warning("⚠️ No revenue data available.")
 else:
-    # Time buckets
+    # =====================================================
+    # 🧹 Data Processing
+    # =====================================================
     df_rev["month"] = df_rev["date"].dt.to_period("M").dt.to_timestamp()
     df_rev["year"] = df_rev["date"].dt.year
-    df_rev["day"] = df_rev["date"].dt.floor("D")
 
-    # Top states by historical total
     totals_by_state = df_rev.groupby("state", as_index=False)["revenue"].sum().sort_values("revenue", ascending=False)
     top_states = totals_by_state.head(10)
     overall_revenue = totals_by_state["revenue"].sum()
 
-    # Monthly totals (all-states)
     monthly_totals = df_rev.groupby("month", as_index=True)["revenue"].sum().sort_index()
-
-    # Yearly per-state pivot
     yearly = df_rev.groupby(["year","state"], as_index=False)["revenue"].sum()
     yearly_pivot = yearly.pivot(index="year", columns="state", values="revenue").fillna(0).sort_index()
 
-    # Prev / This totals (by year)
-    prev_total = float(yearly_pivot.loc[PREV_YEAR].sum()) if PREV_YEAR in yearly_pivot.index else float(monthly_totals[monthly_totals.index.year==PREV_YEAR].sum() if not monthly_totals.empty else 0.0)
-    this_total = float(yearly_pivot.loc[THIS_YEAR].sum()) if THIS_YEAR in yearly_pivot.index else float(monthly_totals[monthly_totals.index.year==THIS_YEAR].sum() if not monthly_totals.empty else 0.0)
+    prev_total = float(yearly_pivot.loc[PREV_YEAR].sum()) if PREV_YEAR in yearly_pivot.index else 0.0
+    this_total = float(yearly_pivot.loc[THIS_YEAR].sum()) if THIS_YEAR in yearly_pivot.index else 0.0
 
-    # Forecast overall monthly -> next year
     fc_overall = forecast_series_local(monthly_totals, periods=12, freq="MS")
-    predicted_next_total = float(fc_overall[fc_overall.index.year==NEXT_YEAR]["yhat"].sum()) if fc_overall is not None and any(fc_overall.index.year==NEXT_YEAR) else (float(fc_overall["yhat"].sum()) if fc_overall is not None else 0.0)
+    predicted_next_total = float(fc_overall["yhat"].sum()) if fc_overall is not None else 0.0
 
-    # Per-state monthly pivot and per-state forecasts where data allows
+    # Per-state forecasts
     monthly_by_state = df_rev.groupby(["month","state"], as_index=False)["revenue"].sum()
     monthly_pivot = monthly_by_state.pivot(index="month", columns="state", values="revenue").fillna(0).sort_index()
 
     state_forecasts = {}
     for st_name in monthly_pivot.columns:
-        series = monthly_pivot[st_name]
-        fc = forecast_series_local(series, periods=12, freq="MS")
+        fc = forecast_series_local(monthly_pivot[st_name], periods=12, freq="MS")
         state_forecasts[st_name] = fc
 
-    # Where per-state forecasts missing, distribute overall predicted next total by historical share
-    hist_share = totals_by_state.set_index("state")["revenue"] / (totals_by_state["revenue"].sum() if totals_by_state["revenue"].sum()>0 else 1.0)
-    predicted_per_state = {}
-    for sname in totals_by_state["state"].tolist():
-        if state_forecasts.get(sname) is not None and not state_forecasts[sname].empty:
-            dfc = state_forecasts[sname]
-            predicted_per_state[sname] = float(dfc[dfc.index.year==NEXT_YEAR]["yhat"].sum()) if any(dfc.index.year==NEXT_YEAR) else float(dfc["yhat"].sum())
-        else:
-            predicted_per_state[sname] = float(hist_share.get(sname, 0.0) * predicted_next_total)
+    hist_share = totals_by_state.set_index("state")["revenue"] / (totals_by_state["revenue"].sum() or 1.0)
+    predicted_per_state = {
+        s: (float(fc["yhat"].sum()) if fc is not None else float(hist_share.get(s, 0.0)*predicted_next_total))
+        for s, fc in state_forecasts.items()
+    }
 
-    # KPIs & comparisons
+    # =====================================================
+    # 📊 KPIs
+    # =====================================================
     kpi_prev_vs_this = pct_change(prev_total, this_total)
     kpi_this_vs_next = pct_change(this_total, predicted_next_total)
 
-    st.subheader("Top 5 Revenue States — Real & Predicted (Maxed)")
+    st.subheader("💰 Top 5 Revenue States — Real + Predicted (MAXED)")
     a,b,c,d = st.columns(4)
-    a.metric(f"Prev Year Revenue ({PREV_YEAR})", f"₹{int(prev_total):,}", delta=f"{kpi_prev_vs_this:.2f}%")
-    b.metric(f"This Year Revenue ({THIS_YEAR})", f"₹{int(this_total):,}", delta=f"{kpi_this_vs_next:.2f}%")
-    c.metric(f"Predicted Next Year Revenue ({NEXT_YEAR})", f"₹{int(predicted_next_total):,}", delta=f"{pct_change(prev_total, predicted_next_total):.2f}%")
-    d.metric("Historical Total (all-time)", f"₹{int(overall_revenue):,}")
+    a.metric(f"Prev Year ({PREV_YEAR})", f"₹{int(prev_total):,}", delta=f"{kpi_prev_vs_this:.2f}%")
+    b.metric(f"This Year ({THIS_YEAR})", f"₹{int(this_total):,}", delta=f"{kpi_this_vs_next:.2f}%")
+    c.metric(f"Predicted Next ({NEXT_YEAR})", f"₹{int(predicted_next_total):,}", delta=f"{pct_change(prev_total, predicted_next_total):.2f}%")
+    d.metric("All-Time Total", f"₹{int(overall_revenue):,}")
 
-    # Top 5 specific view
+    # =====================================================
+    # 🧭 Visuals
+    # =====================================================
+    st.markdown("### 🥇 Top 5 Revenue States")
     top5 = totals_by_state.head(5)
-    st.markdown("### Top 5 Revenue States — Current Ranking")
-    bar = alt.Chart(top5.rename(columns={"state":"label","revenue":"value"})).mark_bar().encode(
-        x=alt.X("value:Q", title="Revenue (₹)"),
-        y=alt.Y("label:N", sort='-x', title="State"),
-        tooltip=[alt.Tooltip("label:N"), alt.Tooltip("value:Q", format=",")]
-    ).properties(height=40*min(len(top5),10), width=700, title="Top 5 Revenue States (Total)")
+    bar = alt.Chart(top5).mark_bar().encode(
+        x=alt.X("revenue:Q", title="Revenue (₹)"),
+        y=alt.Y("state:N", sort='-x', title="State"),
+        tooltip=["state:N", alt.Tooltip("revenue:Q", format=",")]
+    ).properties(height=40*min(len(top5),10), width=700)
     st.altair_chart(bar, use_container_width=True)
 
-    pie = px.pie(top5, names="state", values="revenue", hole=0.45, title="Top 5 Revenue States (Donut)")
+    pie = px.pie(top5, names="state", values="revenue", hole=0.45, title="Revenue Share (Top 5)")
     pie.update_traces(textinfo='percent+label', hoverinfo='label+value')
     st.plotly_chart(pie, use_container_width=True)
 
-    # Monthly trend with predicted ribbon
-    st.markdown("### Monthly Revenue — Real vs Predicted")
-    real_ts = monthly_totals.reset_index().rename(columns={"month":"ds","revenue":"y"}) if not monthly_totals.empty else pd.DataFrame(columns=["ds","y"])
+    # =====================================================
+    # 📈 Monthly Trend (Real + Predicted)
+    # =====================================================
+    st.markdown("### 📆 Monthly Revenue — Real vs Predicted")
+    real_ts = monthly_totals.reset_index().rename(columns={"month":"ds","revenue":"y"})
     if fc_overall is not None:
         fc_df = fc_overall.reset_index().rename(columns={"index":"ds"})
-        plot_df = pd.concat([real_ts.rename(columns={"ds":"month","y":"value"}).assign(type="actual"), fc_df.rename(columns={"ds":"month","yhat":"value"}).assign(type="predicted")], ignore_index=True, sort=False)
+        plot_df = pd.concat([
+            real_ts.rename(columns={"ds":"month","y":"value"}).assign(type="actual"),
+            fc_df.rename(columns={"ds":"month","yhat":"value"}).assign(type="predicted")
+        ], ignore_index=True)
         fig = px.line(plot_df, x="month", y="value", color="type", markers=True, title="Monthly Revenue — Real vs Predicted")
-        # ribbon
-        fig.add_traces([dict(x=fc_df["ds"], y=fc_df["yhat_upper"], mode='lines', line=dict(width=0), showlegend=False),
-                        dict(x=fc_df["ds"], y=fc_df["yhat_lower"], mode='lines', fill='tonexty', fillcolor='rgba(0,176,246,0.15)', line=dict(width=0), showlegend=False)])
+        fig.add_traces([
+            dict(x=fc_df["ds"], y=fc_df["yhat_upper"], mode='lines', line=dict(width=0), showlegend=False),
+            dict(x=fc_df["ds"], y=fc_df["yhat_lower"], mode='lines', fill='tonexty', fillcolor='rgba(0,176,246,0.15)', line=dict(width=0), showlegend=False)
+        ])
     else:
-        fig = px.line(real_ts.rename(columns={"ds":"month","y":"value"}), x="month", y="value", title="Monthly Revenue (Historical)")
-    fig.update_layout(xaxis_title="Month", yaxis_title="Revenue (₹)", legend_title="Series")
+        fig = px.line(real_ts, x="ds", y="y", title="Monthly Revenue (Historical)")
+    fig.update_layout(xaxis_title="Month", yaxis_title="Revenue (₹)")
     st.plotly_chart(fig, use_container_width=True)
 
-    # Per-state comparison table (prev / this / predicted)
-    st.markdown("### Per-State: Prev vs This vs Predicted Next")
-    rows = []
-    states_all = totals_by_state["state"].tolist()
+    # =====================================================
+    # 🧾 Per-State Comparison Table
+    # =====================================================
+    st.markdown("### 🧾 Per-State — Prev vs This vs Predicted")
     per_state_year = df_rev.groupby(["year","state"], as_index=False)["revenue"].sum().pivot(index="state", columns="year", values="revenue").fillna(0)
-    for sname in states_all:
-        prev_v = float(per_state_year.loc[sname][PREV_YEAR]) if PREV_YEAR in per_state_year.columns and sname in per_state_year.index else 0.0
-        this_v = float(per_state_year.loc[sname][THIS_YEAR]) if THIS_YEAR in per_state_year.columns and sname in per_state_year.index else 0.0
-        pred_v = float(predicted_per_state.get(sname, 0.0))
+    rows = []
+    for s in totals_by_state["state"]:
+        prev_v = float(per_state_year.loc[s][PREV_YEAR]) if PREV_YEAR in per_state_year.columns else 0.0
+        this_v = float(per_state_year.loc[s][THIS_YEAR]) if THIS_YEAR in per_state_year.columns else 0.0
+        pred_v = float(predicted_per_state.get(s, 0.0))
         rows.append({
-            "state": sname,
+            "state": s,
             f"{PREV_YEAR} (₹)": prev_v,
             f"{THIS_YEAR} (₹)": this_v,
             f"{NEXT_YEAR} (pred ₹)": pred_v,
-            "growth_prev_to_this %": pct_change(prev_v, this_v),
-            "growth_this_to_next %": pct_change(this_v, pred_v),
-            "historical_share %": float(hist_share.get(sname, 0.0))*100
+            "growth_prev→this %": pct_change(prev_v, this_v),
+            "growth_this→next %": pct_change(this_v, pred_v),
+            "historical_share %": float(hist_share.get(s,0))*100
         })
     comp_df = pd.DataFrame(rows).sort_values(f"{THIS_YEAR} (₹)", ascending=False)
-    st.dataframe(comp_df.style.format({f"{PREV_YEAR} (₹)":"₹{:,}", f"{THIS_YEAR} (₹)":"₹{:,}", f"{NEXT_YEAR} (pred ₹)":"₹{:,}", "growth_prev_to_this %":"{:.2f}%", "growth_this_to_next %":"{:.2f}%","historical_share %":"{:.2f}%"}), height=420)
+    st.dataframe(comp_df.style.format({
+        f"{PREV_YEAR} (₹)":"₹{:,}",
+        f"{THIS_YEAR} (₹)":"₹{:,}",
+        f"{NEXT_YEAR} (pred ₹)":"₹{:,}",
+        "growth_prev→this %":"{:.2f}%",
+        "growth_this→next %":"{:.2f}%",
+        "historical_share %":"{:.2f}%"
+    }), use_container_width=True, height=420)
 
-    # Heatmap: state x year revenue
-    st.markdown("### Yearly Heatmap — State x Year Revenue")
+    # =====================================================
+    # 🌡️ Heatmap
+    # =====================================================
+    st.markdown("### 🌡️ Yearly Revenue Heatmap")
     heat = yearly_pivot.fillna(0)
     if not heat.empty:
-        heat = heat[sorted(heat.columns, key=lambda s: -heat.loc[:,s].sum())]  # sort cols by total desc
+        heat = heat[sorted(heat.columns, key=lambda s: -heat[s].sum())]
         fig_heat = px.imshow(heat.T, labels=dict(x="Year", y="State", color="Revenue (₹)"),
-                             x=heat.index.astype(str).tolist(), y=heat.columns.tolist(), aspect="auto", title="State x Year Revenue Heatmap")
+                             x=heat.index.astype(str).tolist(), y=heat.columns.tolist(), aspect="auto",
+                             title="State × Year Revenue Heatmap")
         st.plotly_chart(fig_heat, use_container_width=True)
 
-    # Anomalies by state (large YoY swings)
-    st.markdown("### Revenue Anomalies & Alerts")
+    # =====================================================
+    # 🚨 Anomalies
+    # =====================================================
+    st.markdown("### 🚨 Revenue Anomalies (MoM > 50%)")
     anomalies = []
-    for sname in monthly_pivot.columns:
-        s = monthly_pivot[sname].sort_index()
-        if len(s) >= 6:
-            mom = s.pct_change().fillna(0)
-            large = mom[mom.abs() > 0.5]
-            for idx,v in large.items():
-                anomalies.append({"state": sname, "period": idx, "mom_change_pct": v*100, "revenue": float(s.loc[idx])})
+    for s in monthly_pivot.columns:
+        mom = monthly_pivot[s].pct_change().fillna(0)
+        large = mom[mom.abs() > 0.5]
+        for idx,v in large.items():
+            anomalies.append({"state": s, "period": idx, "MoM change %": v*100, "revenue": float(monthly_pivot.loc[idx,s])})
     if anomalies:
-        anom_df = pd.DataFrame(anomalies).sort_values("period", ascending=False)
-        st.table(anom_df.head(20).assign(period=lambda df_: df_["period"].dt.strftime("%Y-%m-%d")))
+        st.dataframe(pd.DataFrame(anomalies).sort_values("period", ascending=False).head(20))
     else:
-        st.info("No large month-over-month revenue anomalies detected (threshold: 50%).")
+        st.info("✅ No major MoM anomalies detected.")
 
-    # Exports
-    st.markdown("### Export Data & Charts")
+    # =====================================================
+    # 💾 Export
+    # =====================================================
+    st.markdown("### 💾 Export Data")
     csv = df_rev.to_csv(index=False).encode("utf-8")
-    st.download_button("Download raw revenue CSV", csv, file_name=f"top5_revenue_raw_{THIS_YEAR}.csv", mime="text/csv")
+    st.download_button("⬇️ Download CSV", csv, file_name=f"revenue_raw_{THIS_YEAR}.csv", mime="text/csv")
+
     try:
         excel_buffer = io.BytesIO()
         with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
             df_rev.to_excel(writer, sheet_name="raw", index=False)
-            comp_df.to_excel(writer, sheet_name="per_state_comparison", index=False)
-            monthly_pivot.reset_index().to_excel(writer, sheet_name="monthly_by_state", index=True)
+            comp_df.to_excel(writer, sheet_name="per_state", index=False)
+            monthly_pivot.reset_index().to_excel(writer, sheet_name="monthly_by_state", index=False)
             if fc_overall is not None:
-                fc_overall.reset_index().to_excel(writer, sheet_name="forecast_overall", index=True)
-            for sname, fc in state_forecasts.items():
+                fc_overall.reset_index().to_excel(writer, sheet_name="forecast_overall", index=False)
+            for s, fc in state_forecasts.items():
                 if fc is not None:
-                    safe = str(sname)[:28]
-                    fc.reset_index().to_excel(writer, sheet_name=f"fc_{safe}", index=True)
+                    fc.reset_index().to_excel(writer, sheet_name=f"fc_{str(s)[:25]}", index=False)
         excel_buffer.seek(0)
-        st.download_button("Download revenue analysis Excel", excel_buffer, file_name=f"revenue_analysis_{THIS_YEAR}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.download_button("⬇️ Download Excel", excel_buffer,
+                           file_name=f"revenue_analysis_{THIS_YEAR}.xlsx",
+                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     except Exception:
-        st.warning("Excel export failed; CSV available.")
+        st.warning("Excel export failed — CSV available instead.")
 
-    # AI summary (DeepInfra)
+    # =====================================================
+    # 🧠 AI Summary (DeepInfra)
+    # =====================================================
     if enable_ai:
-        with st.spinner("Generating AI revenue narrative..."):
-            system = "You are a financial analyst. Summarize the revenue patterns, top states, growth/decline, predicted next-year revenue and strategic recommendations."
-            sample = comp_df.head(8).to_dict(orient="records")
-            user = f"Prev total={int(prev_total):,}, this total={int(this_total):,}, predicted_next={int(predicted_next_total):,}. Sample per-state rows: {json.dumps(sample, default=str)}. Provide 6 bullets: top states, fastest growth, decline signals, next-year forecast risk, 2 recommendations, 2-sentence exec summary."
-            ai_out = deepinfra_chat(system, user, max_tokens=360)
+        with st.spinner("🤖 Generating AI narrative..."):
+            system = "You are a financial analyst. Analyze the revenue trends and predicted growth for Indian states, highlight top performers, laggards, and next-year expectations."
+            sample = comp_df.head(7).to_dict(orient="records")
+            user = f"Prev={int(prev_total):,}, This={int(this_total):,}, PredNext={int(predicted_next_total):,}. Sample data={json.dumps(sample, default=str)}. Give 6 concise bullet points + 2-line summary."
+            ai_out = deepinfra_chat(system, user, max_tokens=400)
             if isinstance(ai_out, dict) and "text" in ai_out:
-                st.markdown("**AI Revenue Narrative (Live)**")
-                st.write(ai_out["text"])
+                st.markdown("### 🧠 AI Revenue Narrative")
+                st.info(ai_out["text"])
             else:
-                st.info("AI narrative unavailable or key missing.")
+                st.info("⚠️ No AI output or key missing.")
 
-    st.markdown("---")
-    st.success("✅ Top 5 Revenue States analysis complete (real & predicted).")
+    st.success("✅ MAXED Revenue Analysis Complete.")
 
-# =====================================================
-# 6️⃣ MAXED — Revenue Trend (Real + Predicted + Full Analysis)
-# =====================================================
+# ============================================================
+# 6️⃣ FULLY MAXED — Revenue Trend (Real + Predicted + Full Analysis)
+# ============================================================
 import io
 import math
 import json
@@ -3389,249 +3157,218 @@ import streamlit as st
 import warnings
 warnings.filterwarnings("ignore")
 
+# ============================================================
+# 🧩 GLOBALS
+# ============================================================
 TODAY = date.today()
 PREV_YEAR = TODAY.year - 1
 THIS_YEAR = TODAY.year
 NEXT_YEAR = THIS_YEAR + 1
 
-# ----------------- Fetch & normalize -----------------
-with st.spinner("Fetching Revenue Trend (maxed)..."):
-    rev_trend_json = fetch_json("vahandashboard/revenueFeeLineChart", params_common, desc="Revenue Trend")
-    df_rev_trend = parse_revenue_trend(rev_trend_json if rev_trend_json else {})
+# ============================================================
+# 📡 FETCH & NORMALIZE DATA
+# ============================================================
+with st.spinner("📡 Fetching Revenue Trend (fully maxed)..."):
+    rev_trend_json = fetch_json(
+        "vahandashboard/revenueFeeLineChart",
+        params=params_common,
+        desc="Revenue Trend"
+    )
 
-# safe-normalize: expect columns like ['period','value','year','month']
 def normalize_rev_df(df):
-    if df is None or df.empty:
-        return pd.DataFrame(columns=["period","value"])
+    """Safe normalization to ensure uniform schema."""
+    if not isinstance(df, pd.DataFrame) or df.empty:
+        return pd.DataFrame(columns=["period", "value"])
     d = df.copy()
-    # try to find period & value
     cols = {c.lower(): c for c in d.columns}
-    period_col = cols.get("period") or cols.get("date") or cols.get("month") or cols.get("ds")
-    value_col = cols.get("value") or cols.get("revenue") or cols.get("amount") or (d.select_dtypes(include=[np.number]).columns[0] if d.select_dtypes(include=[np.number]).shape[1]>0 else None)
-    if period_col:
-        d = d.rename(columns={period_col: "period"})
-        d["period"] = pd.to_datetime(d["period"], errors="coerce")
-    else:
-        d["period"] = pd.to_datetime(d.get("period", pd.Timestamp(datetime(THIS_YEAR,1,1))))
-    if value_col:
-        d = d.rename(columns={value_col: "value"})
-    else:
-        d["value"] = 0.0
-    d["value"] = pd.to_numeric(d["value"], errors="coerce").fillna(0.0)
-    d = d.sort_values("period").reset_index(drop=True)
-    return d[["period","value"]]
+    period_col = cols.get("period") or cols.get("date") or cols.get("month")
+    value_col = cols.get("value") or cols.get("revenue") or cols.get("amount")
 
-df_rev = normalize_rev_df(df_rev_trend)
+    if not period_col:
+        period_col = d.columns[0]
+    if not value_col:
+        value_col = d.select_dtypes(include=[np.number]).columns[0]
+
+    d = d.rename(columns={period_col: "period", value_col: "value"})
+    d["period"] = pd.to_datetime(d["period"], errors="coerce")
+    d["value"] = pd.to_numeric(d["value"], errors="coerce").fillna(0)
+    return d.dropna(subset=["period"]).sort_values("period")
+
+df_rev = normalize_rev_df(parse_revenue_trend(rev_trend_json or {}))
 
 if df_rev.empty:
-    st.warning("No revenue trend data available.")
-else:
-    # ---------------- basic aggregates ----------------
-    df_rev["year"] = df_rev["period"].dt.year
-    df_rev["month"] = df_rev["period"].dt.to_period("M").dt.to_timestamp()
-    df_rev["day"] = df_rev["period"].dt.floor("D")
+    st.warning("⚠️ No revenue data available.")
+    st.stop()
 
-    totals_by_year = df_rev.groupby("year", as_index=True)["value"].sum().sort_index()
-    prev_total = float(totals_by_year.get(PREV_YEAR, 0.0))
-    this_total = float(totals_by_year.get(THIS_YEAR, 0.0))
+# ============================================================
+# 📆 TIME COMPONENTS
+# ============================================================
+df_rev["year"] = df_rev["period"].dt.year
+df_rev["month"] = df_rev["period"].dt.to_period("M").dt.to_timestamp()
+df_rev["day"] = df_rev["period"].dt.floor("D")
 
-    # monthly totals series for forecasting
-    monthly_totals = df_rev.groupby("month", as_index=True)["value"].sum().sort_index()
+# ============================================================
+# 📊 AGGREGATIONS
+# ============================================================
+totals_by_year = df_rev.groupby("year")["value"].sum()
+monthly_totals = df_rev.groupby("month")["value"].sum().sort_index()
 
-    # Forecast monthly (next 12 months) using Prophet preferred, LR fallback
-    def forecast_monthly(series, periods=12):
-        try:
-            s = series.dropna().sort_index()
-            if len(s) < 6:
-                return None
-            if PROPHET_AVAILABLE and len(s) >= 12:
-                from prophet import Prophet
-                dfp = s.reset_index().rename(columns={s.index.name or 'index':'ds', s.name:'y'})
-                dfp.columns = ['ds','y']
-                m = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
-                m.fit(dfp)
-                future = m.make_future_dataframe(periods=periods, freq='MS')
-                fc = m.predict(future)[["ds","yhat","yhat_lower","yhat_upper"]].set_index("ds")
-                return fc.tail(periods)
-            else:
-                # LR fallback
-                from sklearn.linear_model import LinearRegression
-                X = np.arange(len(s)).reshape(-1,1)
-                y = s.values
-                lr = LinearRegression().fit(X,y)
-                fut_X = np.arange(len(s), len(s)+periods).reshape(-1,1)
-                yhat = lr.predict(fut_X)
-                last = s.index.max()
-                next_idx = pd.date_range(start=(pd.to_datetime(last) + pd.offsets.MonthBegin(1)).replace(day=1), periods=periods, freq='MS')
-                fc = pd.DataFrame({"yhat": np.maximum(yhat,0), "yhat_lower": np.maximum(yhat*0.85,0), "yhat_upper": np.maximum(yhat*1.15,0)}, index=next_idx)
-                return fc
-        except Exception:
-            return None
+prev_total = float(totals_by_year.get(PREV_YEAR, 0))
+this_total = float(totals_by_year.get(THIS_YEAR, 0))
 
-    fc_monthly = forecast_monthly(monthly_totals, periods=12)
-    predicted_next_total = float(fc_monthly[fc_monthly.index.year==NEXT_YEAR]["yhat"].sum()) if fc_monthly is not None and any(fc_monthly.index.year==NEXT_YEAR) else (float(fc_monthly["yhat"].sum()) if fc_monthly is not None else 0.0)
-
-    # ---------------- KPIs & comparisons ----------------
-    def pct(a,b):
-        try:
-            if a == 0:
-                return float("inf") if b!=0 else 0.0
-            return ((b-a)/abs(a))*100.0
-        except Exception:
-            return 0.0
-
-    kpi_prev_vs_this = pct(prev_total, this_total)
-    kpi_this_vs_next = pct(this_total, predicted_next_total)
-
-    st.subheader("Revenue Trend — Real & Predicted (Maxed)")
-    c1,c2,c3,c4 = st.columns(4)
-    c1.metric(f"Prev Year ({PREV_YEAR}) Revenue", f"₹{int(prev_total):,}", delta=f"{kpi_prev_vs_this:.2f}%")
-    c2.metric(f"This Year ({THIS_YEAR}) Revenue", f"₹{int(this_total):,}", delta=f"{kpi_this_vs_next:.2f}%")
-    c3.metric(f"Predicted Next Year ({NEXT_YEAR}) Revenue", f"₹{int(predicted_next_total):,}", delta=f"{pct(prev_total,predicted_next_total):.2f}%")
-    c4.metric("Total Historical Revenue", f"₹{int(df_rev['value'].sum()):,}")
-
-    st.markdown("### Interactive Charts — choose view & smoothing")
-    view = st.selectbox("Choose timeseries view", options=["Monthly totals","Daily series","Cumulative"], index=0)
-    smooth = st.slider("Smoothing window (months) for moving average", min_value=1, max_value=12, value=3)
-
-    # prepare plotting DF
-    monthly_df = monthly_totals.reset_index().rename(columns={"month":"period","value":"value"})
-    if fc_monthly is not None:
-        fc_df = fc_monthly.reset_index().rename(columns={"index":"period"})
-        fc_df = fc_df.rename(columns={"yhat":"value"})
-        plot_df = pd.concat([monthly_df.assign(type="actual"), fc_df.assign(type="predicted")], ignore_index=True, sort=False)
-    else:
-        plot_df = monthly_df.assign(type="actual")
-
-    # Plotly time series with ribbons and markers
-    fig = go.Figure()
-    # actual line
-    fig.add_trace(go.Scatter(x=monthly_df["period"], y=monthly_df["value"], mode="lines+markers", name="Actual", line=dict(width=2)))
-    # moving average
-    ma = monthly_df["value"].rolling(window=smooth, min_periods=1).mean()
-    fig.add_trace(go.Scatter(x=monthly_df["period"], y=ma, mode="lines", name=f"{smooth}-mo MA", line=dict(dash="dash")))
-
-    # predicted
-    if fc_monthly is not None:
-        fig.add_trace(go.Scatter(x=fc_df["period"], y=fc_df["value"], mode="lines+markers", name="Predicted", line=dict(color="orange", width=2)))
-        # ribbon
-        fig.add_trace(go.Scatter(x=list(fc_df["period"]) + list(fc_df["period"][::-1]),
-                                 y=list(fc_monthly["yhat_upper"]) + list(fc_monthly["yhat_lower"][::-1]),
-                                 fill='toself', fillcolor='rgba(255,165,0,0.12)', line=dict(color='rgba(255,165,0,0)'), hoverinfo="skip", showlegend=True, name="Prediction CI"))
-
-    fig.update_layout(title="Revenue: Actual vs Predicted (Monthly)", xaxis_title="Month", yaxis_title="Revenue (₹)", legend_title="Series", hovermode="x unified")
-    st.plotly_chart(fig, use_container_width=True)
-
-    # additional quick charts
-    st.markdown("### Additional Views")
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.markdown("#### Seasonality / Decomposition")
-        try:
-            # time series decomposition if enough points
-            if len(monthly_totals) >= 24:
-                res = sm.tsa.seasonal_decompose(monthly_totals, model="additive", period=12, two_sided=True, extrapolate_trend='freq')
-                fig_decomp = make_subplots(rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.02, subplot_titles=("Observed","Trend","Seasonal","Residual"))
-                fig_decomp.add_trace(go.Scatter(x=monthly_totals.index, y=res.observed, name="Observed"), row=1, col=1)
-                fig_decomp.add_trace(go.Scatter(x=monthly_totals.index, y=res.trend, name="Trend"), row=2, col=1)
-                fig_decomp.add_trace(go.Scatter(x=monthly_totals.index, y=res.seasonal, name="Seasonal"), row=3, col=1)
-                fig_decomp.add_trace(go.Scatter(x=monthly_totals.index, y=res.resid, name="Residual"), row=4, col=1)
-                fig_decomp.update_layout(height=800)
-                st.plotly_chart(fig_decomp, use_container_width=True)
-            else:
-                st.info("Not enough history for seasonal decomposition (need >=24 months).")
-        except Exception:
-            st.info("Seasonal decomposition unavailable.")
-    with col_b:
-        st.markdown("#### Cumulative & Waterfall")
-        cum = monthly_df.copy()
-        cum["cum"] = cum["value"].cumsum()
-        fig_cum = px.area(cum, x="period", y="cum", title="Cumulative Revenue")
-        st.plotly_chart(fig_cum, use_container_width=True)
-
-    # ---------------- statistical metrics ----------------
-    st.markdown("### Statistical Metrics & Anomalies")
-    roi_12m = monthly_totals.tail(12).sum() if len(monthly_totals)>=1 else 0
-    mom = monthly_totals.pct_change().dropna()
-    anomalies = mom[ mom.abs() > 0.5 ]  # >50% month-over-month change flagged
-    metrics = {
-        "Total historical revenue": int(df_rev["value"].sum()),
-        f"Revenue last 12 months": int(roi_12m),
-        "Mean monthly": int(monthly_totals.mean()) if len(monthly_totals)>0 else 0,
-        "Std monthly": float(monthly_totals.std()) if len(monthly_totals)>0 else 0.0,
-        "Latest MoM %": float(mom.iloc[-1]*100) if len(mom)>0 else None,
-    }
-    st.json(metrics)
-
-    if not anomalies.empty:
-        st.warning("Anomalies detected (MoM > 50%):")
-        anomalies_df = anomalies.reset_index().rename(columns={0:"MoM"})
-        anomalies_df["MoM%"] = anomalies_df.iloc[:,1]*100
-        st.dataframe(anomalies_df.style.format({"MoM%":"{:.2f}%"}), use_container_width=True)
-    else:
-        st.info("No major MoM anomalies detected.")
-
-    # ---------------- per-period comparisons ----------------
-    st.markdown("### Prev vs This vs Predicted Next Year — Breakdown")
-    # prev & this per-month totals aggregated into yearly totals already computed
-    # create comparison dataframe
-    prev_vs_this = []
-    # If fc_monthly exists, sum into next year too
-    for yr in sorted(set([PREV_YEAR, THIS_YEAR, NEXT_YEAR])):
-        if yr == NEXT_YEAR and fc_monthly is not None:
-            val = float(fc_monthly[fc_monthly.index.year==NEXT_YEAR]["yhat"].sum()) if any(fc_monthly.index.year==NEXT_YEAR) else float(fc_monthly["yhat"].sum())
-        else:
-            val = float(totals_by_year.get(yr, 0.0)) if yr in totals_by_year.index else float(monthly_totals[monthly_totals.index.year==yr].sum() if not monthly_totals.empty else 0.0)
-        prev_vs_this.append({"year": yr, "value": val})
-    comp_df = pd.DataFrame(prev_vs_this)
-    comp_df["YoY%"] = comp_df["value"].pct_change()*100
-    st.dataframe(comp_df.style.format({"value":"₹{:,}", "YoY%":"{:.2f}%"}), use_container_width=True)
-
-    # ---------------- Exports ----------------
-    st.markdown("### Export / Download")
-    csv = df_rev.to_csv(index=False).encode("utf-8")
-    st.download_button("Download revenue trend CSV", csv, file_name=f"revenue_trend_{THIS_YEAR}.csv", mime="text/csv")
+# ============================================================
+# 🔮 FORECASTING
+# ============================================================
+def forecast_monthly(series, periods=12):
     try:
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-            df_rev.to_excel(writer, sheet_name="raw", index=False)
-            monthly_totals.reset_index().to_excel(writer, sheet_name="monthly", index=False)
-            if fc_monthly is not None:
-                fc_monthly.reset_index().to_excel(writer, sheet_name="forecast", index=True)
-            comp_df.to_excel(writer, sheet_name="year_comparison", index=False)
-        buffer.seek(0)
-        st.download_button("Download revenue trend Excel", buffer, file_name=f"revenue_trend_analysis_{THIS_YEAR}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        s = series.dropna().sort_index()
+        if len(s) < 6:
+            return None
+        if "prophet" in globals() or "prophet" in locals():
+            from prophet import Prophet
+            dfp = s.reset_index().rename(columns={"month": "ds", "value": "y"})
+            dfp.columns = ["ds", "y"]
+            m = Prophet(yearly_seasonality=True)
+            m.fit(dfp)
+            future = m.make_future_dataframe(periods=periods, freq="MS")
+            fc = m.predict(future)
+            fc = fc.set_index("ds")[["yhat", "yhat_lower", "yhat_upper"]]
+            return fc.tail(periods)
+        else:
+            from sklearn.linear_model import LinearRegression
+            X = np.arange(len(s)).reshape(-1, 1)
+            y = s.values
+            lr = LinearRegression().fit(X, y)
+            fut_X = np.arange(len(s), len(s) + periods).reshape(-1, 1)
+            yhat = lr.predict(fut_X)
+            next_idx = pd.date_range(s.index[-1] + pd.offsets.MonthBegin(), periods=periods, freq="MS")
+            return pd.DataFrame({
+                "yhat": yhat,
+                "yhat_lower": yhat * 0.9,
+                "yhat_upper": yhat * 1.1
+            }, index=next_idx)
     except Exception:
-        st.warning("Excel export failed; CSV available.")
+        return None
 
-    # ---------------- AI narrative ----------------
-    if enable_ai:
-        with st.spinner("Generating AI revenue trend narrative..."):
-            system = "You are a senior financial analyst. Produce a short, data-driven narrative focusing on trend, forecast, anomalies, and 3 actionable recommendations."
-            sample = monthly_totals.tail(12).reset_index().rename(columns={"month":"period","value":"revenue"}).to_dict(orient="records")
-            user = f"Sample last 12 months: {json.dumps(sample, default=str)}\nLatest YoY%: {kpi_prev_vs_this:.2f}, Predicted next year total: ₹{int(predicted_next_total):,}\nProvide: (1) 3 key observations, (2) top 2 risks, (3) 3 actions for ops/strategy."
-            ai_out = deepinfra_chat(system, user, max_tokens=360)
-            if isinstance(ai_out, dict) and "text" in ai_out:
-                st.markdown("**AI Revenue Trend Narrative**")
-                st.write(ai_out["text"])
-            else:
-                st.info("AI narrative unavailable or key missing.")
+fc_monthly = forecast_monthly(monthly_totals, periods=12)
+predicted_next_total = (
+    float(fc_monthly[fc_monthly.index.year == NEXT_YEAR]["yhat"].sum())
+    if fc_monthly is not None else 0.0
+)
 
-    st.markdown("---")
-    st.success("✅ Revenue Trend analysis complete (real + predicted).")
+# ============================================================
+# 🧾 KPIs
+# ============================================================
+def pct(a, b):
+    return ((b - a) / abs(a)) * 100 if a else 0.0
+
+kpi_prev_vs_this = pct(prev_total, this_total)
+kpi_this_vs_next = pct(this_total, predicted_next_total)
+
+st.subheader("💰 Revenue Trend — Real + Forecasted (MAXED)")
+col1, col2, col3, col4 = st.columns(4)
+col1.metric(f"{PREV_YEAR} Revenue", f"₹{int(prev_total):,}")
+col2.metric(f"{THIS_YEAR} Revenue", f"₹{int(this_total):,}", delta=f"{kpi_prev_vs_this:.2f}% vs Prev")
+col3.metric(f"{NEXT_YEAR} Forecast", f"₹{int(predicted_next_total):,}", delta=f"{kpi_this_vs_next:.2f}% vs Current")
+col4.metric("Total", f"₹{int(df_rev['value'].sum()):,}")
+
+# ============================================================
+# 📈 VISUALIZATIONS
+# ============================================================
+st.markdown("### Interactive Revenue Trends")
+
+smooth = st.slider("Smoothing (months)", 1, 12, 3)
+ma = monthly_totals.rolling(smooth).mean()
+
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=monthly_totals.index, y=monthly_totals.values, name="Actual", mode="lines+markers"))
+fig.add_trace(go.Scatter(x=monthly_totals.index, y=ma, name=f"{smooth}-mo MA", line=dict(dash="dot")))
+
+if fc_monthly is not None:
+    fig.add_trace(go.Scatter(x=fc_monthly.index, y=fc_monthly["yhat"], name="Forecast", line=dict(color="orange", width=3)))
+    fig.add_trace(go.Scatter(
+        x=list(fc_monthly.index) + list(fc_monthly.index[::-1]),
+        y=list(fc_monthly["yhat_upper"]) + list(fc_monthly["yhat_lower"][::-1]),
+        fill="toself", fillcolor="rgba(255,165,0,0.2)",
+        line=dict(color="rgba(255,165,0,0)"), name="Confidence Band"
+    ))
+
+fig.update_layout(title="Revenue: Actual vs Forecast", xaxis_title="Month", yaxis_title="Revenue (₹)", hovermode="x unified")
+st.plotly_chart(fig, use_container_width=True)
+
+# ============================================================
+# 🔍 SEASONALITY + ANOMALIES
+# ============================================================
+if len(monthly_totals) >= 24:
+    try:
+        res = sm.tsa.seasonal_decompose(monthly_totals, model="additive", period=12)
+        st.markdown("### 🔍 Seasonal Decomposition")
+        st.line_chart(res.trend.rename("Trend"))
+        st.line_chart(res.seasonal.rename("Seasonal"))
+    except Exception:
+        st.info("Decomposition unavailable.")
+
+mom = monthly_totals.pct_change()
+anomalies = mom[mom.abs() > 0.5]
+if not anomalies.empty:
+    st.warning("⚠️ Anomalies detected (>50% MoM change)")
+    st.dataframe(anomalies.rename("MoM%").mul(100).round(2))
+
+# ============================================================
+# 📤 EXPORTS
+# ============================================================
+st.markdown("### 📤 Export Data")
+csv = df_rev.to_csv(index=False).encode("utf-8")
+st.download_button("⬇️ Download CSV", csv, file_name=f"revenue_trend_{THIS_YEAR}.csv")
+
+buffer = io.BytesIO()
+with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+    df_rev.to_excel(writer, sheet_name="Raw", index=False)
+    monthly_totals.reset_index().to_excel(writer, sheet_name="Monthly", index=False)
+    if fc_monthly is not None:
+        fc_monthly.to_excel(writer, sheet_name="Forecast")
+buffer.seek(0)
+st.download_button("⬇️ Download Excel", buffer, file_name=f"revenue_trend_{THIS_YEAR}.xlsx")
+
+# ============================================================
+# 🤖 AI NARRATIVE (DeepInfra)
+# ============================================================
+if enable_ai:
+    with st.spinner("🤖 Generating AI Revenue Summary..."):
+        sample = monthly_totals.tail(12).reset_index().rename(columns={"month": "period", "value": "revenue"}).to_dict(orient="records")
+        system_prompt = (
+            "You are a senior financial data analyst. Summarize the following revenue trend data, "
+            "highlighting YoY, MoM, anomalies, and forecast with 3 strategic recommendations."
+        )
+        user_prompt = f"Recent data: {json.dumps(sample, default=str)}\nYoY change: {kpi_prev_vs_this:.2f}% | Predicted next year ₹{int(predicted_next_total):,}"
+        ai_out = deepinfra_chat(system_prompt, user_prompt, max_tokens=400)
+        if ai_out and "text" in ai_out:
+            st.markdown("### 🧠 AI-Generated Insight")
+            st.info(ai_out["text"])
+        else:
+            st.info("⚠️ No AI output received.")
+
+st.success("✅ Revenue Trend (Fully Maxed) completed.")
 
 # =====================================================
-# 7️⃣ MAXED — Forecasting (Prev Year / This Year / Next Year — Real + Predicted + Full Analysis)
+# 7️⃣ MAXED — Forecasting (Prev / This / Next Year — Real + Predicted + Full Analysis)
 # =====================================================
-import io, math, json, numpy as np, pandas as pd, streamlit as st, plotly.express as px, plotly.graph_objects as go, warnings
+import io, math, json, numpy as np, pandas as pd, streamlit as st
+import plotly.express as px, plotly.graph_objects as go, warnings
 from datetime import date
 warnings.filterwarnings("ignore")
 
 TODAY = date.today()
 PREV_YEAR, THIS_YEAR, NEXT_YEAR = TODAY.year - 1, TODAY.year, TODAY.year + 1
 
+# =====================================================
+# 🧠 Helper Functions
+# =====================================================
+def pct(a, b):
+    return ((b - a) / abs(a)) * 100 if a else 0
+
 def auto_agg_timescale(df):
-    """Automatically infer daily/monthly/yearly frequency."""
+    """Automatically infer daily / monthly / yearly frequency."""
     if "date" not in df.columns:
         return df
     df = df.copy().sort_values("date")
@@ -3647,7 +3384,7 @@ def auto_agg_timescale(df):
 def prophet_forecast(df, months=12):
     from prophet import Prophet
     dfp = df.rename(columns={"date": "ds", "value": "y"})
-    m = Prophet(yearly_seasonality=True, weekly_seasonality=False)
+    m = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
     m.fit(dfp)
     future = m.make_future_dataframe(periods=months, freq="MS")
     fc = m.predict(future)[["ds", "yhat", "yhat_lower", "yhat_upper"]]
@@ -3664,17 +3401,17 @@ def arima_forecast(df, months=12):
     pred_df = pd.DataFrame({
         "date": pd.date_range(series.index[-1] + pd.offsets.MonthBegin(1), periods=months, freq="MS"),
         "value": fc.predicted_mean,
-        "lower": fc.conf_int()["lower value"],
-        "upper": fc.conf_int()["upper value"],
+        "lower": fc.conf_int().iloc[:, 0],
+        "upper": fc.conf_int().iloc[:, 1],
         "type": "Predicted"
     })
     return pred_df
 
 def linear_forecast(df, months=12):
+    from sklearn.linear_model import LinearRegression
     df = df.copy().sort_values("date")
     df["x"] = np.arange(len(df))
     X, y = df[["x"]].values, df["value"].values
-    from sklearn.linear_model import LinearRegression
     lr = LinearRegression().fit(X, y)
     future_x = np.arange(len(df), len(df)+months).reshape(-1, 1)
     preds = lr.predict(future_x)
@@ -3688,613 +3425,541 @@ def linear_forecast(df, months=12):
     })
     return fc
 
-if not df_trend.empty:
-    st.subheader("🔮 Advanced Forecasting — Real + Predicted + Comparative Insights")
+# =====================================================
+# 📊 Main Logic
+# =====================================================
+if "df_trend" in globals() and not df_trend.empty:
+    st.subheader("🔮 Forecasting — Real + Predicted + Full MAXED Insights")
 
     df_trend = auto_agg_timescale(df_trend)
     df_trend["type"] = "Actual"
     df_trend = df_trend.sort_values("date")
 
-    # ---------------- Try Prophet → ARIMA → Linear ----------------
-    forecast_df = pd.DataFrame()
-    if PROPHET_AVAILABLE:
+    # Model selection order: Prophet → ARIMA → Linear
+    forecast_periods = 12
+    forecast_df, model_used = pd.DataFrame(), "N/A"
+    try:
+        forecast_df = prophet_forecast(df_trend, forecast_periods)
+        model_used = "Prophet"
+    except Exception as e1:
         try:
-            forecast_df = prophet_forecast(df_trend, months=forecast_periods)
-            model_used = "Prophet"
-        except Exception as e:
-            st.warning(f"Prophet failed → fallback to ARIMA: {e}")
-            try:
-                forecast_df = arima_forecast(df_trend, months=forecast_periods)
-                model_used = "ARIMA"
-            except Exception:
-                forecast_df = linear_forecast(df_trend, months=forecast_periods)
-                model_used = "Linear Regression"
-    else:
-        forecast_df = linear_forecast(df_trend, months=forecast_periods)
-        model_used = "Linear Regression"
+            st.warning(f"Prophet failed → trying ARIMA ({e1})")
+            forecast_df = arima_forecast(df_trend, forecast_periods)
+            model_used = "ARIMA"
+        except Exception as e2:
+            st.warning(f"ARIMA failed → using Linear Regression ({e2})")
+            forecast_df = linear_forecast(df_trend, forecast_periods)
+            model_used = "Linear Regression"
 
-    full_df = pd.concat([df_trend, forecast_df], ignore_index=True)
-    full_df = full_df.sort_values("date")
-
-    # ---------------- Yearly totals ----------------
+    # Merge + clean
+    full_df = pd.concat([df_trend, forecast_df], ignore_index=True).sort_values("date")
     full_df["year"] = full_df["date"].dt.year
-    year_totals = full_df.groupby(["year", "type"], as_index=False)["value"].sum()
 
+    # =====================================================
+    # 📈 KPI Metrics
+    # =====================================================
+    year_totals = full_df.groupby(["year", "type"], as_index=False)["value"].sum()
     prev_actual = year_totals.query("year == @PREV_YEAR and type == 'Actual'")["value"].sum()
     this_actual = year_totals.query("year == @THIS_YEAR and type == 'Actual'")["value"].sum()
     next_pred = year_totals.query("year == @NEXT_YEAR and type == 'Predicted'")["value"].sum()
 
-    def pct(a,b): return ((b-a)/abs(a))*100 if a else 0
-
     c1, c2, c3 = st.columns(3)
-    c1.metric(f"Prev Year ({PREV_YEAR})", f"₹{int(prev_actual):,}", delta=None)
+    c1.metric(f"Prev Year ({PREV_YEAR})", f"₹{int(prev_actual):,}")
     c2.metric(f"This Year ({THIS_YEAR})", f"₹{int(this_actual):,}", delta=f"{pct(prev_actual,this_actual):.2f}% vs Prev")
-    c3.metric(f"Predicted Next ({NEXT_YEAR})", f"₹{int(next_pred):,}", delta=f"{pct(this_actual,next_pred):.2f}% vs This")
+    c3.metric(f"Predicted ({NEXT_YEAR})", f"₹{int(next_pred):,}", delta=f"{pct(this_actual,next_pred):.2f}% vs This")
 
-    st.markdown(f"**Forecast Model Used:** {model_used}")
+    st.markdown(f"**Model Used:** `{model_used}`")
 
-    # ---------------- Plotly Chart ----------------
+    # =====================================================
+    # 📉 Forecast Visualization
+    # =====================================================
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=df_trend["date"], y=df_trend["value"], name="Actual", mode="lines+markers"))
     fig.add_trace(go.Scatter(x=forecast_df["date"], y=forecast_df["value"], name="Predicted", mode="lines+markers", line=dict(color="orange")))
     fig.add_trace(go.Scatter(
         x=list(forecast_df["date"]) + list(forecast_df["date"][::-1]),
         y=list(forecast_df["upper"]) + list(forecast_df["lower"][::-1]),
-        fill='toself', fillcolor='rgba(255,165,0,0.1)', line=dict(color='rgba(255,165,0,0)'),
+        fill='toself', fillcolor='rgba(255,165,0,0.2)', line=dict(color='rgba(255,165,0,0)'),
         hoverinfo="skip", showlegend=True, name="Confidence Band"
     ))
-    fig.update_layout(
-        title="Forecast: Actual vs Predicted",
-        xaxis_title="Date", yaxis_title="Value", hovermode="x unified",
-        template="plotly_white", legend_title="Series"
-    )
+    fig.update_layout(title="Forecast: Actual vs Predicted", xaxis_title="Date", yaxis_title="Value (₹)", hovermode="x unified")
     st.plotly_chart(fig, use_container_width=True)
 
-    # ---------------- Additional Insights ----------------
+    # =====================================================
+    # 🔍 Deep Insights
+    # =====================================================
     st.markdown("### 🔍 Deep Insights & Metrics")
     df_trend["MA(3)"] = df_trend["value"].rolling(3).mean()
     df_trend["YoY%"] = df_trend["value"].pct_change(12) * 100
     st.dataframe(df_trend.tail(12).style.format({"value":"₹{:,}", "YoY%":"{:.2f}%"}), use_container_width=True)
 
+    # Heatmap
     heat = df_trend.copy()
-    heat["month"] = heat["date"].dt.month
-    heat["year"] = heat["date"].dt.year
+    heat["month"], heat["year"] = heat["date"].dt.month, heat["date"].dt.year
     pivot = heat.pivot_table(index="year", columns="month", values="value", aggfunc="sum")
     fig_heat = px.imshow(pivot, aspect="auto", color_continuous_scale="Viridis", title="Heatmap: Revenue by Month-Year")
     st.plotly_chart(fig_heat, use_container_width=True)
 
-    # Cumulative line
+    # Cumulative
     cum_df = full_df.copy()
     cum_df["cumulative"] = cum_df["value"].cumsum()
     fig_cum = px.area(cum_df, x="date", y="cumulative", color="type", title="Cumulative Revenue (Actual + Forecast)")
     st.plotly_chart(fig_cum, use_container_width=True)
 
-    # ---------------- Statistical Metrics ----------------
-    st.markdown("### 📈 Statistical Summary")
+    # =====================================================
+    # 📈 Statistical Summary
+    # =====================================================
     desc = df_trend["value"].describe().to_frame().T
     desc["latest_MoM%"] = df_trend["value"].pct_change().iloc[-1] * 100
     desc["latest_YoY%"] = df_trend["YoY%"].iloc[-1]
+    st.markdown("### 📈 Statistical Summary")
     st.dataframe(desc.style.format("{:.2f}"), use_container_width=True)
 
-    # ---------------- Export ----------------
+    # =====================================================
+    # 📤 Export Options
+    # =====================================================
     csv = full_df.to_csv(index=False).encode("utf-8")
     st.download_button("⬇️ Download Forecast Data (CSV)", csv, file_name=f"forecast_full_{THIS_YEAR}.csv")
 
-    # ---------------- AI Forecast Narrative ----------------
-    if enable_ai:
-        with st.spinner("Generating AI Forecast Summary..."):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df_trend.to_excel(writer, sheet_name="Actual", index=False)
+        forecast_df.to_excel(writer, sheet_name="Forecast", index=False)
+        full_df.to_excel(writer, sheet_name="Combined", index=False)
+    output.seek(0)
+    st.download_button("⬇️ Download Forecast Data (Excel)", output, file_name=f"forecast_full_{THIS_YEAR}.xlsx")
+
+    # =====================================================
+    # 🤖 AI Narrative
+    # =====================================================
+    if "enable_ai" in globals() and enable_ai:
+        with st.spinner("🤖 Generating AI Forecast Summary..."):
             sample = forecast_df.head(12).to_dict(orient="records")
-            system = "You are a senior data scientist providing executive-level forecast analysis."
-            user = f"""Here are forecasted values: {json.dumps(sample, default=str)}.
-            Actual {THIS_YEAR} total = {this_actual:.0f}, Predicted {NEXT_YEAR} total = {next_pred:.0f}.
-            Provide a concise 5-line summary including:
-            1. Main trend
-            2. Growth/fall
-            3. Model confidence
-            4. Top 2 risks
-            5. 2 strategic actions."""
+            system = (
+                "You are a senior data scientist providing an executive summary of forecast data. "
+                "Be concise, business-oriented, and mention risks and opportunities."
+            )
+            user = f"""Forecast data: {json.dumps(sample, default=str)}.
+            Actual {THIS_YEAR} = {this_actual:.0f}, Predicted {NEXT_YEAR} = {next_pred:.0f}.
+            Write a 5-line summary including:
+            1. Key trend
+            2. Growth/Fall %
+            3. Confidence level
+            4. 2 main risks
+            5. 2 strategic recommendations."""
             ai_out = deepinfra_chat(system, user, max_tokens=400)
             if isinstance(ai_out, dict) and "text" in ai_out:
-                st.markdown("**AI Forecast Summary**")
-                st.write(ai_out["text"])
+                st.markdown("### 🧠 AI Forecast Summary")
+                st.info(ai_out["text"])
             else:
-                st.info("AI forecast summary unavailable.")
+                st.info("⚠️ No AI summary returned.")
 
-# =====================================================
-# 🔥 MAXED Anomaly Detection & Explainability (multi-method)
-# =====================================================
+    st.success("✅ MAXED Forecasting Completed Successfully.")
+else:
+    st.warning("⚠️ Trend data not found or empty.")
+
+# ============================================================
+# 🚀 MAXED++ Anomaly Detection, Explainability & Auto-Insights
+# ============================================================
 import numpy as np
 import pandas as pd
-import io
-import json
-import math
-import traceback
-import plotly.express as px
-import plotly.graph_objects as go
+import io, json, math, traceback, time, warnings
+import plotly.express as px, plotly.graph_objects as go
 import streamlit as st
-from datetime import date
-import warnings
-warnings.filterwarnings("ignore")
+from datetime import date, datetime
 
+warnings.filterwarnings("ignore")
 TODAY = date.today()
-PREV_YEAR = TODAY.year - 1
 THIS_YEAR = TODAY.year
+PREV_YEAR = THIS_YEAR - 1
 NEXT_YEAR = THIS_YEAR + 1
 
+# ------------------------------------------------------------
+# 🚦 Run only if user enabled anomaly detection
+# ------------------------------------------------------------
 if enable_anomaly:
-    st.subheader("🚨 MAXED Anomaly Detection & Explainability")
+    st.header("🚨 MAXED++ Anomaly Detection & Explainability")
     if df_trend is None or df_trend.empty:
         st.info("No trend data available for anomaly detection.")
-    elif 'value' not in df_trend.columns:
-        st.info("No 'value' column detected for anomaly detection.")
     else:
-        # --- UI controls ---
-        st.markdown("**Detection Controls**")
-        colA, colB, colC = st.columns([1.2,1,1])
+        # ----------------------------------------
+        # ⚙️ Controls
+        # ----------------------------------------
+        colA, colB, colC = st.columns([1.3, 1.2, 1])
         with colA:
-            method = st.selectbox("Primary detection method", options=[
-                "IsolationForest (robust)", "LocalOutlierFactor", "Z-score (rolling)",
-                "STL Residuals (seasonal)", "Prophet Residuals"
+            method = st.selectbox("Detection Method", [
+                "IsolationForest", "LocalOutlierFactor",
+                "Rolling Z-score", "STL Residuals", "Prophet Residuals"
             ], index=0)
-            contamination = st.slider("Contamination (expected outlier fraction)", min_value=0.001, max_value=0.2, value=0.02, step=0.001)
-            flag_threshold = st.slider("Z-score / residual threshold (%)", min_value=2.0, max_value=8.0, value=3.5, step=0.1)
+            contamination = st.slider("Contamination (expected % outliers)", 0.001, 0.2, 0.02, step=0.001)
+            threshold = st.slider("Z/residual threshold", 2.0, 8.0, 3.5, 0.1)
         with colB:
-            detect_scope = st.selectbox("Scope", options=["Global (time-series)","Per-category","Per-state","Per-maker"], index=0)
-            date_granularity = st.selectbox("Granularity for detection", options=["Daily","Monthly","Yearly"], index=1)
+            gran = st.selectbox("Granularity", ["Daily", "Monthly", "Yearly"], index=1)
+            ensemble = st.checkbox("Run ensemble detectors", True)
         with colC:
-            run_multi = st.checkbox("Run multiple detectors & ensemble", value=True)
-            preview_n = st.number_input("Preview top N anomalies", min_value=3, max_value=200, value=20)
+            detect_scope = st.selectbox("Detection scope", [
+                "Global (all data)", "Per-category", "Per-state", "Per-maker"
+            ], index=0)
+            topN = st.number_input("Preview top N anomalies", 5, 100, 20)
 
-        # --- Prepare timeseries according to granularity ---
-        ts = df_trend.copy()
-        ts = ts.sort_values("date").reset_index(drop=True)
-        if date_granularity == "Daily":
-            ts["period"] = ts["date"].dt.floor("D")
-        elif date_granularity == "Monthly":
-            ts["period"] = ts["date"].dt.to_period("M").dt.to_timestamp()
+        st.divider()
+
+        # ----------------------------------------
+        # 🧮 Aggregate as per granularity
+        # ----------------------------------------
+        df = df_trend.copy()
+        if "date" not in df.columns or "value" not in df.columns:
+            st.error("Missing required 'date' or 'value' columns.")
         else:
-            ts["period"] = ts["date"].dt.to_period("Y").dt.to_timestamp()
+            df = df.sort_values("date").reset_index(drop=True)
+            if gran == "Daily":
+                df["period"] = df["date"].dt.floor("D")
+            elif gran == "Monthly":
+                df["period"] = df["date"].dt.to_period("M").dt.to_timestamp()
+            else:
+                df["period"] = df["date"].dt.to_period("Y").dt.to_timestamp()
+            ts = df.groupby("period", as_index=False)["value"].sum()
 
-        # aggregate if needed
-        agg_ts = ts.groupby("period", as_index=False)["value"].sum().rename(columns={"period":"date","value":"value"})
-        agg_ts = agg_ts.sort_values("date").reset_index(drop=True)
+            # ----------------------------------------
+            # 🧠 Detectors
+            # ----------------------------------------
+            def safe_run(name, func, *args, **kwargs):
+                try:
+                    return func(*args, **kwargs), "ok"
+                except Exception as e:
+                    return None, str(e)
 
-        # --- Helper detectors ---
-        detectors_results = {}
-
-        # 1) IsolationForest
-        def run_isolationforest(series, contamination=0.02):
-            try:
-                if not SKLEARN_AVAILABLE:
-                    return None, "sklearn_missing"
+            def isolationforest(series):
                 from sklearn.ensemble import IsolationForest
-                vals = series.values.reshape(-1,1)
-                iso = IsolationForest(contamination=contamination, random_state=42, n_jobs=-1)
-                iso.fit(vals)
-                scores = iso.decision_function(vals) * -1.0  # higher -> more anomalous
-                preds = iso.predict(vals)  # -1 anomaly, 1 normal
-                df = pd.DataFrame({"date": series.index, "value": series.values, "score": scores, "anomaly": preds})
-                df["anomaly_flag"] = df["anomaly"] == -1
-                return df, "ok"
-            except Exception as e:
-                return None, str(e)
+                model = IsolationForest(contamination=contamination, random_state=42, n_jobs=-1)
+                vals = series.values.reshape(-1, 1)
+                model.fit(vals)
+                scores = -model.decision_function(vals)
+                preds = model.predict(vals)
+                df = pd.DataFrame({
+                    "date": series.index, "value": series.values,
+                    "score": scores, "flag": preds == -1
+                })
+                return df
 
-        # 2) LocalOutlierFactor
-        def run_lof(series, n_neighbors=20):
-            try:
-                if not SKLEARN_AVAILABLE:
-                    return None, "sklearn_missing"
+            def lof(series):
                 from sklearn.neighbors import LocalOutlierFactor
-                vals = series.values.reshape(-1,1)
-                lof = LocalOutlierFactor(n_neighbors=min(20, max(5, len(series)//5)), contamination=contamination, novelty=False)
-                preds = lof.fit_predict(vals)
-                scores = -lof.negative_outlier_factor_
-                df = pd.DataFrame({"date": series.index, "value": series.values, "score": scores, "anomaly": preds})
-                df["anomaly_flag"] = df["anomaly"] == -1
-                return df, "ok"
-            except Exception as e:
-                return None, str(e)
+                vals = series.values.reshape(-1, 1)
+                model = LocalOutlierFactor(contamination=contamination)
+                preds = model.fit_predict(vals)
+                scores = -model.negative_outlier_factor_
+                df = pd.DataFrame({
+                    "date": series.index, "value": series.values,
+                    "score": scores, "flag": preds == -1
+                })
+                return df
 
-        # 3) Rolling Z-score
-        def run_zscore(series, window=12, threshold=3.5):
-            s = series.copy()
-            rolling_mean = s.rolling(window=window, min_periods=1, center=False).mean()
-            rolling_std = s.rolling(window=window, min_periods=1, center=False).std().replace(0, np.nan).fillna(0.0)
-            z = (s - rolling_mean) / (rolling_std.replace(0, np.nan).fillna(1.0))
-            df = pd.DataFrame({"date": s.index, "value": s.values, "zscore": z})
-            df["anomaly_flag"] = df["zscore"].abs() > threshold
-            df["score"] = df["zscore"].abs()
-            return df, "ok"
+            def zscore(series):
+                roll_mean = series.rolling(12, min_periods=3).mean()
+                roll_std = series.rolling(12, min_periods=3).std().replace(0, np.nan).fillna(1)
+                z = (series - roll_mean) / roll_std
+                df = pd.DataFrame({
+                    "date": series.index, "value": series.values,
+                    "score": z.abs(), "flag": z.abs() > threshold
+                })
+                return df
 
-        # 4) STL residuals
-        def run_stl_resid(series, period=12, threshold_pct=3.5):
-            try:
+            def stl(series):
                 import statsmodels.api as sm
-                s = series.copy()
-                if len(s) < period*2:  # not enough history for STL
-                    return None, "insufficient_history"
-                res = sm.tsa.seasonal_decompose(s, model="additive", period=period, extrapolate_trend='freq')
+                res = sm.tsa.seasonal_decompose(series, model="additive", period=12, extrapolate_trend='freq')
                 resid = res.resid.fillna(0)
-                resid_z = (resid - resid.mean()) / (resid.std() or 1.0)
-                df = pd.DataFrame({"date": resid.index, "value": series.values, "resid": resid.values, "score": resid_z.abs()})
-                df["anomaly_flag"] = df["score"] > threshold_pct
-                return df, "ok"
-            except Exception as e:
-                return None, str(e)
+                z = (resid - resid.mean()) / (resid.std() or 1.0)
+                df = pd.DataFrame({
+                    "date": series.index, "value": series.values,
+                    "score": np.abs(z), "flag": np.abs(z) > threshold
+                })
+                return df
 
-        # 5) Prophet residuals
-        def run_prophet_resid(df_full, threshold_pct=3.5):
-            if not PROPHET_AVAILABLE:
-                return None, "prophet_missing"
-            try:
+            def prophet_resid(df_full):
                 from prophet import Prophet
-                dfp = df_full.reset_index().rename(columns={"date":"ds","value":"y"}) if "date" in df_full.index.names else df_full.rename(columns={"date":"ds","value":"y"})
-                if dfp.shape[0] < 12:
-                    return None, "insufficient_history"
-                m = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
-                m.fit(dfp[["ds","y"]])
-                fut = m.make_future_dataframe(periods=0, freq='MS')
+                dfp = df_full.rename(columns={"date": "ds", "value": "y"})
+                m = Prophet(yearly_seasonality=True)
+                m.fit(dfp)
                 pred = m.predict(dfp[["ds"]])
-                resid = dfp["y"].values - pred["yhat"].values
-                resid_z = (resid - resid.mean()) / (resid.std() or 1.0)
-                df = pd.DataFrame({"date": pd.to_datetime(dfp["ds"]), "value": dfp["y"].values, "resid": resid, "score": np.abs(resid_z)})
-                df["anomaly_flag"] = df["score"] > threshold_pct
-                return df, "ok"
-            except Exception as e:
-                return None, str(e)
+                resid = dfp["y"] - pred["yhat"]
+                z = (resid - resid.mean()) / (resid.std() or 1)
+                df = pd.DataFrame({
+                    "date": dfp["ds"], "value": dfp["y"],
+                    "score": np.abs(z), "flag": np.abs(z) > threshold
+                })
+                return df
 
-        # --- Run primary detector (and ensemble if selected) ---
-        # Use aggregated series indexed by date
-        series = agg_ts.set_index("date")["value"]
-        primary_res = None
-        status_msg = ""
+            series = ts.set_index("period")["value"]
 
-        if method == "IsolationForest":
-            primary_res, status_msg = run_isolationforest(series, contamination=contamination)
-        elif method == "LocalOutlierFactor":
-            primary_res, status_msg = run_lof(series)
-        elif method == "Z-score (rolling)":
-            primary_res, status_msg = run_zscore(series, window= max(3, min(36, len(series)//4)), threshold=flag_threshold)
-        elif method == "STL Residuals (seasonal)":
-            primary_res, status_msg = run_stl_resid(series, period=12, threshold_pct=flag_threshold)
-        elif method == "Prophet Residuals":
-            primary_res, status_msg = run_prophet_resid(agg_ts, threshold_pct=flag_threshold)
-        else:
-            primary_res, status_msg = run_isolationforest(series, contamination=contamination)
+            results = {}
+            fns = {
+                "IsolationForest": isolationforest,
+                "LocalOutlierFactor": lof,
+                "Rolling Z-score": zscore,
+                "STL Residuals": stl,
+                "Prophet Residuals": prophet_resid
+            }
 
-        detectors_results[method] = {"df": primary_res, "status": status_msg}
+            res_main, status = safe_run(method, fns[method], series if method != "Prophet Residuals" else ts)
+            results[method] = {"df": res_main, "status": status}
 
-        # Ensemble: run additional detectors and build a consensus score
-        ensemble_df = None
-        if run_multi:
-            extras = ["IsolationForest","LocalOutlierFactor","Z-score (rolling)","STL Residuals (seasonal)","Prophet Residuals"]
-            for ex in extras:
-                if ex == method:  # already ran
-                    continue
-                try:
-                    if ex == "IsolationForest":
-                        res, stat = run_isolationforest(series, contamination=contamination)
-                    elif ex == "LocalOutlierFactor":
-                        res, stat = run_lof(series)
-                    elif ex == "Z-score (rolling)":
-                        res, stat = run_zscore(series, window=max(3, min(36, len(series)//4)), threshold=flag_threshold)
-                    elif ex == "STL Residuals (seasonal)":
-                        res, stat = run_stl_resid(series, period=12, threshold_pct=flag_threshold)
-                    elif ex == "Prophet Residuals":
-                        res, stat = run_prophet_resid(agg_ts, threshold_pct=flag_threshold)
-                    else:
-                        res, stat = None, "skipped"
-                except Exception as e:
-                    res, stat = None, str(e)
-                detectors_results[ex] = {"df": res, "status": stat}
-
-            # build ensemble table
-            # start from index series.index -> for each detector create binary flag column, and score column (normalized)
-            ensemble = pd.DataFrame(index=series.index)
-            for name, info in detectors_results.items():
-                ddf = info.get("df")
-                if ddf is None or not isinstance(ddf, pd.DataFrame):
-                    continue
-                # align by date
-                tmp = ddf.set_index("date")
-                # fill missing dates with non-anomalous defaults
-                ensemble[f"{name}_flag"] = tmp.reindex(ensemble.index)["anomaly_flag"].fillna(False).astype(int)
-                # normalize score to 0-1
-                sc = tmp.reindex(ensemble.index)["score"].fillna(0.0)
-                if sc.max() > sc.min():
-                    scn = (sc - sc.min()) / (sc.max() - sc.min())
-                else:
-                    scn = sc
-                ensemble[f"{name}_score"] = scn.fillna(0.0)
-            if ensemble.shape[1] > 0:
-                # consensus columns end with _flag
-                flag_cols = [c for c in ensemble.columns if c.endswith("_flag")]
-                score_cols = [c for c in ensemble.columns if c.endswith("_score")]
-                ensemble["consensus_score"] = ensemble[score_cols].mean(axis=1) if score_cols else 0.0
-                ensemble["consensus_votes"] = ensemble[flag_cols].sum(axis=1) if flag_cols else 0
-                # mark as anomaly where consensus_score or votes exceed thresholds
-                ensemble["ensemble_anomaly"] = (ensemble["consensus_votes"] >= max(1, math.ceil(len(flag_cols)/2))) | (ensemble["consensus_score"] > 0.6)
-                ensemble_df = ensemble.reset_index().rename(columns={"index":"date"})
-            else:
-                ensemble_df = None
-
-        # --- Choose final anomalies to display ---
-        if ensemble_df is not None:
-            # prefer ensemble if available
-            final_anoms = ensemble_df[ensemble_df["ensemble_anomaly"]].copy()
-            final_anoms["score"] = ensemble_df.loc[final_anoms.index, "consensus_score"]
-            source_note = "Ensemble"
-        else:
-            if isinstance(primary_res, pd.DataFrame):
-                final_anoms = primary_res[primary_res["anomaly_flag"]].copy()
-                final_anoms["score"] = final_anoms.get("score", final_anoms.get("zscore", np.abs(final_anoms.get("resid", 0))))
-                source_note = method
-            else:
-                final_anoms = pd.DataFrame(columns=["date","value","score"])
-                source_note = "None"
-
-        # sort & preview
-        if not final_anoms.empty:
-            final_anoms = final_anoms.sort_values("score", ascending=False).head(preview_n)
-            st.markdown(f"#### Detected anomalies — method: **{source_note}** — total flagged: **{len(final_anoms):,}**")
-            # human-friendly table
-            display_df = final_anoms.reset_index(drop=True).copy()
-            if "date" in display_df.columns:
-                display_df["date"] = pd.to_datetime(display_df["date"])
-            st.dataframe(display_df.style.format({"value":"{:,}", "score":"{:.4f}"}), height=300)
-        else:
-            st.info("No anomalies detected by the selected method(s).")
-
-        # --- Visualization: show anomalies on time series ---
-        st.markdown("### Visual: Anomalies on Time Series")
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=agg_ts["date"], y=agg_ts["value"], mode="lines+markers", name="Value", line=dict(width=2)))
-        if ensemble_df is not None and not ensemble_df.empty:
-            idxs = ensemble_df[ensemble_df["ensemble_anomaly"]]["index"] if "index" in ensemble_df.columns else ensemble_df[ensemble_df["ensemble_anomaly"]]["date"]
-            anom_dates = pd.to_datetime(ensemble_df[ensemble_df["ensemble_anomaly"]]["date"])
-            anom_vals = agg_ts.set_index("date").reindex(anom_dates)["value"].values
-            fig.add_trace(go.Scatter(x=anom_dates, y=anom_vals, mode="markers", name="Anomaly (ensemble)", marker=dict(color="red", size=10, symbol="x")))
-        elif not final_anoms.empty:
-            anom_dates = pd.to_datetime(final_anoms["date"])
-            anom_vals = final_anoms["value"].values
-            fig.add_trace(go.Scatter(x=anom_dates, y=anom_vals, mode="markers", name=f"Anomaly ({source_note})", marker=dict(color="red", size=10, symbol="x")))
-        fig.update_layout(title="Time Series with Anomalies", xaxis_title="Date", yaxis_title="Value")
-        st.plotly_chart(fig, use_container_width=True)
-
-        # --- Per-period / per-category anomalies (if scope selected) ---
-        if detect_scope != "Global (time-series)":
-            st.markdown("### Scope-based Anomaly Detection (per-group)")
-            # determine grouping column (if available)
-            group_col = None
-            if detect_scope == "Per-category" and "category" in df_trend.columns:
-                group_col = "category"
-            elif detect_scope == "Per-state" and "state" in df_trend.columns:
-                group_col = "state"
-            elif detect_scope == "Per-maker" and "maker" in df_trend.columns:
-                group_col = "maker"
-            if group_col is None:
-                st.info(f"No column available for scope {detect_scope}. Available columns: {', '.join(df_trend.columns)}")
-            else:
-                # aggregate per group & period
-                grp = df_trend.copy()
-                if date_granularity == "Monthly":
-                    grp["period"] = grp["date"].dt.to_period("M").dt.to_timestamp()
-                elif date_granularity == "Daily":
-                    grp["period"] = grp["date"].dt.floor("D")
-                else:
-                    grp["period"] = grp["date"].dt.to_period("Y").dt.to_timestamp()
-                agg = grp.groupby([group_col,"period"], as_index=False)["value"].sum()
-                # run zscore per group (fast) and flag anomalies
-                anomalies_group = []
-                for name, g in agg.groupby(group_col):
-                    s = g.set_index("period")["value"].sort_index()
-                    if len(s) < 6:
+            # ----------------------------------------
+            # 🧩 Ensemble (optional)
+            # ----------------------------------------
+            if ensemble:
+                for mname, fn in fns.items():
+                    if mname == method:
                         continue
-                    z = (s - s.mean()) / (s.std() or 1.0)
-                    flagged = z[ z.abs() > flag_threshold ]
-                    for idx, val in flagged.items():
-                        anomalies_group.append({"group": name, "period": idx, "value": float(s.loc[idx]), "zscore": float(z.loc[idx])})
-                if anomalies_group:
-                    anom_gdf = pd.DataFrame(anomalies_group).sort_values(["group","period"], ascending=[True,False])
-                    st.dataframe(anom_gdf.head(200).assign(period=lambda d: d["period"].dt.strftime("%Y-%m-%d")))
-                else:
-                    st.info("No group-level anomalies detected with current thresholds.")
+                    r, s = safe_run(mname, fn, series if mname != "Prophet Residuals" else ts)
+                    results[mname] = {"df": r, "status": s}
 
-        # --- Exports & artifacts ---
-        st.markdown("### Export anomalies & diagnostics")
-        if not final_anoms.empty:
-            csv_buf = final_anoms.to_csv(index=False).encode("utf-8")
-            st.download_button("Download anomalies CSV", csv_buf, file_name=f"anomalies_{THIS_YEAR}.csv", mime="text/csv")
-        # diagnostics: per-detector statuses
-        st.markdown("Detector statuses:")
-        for name, info in detectors_results.items():
-            st.write(f"- **{name}**: {info.get('status')}")
+            # ----------------------------------------
+            # ⚖️ Ensemble aggregation
+            # ----------------------------------------
+            ens = pd.DataFrame(index=series.index)
+            for n, info in results.items():
+                dfres = info["df"]
+                if isinstance(dfres, pd.DataFrame):
+                    tmp = dfres.set_index("date")
+                    ens[f"{n}_flag"] = tmp["flag"].astype(int)
+                    ens[f"{n}_score"] = (tmp["score"] - tmp["score"].min()) / (tmp["score"].max() - tmp["score"].min() + 1e-6)
 
-        # --- AI explainability for anomalies ---
-        if enable_ai and (('final_anoms' in locals() and not final_anoms.empty) or ('anom_df' in locals() and not locals().get('anom_df', pd.DataFrame()).empty)):
-            with st.spinner("Generating AI anomaly insights..."):
-                try:
-                    sample = (final_anoms.head(10) if not final_anoms.empty else pd.DataFrame()).to_dict(orient="records")
-                    if not sample:
-                        sample = (locals().get('anom_df', pd.DataFrame()).head(10).to_dict(orient="records") if 'anom_df' in locals() else [])
-                    system = "You are an analytics investigator. Review the anomaly rows and provide likely causes, prioritized remediation steps, and whether each anomaly looks like data issue vs real-world event."
-                    user = f"Anomalies sample: {json.dumps(sample, default=str)}\nProvide 1-sentence cause hypotheses for each (max 3), 3 prioritized remediation steps, and a short recommendation for business owners."
-                    ai_resp = deepinfra_chat(system, user, max_tokens=420)
+            ens["vote"] = ens.filter(like="_flag").sum(axis=1)
+            ens["score_mean"] = ens.filter(like="_score").mean(axis=1)
+            ens["final_flag"] = (ens["vote"] >= math.ceil(len([c for c in ens.columns if c.endswith('_flag')])/2)) | (ens["score_mean"] > 0.7)
+
+            # ----------------------------------------
+            # 📊 Visualization
+            # ----------------------------------------
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=ts["period"], y=ts["value"], mode="lines", name="Value"))
+            anoms = ens[ens["final_flag"]].reset_index()
+            if not anoms.empty:
+                fig.add_trace(go.Scatter(
+                    x=anoms["period"], y=ts.set_index("period").reindex(anoms["period"])["value"],
+                    mode="markers", name="Anomalies", marker=dict(color="red", size=10, symbol="x")
+                ))
+            fig.update_layout(title="Detected Anomalies", xaxis_title="Date", yaxis_title="Registrations")
+            st.plotly_chart(fig, use_container_width=True)
+
+            # ----------------------------------------
+            # 🧾 Table
+            # ----------------------------------------
+            if not anoms.empty:
+                preview = ts.set_index("period").reindex(anoms["period"]).reset_index()
+                preview["score"] = anoms["score_mean"].values
+                preview = preview.sort_values("score", ascending=False).head(topN)
+                st.dataframe(preview.style.background_gradient("Reds"), use_container_width=True)
+            else:
+                st.info("No anomalies detected.")
+
+            # ----------------------------------------
+            # 🧠 AI-based Narrative
+            # ----------------------------------------
+            if enable_ai and not anoms.empty:
+                with st.spinner("🤖 Generating AI-based anomaly explanations..."):
+                    sample = preview.to_dict(orient="records")
+                    system = (
+                        "You are a senior data analyst for vehicle registrations. "
+                        "Explain the likely causes behind each anomaly, "
+                        "identify whether they are due to data errors, policy changes, or seasonality, "
+                        "and summarize the key trends."
+                    )
+                    user = f"Here are the anomalies: {json.dumps(sample, default=str)}"
+                    ai_resp = deepinfra_chat(system, user, max_tokens=700)
                     if isinstance(ai_resp, dict) and "text" in ai_resp:
-                        st.markdown("**AI Anomaly Insights & Remediation**")
-                        st.write(ai_resp["text"])
-                    else:
-                        st.info("AI response unavailable for anomaly insights.")
-                except Exception as e:
-                    st.error(f"AI anomaly explainability failed: {e}")
+                        st.markdown("### 🧩 AI Anomaly Summary")
+                        st.info(ai_resp["text"])
 
-        st.markdown("---")
-        st.success("✅ MAXED anomaly detection completed.")
+            # ----------------------------------------
+            # 💾 Export
+            # ----------------------------------------
+            buf = ens.reset_index().to_csv(index=False).encode("utf-8")
+            st.download_button("📥 Download anomaly data", buf, "maxed_anomalies.csv", "text/csv")
+
+            # ----------------------------------------
+            # 🧭 Diagnostics
+            # ----------------------------------------
+            st.markdown("#### Detector status:")
+            for name, info in results.items():
+                st.write(f"- **{name}** → {info['status']}")
 else:
     st.info("Anomaly detection disabled.")
 
-# ---------------- ⚡ MAXED Clustering, Prediction & Correlation Suite ----------------
+# ==========================================================
+# ⚡ MAXED — Clustering, Prediction & Correlation Suite (Full AI + Auto Models)
+# ==========================================================
 if enable_clustering:
-    st.markdown("## 🧠 Advanced Clustering, Prediction & Correlation Analysis")
-    st.markdown("Full-year trend comparison, predictive clustering, and correlation insights — all AI-augmented.")
+    st.markdown("## 🧠 MAXED Clustering, Prediction & Correlation Intelligence")
+    st.markdown("Automated cluster tuning, correlation mining, and hybrid model predictions with AI insights.")
 
-    import numpy as np
-    import pandas as pd
-    import plotly.express as px
-    import plotly.graph_objects as go
+    import numpy as np, pandas as pd, plotly.express as px, plotly.graph_objects as go
     from sklearn.preprocessing import StandardScaler
     from sklearn.cluster import KMeans
     from sklearn.decomposition import PCA
     from sklearn.metrics import silhouette_score
     from sklearn.linear_model import LinearRegression
-    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+    import warnings
+    warnings.filterwarnings("ignore")
 
-    # 🔹 Step 1: Build Base DataFrame (from trend or revenue)
-    base_df = None
-    if not df_top5_rev.empty:
-        base_df = df_top5_rev.copy()
-    elif not df_trend.empty:
-        base_df = df_trend.copy()
+    # ---------------- Base data setup ----------------
+    base_df = df_top5_rev.copy() if not df_top5_rev.empty else df_trend.copy() if not df_trend.empty else pd.DataFrame()
+    if base_df.empty:
+        st.warning("⚠️ No base data available for clustering or prediction.")
     else:
-        st.info("No source data found for clustering or prediction.")
-        base_df = pd.DataFrame()
-
-    if not base_df.empty:
-        # Normalize column naming
+        # Normalize and clean
         if "date" in base_df.columns:
             base_df["date"] = pd.to_datetime(base_df["date"], errors="coerce")
             base_df["year"] = base_df["date"].dt.year
             base_df["month"] = base_df["date"].dt.month
-        base_df["value"] = pd.to_numeric(base_df.get("value", base_df.iloc[:, -1]), errors="coerce")
+        base_df["value"] = pd.to_numeric(base_df.get("value", base_df.iloc[:, -1]), errors="coerce").fillna(0)
 
-        # 🔹 Step 2: Compute year-wise aggregates for prev, this, next year
-        yearwise = base_df.groupby("year")["value"].sum().reset_index()
-        this_year = yearwise["year"].max()
-        prev_year = this_year - 1
-        next_year = this_year + 1
-
-        st.markdown("### 📅 Yearly Comparison & Growth Metrics")
-        try:
-            prev_val = yearwise.loc[yearwise["year"] == prev_year, "value"].sum()
-            curr_val = yearwise.loc[yearwise["year"] == this_year, "value"].sum()
-            growth = ((curr_val - prev_val) / prev_val * 100) if prev_val else 0
-
-            st.metric("📈 Current Year Total", f"{curr_val:,.0f}")
-            st.metric("📊 Previous Year Total", f"{prev_val:,.0f}")
+        # ===================================================
+        # 1️⃣ Yearly comparison & multi-model forecasting
+        # ===================================================
+        st.markdown("### 📆 Yearly Comparison & Forecasting (Linear + RF + Prophet)")
+        yearwise = base_df.groupby("year", as_index=False)["value"].sum()
+        if not yearwise.empty:
+            prev_year, this_year, next_year = yearwise["year"].max()-1, yearwise["year"].max(), yearwise["year"].max()+1
+            prev_val = yearwise.loc[yearwise["year"]==prev_year, "value"].sum()
+            curr_val = yearwise.loc[yearwise["year"]==this_year, "value"].sum()
+            growth = ((curr_val-prev_val)/prev_val*100) if prev_val else 0
+            st.metric("📊 Current Year", f"{curr_val:,.0f}")
+            st.metric("📈 Prev Year", f"{prev_val:,.0f}")
             st.metric("🚀 YoY Growth", f"{growth:.2f}%")
 
-            # Prediction for next year using regression
-            model = LinearRegression()
+            # Models
             X = yearwise[["year"]]
             y = yearwise["value"]
-            model.fit(X, y)
-            pred_next = model.predict([[next_year]])[0]
 
-            st.metric("🔮 Next Year Forecast", f"{pred_next:,.0f}")
+            preds = {}
+            # Linear
+            lr = LinearRegression().fit(X, y)
+            preds["Linear"] = lr.predict([[next_year]])[0]
 
-            # Show chart
+            # Random Forest
+            rf = RandomForestRegressor(random_state=42).fit(X, y)
+            preds["RandomForest"] = rf.predict([[next_year]])[0]
+
+            # Prophet (optional)
+            try:
+                from prophet import Prophet
+                dfp = yearwise.rename(columns={"year":"ds","value":"y"})
+                dfp["ds"] = pd.to_datetime(dfp["ds"], format="%Y")
+                m = Prophet(yearly_seasonality=True).fit(dfp)
+                fc = m.make_future_dataframe(periods=1, freq="Y")
+                fcst = m.predict(fc).iloc[-1]["yhat"]
+                preds["Prophet"] = fcst
+            except Exception:
+                preds["Prophet"] = None
+
+            pred_avg = np.nanmean([v for v in preds.values() if v])
+            st.metric("🔮 Hybrid Predicted Next Year", f"{pred_avg:,.0f}")
             fig = go.Figure()
-            fig.add_trace(go.Scatter(x=yearwise["year"], y=yearwise["value"],
-                                     mode='lines+markers', name="Actual"))
-            fig.add_trace(go.Scatter(x=[next_year], y=[pred_next],
-                                     mode='markers', name="Predicted", marker=dict(color="orange", size=12)))
-            fig.update_layout(title="📊 Yearly Actual vs Predicted Values", height=400)
+            fig.add_trace(go.Scatter(x=yearwise["year"], y=yearwise["value"], name="Actual", mode="lines+markers"))
+            fig.add_trace(go.Scatter(x=[next_year], y=[pred_avg], name="Predicted", mode="markers", marker=dict(size=12, color="orange")))
+            fig.update_layout(title="Yearly Actual vs Forecast", height=400)
             st.plotly_chart(fig, use_container_width=True)
-        except Exception as e:
-            st.warning(f"Yearly metrics failed: {e}")
 
-        # 🔹 Step 3: Daily / Monthly rolling analysis
-        st.markdown("### 📅 Rolling & Seasonal Patterns")
-        try:
-            if "date" in base_df.columns:
-                df_roll = base_df.set_index("date").resample("M").sum()
-                df_roll["rolling_mean_3"] = df_roll["value"].rolling(3).mean()
-                df_roll["rolling_std_3"] = df_roll["value"].rolling(3).std()
+        # ===================================================
+        # 2️⃣ Rolling trends & seasonality
+        # ===================================================
+        if "date" in base_df.columns:
+            st.markdown("### 📅 Rolling & Seasonal Patterns")
+            df_roll = base_df.set_index("date").resample("M").sum()
+            df_roll["rolling_mean_3"] = df_roll["value"].rolling(3).mean()
+            st.line_chart(df_roll[["value","rolling_mean_3"]])
+            fig_box = px.box(base_df, x="month", y="value", color="year", title="Monthly Distribution by Year")
+            st.plotly_chart(fig_box, use_container_width=True)
 
-                st.line_chart(df_roll[["value", "rolling_mean_3"]])
-
-                # Plot seasonal comparison
-                fig2 = px.box(base_df, x="month", y="value", color="year", title="Monthly Distribution per Year")
-                st.plotly_chart(fig2, use_container_width=True)
-        except Exception as e:
-            st.warning(f"Rolling analysis failed: {e}")
-
-        # 🔹 Step 4: Clustering (on numeric scaled features)
-        numeric_cols = base_df.select_dtypes(include=[np.number]).columns.tolist()
-        if numeric_cols:
-            X = base_df[numeric_cols].fillna(0)
+        # ===================================================
+        # 3️⃣ Auto Clustering & PCA Projection
+        # ===================================================
+        st.markdown("### 🧩 Auto Clustering & PCA Insights")
+        num_cols = base_df.select_dtypes(include=[np.number]).columns.tolist()
+        if len(num_cols) >= 2:
+            X = base_df[num_cols].fillna(0)
             X_scaled = StandardScaler().fit_transform(X)
 
-            n_clusters = st.slider("🔢 Number of Clusters (k)", 2, min(10, len(X_scaled)), 3)
-            kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-            clusters = kmeans.fit_predict(X_scaled)
-            base_df["cluster"] = clusters
+            # Auto-optimal cluster (2–8)
+            sil_scores = {}
+            for k in range(2, min(8, len(X_scaled))):
+                km = KMeans(n_clusters=k, random_state=42).fit(X_scaled)
+                sil_scores[k] = silhouette_score(X_scaled, km.labels_)
+            best_k = max(sil_scores, key=sil_scores.get)
+            st.metric("🎯 Optimal Clusters (k)", best_k)
+            st.metric("📊 Best Silhouette", f"{sil_scores[best_k]:.3f}")
 
-            # Silhouette
-            if len(X_scaled) > n_clusters + 1:
-                score = silhouette_score(X_scaled, clusters)
-                st.metric("🎯 Silhouette Score", f"{score:.3f}")
+            kmeans = KMeans(n_clusters=best_k, random_state=42).fit(X_scaled)
+            base_df["cluster"] = kmeans.labels_
 
-            # PCA projection
-            pca = PCA(n_components=min(3, X_scaled.shape[1]))
+            # PCA 3D visualization
+            pca = PCA(n_components=3)
             proj = pca.fit_transform(X_scaled)
             proj_df = pd.DataFrame({
-                "PC1": proj[:, 0],
-                "PC2": proj[:, 1],
-                "PC3": proj[:, 2] if proj.shape[1] > 2 else 0,
-                "Cluster": clusters
+                "PC1": proj[:,0], "PC2": proj[:,1], "PC3": proj[:,2],
+                "Cluster": base_df["cluster"].astype(str)
             })
             fig3d = px.scatter_3d(proj_df, x="PC1", y="PC2", z="PC3",
-                                  color=proj_df["Cluster"].astype(str),
-                                  title="3D Cluster Projection (PCA)",
-                                  opacity=0.8)
+                                  color="Cluster", title="3D Cluster Projection (PCA)", opacity=0.8)
             st.plotly_chart(fig3d, use_container_width=True)
 
-            # 🔹 Correlation Matrix
-            corr = base_df.select_dtypes(include=[np.number]).corr()
-            st.markdown("### 🔗 Correlation Heatmap")
-            fig_corr = px.imshow(corr, text_auto=".2f", color_continuous_scale="RdBu_r",
-                                 title="Correlation Matrix")
-            st.plotly_chart(fig_corr, use_container_width=True)
+        # ===================================================
+        # 4️⃣ Correlation Heatmap + Key Pair Finder
+        # ===================================================
+        st.markdown("### 🔗 Correlation & Top Relationships")
+        corr = base_df.select_dtypes(include=[np.number]).corr()
+        fig_corr = px.imshow(corr, text_auto=".2f", color_continuous_scale="RdBu_r", title="Correlation Matrix")
+        st.plotly_chart(fig_corr, use_container_width=True)
 
-            # 🔹 Cluster stats
-            st.markdown("### 🧩 Cluster Centroids & Distribution")
-            st.dataframe(pd.DataFrame(kmeans.cluster_centers_, columns=numeric_cols))
-            st.bar_chart(base_df["cluster"].value_counts())
+        # Top correlated pairs
+        corr_pairs = corr.unstack().dropna()
+        corr_pairs = corr_pairs[(corr_pairs != 1)]
+        top_corrs = corr_pairs.abs().sort_values(ascending=False).head(5)
+        st.write("**Top 5 correlated features:**")
+        st.dataframe(top_corrs.reset_index().rename(columns={"level_0":"Feature A","level_1":"Feature B",0:"|r|"}) )
 
-            # 🔹 Feature importance with Random Forest
-            st.markdown("### 🌳 Feature Importance (Random Forest)")
-            try:
-                rf = RandomForestRegressor(random_state=42)
-                rf.fit(X_scaled, base_df["value"])
-                importances = pd.DataFrame({
-                    "Feature": numeric_cols,
-                    "Importance": rf.feature_importances_
-                }).sort_values("Importance", ascending=False)
-                fig_imp = px.bar(importances, x="Feature", y="Importance",
-                                 title="Feature Importance in Value Prediction")
-                st.plotly_chart(fig_imp, use_container_width=True)
-            except Exception as e:
-                st.warning(f"Feature importance failed: {e}")
+        # ===================================================
+        # 5️⃣ Feature Importance (RF)
+        # ===================================================
+        st.markdown("### 🌳 Feature Importance in Predicting Value")
+        try:
+            Xf = base_df[num_cols].drop(columns=["value"], errors="ignore")
+            yf = base_df["value"]
+            rf_imp = RandomForestRegressor(random_state=42).fit(Xf, yf)
+            imp_df = pd.DataFrame({"Feature": Xf.columns, "Importance": rf_imp.feature_importances_}).sort_values("Importance", ascending=False)
+            fig_imp = px.bar(imp_df, x="Feature", y="Importance", title="Random Forest Feature Importance")
+            st.plotly_chart(fig_imp, use_container_width=True)
+        except Exception as e:
+            st.warning(f"Feature importance failed: {e}")
 
-        # 🔹 Step 5: AI insights
+        # ===================================================
+        # 6️⃣ Export Data
+        # ===================================================
+        csv = base_df.to_csv(index=False).encode("utf-8")
+        st.download_button("⬇️ Download Clustering Dataset (CSV)", csv, file_name=f"maxed_cluster_{this_year}.csv")
+
+        # ===================================================
+        # 7️⃣ AI Insights
+        # ===================================================
         if enable_ai:
-            with st.spinner("Generating AI insights on clusters, trends, and predictions..."):
-                system = "You are a senior data scientist. Summarize all cluster, correlation, and prediction results clearly."
+            with st.spinner("🤖 Generating AI-driven insights..."):
+                system = "You are a senior data scientist. Summarize findings on clusters, correlations, and forecasts."
                 summary_data = {
-                    "yearwise": yearwise.to_dict(orient="records"),
-                    "next_year_pred": float(pred_next),
-                    "silhouette_score": float(score) if 'score' in locals() else None,
-                    "corr_top": corr.unstack().nlargest(5).to_dict()
+                    "best_k": int(best_k),
+                    "silhouette": round(sil_scores[best_k],3),
+                    "next_year_pred": float(pred_avg),
+                    "top_corr": top_corrs.head(3).to_dict(),
+                    "growth_pct": float(growth)
                 }
-                user = f"Data summary:\n{json.dumps(summary_data, indent=2)}\nProvide 7 key insights and 3 next-step actions."
-                ai_resp = deepinfra_chat(system, user, max_tokens=400)
-                if "text" in ai_resp:
-                    st.markdown("**🤖 AI Summary Insights**")
-                    st.write(ai_resp["text"])
-
-    else:
-        st.warning("⚠️ No sufficient data for maxed clustering or predictive analysis.")
+                user = f"Data Summary:\n{json.dumps(summary_data, indent=2)}\nProvide:\n1️⃣ 5 insights on trends, clusters, correlations\n2️⃣ 3 business actions.\nKeep it concise & analytical."
+                ai_out = deepinfra_chat(system, user, max_tokens=500)
+                if isinstance(ai_out, dict) and "text" in ai_out:
+                    st.markdown("### 🤖 AI Summary")
+                    st.write(ai_out["text"])
+                else:
+                    st.info("AI summary unavailable.")
 
 # ---------------- 🚀 SMART EXPORTS (AI + ML + Power BI + Tableau + HTML + Tkinter) ----------------
 
