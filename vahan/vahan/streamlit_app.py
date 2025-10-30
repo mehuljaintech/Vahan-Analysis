@@ -296,362 +296,362 @@ from vahan.charts import (
     bar_from_df, pie_from_df, line_from_trend,
     show_metrics, show_tables
 )
-# =====================================================
-# 🔧 MAXED ERROR-HARDENED, STATELESS FETCHER — FULL HTTP ERROR HANDLING
-# =====================================================
-import threading
-import collections
-import random
-import time
-import requests
-from requests.exceptions import RequestException, Timeout, ConnectionError, HTTPError
-from typing import Optional, List, Dict
+# # =====================================================
+# # 🔧 MAXED ERROR-HARDENED, STATELESS FETCHER — FULL HTTP ERROR HANDLING
+# # =====================================================
+# import threading
+# import collections
+# import random
+# import time
+# import requests
+# from requests.exceptions import RequestException, Timeout, ConnectionError, HTTPError
+# from typing import Optional, List, Dict
 
-# ----------------------
-# Configuration knobs
-# ----------------------
-MAX_ATTEMPTS = 6                         # absolute max tries across rotations
-BASE_BACKOFF = 1.2                       # base multiplier for exponential backoff
-JITTER = 0.35                            # jitter fraction
-KEY_COOLDOWN_SECONDS = 300               # cooldown for a key after severe failure (5 minutes)
-KEY_BLOCK_SECONDS = 3600                 # block a key after repeated critical failures (1 hour)
-ENDPOINT_CIRCUIT_BREAK_SECONDS = 120     # circuit-break window for unhealthy endpoints
-CIRCUIT_BREAK_THRESHOLD = 3              # failures before tripping circuit
-MAX_PROXY_USAGE_RATIO = 0.35             # probability to use proxy if proxies exist
-DISABLE_CACHE_FOR_STATLESS = False       # set True to always bypass cache for stateless calls
+# # ----------------------
+# # Configuration knobs
+# # ----------------------
+# MAX_ATTEMPTS = 6                         # absolute max tries across rotations
+# BASE_BACKOFF = 1.2                       # base multiplier for exponential backoff
+# JITTER = 0.35                            # jitter fraction
+# KEY_COOLDOWN_SECONDS = 300               # cooldown for a key after severe failure (5 minutes)
+# KEY_BLOCK_SECONDS = 3600                 # block a key after repeated critical failures (1 hour)
+# ENDPOINT_CIRCUIT_BREAK_SECONDS = 120     # circuit-break window for unhealthy endpoints
+# CIRCUIT_BREAK_THRESHOLD = 3              # failures before tripping circuit
+# MAX_PROXY_USAGE_RATIO = 0.35             # probability to use proxy if proxies exist
+# DISABLE_CACHE_FOR_STATLESS = False       # set True to always bypass cache for stateless calls
 
-# ----------------------
-# In-memory maps (ephemeral)
-# ----------------------
-_key_cooldowns: Dict[str, float] = {}            # key -> available_from_timestamp
-_key_blocks: Dict[str, float] = {}               # key -> blocked_until_timestamp
-_endpoint_failures: Dict[str, collections.deque] = {}  # endpoint -> deque[timestamps]
-_endpoint_circuit: Dict[str, float] = {}         # endpoint -> circuit_tripped_until
-_lock = threading.Lock()
+# # ----------------------
+# # In-memory maps (ephemeral)
+# # ----------------------
+# _key_cooldowns: Dict[str, float] = {}            # key -> available_from_timestamp
+# _key_blocks: Dict[str, float] = {}               # key -> blocked_until_timestamp
+# _endpoint_failures: Dict[str, collections.deque] = {}  # endpoint -> deque[timestamps]
+# _endpoint_circuit: Dict[str, float] = {}         # endpoint -> circuit_tripped_until
+# _lock = threading.Lock()
 
-# Ensure API_CONFIG supports mirrors list (optional)
-# Example:
-# API_CONFIG["parivahan"]["mirrors"] = ["https://backup1...", "https://backup2..."]
-for svc in API_CONFIG.values():
-    svc.setdefault("mirrors", [])
+# # Ensure API_CONFIG supports mirrors list (optional)
+# # Example:
+# # API_CONFIG["parivahan"]["mirrors"] = ["https://backup1...", "https://backup2..."]
+# for svc in API_CONFIG.values():
+#     svc.setdefault("mirrors", [])
 
-# ----------------------
-# Helper utilities
-# ----------------------
-def _now_ts() -> float:
-    return time.time()
+# # ----------------------
+# # Helper utilities
+# # ----------------------
+# def _now_ts() -> float:
+#     return time.time()
 
-def _is_key_available(key: str) -> bool:
-    """Return True if key is not in cooldown or block."""
-    now = _now_ts()
-    if key in _key_blocks and _key_blocks[key] > now:
-        return False
-    if key in _key_cooldowns and _key_cooldowns[key] > now:
-        return False
-    return True
+# def _is_key_available(key: str) -> bool:
+#     """Return True if key is not in cooldown or block."""
+#     now = _now_ts()
+#     if key in _key_blocks and _key_blocks[key] > now:
+#         return False
+#     if key in _key_cooldowns and _key_cooldowns[key] > now:
+#         return False
+#     return True
 
-def _cooldown_key(key: str, seconds: int = KEY_COOLDOWN_SECONDS):
-    with _lock:
-        _key_cooldowns[key] = _now_ts() + seconds
-    log_ist(f"🔒 Key cooldown applied for {seconds}s for key prefix: {str(key)[:6]}")
+# def _cooldown_key(key: str, seconds: int = KEY_COOLDOWN_SECONDS):
+#     with _lock:
+#         _key_cooldowns[key] = _now_ts() + seconds
+#     log_ist(f"🔒 Key cooldown applied for {seconds}s for key prefix: {str(key)[:6]}")
 
-def _block_key(key: str, seconds: int = KEY_BLOCK_SECONDS):
-    with _lock:
-        _key_blocks[key] = _now_ts() + seconds
-    log_ist(f"⛔ Key blocked for {seconds}s for key prefix: {str(key)[:6]}")
+# def _block_key(key: str, seconds: int = KEY_BLOCK_SECONDS):
+#     with _lock:
+#         _key_blocks[key] = _now_ts() + seconds
+#     log_ist(f"⛔ Key blocked for {seconds}s for key prefix: {str(key)[:6]}")
 
-def _register_endpoint_failure(endpoint: str):
-    """Register a failure and trip circuit if threshold reached."""
-    now = _now_ts()
-    dq = _endpoint_failures.setdefault(endpoint, collections.deque(maxlen=20))
-    dq.append(now)
-    # Count failures in last ENDPOINT_CIRCUIT_BREAK_SECONDS
-    cutoff = now - ENDPOINT_CIRCUIT_BREAK_SECONDS
-    recent = [t for t in dq if t >= cutoff]
-    if len(recent) >= CIRCUIT_BREAK_THRESHOLD:
-        _endpoint_circuit[endpoint] = now + ENDPOINT_CIRCUIT_BREAK_SECONDS
-        log_ist(f"🛑 Circuit tripped for endpoint {endpoint} until {_endpoint_circuit[endpoint]}")
+# def _register_endpoint_failure(endpoint: str):
+#     """Register a failure and trip circuit if threshold reached."""
+#     now = _now_ts()
+#     dq = _endpoint_failures.setdefault(endpoint, collections.deque(maxlen=20))
+#     dq.append(now)
+#     # Count failures in last ENDPOINT_CIRCUIT_BREAK_SECONDS
+#     cutoff = now - ENDPOINT_CIRCUIT_BREAK_SECONDS
+#     recent = [t for t in dq if t >= cutoff]
+#     if len(recent) >= CIRCUIT_BREAK_THRESHOLD:
+#         _endpoint_circuit[endpoint] = now + ENDPOINT_CIRCUIT_BREAK_SECONDS
+#         log_ist(f"🛑 Circuit tripped for endpoint {endpoint} until {_endpoint_circuit[endpoint]}")
 
-def _is_endpoint_available(endpoint: str) -> bool:
-    until = _endpoint_circuit.get(endpoint, 0)
-    return _now_ts() > until
+# def _is_endpoint_available(endpoint: str) -> bool:
+#     until = _endpoint_circuit.get(endpoint, 0)
+#     return _now_ts() > until
 
-def _choose_mirror(api_name: str) -> Optional[str]:
-    cfg = API_CONFIG.get(api_name, {})
-    mirrors = cfg.get("mirrors", []) or []
-    base = cfg.get("base", "")
-    candidates = [base] + mirrors
-    random.shuffle(candidates)
-    # Return first that is not currently under circuit break (use full candidate as key)
-    for c in candidates:
-        if _is_endpoint_available(c):
-            return c
-    return None
+# def _choose_mirror(api_name: str) -> Optional[str]:
+#     cfg = API_CONFIG.get(api_name, {})
+#     mirrors = cfg.get("mirrors", []) or []
+#     base = cfg.get("base", "")
+#     candidates = [base] + mirrors
+#     random.shuffle(candidates)
+#     # Return first that is not currently under circuit break (use full candidate as key)
+#     for c in candidates:
+#         if _is_endpoint_available(c):
+#             return c
+#     return None
 
-def _attempt_backoff(attempt: int, scale: float = BASE_BACKOFF):
-    backoff = (scale ** attempt) + (random.random() * JITTER * scale)
-    log_ist(f"⏳ Backing off {backoff:.2f}s (attempt {attempt})")
-    time.sleep(backoff)
+# def _attempt_backoff(attempt: int, scale: float = BASE_BACKOFF):
+#     backoff = (scale ** attempt) + (random.random() * JITTER * scale)
+#     log_ist(f"⏳ Backing off {backoff:.2f}s (attempt {attempt})")
+#     time.sleep(backoff)
 
-# ----------------------
-# Key selection with cooldown awareness
-# ----------------------
-def _get_available_token(api_name: str) -> Optional[str]:
-    """Pick an available token (not in cooldown/block)."""
-    cfg = API_CONFIG.get(api_name, {})
-    keys = list(cfg.get("keys", []) or [])
-    random.shuffle(keys)
-    for k in keys:
-        if _is_key_available(k):
-            return k
-    return None
+# # ----------------------
+# # Key selection with cooldown awareness
+# # ----------------------
+# def _get_available_token(api_name: str) -> Optional[str]:
+#     """Pick an available token (not in cooldown/block)."""
+#     cfg = API_CONFIG.get(api_name, {})
+#     keys = list(cfg.get("keys", []) or [])
+#     random.shuffle(keys)
+#     for k in keys:
+#         if _is_key_available(k):
+#             return k
+#     return None
 
-def _mark_key_failure(api_name: str, key: Optional[str], status_code: Optional[int] = None, fatal: bool = False):
-    if not key:
-        return
-    # For certain status codes, escalate
-    if status_code in (401,):
-        # likely invalid token -> block for longer
-        _block_key(key, seconds=KEY_BLOCK_SECONDS)
-    elif status_code in (403,):
-        # forbidden, cooldown the key and escalate if repeated
-        _cooldown_key(key, seconds=KEY_COOLDOWN_SECONDS)
-    elif status_code in (429,):
-        # rate limit: cooldown key a bit
-        _cooldown_key(key, seconds=max(KEY_COOLDOWN_SECONDS // 2, 60))
-    else:
-        # generic error -> short cooldown
-        _cooldown_key(key, seconds=60)
+# def _mark_key_failure(api_name: str, key: Optional[str], status_code: Optional[int] = None, fatal: bool = False):
+#     if not key:
+#         return
+#     # For certain status codes, escalate
+#     if status_code in (401,):
+#         # likely invalid token -> block for longer
+#         _block_key(key, seconds=KEY_BLOCK_SECONDS)
+#     elif status_code in (403,):
+#         # forbidden, cooldown the key and escalate if repeated
+#         _cooldown_key(key, seconds=KEY_COOLDOWN_SECONDS)
+#     elif status_code in (429,):
+#         # rate limit: cooldown key a bit
+#         _cooldown_key(key, seconds=max(KEY_COOLDOWN_SECONDS // 2, 60))
+#     else:
+#         # generic error -> short cooldown
+#         _cooldown_key(key, seconds=60)
 
-    log_ist(f"⚠️ Marked failure for key prefix {str(key)[:6]} status={status_code} fatal={fatal}")
+#     log_ist(f"⚠️ Marked failure for key prefix {str(key)[:6]} status={status_code} fatal={fatal}")
 
-# ----------------------
-# Full MAXED stateless fetcher
-# ----------------------
-def fetch_api_maxed(api_name: str,
-                    endpoint: str,
-                    params: dict = None,
-                    method: str = "GET",
-                    json_body: dict = None,
-                    allow_redirects: bool = True,
-                    disable_cache: bool = DISABLE_CACHE_FOR_STATLESS,
-                    max_attempts: int = MAX_ATTEMPTS) -> dict:
-    """
-    The MAXED stateless fetcher:
-      - rotates mirrors if available
-      - respects endpoint circuit breaker
-      - rotates keys but avoids keys in cooldown/block
-      - special handling for 401/403/429
-      - jittered exponential backoff
-      - cookie-free, ephemeral sessions
-    """
-    # Optionally bypass cache completely when requested
-    cache_bypass = disable_cache
+# # ----------------------
+# # Full MAXED stateless fetcher
+# # ----------------------
+# def fetch_api_maxed(api_name: str,
+#                     endpoint: str,
+#                     params: dict = None,
+#                     method: str = "GET",
+#                     json_body: dict = None,
+#                     allow_redirects: bool = True,
+#                     disable_cache: bool = DISABLE_CACHE_FOR_STATLESS,
+#                     max_attempts: int = MAX_ATTEMPTS) -> dict:
+#     """
+#     The MAXED stateless fetcher:
+#       - rotates mirrors if available
+#       - respects endpoint circuit breaker
+#       - rotates keys but avoids keys in cooldown/block
+#       - special handling for 401/403/429
+#       - jittered exponential backoff
+#       - cookie-free, ephemeral sessions
+#     """
+#     # Optionally bypass cache completely when requested
+#     cache_bypass = disable_cache
 
-    cfg = API_CONFIG.get(api_name, {})
-    auth_type = cfg.get("auth_type", "bearer")
+#     cfg = API_CONFIG.get(api_name, {})
+#     auth_type = cfg.get("auth_type", "bearer")
 
-    attempt = 0
-    tried_keys = set()
-    last_exc = None
+#     attempt = 0
+#     tried_keys = set()
+#     last_exc = None
 
-    # pick a mirror or base that is available
-    base_choice = _choose_mirror(api_name)
-    if not base_choice:
-        log_ist(f"❌ No healthy endpoint available for service {api_name} (all circuits tripped).")
-        return {}
+#     # pick a mirror or base that is available
+#     base_choice = _choose_mirror(api_name)
+#     if not base_choice:
+#         log_ist(f"❌ No healthy endpoint available for service {api_name} (all circuits tripped).")
+#         return {}
 
-    url_base = base_choice.rstrip("/")
-    url = f"{url_base}/{endpoint.lstrip('/')}"
+#     url_base = base_choice.rstrip("/")
+#     url = f"{url_base}/{endpoint.lstrip('/')}"
 
-    while attempt < max_attempts:
-        attempt += 1
+#     while attempt < max_attempts:
+#         attempt += 1
 
-        # choose token that is not in cooldown / block
-        token = _get_available_token(api_name)
-        if token is None:
-            # no available keys — use a token-less request if allowed, else wait & retry
-            log_ist(f"⚠️ No available API keys for {api_name} (attempt {attempt}) — trying without token or waiting shortly.")
-            # small wait with jitter before retrying to allow keys to cool
-            _attempt_backoff(attempt)
-        else:
-            tried_keys.add(token)
+#         # choose token that is not in cooldown / block
+#         token = _get_available_token(api_name)
+#         if token is None:
+#             # no available keys — use a token-less request if allowed, else wait & retry
+#             log_ist(f"⚠️ No available API keys for {api_name} (attempt {attempt}) — trying without token or waiting shortly.")
+#             # small wait with jitter before retrying to allow keys to cool
+#             _attempt_backoff(attempt)
+#         else:
+#             tried_keys.add(token)
 
-        # build ephemeral session + headers
-        headers = build_spoofed_headers(api_name=api_name)
-        if token and auth_type == "bearer":
-            headers["Authorization"] = f"Bearer {token}"
-        # if param-based, we'll inject later into params copy
+#         # build ephemeral session + headers
+#         headers = build_spoofed_headers(api_name=api_name)
+#         if token and auth_type == "bearer":
+#             headers["Authorization"] = f"Bearer {token}"
+#         # if param-based, we'll inject later into params copy
 
-        # ephemeral session (cookie-cleared)
-        session = requests.Session()
-        session.cookies.clear()
-        session.trust_env = False
-        # mount retry adapter but rely on our algorithm mostly
-        session.mount("https://", requests.adapters.HTTPAdapter(max_retries=0))
-        session.mount("http://", requests.adapters.HTTPAdapter(max_retries=0))
+#         # ephemeral session (cookie-cleared)
+#         session = requests.Session()
+#         session.cookies.clear()
+#         session.trust_env = False
+#         # mount retry adapter but rely on our algorithm mostly
+#         session.mount("https://", requests.adapters.HTTPAdapter(max_retries=0))
+#         session.mount("http://", requests.adapters.HTTPAdapter(max_retries=0))
 
-        # optionally select proxy for this single-request
-        proxy = _choose_proxy()
-        proxies = {"http": proxy, "https": proxy} if proxy else None
-        if proxy:
-            log_ist(f"🔀 (Proxy) Using proxy for this call: {proxy}")
+#         # optionally select proxy for this single-request
+#         proxy = _choose_proxy()
+#         proxies = {"http": proxy, "https": proxy} if proxy else None
+#         if proxy:
+#             log_ist(f"🔀 (Proxy) Using proxy for this call: {proxy}")
 
-        # prepare params copy
-        req_params = dict(params or {})
-        if auth_type == "param" and token:
-            req_params["apikey"] = token
+#         # prepare params copy
+#         req_params = dict(params or {})
+#         if auth_type == "param" and token:
+#             req_params["apikey"] = token
 
-        try:
-            log_ist(f"🌐 [{api_name.upper()}] Try#{attempt} -> {url} (token={'yes' if token else 'no'})")
-            if method.upper() == "GET":
-                resp = session.get(url, headers=headers, params=req_params, timeout=30, allow_redirects=allow_redirects, proxies=proxies)
-            else:
-                resp = session.request(method.upper(), url, headers=headers, params=req_params, json=json_body or {}, timeout=60, allow_redirects=allow_redirects, proxies=proxies)
+#         try:
+#             log_ist(f"🌐 [{api_name.upper()}] Try#{attempt} -> {url} (token={'yes' if token else 'no'})")
+#             if method.upper() == "GET":
+#                 resp = session.get(url, headers=headers, params=req_params, timeout=30, allow_redirects=allow_redirects, proxies=proxies)
+#             else:
+#                 resp = session.request(method.upper(), url, headers=headers, params=req_params, json=json_body or {}, timeout=60, allow_redirects=allow_redirects, proxies=proxies)
 
-            status = resp.status_code
+#             status = resp.status_code
 
-            # Handle common statuses with dedicated logic
-            if status == 204:
-                log_ist(f"⚪ 204 No Content for {url} — returning empty dict")
-                return {}
+#             # Handle common statuses with dedicated logic
+#             if status == 204:
+#                 log_ist(f"⚪ 204 No Content for {url} — returning empty dict")
+#                 return {}
 
-            if 200 <= status < 300:
-                # success
-                try:
-                    payload = resp.json()
-                except ValueError:
-                    payload = {"text": resp.text}
-                log_ist(f"✅ {api_name} success {status} -> {url}")
-                return payload
+#             if 200 <= status < 300:
+#                 # success
+#                 try:
+#                     payload = resp.json()
+#                 except ValueError:
+#                     payload = {"text": resp.text}
+#                 log_ist(f"✅ {api_name} success {status} -> {url}")
+#                 return payload
 
-            # CLIENT ERRORS (400-499)
-            if 400 <= status < 500:
-                if status == 400:
-                    log_ist(f"❗ 400 Bad Request for {url}: {resp.text[:200]}")
-                    _register_endpoint_failure(url)
-                    _mark_key_failure(api_name, token, status_code=status)
-                    # often user params wrong — do not retry infinitely
-                    _attempt_backoff(attempt)
-                    last_exc = HTTPError(f"400 Bad Request: {resp.text}")
-                    # break loop if repeated
-                    if attempt >= max_attempts:
-                        break
-                    continue
+#             # CLIENT ERRORS (400-499)
+#             if 400 <= status < 500:
+#                 if status == 400:
+#                     log_ist(f"❗ 400 Bad Request for {url}: {resp.text[:200]}")
+#                     _register_endpoint_failure(url)
+#                     _mark_key_failure(api_name, token, status_code=status)
+#                     # often user params wrong — do not retry infinitely
+#                     _attempt_backoff(attempt)
+#                     last_exc = HTTPError(f"400 Bad Request: {resp.text}")
+#                     # break loop if repeated
+#                     if attempt >= max_attempts:
+#                         break
+#                     continue
 
-                if status == 401:
-                    # Unauthorized — token invalid. Block this key longer
-                    log_ist(f"🔐 401 Unauthorized — token likely invalid for {api_name}")
-                    _mark_key_failure(api_name, token, status_code=401, fatal=True)
-                    _register_endpoint_failure(url)
-                    # immediately rotate to next key and backoff
-                    _attempt_backoff(attempt + 1)
-                    continue
+#                 if status == 401:
+#                     # Unauthorized — token invalid. Block this key longer
+#                     log_ist(f"🔐 401 Unauthorized — token likely invalid for {api_name}")
+#                     _mark_key_failure(api_name, token, status_code=401, fatal=True)
+#                     _register_endpoint_failure(url)
+#                     # immediately rotate to next key and backoff
+#                     _attempt_backoff(attempt + 1)
+#                     continue
 
-                if status == 403:
-                    # Forbidden — rotate key, escalate cooldown, try mirror endpoint
-                    log_ist(f"⛔ 403 Forbidden — rotating token and possibly mirror (attempt {attempt})")
-                    _mark_key_failure(api_name, token, status_code=403)
-                    _register_endpoint_failure(url)
-                    # try a different mirror immediately if available
-                    base_choice = _choose_mirror(api_name)
-                    if base_choice and base_choice.rstrip("/") != url_base:
-                        url_base = base_choice.rstrip("/")
-                        url = f"{url_base}/{endpoint.lstrip('/')}"
-                        log_ist(f"🔁 Switching to mirror endpoint: {url_base}")
-                    _attempt_backoff(attempt + 1)
-                    continue
+#                 if status == 403:
+#                     # Forbidden — rotate key, escalate cooldown, try mirror endpoint
+#                     log_ist(f"⛔ 403 Forbidden — rotating token and possibly mirror (attempt {attempt})")
+#                     _mark_key_failure(api_name, token, status_code=403)
+#                     _register_endpoint_failure(url)
+#                     # try a different mirror immediately if available
+#                     base_choice = _choose_mirror(api_name)
+#                     if base_choice and base_choice.rstrip("/") != url_base:
+#                         url_base = base_choice.rstrip("/")
+#                         url = f"{url_base}/{endpoint.lstrip('/')}"
+#                         log_ist(f"🔁 Switching to mirror endpoint: {url_base}")
+#                     _attempt_backoff(attempt + 1)
+#                     continue
 
-                if status == 404:
-                    log_ist(f"🔍 404 Not Found for {url}. Endpoint may be incorrect.")
-                    # no point in repeating many times
-                    _register_endpoint_failure(url)
-                    last_exc = HTTPError("404 Not Found")
-                    break
+#                 if status == 404:
+#                     log_ist(f"🔍 404 Not Found for {url}. Endpoint may be incorrect.")
+#                     # no point in repeating many times
+#                     _register_endpoint_failure(url)
+#                     last_exc = HTTPError("404 Not Found")
+#                     break
 
-                if status == 405:
-                    log_ist(f"❌ 405 Method Not Allowed for {url}")
-                    _register_endpoint_failure(url)
-                    last_exc = HTTPError("405 Method Not Allowed")
-                    break
+#                 if status == 405:
+#                     log_ist(f"❌ 405 Method Not Allowed for {url}")
+#                     _register_endpoint_failure(url)
+#                     last_exc = HTTPError("405 Method Not Allowed")
+#                     break
 
-                # Other 4xx: log and backoff shorter
-                log_ist(f"⚠️ Client error {status} for {url}: {resp.text[:200]}")
-                _mark_key_failure(api_name, token, status_code=status)
-                _register_endpoint_failure(url)
-                _attempt_backoff(attempt)
-                continue
+#                 # Other 4xx: log and backoff shorter
+#                 log_ist(f"⚠️ Client error {status} for {url}: {resp.text[:200]}")
+#                 _mark_key_failure(api_name, token, status_code=status)
+#                 _register_endpoint_failure(url)
+#                 _attempt_backoff(attempt)
+#                 continue
 
-            # SERVER ERRORS (500-599)
-            if 500 <= status < 600:
-                log_ist(f"🔥 Server error {status} from {url} — will retry with backoff")
-                _register_endpoint_failure(url)
-                # for some server errors, escalate key cooldown lightly
-                _mark_key_failure(api_name, token, status_code=status)
-                _attempt_backoff(attempt * 2)
-                continue
+#             # SERVER ERRORS (500-599)
+#             if 500 <= status < 600:
+#                 log_ist(f"🔥 Server error {status} from {url} — will retry with backoff")
+#                 _register_endpoint_failure(url)
+#                 # for some server errors, escalate key cooldown lightly
+#                 _mark_key_failure(api_name, token, status_code=status)
+#                 _attempt_backoff(attempt * 2)
+#                 continue
 
-            # Rate-limit specifically
-            if status == 429:
-                retry_after = None
-                try:
-                    retry_after = int(resp.headers.get("Retry-After") or 0)
-                except Exception:
-                    retry_after = None
-                wait = retry_after if retry_after and retry_after > 0 else (2 ** attempt) + random.random() * 2
-                log_ist(f"🔁 429 Rate limited. Waiting {wait}s then rotating key if needed.")
-                _mark_key_failure(api_name, token, status_code=429)
-                time.sleep(wait)
-                continue
+#             # Rate-limit specifically
+#             if status == 429:
+#                 retry_after = None
+#                 try:
+#                     retry_after = int(resp.headers.get("Retry-After") or 0)
+#                 except Exception:
+#                     retry_after = None
+#                 wait = retry_after if retry_after and retry_after > 0 else (2 ** attempt) + random.random() * 2
+#                 log_ist(f"🔁 429 Rate limited. Waiting {wait}s then rotating key if needed.")
+#                 _mark_key_failure(api_name, token, status_code=429)
+#                 time.sleep(wait)
+#                 continue
 
-            # Fallback for unknown statuses
-            log_ist(f"❗ Unexpected HTTP status {status} for {url}. Body head: {str(resp.text)[:300]}")
-            _register_endpoint_failure(url)
-            _mark_key_failure(api_name, token, status_code=status)
-            _attempt_backoff(attempt)
-            continue
+#             # Fallback for unknown statuses
+#             log_ist(f"❗ Unexpected HTTP status {status} for {url}. Body head: {str(resp.text)[:300]}")
+#             _register_endpoint_failure(url)
+#             _mark_key_failure(api_name, token, status_code=status)
+#             _attempt_backoff(attempt)
+#             continue
 
-        except (Timeout, ConnectionError) as net_exc:
-            log_ist(f"⚠️ Network error on attempt {attempt} for {url}: {net_exc}")
-            _register_endpoint_failure(url)
-            _mark_key_failure(api_name, token, fatal=False)
-            _attempt_backoff(attempt)
-            last_exc = net_exc
-            continue
+#         except (Timeout, ConnectionError) as net_exc:
+#             log_ist(f"⚠️ Network error on attempt {attempt} for {url}: {net_exc}")
+#             _register_endpoint_failure(url)
+#             _mark_key_failure(api_name, token, fatal=False)
+#             _attempt_backoff(attempt)
+#             last_exc = net_exc
+#             continue
 
-        except RequestException as req_exc:
-            log_ist(f"⚠️ Requests exception on attempt {attempt} for {url}: {req_exc}")
-            _register_endpoint_failure(url)
-            _mark_key_failure(api_name, token, fatal=False)
-            _attempt_backoff(attempt)
-            last_exc = req_exc
-            continue
+#         except RequestException as req_exc:
+#             log_ist(f"⚠️ Requests exception on attempt {attempt} for {url}: {req_exc}")
+#             _register_endpoint_failure(url)
+#             _mark_key_failure(api_name, token, fatal=False)
+#             _attempt_backoff(attempt)
+#             last_exc = req_exc
+#             continue
 
-        finally:
-            try:
-                session.close()
-            except Exception:
-                pass
+#         finally:
+#             try:
+#                 session.close()
+#             except Exception:
+#                 pass
 
-    # exhausted attempts
-    log_ist(f"❌ All attempts exhausted for {api_name} -> {endpoint}. Last error: {last_exc}")
-    return {}
+#     # exhausted attempts
+#     log_ist(f"❌ All attempts exhausted for {api_name} -> {endpoint}. Last error: {last_exc}")
+#     return {}
 
-# ----------------------
-# Small health & debug UI
-# ----------------------
-def maxed_fetcher_status():
-    st.subheader("🛠 MAXED Fetcher Status")
-    st.write("Key cooldowns (prefixes):")
-    for k, t in list(_key_cooldowns.items())[:10]:
-        st.write(f"- {str(k)[:8]} -> until {time.ctime(t)}")
-    st.write("Key blocks (prefixes):")
-    for k, t in list(_key_blocks.items())[:10]:
-        st.write(f"- {str(k)[:8]} -> until {time.ctime(t)}")
-    st.write("Endpoint circuits:")
-    for ep, until in _endpoint_circuit.items():
-        st.write(f"- {ep} -> tripped until {time.ctime(until)}")
-    st.success("MAXED fetcher reporting ready.")
+# # ----------------------
+# # Small health & debug UI
+# # ----------------------
+# def maxed_fetcher_status():
+#     st.subheader("🛠 MAXED Fetcher Status")
+#     st.write("Key cooldowns (prefixes):")
+#     for k, t in list(_key_cooldowns.items())[:10]:
+#         st.write(f"- {str(k)[:8]} -> until {time.ctime(t)}")
+#     st.write("Key blocks (prefixes):")
+#     for k, t in list(_key_blocks.items())[:10]:
+#         st.write(f"- {str(k)[:8]} -> until {time.ctime(t)}")
+#     st.write("Endpoint circuits:")
+#     for ep, until in _endpoint_circuit.items():
+#         st.write(f"- {ep} -> tripped until {time.ctime(until)}")
+#     st.success("MAXED fetcher reporting ready.")
 
 # =====================================================
 # 🚀 STREAMLIT PAGE CONFIG — MAXED OUT EDITION
