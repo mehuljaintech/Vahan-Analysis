@@ -188,7 +188,6 @@ Place this near the top of your Streamlit app and import as:
     from maxed_init import *
 It initializes logging, caching, HTTP utilities, and helper functions.
 """
-from __future__ import annotations
 import os
 import sys
 import time
