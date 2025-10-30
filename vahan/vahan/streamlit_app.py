@@ -1,4 +1,117 @@
 # =====================================================
+# 🌍 MAXED UNIVERSAL IMPORTS — AUTO INSTALL + AUTO REBOOT + FILE WATCH
+# =====================================================
+import sys, os, subprocess, importlib, time, traceback, warnings, threading, hashlib
+from datetime import datetime
+warnings.filterwarnings("ignore")
+
+# =====================================================
+# ⚙️ AUTO-INSTALL, REQUIREMENTS SYNC, CACHE CLEAR, REBOOT + FILE WATCH
+# =====================================================
+REQUIREMENTS_FILE = "requirements.txt"
+_installed = set()
+_last_hash = None
+
+def clear_all_caches():
+    """Clear Streamlit, Python, and import caches safely."""
+    try:
+        import streamlit as st
+        st.cache_data.clear()
+        st.cache_resource.clear()
+        importlib.invalidate_caches()
+        print("🧹 Cleared all Streamlit + import caches.")
+    except Exception as e:
+        print(f"⚠️ Cache clear failed: {e}")
+
+def reboot_app(reason="manual"):
+    """Force Streamlit app reboot."""
+    try:
+        import streamlit as st
+        print(f"🔁 Rebooting Streamlit app (reason: {reason}) ...")
+        clear_all_caches()
+        time.sleep(1)
+        st.experimental_rerun()
+    except Exception as e:
+        print(f"⚠️ Reboot failed: {e}")
+
+def ensure_package(pkg_name, import_as=None, refresh_on_install=True, retries=3):
+    """Ensure package is installed, update requirements, reboot if needed."""
+    def update_requirements(name):
+        try:
+            if os.path.exists(REQUIREMENTS_FILE):
+                with open(REQUIREMENTS_FILE, "r+", encoding="utf-8") as f:
+                    lines = f.read().splitlines()
+                    if name not in lines:
+                        f.write(f"\n{name}")
+            else:
+                with open(REQUIREMENTS_FILE, "w", encoding="utf-8") as f:
+                    f.write(f"{name}\n")
+        except Exception as e:
+            print(f"⚠️ Could not update requirements.txt: {e}")
+
+    try:
+        return importlib.import_module(import_as or pkg_name)
+    except ModuleNotFoundError:
+        print(f"📦 Missing {pkg_name}, installing...")
+
+    for attempt in range(1, retries + 1):
+        try:
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", pkg_name, "--quiet", "--disable-pip-version-check"]
+            )
+            mod = importlib.import_module(import_as or pkg_name)
+            _installed.add(pkg_name)
+            update_requirements(pkg_name)
+            print(f"✅ Installed {pkg_name} successfully.")
+            if refresh_on_install:
+                reboot_app(reason=f"package_install:{pkg_name}")
+            return mod
+        except Exception as e:
+            print(f"❌ Attempt {attempt} failed for {pkg_name}: {e}")
+            time.sleep(1)
+    print(f"🚫 Could not install {pkg_name} after {retries} retries.")
+    return None
+
+def hash_project_files(folder="."):
+    """Compute a hash of all Python files for change detection."""
+    sha = hashlib.sha256()
+    for root, _, files in os.walk(folder):
+        for f in files:
+            if f.endswith(".py"):
+                path = os.path.join(root, f)
+                try:
+                    with open(path, "rb") as fp:
+                        sha.update(fp.read())
+                except Exception:
+                    pass
+    return sha.hexdigest()
+
+def watch_for_changes(interval=10):
+    """Background watcher thread to auto-reboot Streamlit on file changes."""
+    global _last_hash
+    while True:
+        try:
+            new_hash = hash_project_files(".")
+            if _last_hash and new_hash != _last_hash:
+                print("⚡ Code change detected — triggering auto-reboot ...")
+                reboot_app(reason="file_change")
+            _last_hash = new_hash
+        except Exception as e:
+            print(f"Watcher error: {e}")
+        time.sleep(interval)
+
+threading.Thread(target=watch_for_changes, daemon=True).start()
+
+# =====================================================
+# 📦 Now your normal imports can go safely below
+# =====================================================
+st = ensure_package("streamlit")
+pd = ensure_package("pandas")
+np = ensure_package("numpy")
+alt = ensure_package("altair")
+requests = ensure_package("requests")
+
+# =====================================================
 # 🌏 GLOBAL INIT — MAXED OUT (IST, CACHING, USER, RETRY)
 # =====================================================
 import os
@@ -132,89 +245,6 @@ app_boot_banner()
 # logging.info("Processing completed.")
 
 
-# =====================================================
-# ⚙️ MAXED+ AUTO-INSTALL, REQUIREMENTS SYNC, CACHE CLEAR + AUTO-REBOOT
-# =====================================================
-import sys, os, subprocess, importlib, time, traceback, importlib.util
-import streamlit as st
-
-REQUIREMENTS_FILE = "requirements.txt"
-_installed = set()
-
-def clear_all_caches():
-    """Clears Streamlit, Python, and memory caches safely."""
-    try:
-        st.cache_data.clear()
-        st.cache_resource.clear()
-        sys.modules.clear()
-        importlib.invalidate_caches()
-        print("🧹 All caches cleared successfully.")
-    except Exception as e:
-        print(f"⚠️ Cache clear failed: {e}")
-
-def reboot_app():
-    """Force Streamlit app reboot."""
-    try:
-        print("🔁 Rebooting Streamlit app ...")
-        clear_all_caches()
-        st.experimental_rerun()
-    except Exception as e:
-        print(f"⚠️ Reboot failed: {e}")
-
-def ensure_package(pkg_name, import_as=None, refresh_on_install=True, retries=3):
-    """
-    🚀 MAXED UNIVERSAL PACKAGE HANDLER
-    - Installs even on Streamlit Cloud
-    - Auto-updates requirements.txt
-    - Auto-clears caches + restarts after success
-    - Retries and full error safety
-    """
-    def update_requirements(name):
-        """Ensure package name is recorded in requirements.txt."""
-        try:
-            if os.path.exists(REQUIREMENTS_FILE):
-                with open(REQUIREMENTS_FILE, "r+", encoding="utf-8") as f:
-                    lines = f.read().splitlines()
-                    if name not in lines:
-                        f.write(f"\n{name}")
-            else:
-                with open(REQUIREMENTS_FILE, "w", encoding="utf-8") as f:
-                    f.write(f"{name}\n")
-        except Exception as e:
-            print(f"⚠️ Could not update requirements.txt for {name}: {e}")
-
-    # Try to import first
-    try:
-        return importlib.import_module(import_as or pkg_name)
-    except ModuleNotFoundError:
-        print(f"📦 Installing missing package: {pkg_name}")
-    except Exception as e:
-        print(f"⚠️ Unexpected import issue for {pkg_name}: {e}")
-
-    # Install with retry mechanism
-    for attempt in range(1, retries + 1):
-        try:
-            print(f"🔧 Installing {pkg_name} (attempt {attempt}/{retries}) ...")
-            subprocess.check_call(
-                [sys.executable, "-m", "pip", "install", pkg_name, "--quiet", "--disable-pip-version-check"]
-            )
-            mod = importlib.import_module(import_as or pkg_name)
-            _installed.add(pkg_name)
-            update_requirements(pkg_name)
-            print(f"✅ Successfully installed {pkg_name}")
-            if refresh_on_install:
-                time.sleep(1)
-                reboot_app()
-            return mod
-        except subprocess.CalledProcessError as e:
-            print(f"❌ pip failed for {pkg_name} on attempt {attempt}: {e}")
-            time.sleep(1)
-        except Exception as e:
-            print(f"⚠️ Unexpected error installing {pkg_name}: {e}")
-            time.sleep(1)
-
-    print(f"❌ Could not install {pkg_name} after {retries} attempts.")
-    return None
 
 # =====================================================
 # 🧠 CORE PYTHON UTILITIES
