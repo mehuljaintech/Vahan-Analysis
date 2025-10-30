@@ -1139,382 +1139,382 @@ params_common = build_params(
 params_common["client_id"] = st.session_state.get("session_id", random.randint(1000, 9999))
 params_common["request_ts"] = datetime.now(ZoneInfo("Asia/Kolkata")).isoformat()
 
-# =====================================================
-# 🧠 SAFE FETCH FUNCTION — MAXED
-# =====================================================
-# @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
-def safe_fetch(endpoint: str = VAHAN_ENDPOINT, params: dict = None, retries: int = MAX_RETRIES):
-    """Universal fetcher with retry, caching, error resilience, and rich logging."""
-    if not params:
-        params = {}
+# # =====================================================
+# # 🧠 SAFE FETCH FUNCTION — MAXED
+# # =====================================================
+# # @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
+# def safe_fetch(endpoint: str = VAHAN_ENDPOINT, params: dict = None, retries: int = MAX_RETRIES):
+#     """Universal fetcher with retry, caching, error resilience, and rich logging."""
+#     if not params:
+#         params = {}
 
-    headers = {
-        "User-Agent": st.session_state.get("user_agent", "Mozilla/5.0"),
-        "Accept": "application/json, text/plain, */*",
-        "Referer": "https://vahan.parivahan.gov.in/",
-        "Cache-Control": "no-cache",
-        "X-Session-ID": str(st.session_state.get("session_id", random.randint(1000, 9999))),
-    }
+#     headers = {
+#         "User-Agent": st.session_state.get("user_agent", "Mozilla/5.0"),
+#         "Accept": "application/json, text/plain, */*",
+#         "Referer": "https://vahan.parivahan.gov.in/",
+#         "Cache-Control": "no-cache",
+#         "X-Session-ID": str(st.session_state.get("session_id", random.randint(1000, 9999))),
+#     }
 
-    attempt = 0
-    while attempt < retries:
-        attempt += 1
-        try:
-            resp = requests.get(endpoint, params=params, headers=headers, timeout=20)
-            if resp.status_code == 200:
-                try:
-                    data = resp.json()
-                    if isinstance(data, dict) and data.get("data"):
-                        st.toast(f"✅ Data fetched on attempt {attempt}", icon="📦")
-                        return data
-                    else:
-                        st.warning(f"⚠️ Empty response on attempt {attempt}")
-                except Exception:
-                    st.error("❌ JSON parse failed")
-            elif resp.status_code in (403, 429):
-                wait = RETRY_DELAY * attempt * 2
-                st.warning(f"⏳ Rate limited (HTTP {resp.status_code}), retrying in {wait:.1f}s...")
-                time.sleep(wait)
-            else:
-                st.error(f"❌ HTTP {resp.status_code}: {resp.text[:100]}")
-        except requests.RequestException as e:
-            wait = RETRY_DELAY * attempt
-            st.warning(f"🌐 Attempt {attempt}/{retries} failed — {e.__class__.__name__}. Retrying in {wait:.1f}s...")
-            time.sleep(wait)
-        except Exception as e:
-            st.error(f"💥 Unexpected error: {e}")
-            traceback.print_exc()
-            break
+#     attempt = 0
+#     while attempt < retries:
+#         attempt += 1
+#         try:
+#             resp = requests.get(endpoint, params=params, headers=headers, timeout=20)
+#             if resp.status_code == 200:
+#                 try:
+#                     data = resp.json()
+#                     if isinstance(data, dict) and data.get("data"):
+#                         st.toast(f"✅ Data fetched on attempt {attempt}", icon="📦")
+#                         return data
+#                     else:
+#                         st.warning(f"⚠️ Empty response on attempt {attempt}")
+#                 except Exception:
+#                     st.error("❌ JSON parse failed")
+#             elif resp.status_code in (403, 429):
+#                 wait = RETRY_DELAY * attempt * 2
+#                 st.warning(f"⏳ Rate limited (HTTP {resp.status_code}), retrying in {wait:.1f}s...")
+#                 time.sleep(wait)
+#             else:
+#                 st.error(f"❌ HTTP {resp.status_code}: {resp.text[:100]}")
+#         except requests.RequestException as e:
+#             wait = RETRY_DELAY * attempt
+#             st.warning(f"🌐 Attempt {attempt}/{retries} failed — {e.__class__.__name__}. Retrying in {wait:.1f}s...")
+#             time.sleep(wait)
+#         except Exception as e:
+#             st.error(f"💥 Unexpected error: {e}")
+#             traceback.print_exc()
+#             break
 
-    st.error("🚫 Failed to fetch data after multiple retries.")
-    return {"error": True, "data": []}
-
-# =====================================================
-# 📦 FETCH WRAPPER — PRETTY LAYER
-# =====================================================
-def get_vahan_data(tag: str = "Trend", params: dict = None):
-    """Layered call with logging and timing."""
-    start = time.time()
-    st.info(f"🚀 Fetching {tag} data from Parivahan ...", icon="🛰️")
-    result = safe_fetch(VAHAN_ENDPOINT, params or params_common)
-    duration = time.time() - start
-
-    if result.get("error"):
-        st.error(f"❌ Fetch for {tag} failed in {duration:.2f}s.")
-    else:
-        st.success(f"✅ {tag} data fetched in {duration:.2f}s ({len(result.get('data', []))} records).")
-
-    print(f"[{datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%H:%M:%S')}] {tag} fetch complete — {duration:.2f}s")
-    return result
-
-# =====================================================
-# 🧾 EXAMPLE USAGE
-# =====================================================
-# trend_json = get_vahan_data("Registration Trend")
-# df_trend = to_df(trend_json)
-# st.dataframe(df_trend.head())
-
-# =====================================================
-# 🌐 UNIVERSAL SAFE FETCH FUNCTION — MAXED EDITION
-# =====================================================
-import random
-import time
-import json
-import traceback
-import requests
-import streamlit as st
-from datetime import datetime
-from zoneinfo import ZoneInfo
-from functools import wraps
-
-# =====================================================
-# 🧩 HEADER + TOKEN ROTATION
-# =====================================================
-USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_1_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
-    "Mozilla/5.0 (X11; Linux x86_64) Gecko/20100101 Firefox/123.0",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/122.0.0.0",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
-]
-
-TOKEN_POOL = []
-try:
-    if "api_keys" in st.secrets:
-        for kset in st.secrets["api_keys"].values():
-            if isinstance(kset, list):
-                TOKEN_POOL += kset
-except Exception:
-    pass
-
-def random_headers():
-    """Generate spoofed headers for each fetch."""
-    headers = {
-        "User-Agent": random.choice(USER_AGENTS),
-        "Accept": "application/json, text/plain, */*",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Connection": "keep-alive",
-        "Cache-Control": "no-cache",
-        "Pragma": "no-cache",
-        "Referer": "https://parivahan.gov.in/",
-        "X-Request-ID": f"{random.randint(100000,999999)}-{int(time.time())}",
-        "X-Client-ID": f"vahan-maxed-{random.randint(1000,9999)}",
-    }
-    if TOKEN_POOL:
-        headers["Authorization"] = f"Bearer {random.choice(TOKEN_POOL)}"
-    return headers
-
-# =====================================================
-# ⚙️ UNIVERSAL SAFE FETCHER (CACHED + RETRY)
-# =====================================================
-def with_cache(ttl=3600):
-    """Decorator for Streamlit cache with TTL and safe fallback."""
-    def decorator(func):
-        @st.cache_data(ttl=ttl, show_spinner=False)
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-        return wrapper
-    return decorator
-
-@with_cache(ttl=3600)
-def universal_fetch(
-    url: str,
-    params: dict = None,
-    method: str = "GET",
-    retries: int = 5,
-    backoff: float = 2.0,
-    timeout: int = 20,
-    json_body: dict = None,
-    verbose: bool = True,
-):
-    """MAXED safe network fetcher with retry, rotation, and caching."""
-    if not params:
-        params = {}
-
-    headers = random_headers()
-    session_id = f"SID-{random.randint(1000,9999)}"
-    attempt = 0
-    start = time.time()
-
-    if verbose:
-        st.toast(f"🌐 Fetching {url.split('/')[-1]} …", icon="🛰️")
-
-    while attempt < retries:
-        attempt += 1
-        try:
-            if method.upper() == "POST":
-                resp = requests.post(url, headers=headers, json=json_body, timeout=timeout)
-            else:
-                resp = requests.get(url, headers=headers, params=params, timeout=timeout)
-
-            code = resp.status_code
-            if code == 200:
-                try:
-                    data = resp.json()
-                    if isinstance(data, (dict, list)) and data:
-                        if verbose:
-                            st.toast(f"✅ Success on attempt {attempt}", icon="📦")
-                        duration = time.time() - start
-                        print(f"[{session_id}] ✅ {url} ({code}) in {duration:.2f}s")
-                        return data
-                    else:
-                        st.warning(f"⚠️ Empty JSON response (attempt {attempt})")
-                except json.JSONDecodeError:
-                    st.warning(f"⚠️ Invalid JSON — retrying ({attempt}/{retries})")
-            elif code in (403, 429):
-                wait = backoff * attempt
-                st.warning(f"⏳ Rate limited ({code}) — retrying in {wait:.1f}s...")
-                time.sleep(wait)
-            else:
-                st.error(f"❌ HTTP {code} — {resp.text[:120]}")
-        except requests.RequestException as e:
-            wait = backoff * attempt
-            st.warning(f"🌐 Network error ({e.__class__.__name__}) — retry {attempt}/{retries} in {wait:.1f}s")
-            time.sleep(wait)
-        except Exception as e:
-            st.error(f"💥 Unexpected error: {e}")
-            traceback.print_exc()
-            break
-
-    st.error("🚫 All fetch attempts failed.")
-    print(f"[{session_id}] ❌ Failed after {retries} retries")
-    return {"error": True, "data": []}
+#     st.error("🚫 Failed to fetch data after multiple retries.")
+#     return {"error": True, "data": []}
 
 # # =====================================================
-# # 🧠 FETCH WRAPPER FOR VAHAN — MAXED
+# # 📦 FETCH WRAPPER — PRETTY LAYER
 # # =====================================================
-# def get_vahan_json(tag: str = "RegistrationTrend", params: dict = None):
-#     """Unified call for Parivahan endpoints with logging + retry safety."""
-#     endpoint = f"https://vahan.parivahan.gov.in/vahandashboard/{tag.lower()}"
-#     st.info(f"🚀 Fetching `{tag}` from Parivahan...", icon="🛰️")
+# def get_vahan_data(tag: str = "Trend", params: dict = None):
+#     """Layered call with logging and timing."""
+#     start = time.time()
+#     st.info(f"🚀 Fetching {tag} data from Parivahan ...", icon="🛰️")
+#     result = safe_fetch(VAHAN_ENDPOINT, params or params_common)
+#     duration = time.time() - start
 
-#     data = universal_fetch(endpoint, params=params or {}, retries=5, backoff=2.5)
-#     if data.get("error"):
-#         st.error(f"❌ {tag} fetch failed.")
+#     if result.get("error"):
+#         st.error(f"❌ Fetch for {tag} failed in {duration:.2f}s.")
 #     else:
-#         st.success(f"✅ {tag} data fetched ({len(data.get('data', [])) if isinstance(data, dict) else 'OK'})")
+#         st.success(f"✅ {tag} data fetched in {duration:.2f}s ({len(result.get('data', []))} records).")
 
-#     return data
+#     print(f"[{datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%H:%M:%S')}] {tag} fetch complete — {duration:.2f}s")
+#     return result
 
-# =====================================================
-# 📊 DIAGNOSTIC LOG
-# =====================================================
-print("=" * 90)
-print("🌐 UNIVERSAL SAFE FETCHER — MAXED Edition Active")
-print(f"🕒 {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %I:%M:%S %p')} | UA Pool: {len(USER_AGENTS)} | Token Pool: {len(TOKEN_POOL)}")
-print("=" * 90)
+# # =====================================================
+# # 🧾 EXAMPLE USAGE
+# # =====================================================
+# # trend_json = get_vahan_data("Registration Trend")
+# # df_trend = to_df(trend_json)
+# # st.dataframe(df_trend.head())
 
-# =====================================================
-# 🌐 UNIVERSAL MAXED FETCHER (Vahan API)
-# =====================================================
-import time
-import random
-import json
-import traceback
-from datetime import datetime
-from zoneinfo import ZoneInfo
-import requests
-import streamlit as st
+# # =====================================================
+# # 🌐 UNIVERSAL SAFE FETCH FUNCTION — MAXED EDITION
+# # =====================================================
+# import random
+# import time
+# import json
+# import traceback
+# import requests
+# import streamlit as st
+# from datetime import datetime
+# from zoneinfo import ZoneInfo
+# from functools import wraps
 
-# =====================================================
-# 🧩 HEADER + TOKEN ROTATION
-# =====================================================
-USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_1_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
-    "Mozilla/5.0 (X11; Linux x86_64) Gecko/20100101 Firefox/123.0",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/122.0.0.0",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
-]
+# # =====================================================
+# # 🧩 HEADER + TOKEN ROTATION
+# # =====================================================
+# USER_AGENTS = [
+#     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+#     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_1_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+#     "Mozilla/5.0 (X11; Linux x86_64) Gecko/20100101 Firefox/123.0",
+#     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/122.0.0.0",
+#     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
+# ]
 
-TOKEN_POOL = []
-try:
-    if "api_keys" in st.secrets:
-        for kset in st.secrets["api_keys"].values():
-            if isinstance(kset, list):
-                TOKEN_POOL += kset
-except Exception:
-    pass
+# TOKEN_POOL = []
+# try:
+#     if "api_keys" in st.secrets:
+#         for kset in st.secrets["api_keys"].values():
+#             if isinstance(kset, list):
+#                 TOKEN_POOL += kset
+# except Exception:
+#     pass
 
-def random_headers():
-    """Generate randomized spoof headers with optional token rotation."""
-    headers = {
-        "User-Agent": random.choice(USER_AGENTS),
-        "Accept": "application/json, text/plain, */*",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive",
-        "Cache-Control": "no-cache",
-        "Pragma": "no-cache",
-        "Referer": "https://parivahan.gov.in/",
-        "X-Request-ID": f"{random.randint(100000,999999)}-{int(time.time())}",
-    }
-    if TOKEN_POOL:
-        headers["Authorization"] = f"Bearer {random.choice(TOKEN_POOL)}"
-    return headers
+# def random_headers():
+#     """Generate spoofed headers for each fetch."""
+#     headers = {
+#         "User-Agent": random.choice(USER_AGENTS),
+#         "Accept": "application/json, text/plain, */*",
+#         "Accept-Encoding": "gzip, deflate, br",
+#         "Accept-Language": "en-US,en;q=0.9",
+#         "Connection": "keep-alive",
+#         "Cache-Control": "no-cache",
+#         "Pragma": "no-cache",
+#         "Referer": "https://parivahan.gov.in/",
+#         "X-Request-ID": f"{random.randint(100000,999999)}-{int(time.time())}",
+#         "X-Client-ID": f"vahan-maxed-{random.randint(1000,9999)}",
+#     }
+#     if TOKEN_POOL:
+#         headers["Authorization"] = f"Bearer {random.choice(TOKEN_POOL)}"
+#     return headers
+
+# # =====================================================
+# # ⚙️ UNIVERSAL SAFE FETCHER (CACHED + RETRY)
+# # =====================================================
+# def with_cache(ttl=3600):
+#     """Decorator for Streamlit cache with TTL and safe fallback."""
+#     def decorator(func):
+#         @st.cache_data(ttl=ttl, show_spinner=False)
+#         @wraps(func)
+#         def wrapper(*args, **kwargs):
+#             return func(*args, **kwargs)
+#         return wrapper
+#     return decorator
+
+# @with_cache(ttl=3600)
+# def universal_fetch(
+#     url: str,
+#     params: dict = None,
+#     method: str = "GET",
+#     retries: int = 5,
+#     backoff: float = 2.0,
+#     timeout: int = 20,
+#     json_body: dict = None,
+#     verbose: bool = True,
+# ):
+#     """MAXED safe network fetcher with retry, rotation, and caching."""
+#     if not params:
+#         params = {}
+
+#     headers = random_headers()
+#     session_id = f"SID-{random.randint(1000,9999)}"
+#     attempt = 0
+#     start = time.time()
+
+#     if verbose:
+#         st.toast(f"🌐 Fetching {url.split('/')[-1]} …", icon="🛰️")
+
+#     while attempt < retries:
+#         attempt += 1
+#         try:
+#             if method.upper() == "POST":
+#                 resp = requests.post(url, headers=headers, json=json_body, timeout=timeout)
+#             else:
+#                 resp = requests.get(url, headers=headers, params=params, timeout=timeout)
+
+#             code = resp.status_code
+#             if code == 200:
+#                 try:
+#                     data = resp.json()
+#                     if isinstance(data, (dict, list)) and data:
+#                         if verbose:
+#                             st.toast(f"✅ Success on attempt {attempt}", icon="📦")
+#                         duration = time.time() - start
+#                         print(f"[{session_id}] ✅ {url} ({code}) in {duration:.2f}s")
+#                         return data
+#                     else:
+#                         st.warning(f"⚠️ Empty JSON response (attempt {attempt})")
+#                 except json.JSONDecodeError:
+#                     st.warning(f"⚠️ Invalid JSON — retrying ({attempt}/{retries})")
+#             elif code in (403, 429):
+#                 wait = backoff * attempt
+#                 st.warning(f"⏳ Rate limited ({code}) — retrying in {wait:.1f}s...")
+#                 time.sleep(wait)
+#             else:
+#                 st.error(f"❌ HTTP {code} — {resp.text[:120]}")
+#         except requests.RequestException as e:
+#             wait = backoff * attempt
+#             st.warning(f"🌐 Network error ({e.__class__.__name__}) — retry {attempt}/{retries} in {wait:.1f}s")
+#             time.sleep(wait)
+#         except Exception as e:
+#             st.error(f"💥 Unexpected error: {e}")
+#             traceback.print_exc()
+#             break
+
+#     st.error("🚫 All fetch attempts failed.")
+#     print(f"[{session_id}] ❌ Failed after {retries} retries")
+#     return {"error": True, "data": []}
+
+# # # =====================================================
+# # # 🧠 FETCH WRAPPER FOR VAHAN — MAXED
+# # # =====================================================
+# # def get_vahan_json(tag: str = "RegistrationTrend", params: dict = None):
+# #     """Unified call for Parivahan endpoints with logging + retry safety."""
+# #     endpoint = f"https://vahan.parivahan.gov.in/vahandashboard/{tag.lower()}"
+# #     st.info(f"🚀 Fetching `{tag}` from Parivahan...", icon="🛰️")
+
+# #     data = universal_fetch(endpoint, params=params or {}, retries=5, backoff=2.5)
+# #     if data.get("error"):
+# #         st.error(f"❌ {tag} fetch failed.")
+# #     else:
+# #         st.success(f"✅ {tag} data fetched ({len(data.get('data', [])) if isinstance(data, dict) else 'OK'})")
+
+# #     return data
+
+# # =====================================================
+# # 📊 DIAGNOSTIC LOG
+# # =====================================================
+# print("=" * 90)
+# print("🌐 UNIVERSAL SAFE FETCHER — MAXED Edition Active")
+# print(f"🕒 {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %I:%M:%S %p')} | UA Pool: {len(USER_AGENTS)} | Token Pool: {len(TOKEN_POOL)}")
+# print("=" * 90)
+
+# # =====================================================
+# # 🌐 UNIVERSAL MAXED FETCHER (Vahan API)
+# # =====================================================
+# import time
+# import random
+# import json
+# import traceback
+# from datetime import datetime
+# from zoneinfo import ZoneInfo
+# import requests
+# import streamlit as st
+
+# # =====================================================
+# # 🧩 HEADER + TOKEN ROTATION
+# # =====================================================
+# USER_AGENTS = [
+#     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+#     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_1_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+#     "Mozilla/5.0 (X11; Linux x86_64) Gecko/20100101 Firefox/123.0",
+#     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/122.0.0.0",
+#     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
+# ]
+
+# TOKEN_POOL = []
+# try:
+#     if "api_keys" in st.secrets:
+#         for kset in st.secrets["api_keys"].values():
+#             if isinstance(kset, list):
+#                 TOKEN_POOL += kset
+# except Exception:
+#     pass
+
+# def random_headers():
+#     """Generate randomized spoof headers with optional token rotation."""
+#     headers = {
+#         "User-Agent": random.choice(USER_AGENTS),
+#         "Accept": "application/json, text/plain, */*",
+#         "Accept-Language": "en-US,en;q=0.9",
+#         "Accept-Encoding": "gzip, deflate, br",
+#         "Connection": "keep-alive",
+#         "Cache-Control": "no-cache",
+#         "Pragma": "no-cache",
+#         "Referer": "https://parivahan.gov.in/",
+#         "X-Request-ID": f"{random.randint(100000,999999)}-{int(time.time())}",
+#     }
+#     if TOKEN_POOL:
+#         headers["Authorization"] = f"Bearer {random.choice(TOKEN_POOL)}"
+#     return headers
 
 
-# =====================================================
-# 🧠 MAXED Robust Fetcher with Cache, Backoff & Fallback
-# =====================================================
-@st.cache_data(show_spinner=False, ttl=900, max_entries=100)
-def fetch_json(
-    endpoint: str,
-    params: dict = None,
-    desc: str = "",
-    base_url: str = "https://vahanapi.parivahan.gov.in/",
-    fallback_url: str = "https://vahan.parivahan.gov.in/vahandashboard/",
-    max_retries: int = 5,
-    timeout: int = 20,
-) -> dict:
-    """
-    🌐 MAXED universal safe API fetcher:
-    - randomized spoof headers + optional token
-    - retries with exponential backoff
-    - auto fallback to secondary API endpoint
-    - TTL cache via Streamlit
-    - detailed diagnostics & toasts
-    """
-    if params is None:
-        params = {}
+# # =====================================================
+# # 🧠 MAXED Robust Fetcher with Cache, Backoff & Fallback
+# # =====================================================
+# @st.cache_data(show_spinner=False, ttl=900, max_entries=100)
+# def fetch_json(
+#     endpoint: str,
+#     params: dict = None,
+#     desc: str = "",
+#     base_url: str = "https://vahanapi.parivahan.gov.in/",
+#     fallback_url: str = "https://vahan.parivahan.gov.in/vahandashboard/",
+#     max_retries: int = 5,
+#     timeout: int = 20,
+# ) -> dict:
+#     """
+#     🌐 MAXED universal safe API fetcher:
+#     - randomized spoof headers + optional token
+#     - retries with exponential backoff
+#     - auto fallback to secondary API endpoint
+#     - TTL cache via Streamlit
+#     - detailed diagnostics & toasts
+#     """
+#     if params is None:
+#         params = {}
 
-    backoff_base = 2
-    endpoint = endpoint.lstrip("/")
-    urls_to_try = [base_url.rstrip("/") + "/" + endpoint]
-    if fallback_url:
-        urls_to_try.append(fallback_url.rstrip("/") + "/" + endpoint)
+#     backoff_base = 2
+#     endpoint = endpoint.lstrip("/")
+#     urls_to_try = [base_url.rstrip("/") + "/" + endpoint]
+#     if fallback_url:
+#         urls_to_try.append(fallback_url.rstrip("/") + "/" + endpoint)
 
-    for url in urls_to_try:
-        for attempt in range(1, max_retries + 1):
-            headers = random_headers()
-            try:
-                response = requests.get(url, params=params, headers=headers, timeout=timeout)
-                code = response.status_code
+#     for url in urls_to_try:
+#         for attempt in range(1, max_retries + 1):
+#             headers = random_headers()
+#             try:
+#                 response = requests.get(url, params=params, headers=headers, timeout=timeout)
+#                 code = response.status_code
 
-                # 🎯 Success
-                if code in (200, 201):
-                    try:
-                        json_data = response.json()
-                        if json_data:
-                            msg = f"✅ {desc or endpoint} fetched OK"
-                            print(f"[{datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%H:%M:%S')}] {msg}")
-                            st.toast(msg, icon="📦")
-                            return json_data
-                        else:
-                            st.warning(f"⚠️ Empty response for {desc}")
-                            return {}
-                    except json.JSONDecodeError:
-                        st.warning(f"⚠️ Invalid JSON for {desc}")
-                        continue
+#                 # 🎯 Success
+#                 if code in (200, 201):
+#                     try:
+#                         json_data = response.json()
+#                         if json_data:
+#                             msg = f"✅ {desc or endpoint} fetched OK"
+#                             print(f"[{datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%H:%M:%S')}] {msg}")
+#                             st.toast(msg, icon="📦")
+#                             return json_data
+#                         else:
+#                             st.warning(f"⚠️ Empty response for {desc}")
+#                             return {}
+#                     except json.JSONDecodeError:
+#                         st.warning(f"⚠️ Invalid JSON for {desc}")
+#                         continue
 
-                # 🚫 Forbidden / Rate Limited
-                elif code == 403:
-                    st.info(f"🚫 Forbidden (403). Rotating headers & retrying…")
-                    time.sleep(random.uniform(1, 3))
-                elif code == 429:
-                    wait = random.uniform(3, 7)
-                    st.warning(f"⚠️ Rate limited (429). Retrying after {wait:.1f}s...")
-                    time.sleep(wait)
+#                 # 🚫 Forbidden / Rate Limited
+#                 elif code == 403:
+#                     st.info(f"🚫 Forbidden (403). Rotating headers & retrying…")
+#                     time.sleep(random.uniform(1, 3))
+#                 elif code == 429:
+#                     wait = random.uniform(3, 7)
+#                     st.warning(f"⚠️ Rate limited (429). Retrying after {wait:.1f}s...")
+#                     time.sleep(wait)
 
-                # 🌀 Server Error
-                elif code >= 500:
-                    wait = backoff_base ** attempt + random.uniform(0.3, 1.0)
-                    st.warning(f"🌀 Server error {code}. Retry {attempt}/{max_retries} after {wait:.1f}s...")
-                    time.sleep(wait)
+#                 # 🌀 Server Error
+#                 elif code >= 500:
+#                     wait = backoff_base ** attempt + random.uniform(0.3, 1.0)
+#                     st.warning(f"🌀 Server error {code}. Retry {attempt}/{max_retries} after {wait:.1f}s...")
+#                     time.sleep(wait)
 
-                else:
-                    st.error(f"❌ Unexpected HTTP {code} for {desc or endpoint}")
-                    break
+#                 else:
+#                     st.error(f"❌ Unexpected HTTP {code} for {desc or endpoint}")
+#                     break
 
-            except requests.exceptions.Timeout:
-                wait = backoff_base ** attempt
-                st.warning(f"⏳ Timeout fetching {desc}. Retry {attempt}/{max_retries} after {wait:.1f}s...")
-                time.sleep(wait)
-            except requests.exceptions.ConnectionError:
-                wait = backoff_base ** attempt
-                st.warning(f"🔌 Connection error — retry {attempt}/{max_retries} after {wait:.1f}s...")
-                time.sleep(wait)
-            except Exception as e:
-                print(f"⚠️ {desc} — Unexpected error: {e}")
-                traceback.print_exc()
-                time.sleep(1.5)
+#             except requests.exceptions.Timeout:
+#                 wait = backoff_base ** attempt
+#                 st.warning(f"⏳ Timeout fetching {desc}. Retry {attempt}/{max_retries} after {wait:.1f}s...")
+#                 time.sleep(wait)
+#             except requests.exceptions.ConnectionError:
+#                 wait = backoff_base ** attempt
+#                 st.warning(f"🔌 Connection error — retry {attempt}/{max_retries} after {wait:.1f}s...")
+#                 time.sleep(wait)
+#             except Exception as e:
+#                 print(f"⚠️ {desc} — Unexpected error: {e}")
+#                 traceback.print_exc()
+#                 time.sleep(1.5)
 
-        # 🔁 Try fallback URL if first base fails
-        st.warning(f"🔁 Switching to fallback endpoint for {desc or endpoint}")
+#         # 🔁 Try fallback URL if first base fails
+#         st.warning(f"🔁 Switching to fallback endpoint for {desc or endpoint}")
 
-    st.error(f"❗ Failed to fetch {desc or endpoint} after {max_retries} retries.")
-    return {}
+#     st.error(f"❗ Failed to fetch {desc or endpoint} after {max_retries} retries.")
+#     return {}
 
 
-# =====================================================
-# 📊 DIAGNOSTIC LOG
-# =====================================================
-print("=" * 80)
-print("🌐 Vahan MAXED Fetcher Active")
-print(f"🕒 {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %I:%M:%S %p')} | UA Pool: {len(USER_AGENTS)} | Tokens: {len(TOKEN_POOL)}")
-print("=" * 80)
+# # =====================================================
+# # 📊 DIAGNOSTIC LOG
+# # =====================================================
+# print("=" * 80)
+# print("🌐 Vahan MAXED Fetcher Active")
+# print(f"🕒 {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %I:%M:%S %p')} | UA Pool: {len(USER_AGENTS)} | Tokens: {len(TOKEN_POOL)}")
+# print("=" * 80)
 
 # =====================================================
 # 🔮 DUAL-YEAR + NEXT-YEAR PREDICTION SUITE — MAXED
