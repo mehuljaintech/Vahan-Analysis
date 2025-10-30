@@ -81,43 +81,34 @@ app_boot_banner()
 
 # =====================================================
 # 📚 MAXED ULTRA — CLEANED & CONSOLIDATED IMPORTS + SYSTEM INIT
-# =====================================================
-# =====================================================
-# 🧩 1️⃣ — STANDARD LIBRARY
-# =====================================================
+# =============================
+# 📚 Cleaned & Consolidated Imports
+# =============================
+# Standard library
 import os
 import sys
+import time
+import traceback
 import io
 import json
-import time
 import random
-import traceback
-import platform
-import socket
-from datetime import datetime, date, timedelta
-from zoneinfo import ZoneInfo
+from datetime import date, timedelta
 
-# =====================================================
-# 🧩 2️⃣ — THIRD-PARTY CORE LIBRARIES
-# =====================================================
+# Third-party
 import requests
 import numpy as np
 import pandas as pd
 import altair as alt
-import streamlit as st  # safe re-import
+import streamlit as st  # re-import is safe; already imported above
 from dotenv import load_dotenv
 
-# =====================================================
-# 🧩 3️⃣ — EXCEL / OPENPYXL MODULES
-# =====================================================
+# Excel / Openpyxl
 from openpyxl import load_workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import LineChart, Reference
 
-# =====================================================
-# 🧩 4️⃣ — LOCAL VAHAN PACKAGE MODULES (KEEP UNCHANGED)
-# =====================================================
+# Local vahan package modules (keep unchanged)
 from vahan.api import build_params, get_json
 from vahan.parsing import (
     to_df, normalize_trend, parse_duration_table,
@@ -125,14 +116,11 @@ from vahan.parsing import (
 )
 from vahan.metrics import compute_yoy, compute_qoq
 from vahan.charts import (
-    bar_from_df, pie_from_df, line_from_trend, area_from_df,
-    stacked_bar, stacked_area_chart, multi_line_chart,
-    waterfall_chart, cumulative_line_chart,
-    show_metrics, show_tables, trend_comparison_chart
+    bar_from_df, pie_from_df, line_from_trend,
+    show_metrics, show_tables
 )
-# =====================================================
-# 🧩 5️⃣ — MACHINE LEARNING / ADVANCED ANALYTICS
-# =====================================================
+
+# Optional advanced libraries (import gracefully)
 SKLEARN_AVAILABLE = False
 try:
     from sklearn.ensemble import IsolationForest
@@ -141,15 +129,24 @@ try:
     from sklearn.decomposition import PCA
     from sklearn.linear_model import LinearRegression
     SKLEARN_AVAILABLE = True
-except Exception as e:
-    print(f"[WARN] Sklearn not available: {e}")
+except Exception:
+    SKLEARN_AVAILABLE = False
 
 PROPHET_AVAILABLE = False
 try:
     from prophet import Prophet
     PROPHET_AVAILABLE = True
-except Exception as e:
-    print(f"[WARN] Prophet not available: {e}")
+except Exception:
+    PROPHET_AVAILABLE = False
+
+# Load environment variables
+load_dotenv()
+
+# NOTE:
+# - If you want to trigger a programmatic restart from anywhere in the file,
+#   call: auto_restart(delay=3)
+# - Keep this top block intact. It ensures a self-restart behaves like an app reboot
+#   without adding external scripts or OS-specific services.
 
 # =====================================================
 # 🧩 6️⃣ — DEEPINFRA / AI INTEGRATION SUPPORT (OPTIONAL)
