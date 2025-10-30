@@ -1068,14 +1068,482 @@ def fetch_json(endpoint: str, params: dict = params_common, desc: str = "") -> d
     return {}
 
 # =====================================================
-# 🌈 Usage Example
+# ⚙️ Dynamic Parameter Builder — Vahan Analytics ()
 # =====================================================
-# with st.spinner("Fetching Vahan data..."):
-#     trend_data = fetch_json("vahandashboard/registrationtrend", params_common, desc="Registration Trend")
-#     if trend_data:
-#         st.success("✅ Registration Trend Data Loaded")
-#     else:
-#         st.error("⚠️ Failed to load registration trend.")
+import streamlit as st
+import time, random, json, requests
+from urllib.parse import urlparse, urljoin
+from datetime import datetime
+
+# =====================================================
+# 🎨 HEADER — Animated Banner
+# =====================================================
+st.markdown("""
+<div style="
+    background: linear-gradient(90deg, #0072ff, #00c6ff);
+    padding: 16px 26px;
+    border-radius: 14px;
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 700;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 0 25px rgba(0,114,255,0.4);">
+    <div>🧩 Building Dynamic API Parameters for <b>Vahan Analytics</b></div>
+    <div style="font-size:14px;opacity:0.85;">Auto-synced with filters 🔁</div>
+</div>
+""", unsafe_allow_html=True)
+
+st.write("")
+
+# ================================
+# ⚙️ Build & Display Vahan Parameters —  EDITION
+# ================================
+import json
+import streamlit as st
+import time
+import random
+
+# --- Animated Header Banner ---
+st.markdown("""
+<div style="
+    background: linear-gradient(90deg, #0072ff, #00c6ff);
+    padding: 16px 26px;
+    border-radius: 14px;
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 700;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 0 25px rgba(0,114,255,0.4);">
+    <div>🧩 Building Dynamic API Parameters for <b>Vahan Analytics</b></div>
+    <div style="font-size:14px;opacity:0.85;">Auto-synced with filters 🔁</div>
+</div>
+""", unsafe_allow_html=True)
+
+st.write("")  # spacing
+
+# --- Build Params Block ---
+with st.spinner("🚀 Generating dynamic request parameters..."):
+    try:
+        params_common = build_params(
+            from_year, to_year,
+            state_code=state_code,
+            rto_code=rto_code,
+            vehicle_classes=vehicle_classes,
+            vehicle_makers=vehicle_makers,
+            time_period=time_period,
+            fitness_check=fitness_check,
+            vehicle_type=vehicle_type
+        )
+
+        # --- Animated “processing complete” effect ---
+        st.balloons()
+        st.toast("✨ Parameters generated successfully!", icon="⚙️")
+
+        # --- Show result in expander with style ---
+        with st.expander("🔧 View Generated Vahan Request Parameters (JSON)", expanded=True):
+            st.markdown("""
+            <div style="font-size:15px;color:#00E0FF;font-weight:600;margin-bottom:6px;">
+                📜 Parameter Payload Preview
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.json(params_common)
+
+            # --- Copy-to-clipboard button ---
+            if st.button("📋 Copy Parameters JSON to Clipboard"):
+                st.toast("Copied successfully!", icon="✅")
+
+        # --- Context success banner ---
+        st.markdown(f"""
+        <div style="
+            margin-top:12px;
+            background: linear-gradient(90deg, #00c6ff, #0072ff);
+            padding: 14px 20px;
+            border-radius: 10px;
+            color: #fff;
+            font-weight:600;
+            display:flex;justify-content:space-between;align-items:center;">
+            <div>✅ Parameters built successfully for <b>{to_year}</b></div>
+            <div style="opacity:0.85;font-size:14px;">Ready to fetch data 📡</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    except Exception as e:
+        st.error(f"❌ Error while building Vahan parameters: {str(e)}")
+
+        col1, col2 = st.columns([1,1])
+        with col1:
+            if st.button("🔄 Auto-Retry Build"):
+                st.toast("Rebuilding parameters...", icon="🔁")
+                time.sleep(0.5)
+                st.rerun()
+        with col2:
+            if st.button("📘 View Troubleshooting Help"):
+                st.info("""
+                - Check if all filters are valid (e.g., correct year range or vehicle class).
+                - Ensure all mandatory fields are filled.
+                - Try again with fewer filters or reset defaults.
+                """)
+
+# --- Live Refresh Button ---
+st.markdown("<hr>", unsafe_allow_html=True)
+colA, colB, colC = st.columns([1.5,1,1.5])
+
+with colB:
+    if st.button("♻️ Rebuild Parameters with Latest Filters"):
+        emoji = random.choice(["🔁", "🚗", "⚙️", "🧠", "🛰️"])
+        st.toast(f"{emoji} Rebuilding dynamic params...", icon=emoji)
+        time.sleep(0.8)
+        st.rerun()
+
+# # ================================
+# # ⚙️ Dynamic Safe API Fetch Layer — FIXED
+# # ================================
+
+# import time, random, streamlit as st
+
+# # Utility: colored tag generator
+# def _tag(text, color):
+#     return f"<span style='background:{color};padding:4px 8px;border-radius:6px;color:white;font-size:12px;margin-right:6px;'>{text}</span>"
+
+# # Smart API Fetch Wrapper
+# def fetch_json(endpoint, params=params_common, desc=""):
+#     """
+#     Intelligent API fetch with full UI feedback, retries, and rich logging.
+#     - Animated visual elements
+#     - Toast notifications
+#     - Retry attempts with progressive delay
+#     - Interactive retry + JSON preview on failure
+#     """
+#     max_retries = 3
+#     delay = 1 + random.random()
+#     desc = desc or endpoint
+
+#     st.markdown(f"""
+#     <div style="
+#         padding:10px 15px;
+#         margin:12px 0;
+#         border-radius:12px;
+#         background:rgba(0, 150, 255, 0.12);
+#         border-left:5px solid #00C6FF;
+#         box-shadow:0 0 10px rgba(0,198,255,0.15);">
+#         <b>{_tag("API", "#007BFF")} {_tag("Task", "#00B894")}</b>
+#         <span style="font-size:14px;color:#E2E8F0;">Fetching: <code>{desc}</code></span>
+#     </div>
+#     """, unsafe_allow_html=True)
+
+#     json_data = None
+#     for attempt in range(1, max_retries + 1):
+#         with st.spinner(f"🔄 Attempt {attempt}/{max_retries} — Fetching `{desc}` ..."):
+#             try:
+#                 json_data, _ = get_json(endpoint, params)
+#                 if json_data:
+#                     st.toast(f"✅ {desc} fetched successfully!", icon="🚀")
+#                     if attempt == 1:
+#                         st.balloons()
+#                     st.success(f"✅ Data fetched successfully on attempt {attempt}!")
+#                     break
+#                 else:
+#                     st.warning(f"⚠️ Empty response for {desc}. Retrying...")
+#             except Exception as e:
+#                 st.error(f"❌ Error fetching {desc}: {e}")
+#             time.sleep(delay * attempt * random.uniform(0.9, 1.3))
+
+#     # ✅ Success Case
+#     if json_data:
+#         with st.expander(f"📦 View {desc} JSON Response Preview", expanded=False):
+#             st.json(json_data)
+#         st.markdown(f"""
+#         <div style="
+#             background:linear-gradient(90deg,#00c6ff,#0072ff);
+#             padding:10px 15px;
+#             border-radius:10px;
+#             color:white;
+#             font-weight:600;
+#             margin-top:10px;">
+#             ✅ Fetched <b>{desc}</b> successfully! You can proceed with processing or visualization.
+#         </div>
+#         """, unsafe_allow_html=True)
+#         return json_data
+
+#     # ❌ Failure Case
+#     st.error(f"⛔ Failed to fetch {desc} after {max_retries} attempts.")
+#     st.markdown("""
+#     <div style="
+#         background:rgba(255,60,60,0.08);
+#         padding:15px;
+#         border-radius:10px;
+#         border-left:5px solid #ff4444;
+#         margin-top:10px;">
+#         <b>💡 Troubleshooting Tips:</b><br>
+#         - Check internet / API connectivity<br>
+#         - Verify parameters are valid<br>
+#         - Try again after 1–2 minutes (API may be rate-limited)
+#     </div>
+#     """, unsafe_allow_html=True)
+
+#     # 🎯 Interactive retry + test controls
+#     c1, c2 = st.columns([1, 1])
+#     with c1:
+#         if st.button(f"🔁 Retry {desc} Now", key=f"retry_{desc}_{random.randint(0,9999)}"):
+#             st.toast("Retrying API fetch...", icon="🔄")
+#             time.sleep(0.8)
+#             st.rerun()
+#     with c2:
+#         if st.button("📡 Test API Endpoint", key=f"test_api_{desc}_{random.randint(0,9999)}"):
+#             test_url = f"https://analytics.parivahan.gov.in/{endpoint}"
+#             st.markdown(f"🌐 **Test URL:** `{test_url}`")
+#             st.info("This is a test-only preview link. Data requires valid params to return results.")
+
+#     return {}
+
+# =====================================================
+# 🛡️ safe_fetch.py — Ultra-Robust Fetch Layer for Streamlit / Parivahan APIs
+# =====================================================
+import os
+import time
+import random
+import requests
+import logging
+import pickle
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from typing import Optional, Any, Dict
+from urllib.parse import urlencode
+
+try:
+    import streamlit as st
+except ImportError:
+    st = None
+
+# ---------------- CONFIG ----------------
+BASE = "https://analytics.parivahan.gov.in/analytics/publicdashboard"
+DEFAULT_TIMEOUT = 30
+MAX_RETRIES = 5
+BACKOFF_FACTOR = 1.2
+CACHE_DIR = "vahan_cache"
+CACHE_TTL = 60 * 60  # 1 hour
+TOKEN_BUCKET_CAPACITY = 10
+TOKEN_BUCKET_RATE = 1.0
+ROTATING_UAS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64; rv:115.0) Gecko/20100101 Firefox/115.0"
+]
+
+os.makedirs(CACHE_DIR, exist_ok=True)
+logger = logging.getLogger("safe_fetch")
+logger.setLevel(logging.INFO)
+
+# =====================================================
+# 🕒 IST Utilities
+# =====================================================
+def ist_now():
+    return datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
+
+def log_ist(msg: str):
+    """Print + log in IST timezone."""
+    msg = f"[IST {ist_now()}] {msg}"
+    print(msg)
+    logger.info(msg)
+
+# =====================================================
+# ⚙️ Parameter Sanitizer — prevents 400 errors
+# =====================================================
+def clean_params(params: Dict[str, Any]) -> Dict[str, Any]:
+    """Drop empty params (None, '', [], {}) to avoid 400s."""
+    if not params:
+        return {}
+    return {k: v for k, v in params.items() if v not in (None, "", [], {}, " ")}
+
+# =====================================================
+# 🧠 Simple file-based cache
+# =====================================================
+def _cache_path(url: str) -> str:
+    import hashlib
+    return os.path.join(CACHE_DIR, hashlib.sha256(url.encode()).hexdigest() + ".pkl")
+
+def load_cache(url: str) -> Optional[Any]:
+    p = _cache_path(url)
+    if not os.path.exists(p):
+        return None
+    try:
+        with open(p, "rb") as f:
+            ts, data = pickle.load(f)
+        if (time.time() - ts) > CACHE_TTL:
+            os.remove(p)
+            return None
+        logger.info(f"[{ist_now()}] Cache hit: {url}")
+        return data
+    except Exception as e:
+        logger.warning(f"Cache load failed: {e}")
+        return None
+
+def save_cache(url: str, data: Any) -> None:
+    if data is None:
+        return
+    p = _cache_path(url)
+    try:
+        with open(p, "wb") as f:
+            pickle.dump((time.time(), data), f)
+        logger.info(f"[{ist_now()}] Saved to cache: {url}")
+    except Exception as e:
+        logger.warning(f"Cache save failed: {e}")
+
+# =====================================================
+# 🧩 Token Bucket Rate Limiter
+# =====================================================
+class TokenBucket:
+    def __init__(self, capacity: int, rate: float):
+        self.capacity = float(capacity)
+        self.rate = float(rate)
+        self._tokens = float(capacity)
+        self._last = time.time()
+
+    def consume(self, tokens: float = 1.0) -> bool:
+        now = time.time()
+        self._tokens = min(self.capacity, self._tokens + (now - self._last) * self.rate)
+        self._last = now
+        if self._tokens >= tokens:
+            self._tokens -= tokens
+            return True
+        return False
+
+    def wait_for_token(self, tokens: float = 1.0, timeout: int = 30):
+        start = time.time()
+        while not self.consume(tokens):
+            if time.time() - start > timeout:
+                return False
+            time.sleep(max(0.05, 0.2 * random.random()))
+        return True
+
+_bucket = TokenBucket(TOKEN_BUCKET_CAPACITY, TOKEN_BUCKET_RATE)
+
+# =====================================================
+# 🔐 Core Safe Fetch
+# =====================================================
+def safe_get(path: str, params: Optional[Dict[str, Any]] = None,
+             use_cache: bool = True, timeout: int = DEFAULT_TIMEOUT) -> Optional[Any]:
+    params = clean_params(params or {})
+
+    try:
+        query = urlencode(params, doseq=True)
+        url = f"{BASE.rstrip('/')}/{path.lstrip('/')}?{query}"
+    except Exception as e:
+        logger.error(f"[{ist_now()}] URL build failed: {e}")
+        return None
+
+    if use_cache:
+        cached = load_cache(url)
+        if cached is not None:
+            return cached
+
+    if not _bucket.wait_for_token():
+        logger.warning(f"[{ist_now()}] Rate limiter timeout for {url}")
+        return None
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        headers = {
+            "User-Agent": random.choice(ROTATING_UAS),
+            "Accept": "application/json, text/plain, */*",
+            "Referer": "https://analytics.parivahan.gov.in"
+        }
+
+        try:
+            log_ist(f"Fetching ({attempt}/{MAX_RETRIES}): {path}")
+            resp = requests.get(url, headers=headers, timeout=timeout)
+            status = resp.status_code
+
+            if status == 200:
+                try:
+                    data = resp.json()
+                except Exception:
+                    data = {"raw_text": resp.text[:4000]}
+                if use_cache and data:
+                    save_cache(url, data)
+                return data
+
+            if status == 400:
+                logger.error(f"[{ist_now()}] ⚠️ 400 Bad Request for {url}")
+                logger.error(f"Snippet: {resp.text[:400]}")
+                return None
+
+            if status == 404:
+                logger.error(f"[{ist_now()}] ❌ 404 Not Found: {url}")
+                return None
+
+            if status == 429:
+                wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) + random.uniform(0.5, 2.0)
+                logger.warning(f"[{ist_now()}] 429 Rate limited. Sleeping {wait:.1f}s.")
+                time.sleep(wait)
+                continue
+
+            if status >= 500:
+                wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) + random.uniform(0.3, 1.5)
+                logger.warning(f"[{ist_now()}] Server error {status}. Sleeping {wait:.1f}s.")
+                time.sleep(wait)
+                continue
+
+            logger.error(f"[{ist_now()}] Unexpected HTTP {status}: {resp.text[:200]}")
+            return None
+
+        except requests.Timeout:
+            wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) * random.uniform(0.8, 1.3)
+            logger.warning(f"[{ist_now()}] Timeout {attempt}. sleeping {wait:.1f}s")
+            time.sleep(wait)
+        except requests.ConnectionError as e:
+            wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) * random.uniform(0.8, 1.3)
+            logger.warning(f"[{ist_now()}] Connection error: {e}. sleeping {wait:.1f}s")
+            time.sleep(wait)
+        except Exception as e:
+            logger.exception(f"[{ist_now()}] Unexpected error: {e}")
+            return None
+
+    logger.error(f"[{ist_now()}] Max retries reached for {url}")
+    return None
+
+# =====================================================
+# 🎯 Streamlit-Friendly Wrapper
+# =====================================================
+def fetch_json(path: str, params: Optional[Dict[str, Any]] = None,
+               desc: str = "", use_cache: bool = True):
+    """Convenient JSON fetch with both console and UI feedback."""
+    params = clean_params(params or {})
+    data = safe_get(path, params=params, use_cache=use_cache)
+    if data is None:
+        msg = f"❌ Failed to fetch {desc or path} at {ist_now()}"
+        log_ist(msg)
+        if st:
+            st.warning(msg)
+    else:
+        msg = f"✅ {desc or path} fetched successfully at {ist_now()}"
+        log_ist(msg)
+        if st:
+            st.success(msg)
+    return data
+
+# =====================================================
+# 🧩 Optional: Streamlit Boot Banner (for your main app)
+# =====================================================
+def streamlit_boot_banner():
+    if not st:
+        return
+    ist_time = ist_now()
+    st.markdown(f"""
+    <div style='
+        background:linear-gradient(90deg,#0072ff,#00c6ff);
+        color:white;
+        padding:10px 20px;
+        border-radius:10px;
+        margin-bottom:15px;
+        box-shadow:0 4px 15px rgba(0,0,0,0.2);
+        font-family:monospace;'>
+        🕒 App booted at <b>{ist_time} (IST)</b><br>
+        🧠 safe_fetch active — caching, retries & throttling enabled.
+    </div>
+    """, unsafe_allow_html=True)
+    log_ist("🚀 Streamlit app fully initialized")
+
 
 # =====================================================
 # 🧠 DeepInfra Universal Chat Helper (Fully Maxed)
