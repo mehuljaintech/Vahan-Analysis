@@ -159,60 +159,85 @@ def log_ist(msg):
     print(f"[IST {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %I:%M:%S %p')}] {msg}")
 
 # =====================================================
+# 🚀 PARIVAHAN ANALYTICS 2025 — MAXED-LITE (CLOUD SAFE)
+# =====================================================
+import os, sys, time, platform, random, traceback, warnings
+from datetime import datetime
+from zoneinfo import ZoneInfo
+import streamlit as st
+
+warnings.filterwarnings("ignore")
+
+# =====================================================
+# ⚙️ AUTO REFRESH + CACHE CLEAR ON CODE CHANGE
+# =====================================================
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
+class _AutoReload(FileSystemEventHandler):
+    def __init__(self, watch_dir="."):
+        self.watch_dir = watch_dir
+        self.last_reload = time.time()
+    def on_any_event(self, event):
+        # Limit frequency of restarts to prevent loops
+        if time.time() - self.last_reload > 3:
+            print("🔁 Code change detected — restarting Streamlit app...")
+            try:
+                st.cache_data.clear()
+                st.cache_resource.clear()
+                time.sleep(1)
+                st.rerun()
+            except Exception as e:
+                print(f"[auto-reload] Failed to rerun: {e}")
+            self.last_reload = time.time()
+
+def start_auto_reload():
+    """Start watchdog observer to monitor file changes (even on Streamlit Cloud)."""
+    watch_dir = os.path.dirname(os.path.abspath(__file__))
+    event_handler = _AutoReload(watch_dir)
+    observer = Observer()
+    observer.schedule(event_handler, path=watch_dir, recursive=True)
+    observer.daemon = True
+    observer.start()
+
+# Start watcher
+start_auto_reload()
+
+# =====================================================
 # 🌱 ENVIRONMENT MANAGEMENT
 # =====================================================
-dotenv = ensure_package("python-dotenv")
 from dotenv import load_dotenv
 load_dotenv()
 
 # =====================================================
 # 📊 STREAMLIT + CORE VISUALIZATION
 # =====================================================
-st = ensure_package("streamlit")
-alt = ensure_package("altair")
-matplotlib = ensure_package("matplotlib")
-plotly = ensure_package("plotly")
+import pandas as pd
+import numpy as np
 import plotly.express as px
 import matplotlib.pyplot as plt
-sns = ensure_package("seaborn")
+import seaborn as sns
 
 # =====================================================
 # 📈 DATA & ML STACK
 # =====================================================
-sklearn = ensure_package("scikit-learn", "sklearn")
-statsmodels = ensure_package("statsmodels")
-
+import sklearn
+import statsmodels
 try:
-    prophet = ensure_package("prophet")
+    from prophet import Prophet
     PROPHET_AVAILABLE = True
-except Exception:
+except ImportError:
     PROPHET_AVAILABLE = False
 
-# AI & Deep Learning
 try:
-    torch = ensure_package("torch")
-    transformers = ensure_package("transformers")
-except Exception:
+    import torch, transformers
+except ImportError:
     torch = transformers = None
-
-# Boosted trees (optional)
-for pkg in ["xgboost", "lightgbm", "catboost"]:
-    try:
-        ensure_package(pkg)
-    except Exception:
-        pass
 
 # =====================================================
 # 📁 FILE HANDLING + EXPORTS
 # =====================================================
-openpyxl = ensure_package("openpyxl")
-xlsxwriter = ensure_package("xlsxwriter")
-pdfkit = ensure_package("pdfkit")
-reportlab = ensure_package("reportlab")
-pypandoc = ensure_package("pypandoc")
-python_docx = ensure_package("python-docx")
-odfpy = ensure_package("odfpy")
-
+import openpyxl, xlsxwriter, reportlab, pypandoc
 from openpyxl import load_workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
@@ -220,65 +245,42 @@ from openpyxl.utils import get_column_letter
 # =====================================================
 # ☁️ API / NETWORK UTILITIES
 # =====================================================
-requests = ensure_package("requests")
-requests_cache = ensure_package("requests-cache")
-retrying = ensure_package("retrying")
-aiohttp = ensure_package("aiohttp")
-tenacity = ensure_package("tenacity")
+import requests, aiohttp, tenacity, joblib, tqdm, psutil
 
 # =====================================================
-# 🧰 SYSTEM & PERF UTILITIES
+# 🧭 CACHE SYSTEM
 # =====================================================
-joblib = ensure_package("joblib")
-tqdm = ensure_package("tqdm")
-psutil = ensure_package("psutil")
-diskcache = ensure_package("diskcache")
-
-# =====================================================
-# 🧭 CACHE SYSTEM (TTL + DISKCACHE)
-# =====================================================
-if diskcache:
+try:
     from diskcache import Cache
     cache = Cache(".cache")
-else:
+except ImportError:
     cache = None
 
 from functools import wraps
-import time
 
 def cached(ttl=3600):
-    """Universal cache decorator — supports diskcache (if available) or in-memory fallback."""
+    """Universal cache decorator (diskcache or fallback)."""
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            key = f"{fn.__name__}:{str(args)}:{str(kwargs)}"  # ✅ no backslashes
-
-            try:
-                if cache:
-                    # Check if cached and within TTL
-                    if key in cache and (time.time() - cache.created(key) < ttl):
-                        return cache[key]
-                    val = fn(*args, **kwargs)
-                    cache[key] = val
-                    return val
-                else:
-                    # No cache available, just run the function
-                    return fn(*args, **kwargs)
-            except Exception as e:
-                print(f"[cache] Error in {fn.__name__}: {e}")
-                return fn(*args, **kwargs)
-
+            key = f"{fn.__name__}:{args}:{kwargs}"
+            if cache:
+                if key in cache and (time.time() - cache.created(key) < ttl):
+                    return cache[key]
+                val = fn(*args, **kwargs)
+                cache[key] = val
+                return val
+            return fn(*args, **kwargs)
         return wrapper
     return decorator
 
 # =====================================================
 # 🧱 GLOBAL STARTUP LOG
 # =====================================================
-log_ist("🚀 All MAXED+ Imports Loaded")
 print("=" * 80)
+print("🚀 MAXED+ Boot Complete")
 print(f"🕒 Booted @ {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%Y-%m-%d %I:%M:%S %p')} IST")
 print(f"🧠 Python {platform.python_version()} | Streamlit {st.__version__} | Pandas {pd.__version__}")
-print(f"📦 Total Auto-Installed Packages: {len(_installed)} → {list(_installed)}")
 print("=" * 80)
 
 # =====================================================
