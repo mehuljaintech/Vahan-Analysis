@@ -1108,7 +1108,18 @@ from zoneinfo import ZoneInfo
 import requests
 from functools import lru_cache
 
-from vahan.api import *  # ✅ your core API helpers
+# Local vahan package modules (keep unchanged)
+from vahan.api import build_params, get_json
+from vahan.parsing import (
+    to_df, normalize_trend, parse_duration_table,
+    parse_top5_revenue, parse_revenue_trend, parse_makers
+)
+from vahan.metrics import compute_yoy, compute_qoq
+from vahan.charts import (
+    bar_from_df, pie_from_df, line_from_trend,
+    show_metrics, show_tables
+)
+
 
 # =====================================================
 # 🧩 BUILD BASE PARAMS (MAXED)
