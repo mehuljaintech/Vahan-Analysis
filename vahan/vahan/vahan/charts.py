@@ -27,22 +27,22 @@
 #     fig.update_traces(textinfo='percent+label', pull=[0.05]*len(df))
 #     st.plotly_chart(fig, use_container_width=True)
 
-# def line_from_trend(df, title="Trend Line", x_col="date", y_col="value"):
-#     """Maxed Line chart with Altair"""
-#     if df is None or df.empty:
-#         st.info(f"No data for {title}.")
-#         return
-#     d = df.dropna(subset=[x_col, y_col]).sort_values(x_col)
-#     if d.empty:
-#         st.info("No valid data to plot.")
-#         return
-#     st.subheader(title)
-#     chart = alt.Chart(d).mark_line(point=True, interpolate='monotone').encode(
-#         x=alt.X(f"{x_col}:T", title=x_col.capitalize()),
-#         y=alt.Y(f"{y_col}:Q", title=y_col.capitalize()),
-#         tooltip=[x_col, y_col]
-#     ).interactive()
-#     st.altair_chart(chart, use_container_width=True)
+def line_from_trend(df, title="Trend Line", x_col="date", y_col="value"):
+    """Maxed Line chart with Altair"""
+    if df is None or df.empty:
+        st.info(f"No data for {title}.")
+        return
+    d = df.dropna(subset=[x_col, y_col]).sort_values(x_col)
+    if d.empty:
+        st.info("No valid data to plot.")
+        return
+    st.subheader(title)
+    chart = alt.Chart(d).mark_line(point=True, interpolate='monotone').encode(
+        x=alt.X(f"{x_col}:T", title=x_col.capitalize()),
+        y=alt.Y(f"{y_col}:Q", title=y_col.capitalize()),
+        tooltip=[x_col, y_col]
+    ).interactive()
+    st.altair_chart(chart, use_container_width=True)
 
 # def area_from_df(df, title="Area Chart", x_col="date", y_col="value"):
 #     """Maxed Area chart"""
