@@ -3131,12 +3131,12 @@ def deepinfra_chat(system: str, user: str, max_tokens: int = 300, temperature: f
 #         log_ist(f"chart error: {e}", "warning")
 
 # Only run example UI if direct run (keeps file safe to import)
-if __name__ == "__main__":
-    st.set_page_config(layout="wide")
-    log_ist("App booting")
-    # Boot banner
-    st.markdown(f"<div style='padding:8px;border-left:4px solid #007bff'><b>Booted (IST):</b> {ist_now()}</div>", unsafe_allow_html=True)
-    run_durations_ui()
+# if __name__ == "__main__":
+#     st.set_page_config(layout="wide")
+#     log_ist("App booting")
+#     # Boot banner
+#     st.markdown(f"<div style='padding:8px;border-left:4px solid #007bff'><b>Booted (IST):</b> {ist_now()}</div>", unsafe_allow_html=True)
+#     run_durations_ui()
 
 # # --------------------- Top 5 Revenue States ---------------------
 # st.markdown("""
