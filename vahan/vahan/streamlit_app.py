@@ -1868,140 +1868,249 @@ def deepinfra_chat(
 
     return {"error": f"Failed after {retries} retries", "status": "exhausted"}
 
-# =====================================================
-# 1️⃣ MAXED Category Distribution + Full Analysis (Real + Predicted)
-# =====================================================
+# vahan_category_analysis_2024_2025_2026.py
+# Streamlit app — Category Distribution (Real & Maxed) for 2024 (prev), 2025 (this), 2026 (pred)
+
 import io
-import pandas as pd
-import numpy as np
-import altair as alt
-import plotly.express as px
-from datetime import date, datetime
-from zoneinfo import ZoneInfo
-import streamlit as st
 import math
 import json
-import warnings
-warnings.filterwarnings("ignore")
+from datetime import date, datetime
 
-TODAY = date.today()
-PREV_YEAR = TODAY.year - 1
-THIS_YEAR = TODAY.year
-NEXT_YEAR = THIS_YEAR + 1
+import numpy as np
+import pandas as pd
+import altair as alt
+import plotly.express as px
+import streamlit as st
 
-# --- Helper: normalize category data ---
-def normalize_cat_df(df):
-    if df is None or df.empty:
-        return pd.DataFrame(columns=["category","date","value"])
+# -----------------------------
+# CONFIG / DEFAULT YEARS
+# -----------------------------
+# The user asked specifically for 2024 (prev), 2025 (this), 2026 (next)
+DEFAULT_PREV = 2024
+DEFAULT_THIS = 2025
+DEFAULT_NEXT = 2026
+
+st.set_page_config(page_title="Vahan Category Analysis (2024-2026)", layout="wide")
+
+# -----------------------------
+# Helpers
+# -----------------------------
+
+def normalize_cat_df(df, default_year=DEFAULT_THIS):
+    """Normalize a wide variety of category payloads into DataFrame with columns: category, date, value"""
+    if df is None:
+        return pd.DataFrame(columns=["category", "date", "value"]) 
     df = df.copy()
-    df.columns = [c.strip().lower() for c in df.columns]
+    if df.empty:
+        return pd.DataFrame(columns=["category", "date", "value"]) 
 
-    cat_col = next((c for c in df.columns if any(x in c for x in ["category","cat","label","name"])), df.columns[0])
-    val_col = next((c for c in df.columns if any(x in c for x in ["value","count","total","reg","y"])), df.columns[-1])
-    date_col = next((c for c in df.columns if any(x in c for x in ["date","time","period","month","year","ds"])), None)
+    # lowercase column mapping
+    cols_map = {c: c.strip() for c in df.columns}
+    lower_cols = {c.lower(): c for c in df.columns}
 
+    # pick columns heuristically
+    cat_col = None
+    for k in ("category", "cat", "name", "label"):
+        if k in lower_cols:
+            cat_col = lower_cols[k]
+            break
+    if cat_col is None:
+        # any non-numeric first column
+        for c in df.columns:
+            if not pd.api.types.is_numeric_dtype(df[c]):
+                cat_col = c
+                break
+    if cat_col is None:
+        cat_col = df.columns[0]
+
+    val_col = None
+    for k in ("value", "count", "total", "registrations", "reg", "y", "cnt"):
+        if k in lower_cols:
+            val_col = lower_cols[k]
+            break
+    if val_col is None:
+        # pick first numeric column not equal to cat_col
+        for c in df.columns:
+            if c == cat_col:
+                continue
+            if pd.api.types.is_numeric_dtype(df[c]):
+                val_col = c
+                break
+    if val_col is None:
+        # fallback: last column
+        val_col = df.columns[-1]
+
+    date_col = None
+    for k in ("date", "day", "time", "period", "month", "ds"):
+        if k in lower_cols:
+            date_col = lower_cols[k]
+            break
     if date_col is None:
-        df["date"] = datetime(THIS_YEAR, 1, 1)
-        date_col = "date"
+        # create synthetic date at Jan 1 of default year
+        df["_gen_date"] = datetime(default_year, 1, 1)
+        date_col = "_gen_date"
 
-    df["date"] = pd.to_datetime(df[date_col], errors="coerce").fillna(datetime(THIS_YEAR,1,1))
+    # coerce
+    df[date_col] = pd.to_datetime(df[date_col], errors="coerce").fillna(pd.to_datetime(datetime(default_year,1,1)))
+    df[cat_col] = df[cat_col].astype(str)
+    df[val_col] = pd.to_numeric(df[val_col], errors="coerce").fillna(0)
+
     out = pd.DataFrame({
-        "category": df[cat_col].astype(str),
-        "date": df["date"],
-        "value": pd.to_numeric(df[val_col], errors="coerce").fillna(0)
+        "category": df[cat_col],
+        "date": df[date_col],
+        "value": df[val_col]
     })
     return out
 
-# =====================================================
-# 🌐 FETCH MULTI-YEAR CATEGORY DATA
-# =====================================================
-with st.spinner("Fetching category distribution (maxed)..."):
+
+def pct_change(a, b):
+    try:
+        if a == 0:
+            return 100.0 if b > 0 else 0.0
+        return ((b - a) / abs(a)) * 100.0
+    except Exception:
+        return 0.0
+
+
+# -----------------------------
+# Mockable fetch functions
+# -----------------------------
+# The app expects two helper functions to exist in the environment:
+# - fetch_json(endpoint, params, desc) -> dict/JSON
+# - to_df(json) -> pandas.DataFrame
+# If you have them in your project, keep them. For testing locally you can uncomment the mock below.
+
+# def fetch_json(endpoint, params, desc=None):
+#     # mock: return empty list (replace with your actual API call)
+#     return []
+#
+# def to_df(j):
+#     return pd.DataFrame(j)
+
+
+# -----------------------------
+# UI: Year selection override (defaults set per user request)
+# -----------------------------
+st.sidebar.header("Year selection (overrides)")
+PREV_YEAR = int(st.sidebar.number_input("Prev year (prev)", value=DEFAULT_PREV, step=1, min_value=2000, max_value=2100))
+THIS_YEAR = int(st.sidebar.number_input("This year (this)", value=DEFAULT_THIS, step=1, min_value=2000, max_value=2100))
+NEXT_YEAR = int(st.sidebar.number_input("Next year (pred)", value=DEFAULT_NEXT, step=1, min_value=2000, max_value=2100))
+
+st.sidebar.markdown("---")
+# toggle: use 'maxed' endpoints (if your API has separate maxed vs real)
+use_maxed = st.sidebar.checkbox("Use maxed endpoints (if available)", value=True)
+enable_ai = st.sidebar.checkbox("Enable AI narrative (deepinfra)", value=False)
+
+# params_common is expected in your app context. Provide a small default so fetch functions don't break in tests.
+params_common = {"region": "all"}
+
+# -----------------------------
+# Fetching multi-year category data
+# -----------------------------
+st.header("Category Distribution — Real & Maxed (2024/2025/2026 defaults)")
+with st.spinner("Fetching category data for selected years..."):
     dfs = []
-    for yr in [PREV_YEAR, THIS_YEAR]:
+    years_to_fetch = [PREV_YEAR, THIS_YEAR]
+    # if you want raw ALL years, include NEXT_YEAR as historical if available
+    for yr in years_to_fetch:
         p = params_common.copy()
         p["year"] = yr
-        j = fetch_json("vahandashboard/categoriesdonutchart", p, desc=f"Category distribution {yr}")
-        if j:
-            df = to_df(j)
+        # choose endpoint name depending on maxed flag — adjust to your backend
+        ep = "vahandashboard/categoriesdonutchart_maxed" if use_maxed else "vahandashboard/categoriesdonutchart"
+        try:
+            raw = fetch_json(ep, p, desc=f"Category distribution {yr}")
+        except Exception:
+            # fallback to non-maxed name
+            raw = fetch_json("vahandashboard/categoriesdonutchart", p, desc=f"Category distribution {yr}")
+        if raw:
+            df = to_df(raw)
             if not df.empty:
-                df["year"] = yr
+                df["_source_year"] = yr
                 dfs.append(df)
+
+    if not dfs:
+        st.warning("No data returned from endpoints for selected years. Make sure fetch_json/to_df are available and endpoint names are correct.")
+
     cat_df_raw = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 
-df_cat = normalize_cat_df(cat_df_raw)
+# normalize
+df_cat = normalize_cat_df(cat_df_raw, default_year=THIS_YEAR)
 
 if df_cat.empty:
-    st.warning("No category data available. Ensure endpoint returned valid data.")
+    st.error("No category data available after normalization. Provide data or check endpoints.")
 else:
-    # ---------------- Aggregations ----------------
-    df_cat["date"] = pd.to_datetime(df_cat["date"], errors="coerce").fillna(datetime(THIS_YEAR,1,1))
+    # derive fields
+    df_cat["date"] = pd.to_datetime(df_cat["date"])  # already coerced but be safe
     df_cat["year"] = df_cat["date"].dt.year
     df_cat["month"] = df_cat["date"].dt.to_period("M").dt.to_timestamp()
+    df_cat["day"] = df_cat["date"].dt.floor("D")
 
+    # totals and pivots
     total_by_cat = df_cat.groupby("category", as_index=False)["value"].sum().sort_values("value", ascending=False)
-    overall_total = total_by_cat["value"].sum()
+    overall_total = float(total_by_cat["value"].sum())
 
-    monthly = df_cat.groupby(["month","category"], as_index=False)["value"].sum()
-    yearly = df_cat.groupby(["year","category"], as_index=False)["value"].sum()
+    monthly = df_cat.groupby(["month", "category"], as_index=False)["value"].sum()
+    monthly_totals = monthly.groupby("month", as_index=True)["value"].sum().sort_index()
+
+    yearly = df_cat.groupby(["year", "category"], as_index=False)["value"].sum()
+    yearly_pivot = yearly.pivot(index="year", columns="category", values="value").fillna(0)
 
     totals_by_year = df_cat.groupby("year", as_index=False)["value"].sum().set_index("year")["value"]
-
     prev_total = float(totals_by_year.get(PREV_YEAR, 0.0))
     this_total = float(totals_by_year.get(THIS_YEAR, 0.0))
 
-    # =====================================================
-    # 🔮 FORECAST NEXT YEAR TOTAL (Prophet → Linear Fallback)
-    # =====================================================
-    monthly_totals = monthly.groupby("month", as_index=True)["value"].sum().sort_index()
-    predicted_next_total = 0.0
+    # -----------------------------
+    # Forecasting (Prophet preferred, linear fallback)
+    # -----------------------------
     forecast_monthly = None
+    predicted_next_total = 0.0
 
     try:
-        from prophet import Prophet
-        PROPHET_AVAILABLE = True
-    except ImportError:
-        PROPHET_AVAILABLE = False
-
-    try:
-        if PROPHET_AVAILABLE and len(monthly_totals) >= 6:
+        # detect prophet availability
+        try:
             from prophet import Prophet
-            dfp = monthly_totals.reset_index().rename(columns={"month":"ds","value":"y"})
+            PROPHET_AVAILABLE = True
+        except Exception:
+            PROPHET_AVAILABLE = False
+
+        if PROPHET_AVAILABLE and len(monthly_totals) >= 12:
+            dfp = monthly_totals.reset_index().rename(columns={"month": "ds", "value": "y"})
             m = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
             m.fit(dfp)
             future = m.make_future_dataframe(periods=12, freq='MS')
             fc = m.predict(future)
-            forecast_monthly = fc[["ds","yhat","yhat_lower","yhat_upper"]].set_index("ds")
+            forecast_monthly = fc[["ds", "yhat", "yhat_lower", "yhat_upper"]].set_index("ds")
             predicted_next_total = float(forecast_monthly[forecast_monthly.index.year == NEXT_YEAR]["yhat"].sum())
         else:
-            raise Exception("Fallback")
+            raise Exception("Prophet not available or insufficient history")
     except Exception:
+        # linear fallback
         try:
             from sklearn.linear_model import LinearRegression
             if len(monthly_totals) >= 3:
-                X = np.arange(len(monthly_totals)).reshape(-1,1)
+                X = np.arange(len(monthly_totals)).reshape(-1, 1)
                 y = monthly_totals.values
                 lr = LinearRegression().fit(X, y)
-                future_idx = np.arange(len(monthly_totals), len(monthly_totals)+12).reshape(-1,1)
+                future_idx = np.arange(len(monthly_totals), len(monthly_totals) + 12).reshape(-1, 1)
                 yhat = lr.predict(future_idx)
-                last_m = monthly_totals.index.max()
-                next_m = pd.date_range(start=last_m + pd.offsets.MonthBegin(1), periods=12, freq='MS')
-                forecast_monthly = pd.DataFrame({"yhat":np.maximum(yhat,0)}, index=next_m)
+                last_month = pd.to_datetime(monthly_totals.index.max())
+                next_months = pd.date_range(start=(last_month + pd.offsets.MonthBegin(1)).replace(day=1), periods=12, freq='MS')
+                forecast_monthly = pd.DataFrame({
+                    "yhat": np.maximum(yhat, 0),
+                    "yhat_lower": np.maximum(yhat * 0.85, 0),
+                    "yhat_upper": np.maximum(yhat * 1.15, 0),
+                }, index=next_months)
                 predicted_next_total = float(forecast_monthly["yhat"].sum())
         except Exception:
             predicted_next_total = 0.0
 
-    # --- fallback if no data ---
-    if predicted_next_total == 0 and this_total > 0:
-        predicted_next_total = this_total * 1.05  # assume +5% growth
+    # small fallback if prediction missing but this_total exists
+    if (predicted_next_total == 0 or math.isnan(predicted_next_total)) and this_total > 0:
+        predicted_next_total = this_total * 1.05
 
-    # =====================================================
-    # 📊 KPI METRICS
-    # =====================================================
-    def pct_change(a,b):
-        try:
-            return ((b-a)/abs(a))*100 if a!=0 else (100 if b>0 else 0)
-        except Exception: return 0
-
+    # -----------------------------
+    # KPIs, charts, and comparison
+    # -----------------------------
     kpi_prev_vs_this = pct_change(prev_total, this_total)
     kpi_this_vs_next = pct_change(this_total, predicted_next_total)
 
@@ -2009,69 +2118,157 @@ else:
     k1, k2, k3, k4 = st.columns(4)
     k1.metric(f"Prev Year ({PREV_YEAR})", f"{int(prev_total):,}", f"{kpi_prev_vs_this:.2f}% vs prev")
     k2.metric(f"This Year ({THIS_YEAR})", f"{int(this_total):,}", f"{kpi_this_vs_next:.2f}% vs this")
-    k3.metric(f"Predicted Next Year ({NEXT_YEAR})", f"{int(predicted_next_total):,}", f"{pct_change(prev_total,predicted_next_total):.2f}% vs prev")
+    k3.metric(f"Predicted Next Year ({NEXT_YEAR})", f"{int(predicted_next_total):,}", f"{pct_change(prev_total, predicted_next_total):.2f}% vs prev")
     k4.metric("Overall (All-time)", f"{int(overall_total):,}")
 
-    # =====================================================
-    # 🧱 CHARTS + TABLES
-    # =====================================================
-    st.markdown("### Top Categories — Real")
-    topn = st.slider("Top N categories", 3, min(50, len(total_by_cat)), 10)
+    # top categories — guard slider bounds
+    max_total_cats = max(3, len(total_by_cat))
+    default_topn = min(10, len(total_by_cat)) if len(total_by_cat) >= 3 else len(total_by_cat)
+    topn = st.slider("Top N categories to show", min_value=3 if len(total_by_cat) >=3 else 1, max_value=max_total_cats, value=default_topn)
     top_cats = total_by_cat.head(topn)
 
+    st.markdown("### Top Categories — Real")
     bar = alt.Chart(top_cats).mark_bar().encode(
-        x="value:Q", y=alt.Y("category:N", sort='-x'),
-        tooltip=["category","value"]
-    ).properties(height=40*len(top_cats), width=700)
+        x=alt.X("value:Q", title="Registrations"),
+        y=alt.Y("category:N", sort='-x', title="Category"),
+        tooltip=[alt.Tooltip("category:N"), alt.Tooltip("value:Q", format=",")] 
+    ).properties(height=40 * min(len(top_cats), 20), width=800)
     st.altair_chart(bar, use_container_width=True)
 
-    pie = px.pie(top_cats, names="category", values="value", hole=0.45)
+    pie = px.pie(top_cats, names="category", values="value", hole=0.45, title="Top Categories (Donut)")
+    pie.update_traces(textinfo='percent+label', hoverinfo='label+value')
     st.plotly_chart(pie, use_container_width=True)
 
+    # time series with prediction ribbon
     st.markdown("### Monthly Trend — Real + Predicted")
-    ts_real = monthly_totals.rename("real").reset_index()
-    plot_df = ts_real.assign(type="real", y=ts_real["value"])
-    if forecast_monthly is not None:
-        fc = forecast_monthly.reset_index().rename(columns={"ds":"month","yhat":"y"})
-        fc["type"]="predicted"
-        plot_df = pd.concat([plot_df[["month","y","type"]], fc[["month","y","type"]]])
+    ts_real = monthly_totals.rename("real").reset_index().rename(columns={"month":"month","value":"value"})
+    ts_real["month"] = pd.to_datetime(ts_real["month"])
+    if forecast_monthly is not None and not forecast_monthly.empty:
+        fc = forecast_monthly.reset_index().rename(columns={"index":"month"})
+        fc["month"] = pd.to_datetime(fc["month"])
+        fc = fc.assign(type="predicted")
+        plot_df = pd.concat([
+            ts_real.assign(type="real").rename(columns={"value":"y"})[["month","y","type"]],
+            fc.rename(columns={"yhat":"y"})[["month","y","type","yhat_lower","yhat_upper"]].fillna(method='ffill')
+        ], ignore_index=True, sort=False)
+    else:
+        plot_df = ts_real.assign(type="real").rename(columns={"value":"y"})[["month","y","type"]]
 
-    fig = px.line(plot_df, x="month", y="y", color="type", markers=True)
+    fig = px.line(plot_df, x="month", y="y", color="type", markers=True, title="Monthly Registrations — Real vs Predicted")
+    # add ribbon if fc present
+    if forecast_monthly is not None and not forecast_monthly.empty:
+        fig.add_traces(px.line(fc, x="month", y="yhat_upper").data)
+        fig.add_traces(px.line(fc, x="month", y="yhat_lower").data)
+        # create filled area via scatter
+        fig.add_traces([{
+            'x': fc['month'], 'y': fc['yhat_upper'], 'mode': 'lines', 'line': {'width': 0}, 'showlegend': False
+        }, {
+            'x': fc['month'], 'y': fc['yhat_lower'], 'mode': 'lines', 'fill': 'tonexty', 'fillcolor': 'rgba(0,176,246,0.2)', 'line': {'width': 0}, 'showlegend': False
+        }])
+    fig.update_layout(legend_title_text="Series", xaxis_title="Month", yaxis_title="Registrations")
     st.plotly_chart(fig, use_container_width=True)
 
-    # =====================================================
-    # 📘 EXPORT
-    # =====================================================
-    st.markdown("### Export Data")
-    csv = df_cat.to_csv(index=False).encode("utf-8")
-    st.download_button("Download CSV", csv, f"category_{THIS_YEAR}.csv")
+    # category-level comparisons
+    st.markdown("### Category-level Comparison: Prev vs This vs Predicted Next")
+    # historical share based on totals across historical years available (prefer THIS_YEAR totals if present)
+    hist_totals = df_cat.groupby("category", as_index=False)["value"].sum().set_index('category')
+    hist_totals['share'] = hist_totals['value'] / hist_totals['value'].sum() if hist_totals['value'].sum() > 0 else 0
+
+    # build per-category numbers
+    prev_per_cat = yearly_pivot.loc[PREV_YEAR] if PREV_YEAR in yearly_pivot.index else pd.Series(0, index=yearly_pivot.columns)
+    this_per_cat = yearly_pivot.loc[THIS_YEAR] if THIS_YEAR in yearly_pivot.index else pd.Series(0, index=yearly_pivot.columns)
+
+    cats = sorted(set(list(prev_per_cat.index) + list(this_per_cat.index) + list(hist_totals.index)))
+    rows = []
+    for c in cats:
+        prev_v = float(prev_per_cat.get(c, 0)) if c in prev_per_cat.index else 0.0
+        this_v = float(this_per_cat.get(c, 0)) if c in this_per_cat.index else 0.0
+        share = float(hist_totals.loc[c]['share']) if c in hist_totals.index else 0.0
+        pred_v = share * predicted_next_total
+        rows.append({
+            "category": c,
+            str(PREV_YEAR): prev_v,
+            str(THIS_YEAR): this_v,
+            f"{NEXT_YEAR} (pred)": pred_v,
+            "growth_prev_to_this %": pct_change(prev_v, this_v),
+            "growth_this_to_next %": pct_change(this_v, pred_v)
+        })
+
+    comp_df = pd.DataFrame(rows).sort_values(str(THIS_YEAR), ascending=False)
+
+    # display
+    st.dataframe(comp_df.style.format({str(PREV_YEAR): "{:,}", str(THIS_YEAR): "{:,}", f"{NEXT_YEAR} (pred)": "{:,}", "growth_prev_to_this %": "{:.2f}%", "growth_this_to_next %": "{:.2f}%"}), height=420)
+
+    # drilldowns
+    st.markdown("### Drilldowns & Extra Views")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        show_daily = st.checkbox("Show daily trend", value=False)
+    with c2:
+        show_monthly_by_cat = st.checkbox("Show monthly stacked by category", value=True)
+    with c3:
+        show_yearly_heatmap = st.checkbox("Show yearly heatmap (category x year)", value=False)
+
+    if show_daily:
+        daily = df_cat.groupby(["day", "category"], as_index=False)["value"].sum()
+        top_cats_list = top_cats['category'].tolist()
+        daily_long = daily[daily['category'].isin(top_cats_list)]
+        fig_daily = px.line(daily_long, x='day', y='value', color='category', title='Daily Registrations — Top Categories')
+        fig_daily.update_layout(xaxis_title='Day', yaxis_title='Registrations')
+        st.plotly_chart(fig_daily, use_container_width=True)
+
+    if show_monthly_by_cat:
+        monthly_long = monthly.sort_values('month')
+        fig_monthly = px.area(monthly_long, x='month', y='value', color='category', title='Monthly Stacked by Category')
+        fig_monthly.update_layout(xaxis_title='Month', yaxis_title='Registrations')
+        st.plotly_chart(fig_monthly, use_container_width=True)
+
+    if show_yearly_heatmap:
+        heat_pivot = yearly_pivot.fillna(0)
+        if not heat_pivot.empty:
+            heat_map = px.imshow(heat_pivot.T, labels=dict(x='Year', y='Category', color='Registrations'), x=heat_pivot.index.astype(str).tolist(), y=heat_pivot.columns.tolist(), aspect='auto', title='Yearly Heatmap (Categories x Year)')
+            st.plotly_chart(heat_map, use_container_width=True)
+        else:
+            st.info('No yearly pivot data to show heatmap.')
+
+    # exports
+    st.markdown("### Export Data & Charts")
+    csv = df_cat.to_csv(index=False).encode('utf-8')
+    st.download_button("Download raw category CSV", csv, file_name=f"category_raw_{THIS_YEAR}.csv", mime='text/csv')
 
     try:
-        excel = io.BytesIO()
-        with pd.ExcelWriter(excel, engine="openpyxl") as w:
-            df_cat.to_excel(w, "raw", index=False)
-            totals_by_year.to_frame("value").to_excel(w, "yearly_totals")
+        excel_buffer = io.BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+            df_cat.to_excel(writer, sheet_name='raw', index=False)
+            comp_df.to_excel(writer, sheet_name='comparison', index=False)
+            monthly_totals.reset_index().to_excel(writer, sheet_name='monthly_totals', index=False)
             if forecast_monthly is not None:
-                forecast_monthly.to_excel(w, "forecast")
-        excel.seek(0)
-        st.download_button("Download Excel", excel, f"category_analysis_{THIS_YEAR}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                # ensure index column named
+                fm = forecast_monthly.reset_index()
+                fm.to_excel(writer, sheet_name='forecast_monthly', index=False)
+        excel_buffer.seek(0)
+        st.download_button("Download analysis Excel", excel_buffer, file_name=f"vahan_category_analysis_{THIS_YEAR}.xlsx", mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     except Exception as e:
-        st.warning(f"Excel export failed: {e}")
+        st.warning(f"Excel export failed (openpyxl may be missing): {e}")
 
-    # =====================================================
-    # 🧠 OPTIONAL AI SUMMARY
-    # =====================================================
-    if "deepinfra_chat" in globals() and enable_ai:
+    # optional AI summary: call deepinfra_chat if available
+    if enable_ai and "deepinfra_chat" in globals():
         with st.spinner("Generating AI narrative..."):
-            prompt = f"Prev={int(prev_total):,}, This={int(this_total):,}, Next={int(predicted_next_total):,}. Top categories: {top_cats.to_dict(orient='records')}"
-            sysmsg = "You are a data analyst summarizing category distribution trends and forecasts."
-            res = deepinfra_chat(sysmsg, prompt, max_tokens=250)
-            if isinstance(res, dict) and "text" in res:
-                st.write("### 🧠 AI Summary")
-                st.write(res["text"])
+            sys = "You are a data analyst assistant. Summarize the real registration counts and predictions focusing on top categories, growth/decline and one recommendation."
+            sample_rows = comp_df.head(10).to_dict(orient='records')
+            user_prompt = f"Real totals: prev_year={int(prev_total):,}, this_year={int(this_total):,}, predicted_next_year={int(predicted_next_total):,}. Top categories sample: {json.dumps(sample_rows, default=str)}"
+            try:
+                ai_out = deepinfra_chat(sys, user_prompt, max_tokens=280)
+                if isinstance(ai_out, dict) and 'text' in ai_out:
+                    st.markdown('**AI Narrative (Live)**')
+                    st.write(ai_out['text'])
+                else:
+                    st.info('AI narrative unavailable or key missing.')
+            except Exception as e:
+                st.info(f'AI call failed: {e}')
 
-    st.success("✅ Category Distribution full analysis (real + predicted) complete.")
+    st.success("✅ Category Distribution full analysis complete (real & predicted).")
+
 
 # =====================================================
 # 2️⃣ MAXED Top Makers — Real + Predicted + Full Analysis
