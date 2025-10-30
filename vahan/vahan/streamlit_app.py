@@ -2702,21 +2702,21 @@ def ist_now(fmt: str = "%Y-%m-%d %I:%M:%S %p") -> str:
 def log_ist(msg: str, level: str = "info"):
     getattr(LOG, level)(f"[IST {ist_now()}] {msg}")
 
-# # -------------------------
-# # CONFIG
-# # -------------------------
-# BASE = os.getenv("VAHAN_API_BASE", "https://analytics.parivahan.gov.in/analytics/publicdashboard")
-# DEFAULT_TIMEOUT = int(os.getenv("VAHAN_TIMEOUT", "30"))
-# MAX_RETRIES = int(os.getenv("VAHAN_MAX_RETRIES", "5"))
-# BACKOFF_FACTOR = float(os.getenv("VAHAN_BACKOFF", "1.2"))
-# CACHE_DIR = os.getenv("VAHAN_CACHE_DIR", "vahan_cache")
-# CACHE_TTL = int(os.getenv("VAHAN_CACHE_TTL_SEC", str(60 * 60)))  # default 1 hour
-# ROTATING_UAS = [
-#     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-#     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
-#     "Mozilla/5.0 (X11; Linux x86_64; rv:115.0) Gecko/20100101 Firefox/115.0",
-# ]
-# os.makedirs(CACHE_DIR, exist_ok=True)
+# -------------------------
+# CONFIG
+# -------------------------
+BASE = os.getenv("VAHAN_API_BASE", "https://analytics.parivahan.gov.in/analytics/publicdashboard")
+DEFAULT_TIMEOUT = int(os.getenv("VAHAN_TIMEOUT", "30"))
+MAX_RETRIES = int(os.getenv("VAHAN_MAX_RETRIES", "5"))
+BACKOFF_FACTOR = float(os.getenv("VAHAN_BACKOFF", "1.2"))
+CACHE_DIR = os.getenv("VAHAN_CACHE_DIR", "vahan_cache")
+CACHE_TTL = int(os.getenv("VAHAN_CACHE_TTL_SEC", str(60 * 60)))  # default 1 hour
+ROTATING_UAS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64; rv:115.0) Gecko/20100101 Firefox/115.0",
+]
+os.makedirs(CACHE_DIR, exist_ok=True)
 
 # -------------------------
 # Simple file cache helpers
@@ -2881,135 +2881,135 @@ def fetch_json(path: str, params: Optional[Dict[str,Any]] = None, desc: str = ""
     res = safe_get(path, params=params or {}, use_cache=use_cache)
     return res
 
-# # -------------------------
-# # Default params_common and helpful randomization
-# # -------------------------
-# params_common = {
-#     "fromYear": int(os.getenv("VAHAN_FROM_YEAR", "2024")),
-#     "toYear": int(os.getenv("VAHAN_TO_YEAR", "2025")),
-#     "stateCode": "",
-#     "rtoCode": 0,
-#     "vehicleClasses": "",
-#     "vehicleMakers": "",
-#     "timePeriod": "All Time",
-#     "fitnessCheck": "All",
-#     "vehicleType": ""
-# }
+# -------------------------
+# Default params_common and helpful randomization
+# -------------------------
+params_common = {
+    "fromYear": int(os.getenv("VAHAN_FROM_YEAR", "2024")),
+    "toYear": int(os.getenv("VAHAN_TO_YEAR", "2025")),
+    "stateCode": "",
+    "rtoCode": 0,
+    "vehicleClasses": "",
+    "vehicleMakers": "",
+    "timePeriod": "All Time",
+    "fitnessCheck": "All",
+    "vehicleType": ""
+}
 
-# def params_randomize(base: Dict[str,Any]) -> Dict[str,Any]:
-#     p = base.copy()
-#     # sometimes required endpoints expect different param names -> include aliases
-#     p.setdefault("state_cd", p.get("stateCode", ""))
-#     # safe random toggles
-#     if random.random() < 0.08:  # small chance to try ALL
-#         p["stateCode"] = "ALL"
-#         p["rtoCode"] = "ALL"
-#     return p
+def params_randomize(base: Dict[str,Any]) -> Dict[str,Any]:
+    p = base.copy()
+    # sometimes required endpoints expect different param names -> include aliases
+    p.setdefault("state_cd", p.get("stateCode", ""))
+    # safe random toggles
+    if random.random() < 0.08:  # small chance to try ALL
+        p["stateCode"] = "ALL"
+        p["rtoCode"] = "ALL"
+    return p
 
-# # -------------------------
-# # Parse duration table: accept many shapes
-# # -------------------------
-# def parse_duration_table(json_data: Any) -> pd.DataFrame:
-#     try:
-#         if not json_data:
-#             return pd.DataFrame()
-#         # If container with data key
-#         if isinstance(json_data, dict):
-#             # common patterns
-#             for k in ("data", "result", "rows", "response"):
-#                 if k in json_data and json_data[k]:
-#                     json_data = json_data[k]
-#                     break
-#         # if list of dicts -> normalize
-#         if isinstance(json_data, list):
-#             df = pd.json_normalize(json_data)
-#         elif isinstance(json_data, dict):
-#             df = pd.json_normalize([json_data])
-#         else:
-#             return pd.DataFrame()
+# -------------------------
+# Parse duration table: accept many shapes
+# -------------------------
+def parse_duration_table(json_data: Any) -> pd.DataFrame:
+    try:
+        if not json_data:
+            return pd.DataFrame()
+        # If container with data key
+        if isinstance(json_data, dict):
+            # common patterns
+            for k in ("data", "result", "rows", "response"):
+                if k in json_data and json_data[k]:
+                    json_data = json_data[k]
+                    break
+        # if list of dicts -> normalize
+        if isinstance(json_data, list):
+            df = pd.json_normalize(json_data)
+        elif isinstance(json_data, dict):
+            df = pd.json_normalize([json_data])
+        else:
+            return pd.DataFrame()
 
-#         # pick label and value flexibly
-#         col_lower = [c.lower() for c in df.columns]
-#         label_col = None
-#         value_col = None
-#         for possibility in ["label", "category", "name", "period", "month", "year"]:
-#             if possibility in col_lower:
-#                 label_col = df.columns[col_lower.index(possibility)]
-#                 break
-#         for possibility in ["value", "count", "total", "registeredvehiclecount", "y"]:
-#             if possibility in col_lower:
-#                 value_col = df.columns[col_lower.index(possibility)]
-#                 break
-#         # fallback heuristics
-#         if label_col is None and len(df.columns) >= 1:
-#             label_col = df.columns[0]
-#         if value_col is None and len(df.columns) >= 2:
-#             value_col = df.columns[1]
+        # pick label and value flexibly
+        col_lower = [c.lower() for c in df.columns]
+        label_col = None
+        value_col = None
+        for possibility in ["label", "category", "name", "period", "month", "year"]:
+            if possibility in col_lower:
+                label_col = df.columns[col_lower.index(possibility)]
+                break
+        for possibility in ["value", "count", "total", "registeredvehiclecount", "y"]:
+            if possibility in col_lower:
+                value_col = df.columns[col_lower.index(possibility)]
+                break
+        # fallback heuristics
+        if label_col is None and len(df.columns) >= 1:
+            label_col = df.columns[0]
+        if value_col is None and len(df.columns) >= 2:
+            value_col = df.columns[1]
 
-#         if label_col is None or value_col is None:
-#             # try numeric columns as value
-#             numeric_cols = df.select_dtypes(include="number").columns.tolist()
-#             if numeric_cols:
-#                 value_col = numeric_cols[0]
-#             else:
-#                 # no usable columns
-#                 return pd.DataFrame()
+        if label_col is None or value_col is None:
+            # try numeric columns as value
+            numeric_cols = df.select_dtypes(include="number").columns.tolist()
+            if numeric_cols:
+                value_col = numeric_cols[0]
+            else:
+                # no usable columns
+                return pd.DataFrame()
 
-#         out = df[[label_col, value_col]].copy()
-#         out.columns = ["label", "value"]
-#         # coerce numeric
-#         out["value"] = pd.to_numeric(out["value"], errors="coerce").fillna(0)
-#         # ensure label is str
-#         out["label"] = out["label"].astype(str)
-#         return out
-#     except Exception as e:
-#         log_ist(f"parse_duration_table error: {e}", "warning")
-#         return pd.DataFrame()
+        out = df[[label_col, value_col]].copy()
+        out.columns = ["label", "value"]
+        # coerce numeric
+        out["value"] = pd.to_numeric(out["value"], errors="coerce").fillna(0)
+        # ensure label is str
+        out["label"] = out["label"].astype(str)
+        return out
+    except Exception as e:
+        log_ist(f"parse_duration_table error: {e}", "warning")
+        return pd.DataFrame()
 
-# # -------------------------
-# # Charts helpers (Altair + streamlit)
-# # -------------------------
-# def bar_from_df(df: pd.DataFrame, title: str = "Bar Chart"):
-#     if df is None or df.empty:
-#         st.info("No data to show.")
-#         return
-#     df_plot = df.copy()
-#     df_plot = df_plot.sort_values("value", ascending=False).head(50)
-#     chart = (
-#         alt.Chart(df_plot)
-#         .mark_bar()
-#         .encode(x=alt.X("value:Q", title="Value"), y=alt.Y("label:N", sort='-x', title=None), tooltip=["label", "value"])
-#         .properties(height=400, title=title)
-#     )
-#     st.altair_chart(chart, use_container_width=True)
+# -------------------------
+# Charts helpers (Altair + streamlit)
+# -------------------------
+def bar_from_df(df: pd.DataFrame, title: str = "Bar Chart"):
+    if df is None or df.empty:
+        st.info("No data to show.")
+        return
+    df_plot = df.copy()
+    df_plot = df_plot.sort_values("value", ascending=False).head(50)
+    chart = (
+        alt.Chart(df_plot)
+        .mark_bar()
+        .encode(x=alt.X("value:Q", title="Value"), y=alt.Y("label:N", sort='-x', title=None), tooltip=["label", "value"])
+        .properties(height=400, title=title)
+    )
+    st.altair_chart(chart, use_container_width=True)
 
-# def pie_from_df(df: pd.DataFrame, title: str = "Pie Chart", donut: bool = False):
-#     if df is None or df.empty:
-#         st.info("No data to show.")
-#         return
-#     df_plot = df.copy()
-#     df_plot = df_plot.groupby("label", as_index=False)["value"].sum().sort_values("value", ascending=False).head(12)
-#     chart = (
-#         alt.Chart(df_plot)
-#         .encode(theta=alt.Theta("value:Q"), color=alt.Color("label:N"), tooltip=["label","value"])
-#     )
-#     if donut:
-#         chart = chart.mark_arc(innerRadius=50).properties(height=360, title=title)
-#     else:
-#         chart = chart.mark_arc().properties(height=360, title=title)
-#     st.altair_chart(chart, use_container_width=True)
+def pie_from_df(df: pd.DataFrame, title: str = "Pie Chart", donut: bool = False):
+    if df is None or df.empty:
+        st.info("No data to show.")
+        return
+    df_plot = df.copy()
+    df_plot = df_plot.groupby("label", as_index=False)["value"].sum().sort_values("value", ascending=False).head(12)
+    chart = (
+        alt.Chart(df_plot)
+        .encode(theta=alt.Theta("value:Q"), color=alt.Color("label:N"), tooltip=["label","value"])
+    )
+    if donut:
+        chart = chart.mark_arc(innerRadius=50).properties(height=360, title=title)
+    else:
+        chart = chart.mark_arc().properties(height=360, title=title)
+    st.altair_chart(chart, use_container_width=True)
 
-# # -------------------------
-# # AI hook (optional): DeepInfra / echo stub
-# # -------------------------
-# def deepinfra_chat(system: str, user: str, max_tokens: int = 300, temperature: float = 0.4) -> Dict[str,Any]:
-#     key = os.getenv("DEEPINFRA_KEY") or os.getenv("DEEPINFRA_API_KEY")
-#     if not key:
-#         # no key configured — return a safe placeholder
-#         return {"text": ""}
-#     # If you have a DeepInfra client, integrate here.
-#     # For safety (no network calls from this function), we return placeholder.
-#     return {"text": ""}
+# -------------------------
+# AI hook (optional): DeepInfra / echo stub
+# -------------------------
+def deepinfra_chat(system: str, user: str, max_tokens: int = 300, temperature: float = 0.4) -> Dict[str,Any]:
+    key = os.getenv("DEEPINFRA_KEY") or os.getenv("DEEPINFRA_API_KEY")
+    if not key:
+        # no key configured — return a safe placeholder
+        return {"text": ""}
+    # If you have a DeepInfra client, integrate here.
+    # For safety (no network calls from this function), we return placeholder.
+    return {"text": ""}
 
 # # -------------------------
 # # Higher-level duration fetcher used by UI
@@ -3133,13 +3133,13 @@ def fetch_json(path: str, params: Optional[Dict[str,Any]] = None, desc: str = ""
 #     except Exception as e:
 #         log_ist(f"chart error: {e}", "warning")
 
-# # Only run example UI if direct run (keeps file safe to import)
-# if __name__ == "__main__":
-#     st.set_page_config(layout="wide")
-#     log_ist("App booting")
-#     # Boot banner
-#     st.markdown(f"<div style='padding:8px;border-left:4px solid #007bff'><b>Booted (IST):</b> {ist_now()}</div>", unsafe_allow_html=True)
-#     run_durations_ui()
+# Only run example UI if direct run (keeps file safe to import)
+if __name__ == "__main__":
+    st.set_page_config(layout="wide")
+    log_ist("App booting")
+    # Boot banner
+    st.markdown(f"<div style='padding:8px;border-left:4px solid #007bff'><b>Booted (IST):</b> {ist_now()}</div>", unsafe_allow_html=True)
+    run_durations_ui()
 
 # # --------------------- Top 5 Revenue States ---------------------
 # st.markdown("""
