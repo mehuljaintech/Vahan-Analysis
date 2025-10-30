@@ -1,5 +1,5 @@
 # ======================================================
-# 🚀 PARIVAHAN ANALYTICS 2025 — MAXED ULTRA (NO VERSION LIMITS)
+# 🚀 PARIVAHAN ANALYTICS 2025 — MAXED+ CLOUD EDITION
 # ======================================================
 
 # ===============================
@@ -42,8 +42,6 @@ python-docx
 python-pptx
 pdfplumber
 PyPDF2
-pdfkit
-wkhtmltopdf-binary
 
 # ===============================
 # 🤖 MACHINE LEARNING / ANALYTICS
