@@ -1258,26 +1258,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================
-# 📊 ANALYTICS VISUALS (Optional - Expandable)
-# =====================================================
-with st.expander("📊 View Trend Charts (Live)", expanded=False):
-    import plotly.express as px
-
-    if "month" in df.columns and "registeredVehicleCount" in df.columns:
-        trend = df.groupby("month")["registeredVehicleCount"].sum().reset_index()
-        fig = px.line(trend, x="month", y="registeredVehicleCount", 
-                      title="📅 Monthly Registration Trend (Live Data)",
-                      markers=True)
-        fig.update_layout(
-            template="plotly_dark",
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("📭 Trend data unavailable — API response missing 'month' field.")
-
-# =====================================================
 # 🧾 FOOTER — Real-Time Build Info
 # =====================================================
 st.markdown(f"""
