@@ -54,42 +54,42 @@ USER_ID = st.session_state["user_id"]
 
 log_ist(f"🎯 Session started for user: {USER_ID}")
 
-# =====================================================
-# ♻️ 4️⃣ Ultra-Reliable Caching System
-# =====================================================
-@st.cache_data(ttl=3600, show_spinner=False, max_entries=200)
-def cached_json_fetch(url, params=None, headers=None):
-    """Fetch API data with cache, retries, and IST logging."""
-    log_ist(f"🌐 Fetching URL (cached): {url}")
-    try:
-        session = requests.Session()
-        retries = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
-        session.mount("https://", HTTPAdapter(max_retries=retries))
-        resp = session.get(url, params=params, headers=headers, timeout=20)
-        resp.raise_for_status()
-        data = resp.json()
-        log_ist(f"✅ API Success [{url}] — {len(str(data))} chars")
-        return data
-    except Exception as e:
-        logging.error(f"❌ API Error @ {url}: {e}")
-        st.warning(f"API temporarily unavailable: {url}")
-        return {}
+# # =====================================================
+# # ♻️ 4️⃣ Ultra-Reliable Caching System
+# # =====================================================
+# @st.cache_data(ttl=3600, show_spinner=False, max_entries=200)
+# def cached_json_fetch(url, params=None, headers=None):
+#     """Fetch API data with cache, retries, and IST logging."""
+#     log_ist(f"🌐 Fetching URL (cached): {url}")
+#     try:
+#         session = requests.Session()
+#         retries = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+#         session.mount("https://", HTTPAdapter(max_retries=retries))
+#         resp = session.get(url, params=params, headers=headers, timeout=20)
+#         resp.raise_for_status()
+#         data = resp.json()
+#         log_ist(f"✅ API Success [{url}] — {len(str(data))} chars")
+#         return data
+#     except Exception as e:
+#         logging.error(f"❌ API Error @ {url}: {e}")
+#         st.warning(f"API temporarily unavailable: {url}")
+#         return {}
 
-# =====================================================
-# 🧱 5️⃣ Global Error-Safe Wrapper
-# =====================================================
-def safe_exec(fn):
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        try:
-            return fn(*args, **kwargs)
-        except Exception as e:
-            err_msg = f"⚠️ Exception in {fn.__name__}: {e}"
-            logging.error(err_msg)
-            traceback.print_exc()
-            st.error(f"An internal error occurred — {fn.__name__}")
-            return None
-    return wrapper
+# # =====================================================
+# # 🧱 5️⃣ Global Error-Safe Wrapper
+# # =====================================================
+# def safe_exec(fn):
+#     @wraps(fn)
+#     def wrapper(*args, **kwargs):
+#         try:
+#             return fn(*args, **kwargs)
+#         except Exception as e:
+#             err_msg = f"⚠️ Exception in {fn.__name__}: {e}"
+#             logging.error(err_msg)
+#             traceback.print_exc()
+#             st.error(f"An internal error occurred — {fn.__name__}")
+#             return None
+#     return wrapper
 
 # =====================================================
 # 🚀 6️⃣ Streamlit Startup Banner (Visual + Console)
