@@ -1820,21 +1820,67 @@ with st.container():
     """, unsafe_allow_html=True)
 
     # ===============================================================
-    # 🎛️ FILTER CONTROLS
-    # ===============================================================
-    with st.expander("⚙️ Comparison Filters", expanded=True):
-        colA, colB, colC = st.columns([1,1,1.2])
-        with colA:
-            prev_year = st.selectbox("📅 Previous Year", [2018, 2019, 2020, 2021, 2022, 2023, 2024], index=3)
-        with colB:
-            next_year = st.selectbox("📅 Next / Current Year", [2019, 2020, 2021, 2022, 2023, 2024, 2025], index=5)
-        with colC:
-            comparison_type = st.radio("📈 Comparison Type", ["Absolute", "Percentage"], horizontal=True)
+# 🎛️ FILTER CONTROLS — SMART YEAR COMPARISON (Prev ↔ Next)
+# ===============================================================
+from datetime import date
 
+with st.expander("⚙️ Comparison Filters", expanded=True):
+    current_year = date.today().year
+    available_years = list(range(2017, current_year + 1))
+
+    colA, colB, colC = st.columns([1, 1, 1.2])
+
+    with colB:
+        next_year = st.selectbox(
+            "📅 Select Current / Target Year",
+            available_years + [current_year + 1],
+            index=len(available_years) - 1
+        )
+
+    # --- Auto-calc previous year ---
+    prev_year = next_year - 1
+    if prev_year < available_years[0]:
+        prev_year = available_years[0]
+
+    with colA:
         st.markdown(
-            f"<div style='margin-top:8px;font-size:14px;opacity:0.7;'>Comparing <b>{prev_year}</b> vs <b>{next_year}</b></div>",
+            f"""
+            <div style='margin-top:26px;font-size:16px;color:#00E0FF;font-weight:600;'>
+                📅 Previous Year: {prev_year}
+            </div>
+            """,
             unsafe_allow_html=True
         )
+
+    with colC:
+        comparison_type = st.radio(
+            "📈 Comparison Type",
+            ["Absolute", "Percentage"],
+            horizontal=True,
+            index=0
+        )
+
+    # --- Visual summary banner ---
+    st.markdown(
+        f"""
+        <div style='margin-top:10px;font-size:14px;opacity:0.85;
+                    border-left:4px solid #00E0FF;padding-left:10px;
+                    background:linear-gradient(90deg,#f8fdff,#ffffff);
+                    border-radius:8px;padding:8px 10px;'>
+            🔍 Comparing <b style='color:#0072ff;'>{prev_year}</b> ➜ 
+            <b style='color:#00c6ff;'>{next_year}</b> 
+            • Mode: <b>{comparison_type}</b>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # --- Store in session for use later ---
+    st.session_state["comparison_filter"] = {
+        "prev_year": prev_year,
+        "next_year": next_year,
+        "comparison_type": comparison_type
+    }
 
     # ===============================================================
     # 🔄 FETCH DATA FROM API
