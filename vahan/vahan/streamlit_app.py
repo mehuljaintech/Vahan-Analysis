@@ -181,13 +181,6 @@ if __name__ == "__main__":
     print(df.head())
     log_ist("✅ Test completed")
 
-# maxed_init.py
-"""
-PARIVAHAN ANALYTICS — MAXED INIT (Cloud-safe, IST, caching, retries, fallback)
-Place this near the top of your Streamlit app and import as:
-    from maxed_init import *
-It initializes logging, caching, HTTP utilities, and helper functions.
-"""
 import os
 import sys
 import time
@@ -1116,14 +1109,6 @@ import requests
 from functools import lru_cache
 
 from vahan.api import build_params, get_json  # ✅ your core API helpers
-
-# =====================================================
-# 🌐 GLOBAL CONFIG
-# =====================================================
-VAHAN_ENDPOINT = "https://vahan.parivahan.gov.in/vahandashboard/registrationtrend"
-MAX_RETRIES = 5
-RETRY_DELAY = 2.5
-CACHE_TTL = 3600  # seconds
 
 # =====================================================
 # 🧩 BUILD BASE PARAMS (MAXED)
