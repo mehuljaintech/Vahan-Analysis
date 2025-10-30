@@ -2016,7 +2016,7 @@ with st.container():
     </div>
     """, unsafe_allow_html=True)
 
-    # ===============================================================
+# ===============================================================
 # 🎛️ FILTER CONTROLS — SMART YEAR COMPARISON (Prev ↔ Next)
 # ===============================================================
 from datetime import date
@@ -2066,7 +2066,7 @@ with st.expander("⚙️ Comparison Filters", expanded=True):
         """,
         unsafe_allow_html=True
     )
-    )
+
 
     # ===============================================================
     # 📡 FETCH MAKER DATA
