@@ -1068,12 +1068,479 @@ def fetch_json(endpoint: str, params: dict = params_common, desc: str = "") -> d
     return {}
 
 # =====================================================
-# ⚙️ Dynamic Parameter Builder — Vahan Analytics ()
+# ✅ DUAL-YEAR + NEXT-YEAR PREDICTION & COMPARISON SUITE
+# (Drop this block immediately after your existing fetch_json)
 # =====================================================
+import pandas as pd
+import numpy as np
+import math
+import io
+import json
+import logging
+import altair as alt
+import plotly.express as px
+import plotly.graph_objects as go
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 import streamlit as st
-import time, random, json, requests
-from urllib.parse import urlparse, urljoin
+import time
+
+# optional sklearn/prophet usage (graceful fallback)
+try:
+    from sklearn.linear_model import LinearRegression
+    SKLEARN_AVAILABLE = True
+except Exception:
+    SKLEARN_AVAILABLE = False
+
+try:
+    from prophet import Prophet
+    PROPHET_AVAILABLE = True
+except Exception:
+    PROPHET_AVAILABLE = False
+
+logger = logging.getLogger("vahan_dual_year")
+
+def ist_now_str():
+    return datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
+
+# ------------------ Helpers: safe JSON->DF normalizer ------------------
+def normalize_trend_to_df(trend_json):
+    """
+    Accepts lots of shapes and returns DataFrame with columns ['date','value'] or ['year','value'].
+    If dates are parseable -> returns 'date' column (Timestamp). Else if year-based -> returns 'year' int.
+    """
+    if not trend_json:
+        return pd.DataFrame(columns=["date","value"])
+
+    # Many endpoints return {'labels': [...], 'data': [...]}
+    if isinstance(trend_json, dict) and "labels" in trend_json and "data" in trend_json:
+        labels = trend_json.get("labels") or []
+        data = trend_json.get("data") or []
+        rows = []
+        n = min(len(labels), len(data))
+        for i in range(n):
+            lbl = labels[i]
+            val = data[i]
+            # try parse as date, else year
+            try:
+                dt = pd.to_datetime(lbl, errors="coerce")
+                if not pd.isna(dt):
+                    rows.append({"date": dt, "value": pd.to_numeric(val, errors="coerce")})
+                    continue
+            except Exception:
+                pass
+            # fallback: label might be year or month-year string
+            try:
+                # try parse Month-Year strings like 'Jan-2024'
+                dt = pd.to_datetime(str(lbl), errors="coerce")
+                if not pd.isna(dt):
+                    rows.append({"date": dt, "value": pd.to_numeric(val, errors="coerce")})
+                    continue
+            except Exception:
+                pass
+            # if not parseable, treat as year
+            try:
+                y = int(str(lbl)[:4])
+                rows.append({"year": y, "value": pd.to_numeric(val, errors="coerce")})
+            except Exception:
+                # fallback to raw label
+                rows.append({"label": lbl, "value": pd.to_numeric(val, errors="coerce")})
+
+        df = pd.DataFrame(rows)
+        # normalize: prefer date if exists
+        if "date" in df.columns:
+            df = df.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
+            return df[["date","value"]]
+        if "year" in df.columns:
+            return df[["year","value"]].dropna().sort_values("year").reset_index(drop=True)
+        return df.dropna().reset_index(drop=True)
+
+    # If list of dicts: try to detect fields
+    if isinstance(trend_json, (list, tuple)):
+        rows = []
+        for it in trend_json:
+            if not isinstance(it, dict):
+                continue
+            # common keys
+            for label_key in ("date","period","label","monthYear","month", "Month-Year"):
+                if label_key in it:
+                    lbl = it[label_key]
+                    break
+            else:
+                lbl = _get_first_present(it, ("year","Year","yr"))
+
+            val = None
+            for vk in ("value","count","registrations","total","y"):
+                if vk in it:
+                    val = it[vk]; break
+            if val is None:
+                # try nested
+                val = it.get("data") or it.get("metrics") or None
+
+            try:
+                dt = pd.to_datetime(lbl, errors="coerce")
+                if not pd.isna(dt):
+                    rows.append({"date": dt, "value": pd.to_numeric(val, errors="coerce")})
+                    continue
+            except Exception:
+                pass
+            try:
+                y = int(str(lbl)[:4])
+                rows.append({"year": y, "value": pd.to_numeric(val, errors="coerce")})
+            except Exception:
+                rows.append({"label": lbl, "value": pd.to_numeric(val, errors="coerce")})
+
+        df = pd.DataFrame(rows)
+        if "date" in df.columns:
+            return df.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)[["date","value"]]
+        if "year" in df.columns:
+            return df.dropna(subset=["year"]).sort_values("year").reset_index(drop=True)[["year","value"]]
+        return df.dropna().reset_index(drop=True)
+
+    # If dict mapping period->value
+    if isinstance(trend_json, dict):
+        rows = []
+        for k,v in trend_json.items():
+            if k in ("labels","data"): continue
+            try:
+                dt = pd.to_datetime(k, errors="coerce")
+                if not pd.isna(dt):
+                    rows.append({"date": dt, "value": pd.to_numeric(v, errors="coerce")})
+                    continue
+            except Exception:
+                pass
+            # try year
+            try:
+                y = int(str(k)[:4])
+                rows.append({"year": y, "value": pd.to_numeric(v, errors="coerce")})
+            except Exception:
+                rows.append({"label": k, "value": pd.to_numeric(v, errors="coerce")})
+        df = pd.DataFrame(rows)
+        if "date" in df.columns:
+            return df.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)[["date","value"]]
+        if "year" in df.columns:
+            return df.dropna(subset=["year"]).sort_values("year").reset_index(drop=True)[["year","value"]]
+        return df.dropna().reset_index(drop=True)
+
+    return pd.DataFrame(columns=["date","value"])
+
+# small helper used above
+def _get_first_present(d, keys):
+    for k in keys:
+        if k in d and d[k] is not None:
+            return d[k]
+    return None
+
+# ------------------ Dual-year fetch convenience ------------------
+def build_dual_year_params(from_year, to_year, extra_params=None):
+    """Return param dict for prev-year & this-year requests (keeps your param names)"""
+    extra = extra_params or {}
+    params_prev = params_common.copy()
+    params_this = params_common.copy()
+    # Attempt best-effort mapping - your build_params likely uses fromYear/toYear keys;
+    # ensure this block matches your real build_params keys if different.
+    for p in ("fromYear","toYear"):
+        if p in params_prev:
+            params_prev[p] = from_year
+            params_this[p] = to_year
+    # add extras
+    params_prev.update(extra)
+    params_this.update(extra)
+    return params_prev, params_this
+
+def fetch_dual_year(endpoint, desc="", from_year=None, to_year=None, extra_params=None, use_cache=True):
+    """
+    Fetch endpoint twice: for prev_year and this_year. Returns tuple(prev_df, this_df)
+    Each returned object is the normalized DataFrame (with either date or year columns).
+    """
+    now = ist_now_str()
+    if from_year is None or to_year is None:
+        today = date.today()
+        to_year = to_year or today.year
+        from_year = from_year or (to_year - 1)
+
+    params_prev, params_this = build_dual_year_params(from_year, to_year, extra_params)
+
+    st.info(f"Fetching {desc or endpoint} — prev:{from_year} this:{to_year} — {now}")
+    # call your existing fetch_json (cached)
+    json_prev = fetch_json(endpoint, params=params_prev, desc=f"{desc} ({from_year})") or {}
+    json_this = fetch_json(endpoint, params=params_this, desc=f"{desc} ({to_year})") or {}
+
+    df_prev = normalize_trend_to_df(json_prev)
+    df_this = normalize_trend_to_df(json_this)
+
+    # unify to have 'date' or 'year' consistently
+    # If they are date-based but represent year aggregates, convert to year
+    if "date" in df_prev.columns and not df_prev.empty:
+        df_prev["year"] = pd.to_datetime(df_prev["date"]).dt.year
+    if "date" in df_this.columns and not df_this.empty:
+        df_this["year"] = pd.to_datetime(df_this["date"]).dt.year
+
+    # If only 'year' exists, ensure int
+    if "year" in df_prev.columns:
+        df_prev["year"] = df_prev["year"].astype(int)
+    if "year" in df_this.columns:
+        df_this["year"] = df_this["year"].astype(int)
+
+    logger.info(f"[{ist_now_str()}] fetched dual-year for {endpoint}")
+    return df_prev, df_this
+
+# ------------------ Forecasting / Prediction ------------------
+def forecast_next_year_from_yearly_df(df_yearly, value_col="value", year_col="year", months_freq=False, periods=1):
+    """
+    Input: df_yearly with columns [year, value]. Performs a simple linear trend forecast for next 'periods' years.
+    Returns DataFrame with original + predicted rows with column 'type' marking 'Actual'/'Predicted'.
+    Uses sklearn LinearRegression if available; else linear slope.
+    """
+    if df_yearly is None or df_yearly.empty:
+        return pd.DataFrame(columns=[year_col, value_col, "type"])
+
+    df = df_yearly.copy().dropna(subset=[year_col, value_col]).sort_values(year_col)
+    df[year_col] = df[year_col].astype(int)
+    df[value_col] = pd.to_numeric(df[value_col], errors="coerce")
+    df = df.dropna(subset=[value_col])
+
+    if df.empty:
+        return pd.DataFrame(columns=[year_col, value_col, "type"])
+
+    X = df[[year_col]].values.reshape(-1,1)
+    y = df[value_col].values
+
+    if SKLEARN_AVAILABLE and len(df) >= 2:
+        try:
+            model = LinearRegression()
+            model.fit(X, y)
+            last = int(df[year_col].iloc[-1])
+            preds = []
+            for i in range(1, periods+1):
+                ny = last + i
+                pred = float(model.predict([[ny]])[0])
+                preds.append({year_col: ny, value_col: pred, "type": "Predicted"})
+            df["type"] = "Actual"
+            result = pd.concat([df[[year_col, value_col, "type"]], pd.DataFrame(preds)], ignore_index=True, sort=False)
+            return result.sort_values(year_col).reset_index(drop=True)
+        except Exception as e:
+            logger.warning(f"sklearn predict failed: {e}")
+
+    # fallback: slope between last two years
+    if len(df) >= 2:
+        a, b = df[year_col].iloc[-2], df[value_col].iloc[-2]
+        c, d = df[year_col].iloc[-1], df[value_col].iloc[-1]
+        slope = (d - b) / (c - a) if (c - a) != 0 else 0.0
+        preds = []
+        last = int(df[year_col].iloc[-1])
+        for i in range(1, periods+1):
+            ny = last + i
+            pred = float(d + slope * i)
+            preds.append({year_col: ny, value_col: pred, "type": "Predicted"})
+        df["type"] = "Actual"
+        result = pd.concat([df[[year_col, value_col, "type"]], pd.DataFrame(preds)], ignore_index=True, sort=False)
+        return result.sort_values(year_col).reset_index(drop=True)
+
+    # if only one year, can't compute slope — duplicate last value
+    df["type"] = "Actual"
+    last = int(df[year_col].iloc[-1])
+    preds = [{year_col: last+1, value_col: float(df[value_col].iloc[-1]), "type":"Predicted"}]
+    result = pd.concat([df[[year_col, value_col, "type"]], pd.DataFrame(preds)], ignore_index=True, sort=False)
+    return result.sort_values(year_col).reset_index(drop=True)
+
+# ------------------ Combined comparative table generator ------------------
+def build_prev_this_next_table(df_prev, df_this, value_col="value", year_col="year", predict_periods=1):
+    """
+    Accepts df_prev and df_this (may contain date/year). Returns a combined table with:
+      - prev_year total, this_year total, next_year predicted (value)
+      - growth% prev->this, this->next
+    """
+    # aggregate to yearly sums if date-based
+    def to_yearly(df):
+        if df is None or df.empty:
+            return pd.DataFrame(columns=[year_col, value_col])
+        if "year" in df.columns:
+            tmp = df[[year_col, value_col]].copy()
+        elif "date" in df.columns:
+            tmp = df.copy()
+            tmp[year_col] = pd.to_datetime(tmp["date"]).dt.year
+            tmp = tmp[[year_col, value_col]]
+        else:
+            # try best-effort columns
+            tmp = df.copy()
+            if year_col not in tmp.columns:
+                tmp[year_col] = pd.to_datetime(tmp.iloc[:,0], errors="coerce").dt.year
+            tmp = tmp[[year_col, value_col]]
+        tmp[value_col] = pd.to_numeric(tmp[value_col], errors="coerce").fillna(0)
+        return tmp.groupby(year_col, as_index=False)[value_col].sum().sort_values(year_col).reset_index(drop=True)
+
+    y_prev = to_yearly(df_prev)
+    y_this = to_yearly(df_this)
+
+    # determine prev_year and this_year values
+    prev_year = int(y_prev[year_col].max()) if not y_prev.empty else None
+    this_year = int(y_this[year_col].max()) if not y_this.empty else None
+
+    prev_val = float(y_prev.loc[y_prev[year_col] == prev_year, value_col].sum()) if prev_year else 0.0
+    this_val = float(y_this.loc[y_this[year_col] == this_year, value_col].sum()) if this_year else 0.0
+
+    # build base table
+    base_df = pd.DataFrame([
+        {"period": f"Prev ({prev_year})", year_col: prev_year, "value": prev_val, "type":"Actual" if prev_year else None},
+        {"period": f"This ({this_year})", year_col: this_year, "value": this_val, "type":"Actual" if this_year else None},
+    ])
+
+    # forecast next
+    # prefer to combine years (prev+this) to build trend
+    combined = pd.concat([y_prev, y_this], ignore_index=True).drop_duplicates(subset=[year_col])
+    combined = combined.sort_values(year_col)
+    df_forecasted = forecast_next_year_from_yearly_df(combined.rename(columns={year_col:year_col, value_col:value_col}),
+                                                      value_col=value_col, year_col=year_col, periods=predict_periods)
+
+    next_row = df_forecasted[df_forecasted["type"]=="Predicted"].iloc[-1] if "Predicted" in df_forecasted["type"].values else None
+    if next_row is not None:
+        base_df = pd.concat([base_df, pd.DataFrame([{"period": f"Next ({int(next_row[year_col])})", year_col:int(next_row[year_col]), "value":float(next_row[value_col]), "type":"Predicted"}])], ignore_index=True)
+
+    # compute growth columns
+    base_df["value"] = pd.to_numeric(base_df["value"], errors="coerce").fillna(0)
+    base_df["growth_vs_prev%"] = base_df["value"].pct_change() * 100
+    base_df.loc[0,"growth_vs_prev%"] = np.nan
+    return base_df
+
+# ------------------ Rendering helpers (charts & KPIs) ------------------
+def show_comparison_cards(summary_df, value_fmt="{:,.0f}"):
+    """
+    summary_df expected structure as build_prev_this_next_table output
+    """
+    if summary_df is None or summary_df.empty:
+        st.info("No summary available")
+        return
+    # display metrics side-by-side
+    cols = st.columns(len(summary_df))
+    for i, (_, row) in enumerate(summary_df.iterrows()):
+        k = row["period"]
+        v = row["value"]
+        g = row.get("growth_vs_prev%")
+        delta = f"{g:+.2f}%" if not (g is None or math.isnan(g)) else "—"
+        cols[i].metric(k, value_fmt.format(v), delta)
+
+def show_yearly_bar_line(df_combined, year_col="year", value_col="value"):
+    """df_combined must have year & value & type (Actual/Predicted)"""
+    if df_combined is None or df_combined.empty:
+        st.info("No data for chart")
+        return
+    # ensure year is int
+    df = df_combined.copy()
+    if year_col in df.columns:
+        df[year_col] = df[year_col].astype(int)
+    # altair line with predicted dashed style
+    df["type"] = df.get("type", "Actual")
+    chart = alt.Chart(df).mark_line(point=True).encode(
+        x=alt.X(f"{year_col}:O", title="Year"),
+        y=alt.Y(f"{value_col}:Q", title=value_col.capitalize()),
+        color=alt.Color("type:N", legend=alt.Legend(title="Type")),
+        tooltip=[year_col, value_col, "type"]
+    ).interactive().properties(height=350)
+    st.altair_chart(chart, use_container_width=True)
+
+    # also plot as plotly for interactive hover & export
+    fig = px.bar(df, x=year_col, y=value_col, color="type", barmode="group", title="Yearly Actual vs Predicted")
+    st.plotly_chart(fig, use_container_width=True)
+
+# ------------------ Export helpers ------------------
+def export_summary_excel(dfs_dict, filename_prefix="vahan_summary"):
+    """
+    dfs_dict: {"tab name": DataFrame, ...}
+    returns bytes for download
+    """
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        for name, df in dfs_dict.items():
+            try:
+                df.to_excel(writer, sheet_name=str(name)[:31], index=False)
+            except Exception:
+                # fallback to json dump if not DF
+                pd.DataFrame({"raw": [json.dumps(df, default=str)]}).to_excel(writer, sheet_name=str(name)[:31], index=False)
+    output.seek(0)
+    return output.getvalue()
+
+# ------------------ One high-level orchestrator for pages ------------------
+def dual_year_analysis_and_ui(endpoint, desc, from_year=None, to_year=None, extra_params=None, predict_periods=1):
+    """
+    High-level function to:
+    - fetch prev & this year data (via fetch_dual_year)
+    - build combined summary with predicted next year
+    - show KPIs + charts + offer export
+    """
+    today = date.today()
+    to_year = int(to_year) if to_year else today.year
+    from_year = int(from_year) if from_year else to_year - 1
+
+    st.header(f"{desc} — Prev vs This vs Next ({from_year} ↔ {to_year} ↔ predicted)")
+    df_prev, df_this = fetch_dual_year(endpoint, desc=desc, from_year=from_year, to_year=to_year, extra_params=extra_params)
+
+    summary_table = build_prev_this_next_table(df_prev, df_this, value_col="value", year_col="year", predict_periods=predict_periods)
+    show_comparison_cards(summary_table)
+
+    # combine yearly actuals + predicted for charting (use combined aggregated)
+    def to_yearly(df):
+        if df is None or df.empty: return pd.DataFrame(columns=["year","value"])
+        if "year" in df.columns:
+            tmp = df[["year","value"]].copy()
+        elif "date" in df.columns:
+            tmp = df.copy(); tmp["year"]=pd.to_datetime(tmp["date"]).dt.year; tmp=tmp[["year","value"]]
+        else:
+            return pd.DataFrame(columns=["year","value"])
+        tmp["value"]=pd.to_numeric(tmp["value"],errors="coerce").fillna(0)
+        return tmp.groupby("year",as_index=False)["value"].sum().sort_values("year").reset_index(drop=True)
+
+    y_prev = to_yearly(df_prev)
+    y_this = to_yearly(df_this)
+    combined = pd.concat([y_prev, y_this], ignore_index=True).drop_duplicates(subset=["year"]).sort_values("year")
+    combined_with_preds = forecast_next_year_from_yearly_df(combined.rename(columns={"year":"year","value":"value"}), value_col="value", year_col="year", periods=predict_periods)
+
+    # show chart
+    show_yearly_bar_line(combined_with_preds, year_col="year", value_col="value")
+
+    # show raw tables
+    with st.expander("Show raw yearly tables (prev / this)", expanded=False):
+        st.dataframe(y_prev, use_container_width=True)
+        st.dataframe(y_this, use_container_width=True)
+
+    # Export options
+    exportables = {
+        f"{desc} - summary": summary_table,
+        f"{desc} - prev_year": y_prev,
+        f"{desc} - this_year": y_this,
+        f"{desc} - combined_forecast": combined_with_preds
+    }
+
+    excel_bytes = export_summary_excel(exportables)
+    ts = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y%m%d_%H%M%S")
+    st.download_button("⬇️ Download full Excel report", excel_bytes, file_name=f"{desc.replace(' ','_')}_{ts}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+    # return objects for further programmatic usage
+    return {
+        "prev_df": df_prev,
+        "this_df": df_this,
+        "summary_table": summary_table,
+        "combined_forecast": combined_with_preds
+    }
+
+# End of block
+
+
+# =====================================================
+# ⚙️ Dynamic Parameter Builder + Ultra Safe Fetch — VAHAN ANALYTICS MAX
+# =====================================================
+import os
+import time
+import random
+import json
+import pickle
+import requests
+import logging
+import streamlit as st
+from urllib.parse import urlencode
 from datetime import datetime
+from zoneinfo import ZoneInfo
+from typing import Any, Dict, Optional
 
 # =====================================================
 # 🎨 HEADER — Animated Banner
@@ -1092,36 +1559,11 @@ st.markdown("""
     <div style="font-size:14px;opacity:0.85;">Auto-synced with filters 🔁</div>
 </div>
 """, unsafe_allow_html=True)
-
 st.write("")
 
-# ================================
-# ⚙️ Build & Display Vahan Parameters —  EDITION
-# ================================
-import json
-import streamlit as st
-import time
-import random
-
-# --- Animated Header Banner ---
-st.markdown("""
-<div style="
-    background: linear-gradient(90deg, #0072ff, #00c6ff);
-    padding: 16px 26px;
-    border-radius: 14px;
-    color: #ffffff;
-    font-size: 18px;
-    font-weight: 700;
-    display: flex; justify-content: space-between; align-items: center;
-    box-shadow: 0 0 25px rgba(0,114,255,0.4);">
-    <div>🧩 Building Dynamic API Parameters for <b>Vahan Analytics</b></div>
-    <div style="font-size:14px;opacity:0.85;">Auto-synced with filters 🔁</div>
-</div>
-""", unsafe_allow_html=True)
-
-st.write("")  # spacing
-
-# --- Build Params Block ---
+# =====================================================
+# ⚙️ PARAMETER BUILDER
+# =====================================================
 with st.spinner("🚀 Generating dynamic request parameters..."):
     try:
         params_common = build_params(
@@ -1135,25 +1577,14 @@ with st.spinner("🚀 Generating dynamic request parameters..."):
             vehicle_type=vehicle_type
         )
 
-        # --- Animated “processing complete” effect ---
         st.balloons()
         st.toast("✨ Parameters generated successfully!", icon="⚙️")
 
-        # --- Show result in expander with style ---
         with st.expander("🔧 View Generated Vahan Request Parameters (JSON)", expanded=True):
-            st.markdown("""
-            <div style="font-size:15px;color:#00E0FF;font-weight:600;margin-bottom:6px;">
-                📜 Parameter Payload Preview
-            </div>
-            """, unsafe_allow_html=True)
-
             st.json(params_common)
-
-            # --- Copy-to-clipboard button ---
             if st.button("📋 Copy Parameters JSON to Clipboard"):
                 st.toast("Copied successfully!", icon="✅")
 
-        # --- Context success banner ---
         st.markdown(f"""
         <div style="
             margin-top:12px;
@@ -1170,195 +1601,42 @@ with st.spinner("🚀 Generating dynamic request parameters..."):
 
     except Exception as e:
         st.error(f"❌ Error while building Vahan parameters: {str(e)}")
-
-        col1, col2 = st.columns([1,1])
-        with col1:
-            if st.button("🔄 Auto-Retry Build"):
-                st.toast("Rebuilding parameters...", icon="🔁")
-                time.sleep(0.5)
-                st.rerun()
-        with col2:
-            if st.button("📘 View Troubleshooting Help"):
-                st.info("""
-                - Check if all filters are valid (e.g., correct year range or vehicle class).
-                - Ensure all mandatory fields are filled.
-                - Try again with fewer filters or reset defaults.
-                """)
-
-# --- Live Refresh Button ---
-st.markdown("<hr>", unsafe_allow_html=True)
-colA, colB, colC = st.columns([1.5,1,1.5])
-
-with colB:
-    if st.button("♻️ Rebuild Parameters with Latest Filters"):
-        emoji = random.choice(["🔁", "🚗", "⚙️", "🧠", "🛰️"])
-        st.toast(f"{emoji} Rebuilding dynamic params...", icon=emoji)
-        time.sleep(0.8)
-        st.rerun()
-
-# # ================================
-# # ⚙️ Dynamic Safe API Fetch Layer — FIXED
-# # ================================
-
-# import time, random, streamlit as st
-
-# # Utility: colored tag generator
-# def _tag(text, color):
-#     return f"<span style='background:{color};padding:4px 8px;border-radius:6px;color:white;font-size:12px;margin-right:6px;'>{text}</span>"
-
-# # Smart API Fetch Wrapper
-# def fetch_json(endpoint, params=params_common, desc=""):
-#     """
-#     Intelligent API fetch with full UI feedback, retries, and rich logging.
-#     - Animated visual elements
-#     - Toast notifications
-#     - Retry attempts with progressive delay
-#     - Interactive retry + JSON preview on failure
-#     """
-#     max_retries = 3
-#     delay = 1 + random.random()
-#     desc = desc or endpoint
-
-#     st.markdown(f"""
-#     <div style="
-#         padding:10px 15px;
-#         margin:12px 0;
-#         border-radius:12px;
-#         background:rgba(0, 150, 255, 0.12);
-#         border-left:5px solid #00C6FF;
-#         box-shadow:0 0 10px rgba(0,198,255,0.15);">
-#         <b>{_tag("API", "#007BFF")} {_tag("Task", "#00B894")}</b>
-#         <span style="font-size:14px;color:#E2E8F0;">Fetching: <code>{desc}</code></span>
-#     </div>
-#     """, unsafe_allow_html=True)
-
-#     json_data = None
-#     for attempt in range(1, max_retries + 1):
-#         with st.spinner(f"🔄 Attempt {attempt}/{max_retries} — Fetching `{desc}` ..."):
-#             try:
-#                 json_data, _ = get_json(endpoint, params)
-#                 if json_data:
-#                     st.toast(f"✅ {desc} fetched successfully!", icon="🚀")
-#                     if attempt == 1:
-#                         st.balloons()
-#                     st.success(f"✅ Data fetched successfully on attempt {attempt}!")
-#                     break
-#                 else:
-#                     st.warning(f"⚠️ Empty response for {desc}. Retrying...")
-#             except Exception as e:
-#                 st.error(f"❌ Error fetching {desc}: {e}")
-#             time.sleep(delay * attempt * random.uniform(0.9, 1.3))
-
-#     # ✅ Success Case
-#     if json_data:
-#         with st.expander(f"📦 View {desc} JSON Response Preview", expanded=False):
-#             st.json(json_data)
-#         st.markdown(f"""
-#         <div style="
-#             background:linear-gradient(90deg,#00c6ff,#0072ff);
-#             padding:10px 15px;
-#             border-radius:10px;
-#             color:white;
-#             font-weight:600;
-#             margin-top:10px;">
-#             ✅ Fetched <b>{desc}</b> successfully! You can proceed with processing or visualization.
-#         </div>
-#         """, unsafe_allow_html=True)
-#         return json_data
-
-#     # ❌ Failure Case
-#     st.error(f"⛔ Failed to fetch {desc} after {max_retries} attempts.")
-#     st.markdown("""
-#     <div style="
-#         background:rgba(255,60,60,0.08);
-#         padding:15px;
-#         border-radius:10px;
-#         border-left:5px solid #ff4444;
-#         margin-top:10px;">
-#         <b>💡 Troubleshooting Tips:</b><br>
-#         - Check internet / API connectivity<br>
-#         - Verify parameters are valid<br>
-#         - Try again after 1–2 minutes (API may be rate-limited)
-#     </div>
-#     """, unsafe_allow_html=True)
-
-#     # 🎯 Interactive retry + test controls
-#     c1, c2 = st.columns([1, 1])
-#     with c1:
-#         if st.button(f"🔁 Retry {desc} Now", key=f"retry_{desc}_{random.randint(0,9999)}"):
-#             st.toast("Retrying API fetch...", icon="🔄")
-#             time.sleep(0.8)
-#             st.rerun()
-#     with c2:
-#         if st.button("📡 Test API Endpoint", key=f"test_api_{desc}_{random.randint(0,9999)}"):
-#             test_url = f"https://analytics.parivahan.gov.in/{endpoint}"
-#             st.markdown(f"🌐 **Test URL:** `{test_url}`")
-#             st.info("This is a test-only preview link. Data requires valid params to return results.")
-
-#     return {}
+        if st.button("🔁 Retry Building Parameters"):
+            st.toast("Rebuilding...", icon="🔄")
+            time.sleep(0.5)
+            st.rerun()
 
 # =====================================================
-# 🛡️ safe_fetch.py — Ultra-Robust Fetch Layer for Streamlit / Parivahan APIs
+# 🛡️ SAFE FETCH — ULTRA ROBUST API LAYER
 # =====================================================
-import os
-import time
-import random
-import requests
-import logging
-import pickle
-from datetime import datetime
-from zoneinfo import ZoneInfo
-from typing import Optional, Any, Dict
-from urllib.parse import urlencode
-
-try:
-    import streamlit as st
-except ImportError:
-    st = None
-
-# ---------------- CONFIG ----------------
 BASE = "https://analytics.parivahan.gov.in/analytics/publicdashboard"
 DEFAULT_TIMEOUT = 30
 MAX_RETRIES = 5
-BACKOFF_FACTOR = 1.2
+BACKOFF_FACTOR = 1.4
 CACHE_DIR = "vahan_cache"
-CACHE_TTL = 60 * 60  # 1 hour
-TOKEN_BUCKET_CAPACITY = 10
-TOKEN_BUCKET_RATE = 1.0
+CACHE_TTL = 3600  # 1 hour
 ROTATING_UAS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
     "Mozilla/5.0 (X11; Linux x86_64; rv:115.0) Gecko/20100101 Firefox/115.0"
 ]
-
 os.makedirs(CACHE_DIR, exist_ok=True)
+
 logger = logging.getLogger("safe_fetch")
 logger.setLevel(logging.INFO)
 
-# =====================================================
-# 🕒 IST Utilities
-# =====================================================
+# -------------------- Utilities --------------------
 def ist_now():
     return datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
 
 def log_ist(msg: str):
-    """Print + log in IST timezone."""
     msg = f"[IST {ist_now()}] {msg}"
     print(msg)
     logger.info(msg)
 
-# =====================================================
-# ⚙️ Parameter Sanitizer — prevents 400 errors
-# =====================================================
 def clean_params(params: Dict[str, Any]) -> Dict[str, Any]:
-    """Drop empty params (None, '', [], {}) to avoid 400s."""
-    if not params:
-        return {}
     return {k: v for k, v in params.items() if v not in (None, "", [], {}, " ")}
 
-# =====================================================
-# 🧠 Simple file-based cache
-# =====================================================
 def _cache_path(url: str) -> str:
     import hashlib
     return os.path.join(CACHE_DIR, hashlib.sha256(url.encode()).hexdigest() + ".pkl")
@@ -1375,175 +1653,105 @@ def load_cache(url: str) -> Optional[Any]:
             return None
         logger.info(f"[{ist_now()}] Cache hit: {url}")
         return data
-    except Exception as e:
-        logger.warning(f"Cache load failed: {e}")
+    except Exception:
         return None
 
 def save_cache(url: str, data: Any) -> None:
-    if data is None:
-        return
-    p = _cache_path(url)
+    if data is None: return
     try:
-        with open(p, "wb") as f:
+        with open(_cache_path(url), "wb") as f:
             pickle.dump((time.time(), data), f)
-        logger.info(f"[{ist_now()}] Saved to cache: {url}")
     except Exception as e:
         logger.warning(f"Cache save failed: {e}")
 
-# =====================================================
-# 🧩 Token Bucket Rate Limiter
-# =====================================================
+# -------------------- Token Bucket --------------------
 class TokenBucket:
-    def __init__(self, capacity: int, rate: float):
-        self.capacity = float(capacity)
-        self.rate = float(rate)
-        self._tokens = float(capacity)
-        self._last = time.time()
+    def __init__(self, cap: int, rate: float):
+        self.capacity = cap
+        self.rate = rate
+        self.tokens = cap
+        self.last = time.time()
+    def wait(self):
+        while True:
+            now = time.time()
+            self.tokens = min(self.capacity, self.tokens + (now - self.last) * self.rate)
+            self.last = now
+            if self.tokens >= 1:
+                self.tokens -= 1
+                return True
+            time.sleep(0.2)
+_bucket = TokenBucket(10, 1.0)
 
-    def consume(self, tokens: float = 1.0) -> bool:
-        now = time.time()
-        self._tokens = min(self.capacity, self._tokens + (now - self._last) * self.rate)
-        self._last = now
-        if self._tokens >= tokens:
-            self._tokens -= tokens
-            return True
-        return False
-
-    def wait_for_token(self, tokens: float = 1.0, timeout: int = 30):
-        start = time.time()
-        while not self.consume(tokens):
-            if time.time() - start > timeout:
-                return False
-            time.sleep(max(0.05, 0.2 * random.random()))
-        return True
-
-_bucket = TokenBucket(TOKEN_BUCKET_CAPACITY, TOKEN_BUCKET_RATE)
-
-# =====================================================
-# 🔐 Core Safe Fetch
-# =====================================================
-def safe_get(path: str, params: Optional[Dict[str, Any]] = None,
-             use_cache: bool = True, timeout: int = DEFAULT_TIMEOUT) -> Optional[Any]:
+# -------------------- Safe Fetch --------------------
+def safe_get(path: str, params: Optional[Dict[str, Any]] = None, use_cache=True):
     params = clean_params(params or {})
-
-    try:
-        query = urlencode(params, doseq=True)
-        url = f"{BASE.rstrip('/')}/{path.lstrip('/')}?{query}"
-    except Exception as e:
-        logger.error(f"[{ist_now()}] URL build failed: {e}")
-        return None
+    query = urlencode(params, doseq=True)
+    url = f"{BASE.rstrip('/')}/{path.lstrip('/')}?{query}"
 
     if use_cache:
         cached = load_cache(url)
         if cached is not None:
             return cached
 
-    if not _bucket.wait_for_token():
-        logger.warning(f"[{ist_now()}] Rate limiter timeout for {url}")
-        return None
-
+    _bucket.wait()
     for attempt in range(1, MAX_RETRIES + 1):
         headers = {
             "User-Agent": random.choice(ROTATING_UAS),
             "Accept": "application/json, text/plain, */*",
             "Referer": "https://analytics.parivahan.gov.in"
         }
-
         try:
             log_ist(f"Fetching ({attempt}/{MAX_RETRIES}): {path}")
-            resp = requests.get(url, headers=headers, timeout=timeout)
-            status = resp.status_code
-
-            if status == 200:
+            resp = requests.get(url, headers=headers, timeout=DEFAULT_TIMEOUT)
+            if resp.status_code == 200:
                 try:
                     data = resp.json()
                 except Exception:
-                    data = {"raw_text": resp.text[:4000]}
-                if use_cache and data:
-                    save_cache(url, data)
+                    data = {"raw": resp.text}
+                save_cache(url, data)
                 return data
-
-            if status == 400:
-                logger.error(f"[{ist_now()}] ⚠️ 400 Bad Request for {url}")
-                logger.error(f"Snippet: {resp.text[:400]}")
-                return None
-
-            if status == 404:
-                logger.error(f"[{ist_now()}] ❌ 404 Not Found: {url}")
-                return None
-
-            if status == 429:
-                wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) + random.uniform(0.5, 2.0)
-                logger.warning(f"[{ist_now()}] 429 Rate limited. Sleeping {wait:.1f}s.")
+            elif resp.status_code in (429, 500, 502, 503):
+                wait = BACKOFF_FACTOR ** attempt + random.uniform(0.5, 2.0)
+                log_ist(f"Retrying after {wait:.1f}s due to {resp.status_code}")
                 time.sleep(wait)
-                continue
-
-            if status >= 500:
-                wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) + random.uniform(0.3, 1.5)
-                logger.warning(f"[{ist_now()}] Server error {status}. Sleeping {wait:.1f}s.")
-                time.sleep(wait)
-                continue
-
-            logger.error(f"[{ist_now()}] Unexpected HTTP {status}: {resp.text[:200]}")
-            return None
-
-        except requests.Timeout:
-            wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) * random.uniform(0.8, 1.3)
-            logger.warning(f"[{ist_now()}] Timeout {attempt}. sleeping {wait:.1f}s")
-            time.sleep(wait)
-        except requests.ConnectionError as e:
-            wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) * random.uniform(0.8, 1.3)
-            logger.warning(f"[{ist_now()}] Connection error: {e}. sleeping {wait:.1f}s")
-            time.sleep(wait)
+            else:
+                log_ist(f"Unexpected {resp.status_code}: {resp.text[:200]}")
+                return None
         except Exception as e:
-            logger.exception(f"[{ist_now()}] Unexpected error: {e}")
-            return None
-
-    logger.error(f"[{ist_now()}] Max retries reached for {url}")
+            log_ist(f"⚠️ Attempt {attempt} failed: {e}")
+            time.sleep(BACKOFF_FACTOR * attempt)
     return None
 
-# =====================================================
-# 🎯 Streamlit-Friendly Wrapper
-# =====================================================
-def fetch_json(path: str, params: Optional[Dict[str, Any]] = None,
-               desc: str = "", use_cache: bool = True):
-    """Convenient JSON fetch with both console and UI feedback."""
-    params = clean_params(params or {})
+# -------------------- Streamlit Wrapper --------------------
+def fetch_json(path: str, params: Optional[Dict[str, Any]] = None, desc: str = "", use_cache=True):
     data = safe_get(path, params=params, use_cache=use_cache)
-    if data is None:
-        msg = f"❌ Failed to fetch {desc or path} at {ist_now()}"
+    if data:
+        msg = f"✅ {desc or path} fetched successfully ({ist_now()})"
         log_ist(msg)
-        if st:
-            st.warning(msg)
+        st.success(msg)
     else:
-        msg = f"✅ {desc or path} fetched successfully at {ist_now()}"
+        msg = f"❌ Failed to fetch {desc or path} ({ist_now()})"
         log_ist(msg)
-        if st:
-            st.success(msg)
+        st.warning(msg)
     return data
 
 # =====================================================
-# 🧩 Optional: Streamlit Boot Banner (for your main app)
+# 🧩 Streamlit Boot Banner
 # =====================================================
-def streamlit_boot_banner():
-    if not st:
-        return
-    ist_time = ist_now()
-    st.markdown(f"""
-    <div style='
-        background:linear-gradient(90deg,#0072ff,#00c6ff);
-        color:white;
-        padding:10px 20px;
-        border-radius:10px;
-        margin-bottom:15px;
-        box-shadow:0 4px 15px rgba(0,0,0,0.2);
-        font-family:monospace;'>
-        🕒 App booted at <b>{ist_time} (IST)</b><br>
-        🧠 safe_fetch active — caching, retries & throttling enabled.
-    </div>
-    """, unsafe_allow_html=True)
-    log_ist("🚀 Streamlit app fully initialized")
-
+st.markdown(f"""
+<div style='
+    background:linear-gradient(90deg,#0072ff,#00c6ff);
+    color:white;
+    padding:10px 20px;
+    border-radius:10px;
+    margin-bottom:15px;
+    box-shadow:0 4px 15px rgba(0,0,0,0.2);
+    font-family:monospace;'>
+    🕒 App booted at <b>{ist_now()} (IST)</b><br>
+    🧠 safe_fetch active — caching, retries & throttling enabled.
+</div>
+""", unsafe_allow_html=True)
+log_ist("🚀 Streamlit app fully initialized with maxed safe_fetch")
 
 # =====================================================
 # 🧠 DeepInfra Universal Chat Helper (Fully Maxed)
