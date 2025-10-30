@@ -710,6 +710,19 @@ from requests.exceptions import RequestException, Timeout, ConnectionError, HTTP
 from typing import Optional, Dict
 
 # =====================================================
+# 🌐 MAXED API CONFIG SAFEGUARD
+# =====================================================
+try:
+    API_CONFIG
+except NameError:
+    API_CONFIG = {}
+
+# ensure mirrors field exists
+for svc in API_CONFIG.values():
+    if isinstance(svc, dict):
+        svc.setdefault("mirrors", [])
+
+# =====================================================
 # ⚙️ CONFIGURATION KNOBS
 # =====================================================
 MAX_ATTEMPTS = 6
@@ -721,19 +734,6 @@ ENDPOINT_CIRCUIT_BREAK_SECONDS = 120
 CIRCUIT_BREAK_THRESHOLD = 3
 MAX_PROXY_USAGE_RATIO = 0.35
 DISABLE_CACHE_FOR_STATELESS = False
-
-# =====================================================
-# 🧠 IN-MEMORY RUNTIME MAPS
-# =====================================================
-_key_cooldowns: Dict[str, float] = {}
-_key_blocks: Dict[str, float] = {}
-_endpoint_failures: Dict[str, collections.deque] = {}
-_endpoint_circuit: Dict[str, float] = {}
-_lock = threading.Lock()
-
-# ensure mirrors field exists
-for svc in API_CONFIG.values():
-    svc.setdefault("mirrors", [])
 
 # =====================================================
 # 🧩 HELPERS
