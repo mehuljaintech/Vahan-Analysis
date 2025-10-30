@@ -1811,71 +1811,85 @@ with st.container():
     st.markdown("""
     <div style="padding:14px 22px;border-left:6px solid #6C63FF;
                 background:linear-gradient(90deg,#f3f1ff 0%,#ffffff 100%);
-                border-radius:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-        <h3 style="margin:0;font-weight:700;color:#3a3a3a;">📊 Multi-Year Category Distribution</h3>
+                border-radius:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <h3 style="margin:0;font-weight:700;color:#2f2f2f;">📊 Multi-Year Category Distribution</h3>
         <p style="margin:4px 0 0;color:#555;font-size:14.5px;">
-            Compare registered vehicle categories across multiple years with live API data.
+            Compare registered vehicle categories year-over-year with live API data and AI insights.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
     # ===============================================================
-# 🎛️ FILTER CONTROLS — SMART YEAR COMPARISON (Prev ↔ Next)
-# ===============================================================
-from datetime import date
-
-with st.expander("⚙️ Comparison Filters", expanded=True):
+    # 🎛️ MAXED COMPARISON FILTER PANEL (No Arrow)
+    # ===============================================================
+    from datetime import date
     current_year = date.today().year
     available_years = list(range(2017, current_year + 1))
 
-    colA, colB, colC = st.columns([1, 1, 1.2])
+    st.markdown("""
+    <style>
+    div[data-testid="stExpander"] summary {display:none;}
+    .filter-card {
+        background:linear-gradient(145deg,#f8faff 0%,#ffffff 100%);
+        padding:18px 24px;border-radius:18px;
+        box-shadow:0 2px 10px rgba(0,0,0,0.05);
+        margin-bottom:14px;transition:all 0.3s ease;
+    }
+    .filter-card:hover {box-shadow:0 4px 14px rgba(0,0,0,0.08);}
+    </style>
+    """, unsafe_allow_html=True)
 
-    with colB:
-        next_year = st.selectbox(
-            "📅 Select Current / Target Year",
-            available_years + [current_year + 1],
-            index=len(available_years) - 1
-        )
+    with st.container():
+        st.markdown("<div class='filter-card'>", unsafe_allow_html=True)
 
-    # --- Auto-calc previous year ---
-    prev_year = next_year - 1
-    if prev_year < available_years[0]:
-        prev_year = available_years[0]
+        colA, colB, colC = st.columns([1, 1, 1.2])
 
-    with colA:
+        with colB:
+            next_year = st.selectbox(
+                "📅 Select Target Year",
+                available_years,
+                index=len(available_years) - 1,
+                label_visibility="visible"
+            )
+
+        prev_year = max(available_years[0], next_year - 1)
+
+        with colA:
+            st.markdown(
+                f"""
+                <div style='margin-top:26px;font-size:16px;
+                            color:#0072ff;font-weight:600;'>
+                    📅 Previous Year: {prev_year}
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        with colC:
+            comparison_type = st.radio(
+                "📈 Comparison Type",
+                ["Absolute", "Percentage"],
+                horizontal=True,
+                index=0
+            )
+
         st.markdown(
             f"""
-            <div style='margin-top:26px;font-size:16px;color:#00E0FF;font-weight:600;'>
-                📅 Previous Year: {prev_year}
+            <div style='margin-top:10px;font-size:14px;opacity:0.9;
+                        border-left:4px solid #00BFFF;padding-left:10px;
+                        background:linear-gradient(90deg,#f8fdff,#ffffff);
+                        border-radius:10px;padding:8px 10px;'>
+                🔍 Comparing <b style='color:#0072ff;'>{prev_year}</b> ➜ 
+                <b style='color:#00c6ff;'>{next_year}</b> 
+                • Mode: <b>{comparison_type}</b>
             </div>
             """,
             unsafe_allow_html=True
         )
 
-    with colC:
-        comparison_type = st.radio(
-            "📈 Comparison Type",
-            ["Absolute", "Percentage"],
-            horizontal=True,
-            index=0
-        )
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    # --- Visual summary banner ---
-    st.markdown(
-        f"""
-        <div style='margin-top:10px;font-size:14px;opacity:0.85;
-                    border-left:4px solid #00E0FF;padding-left:10px;
-                    background:linear-gradient(90deg,#f8fdff,#ffffff);
-                    border-radius:8px;padding:8px 10px;'>
-            🔍 Comparing <b style='color:#0072ff;'>{prev_year}</b> ➜ 
-            <b style='color:#00c6ff;'>{next_year}</b> 
-            • Mode: <b>{comparison_type}</b>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    # --- Store in session for use later ---
+    # Store for reuse
     st.session_state["comparison_filter"] = {
         "prev_year": prev_year,
         "next_year": next_year,
@@ -1885,7 +1899,7 @@ with st.expander("⚙️ Comparison Filters", expanded=True):
     # ===============================================================
     # 🔄 FETCH DATA FROM API
     # ===============================================================
-    with st.spinner(f"📡 Fetching category data for {prev_year} and {next_year} from Vahan API..."):
+    with st.spinner(f"📡 Fetching category data for {prev_year} and {next_year}..."):
         cat_prev = fetch_json(f"vahandashboard/categoriesdonutchart?year={prev_year}", desc=f"Category {prev_year}")
         cat_next = fetch_json(f"vahandashboard/categoriesdonutchart?year={next_year}", desc=f"Category {next_year}")
 
@@ -1904,10 +1918,10 @@ with st.expander("⚙️ Comparison Filters", expanded=True):
             (merged["Δ_change"] / merged[f"value_{prev_year}"].replace(0, 1)) * 100
         ).round(2)
 
-        if comparison_type == "Percentage":
-            display_df = merged.sort_values("Δ_percent", ascending=False)
-        else:
-            display_df = merged.sort_values("Δ_change", ascending=False)
+        display_df = merged.sort_values(
+            "Δ_percent" if comparison_type == "Percentage" else "Δ_change",
+            ascending=False
+        )
 
         # ===============================================================
         # 📊 CHARTS — SIDE BY SIDE & COMPARISON VIEW
@@ -1933,16 +1947,22 @@ with st.expander("⚙️ Comparison Filters", expanded=True):
                 y="Δ_change" if comparison_type == "Absolute" else "Δ_percent",
                 color="Δ_change",
                 color_continuous_scale="Viridis",
-                title=f"YoY Change in Category Distribution ({prev_year} → {next_year})",
+                title=f"YoY Category Change ({prev_year} → {next_year})",
                 text_auto=".2s",
+            )
+            fig.update_layout(
+                title_x=0.1,
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                font=dict(size=13)
             )
             st.plotly_chart(fig, use_container_width=True)
         except Exception as e:
-            st.error(f"⚠️ Comparison chart failed: {e}")
+            st.error(f"⚠️ Chart failed: {e}")
             st.dataframe(display_df)
 
         # ===============================================================
-        # 🏆 KPI METRICS — INSIGHT SNAPSHOT
+        # 🏆 KPI METRICS
         # ===============================================================
         top_gain = display_df.iloc[display_df["Δ_change"].idxmax()]
         top_drop = display_df.iloc[display_df["Δ_change"].idxmin()]
@@ -1961,43 +1981,40 @@ with st.expander("⚙️ Comparison Filters", expanded=True):
             st.metric("🚘 Total Vehicles (New)", f"{total_next:,}")
 
         # ===============================================================
-        # 🤖 AI NARRATIVE — DEEPINFRA INSIGHTS
+        # 🤖 AI INSIGHTS — DEEPINFRA
         # ===============================================================
         if enable_ai:
             st.markdown("### 🤖 AI-Powered Insights")
-            with st.expander("🔍 View AI Narrative", expanded=True):
-                with st.spinner("🧠 DeepInfra AI is analyzing YoY category shifts..."):
-                    sample = display_df.head(10).to_dict(orient="records")
-                    system = (
-                        "You are an automotive data strategist for national transport analytics. "
-                        "Provide a professional comparison between two years of vehicle registration data, "
-                        "focusing on which categories grew or declined and why that might be."
-                    )
-                    user = (
-                        f"Dataset (top 10 rows): {json.dumps(sample, default=str)}. "
-                        f"Compare {prev_year} vs {next_year} category trends. Summarize in 4–6 sentences."
-                    )
-                    ai_resp = deepinfra_chat(system, user, max_tokens=400, temperature=0.4)
+            with st.spinner("🧠 DeepInfra AI analyzing trends..."):
+                sample = display_df.head(10).to_dict(orient="records")
+                system = (
+                    "You are an automotive data strategist for national transport analytics. "
+                    "Summarize the category trend differences between two consecutive years."
+                )
+                user = (
+                    f"Dataset (top 10 rows): {json.dumps(sample, default=str)}. "
+                    f"Compare {prev_year} vs {next_year} category shifts. Write in 4–6 lines."
+                )
+                ai_resp = deepinfra_chat(system, user, max_tokens=400, temperature=0.4)
 
-                    if ai_resp.get("text"):
-                        st.toast("✅ AI Summary Generated!", icon="🤖")
-                        st.markdown(f"""
-                        <div style="margin-top:8px;padding:16px 18px;
-                                    background:linear-gradient(90deg,#fafaff,#f5f7ff);
-                                    border-left:4px solid #6C63FF;border-radius:12px;">
-                            <b>AI Summary:</b>
-                            <p style="margin-top:6px;font-size:15px;color:#333;">
-                                {ai_resp["text"]}
-                            </p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        st.snow()
-                    else:
-                        st.info("💤 No AI summary generated. Try again later or verify your DeepInfra key.")
-
+                if ai_resp.get("text"):
+                    st.toast("✅ AI Summary Generated!", icon="🤖")
+                    st.markdown(f"""
+                    <div style="margin-top:10px;padding:16px 18px;
+                                background:linear-gradient(90deg,#fafaff,#f5f7ff);
+                                border-left:4px solid #6C63FF;border-radius:12px;">
+                        <b>AI Summary:</b>
+                        <p style="margin-top:6px;font-size:15px;color:#333;">
+                            {ai_resp["text"]}
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.snow()
+                else:
+                    st.info("💤 No AI summary generated. Check DeepInfra key or retry.")
     else:
-        st.warning("⚠️ No category data available for selected years.")
-        st.info("🔄 Try different years or check API connectivity.")
+        st.warning("⚠️ No data available for selected years.")
+        st.info("🔄 Try selecting a different year or recheck API.")
 
 # ===============================================================
 # 2️⃣ TOP MAKERS — MULTI-YEAR MAXED EDITION 🏭🚀
