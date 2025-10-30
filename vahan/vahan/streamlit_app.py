@@ -125,10 +125,11 @@ from vahan.parsing import (
 )
 from vahan.metrics import compute_yoy, compute_qoq
 from vahan.charts import (
-    bar_from_df, pie_from_df, line_from_trend,
-    show_metrics, show_tables
+    bar_from_df, pie_from_df, line_from_trend, area_from_df,
+    stacked_bar, stacked_area_chart, multi_line_chart,
+    waterfall_chart, cumulative_line_chart,
+    show_metrics, show_tables, trend_comparison_chart
 )
-
 # =====================================================
 # 🧩 5️⃣ — MACHINE LEARNING / ADVANCED ANALYTICS
 # =====================================================
