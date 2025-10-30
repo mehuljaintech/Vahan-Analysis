@@ -132,46 +132,89 @@ app_boot_banner()
 # logging.info("Processing completed.")
 
 
-# app/streamlit_app.py
 # =====================================================
-# 🌏 MAXED+ UNIVERSAL IMPORTS — AUTO INSTALL + AUTO REQUIREMENTS + CACHING
+# ⚙️ MAXED+ AUTO-INSTALL, REQUIREMENTS SYNC, CACHE CLEAR + AUTO-REBOOT
 # =====================================================
-import sys, os, subprocess, importlib, platform, json, time, traceback, warnings, random
-from datetime import datetime
-from zoneinfo import ZoneInfo
-warnings.filterwarnings("ignore")
+import sys, os, subprocess, importlib, time, traceback, importlib.util
+import streamlit as st
 
-# =====================================================
-# ⚙️ AUTO-INSTALL + AUTO-REQUIREMENTS MANAGEMENT
-# =====================================================
 REQUIREMENTS_FILE = "requirements.txt"
 _installed = set()
 
-def ensure_package(pkg_name, import_as=None):
-    """Ensure package exists, import it, and auto-update requirements.txt."""
-    global _installed
+def clear_all_caches():
+    """Clears Streamlit, Python, and memory caches safely."""
     try:
-        mod = importlib.import_module(import_as or pkg_name)
-        return mod
-    except ModuleNotFoundError:
-        print(f"📦 Installing missing package: {pkg_name} ...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", pkg_name, "--quiet"])
+        st.cache_data.clear()
+        st.cache_resource.clear()
+        sys.modules.clear()
+        importlib.invalidate_caches()
+        print("🧹 All caches cleared successfully.")
+    except Exception as e:
+        print(f"⚠️ Cache clear failed: {e}")
+
+def reboot_app():
+    """Force Streamlit app reboot."""
+    try:
+        print("🔁 Rebooting Streamlit app ...")
+        clear_all_caches()
+        st.experimental_rerun()
+    except Exception as e:
+        print(f"⚠️ Reboot failed: {e}")
+
+def ensure_package(pkg_name, import_as=None, refresh_on_install=True, retries=3):
+    """
+    🚀 MAXED UNIVERSAL PACKAGE HANDLER
+    - Installs even on Streamlit Cloud
+    - Auto-updates requirements.txt
+    - Auto-clears caches + restarts after success
+    - Retries and full error safety
+    """
+    def update_requirements(name):
+        """Ensure package name is recorded in requirements.txt."""
         try:
-            mod = importlib.import_module(import_as or pkg_name)
-            # Auto-update requirements.txt
-            _installed.add(pkg_name)
             if os.path.exists(REQUIREMENTS_FILE):
-                with open(REQUIREMENTS_FILE, "r+") as f:
+                with open(REQUIREMENTS_FILE, "r+", encoding="utf-8") as f:
                     lines = f.read().splitlines()
-                    if pkg_name not in lines:
-                        f.write(f"\n{pkg_name}")
+                    if name not in lines:
+                        f.write(f"\n{name}")
             else:
-                with open(REQUIREMENTS_FILE, "w") as f:
-                    f.write(f"{pkg_name}\n")
-            return mod
+                with open(REQUIREMENTS_FILE, "w", encoding="utf-8") as f:
+                    f.write(f"{name}\n")
         except Exception as e:
-            print(f"⚠️ Failed to import {pkg_name}: {e}")
-            return None
+            print(f"⚠️ Could not update requirements.txt for {name}: {e}")
+
+    # Try to import first
+    try:
+        return importlib.import_module(import_as or pkg_name)
+    except ModuleNotFoundError:
+        print(f"📦 Installing missing package: {pkg_name}")
+    except Exception as e:
+        print(f"⚠️ Unexpected import issue for {pkg_name}: {e}")
+
+    # Install with retry mechanism
+    for attempt in range(1, retries + 1):
+        try:
+            print(f"🔧 Installing {pkg_name} (attempt {attempt}/{retries}) ...")
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", pkg_name, "--quiet", "--disable-pip-version-check"]
+            )
+            mod = importlib.import_module(import_as or pkg_name)
+            _installed.add(pkg_name)
+            update_requirements(pkg_name)
+            print(f"✅ Successfully installed {pkg_name}")
+            if refresh_on_install:
+                time.sleep(1)
+                reboot_app()
+            return mod
+        except subprocess.CalledProcessError as e:
+            print(f"❌ pip failed for {pkg_name} on attempt {attempt}: {e}")
+            time.sleep(1)
+        except Exception as e:
+            print(f"⚠️ Unexpected error installing {pkg_name}: {e}")
+            time.sleep(1)
+
+    print(f"❌ Could not install {pkg_name} after {retries} attempts.")
+    return None
 
 # =====================================================
 # 🧠 CORE PYTHON UTILITIES
