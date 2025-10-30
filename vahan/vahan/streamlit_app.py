@@ -27,159 +27,159 @@ def log_ist(msg: str):
     ist_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
     print(f"[IST {ist_time}] {msg}")
 
-# =====================================================
-# ⚙️ API CONFIG
-# =====================================================
-BASE_URL = "https://vahan.parivahan.gov.in/vahan/vahandashboard"
-HEADERS = {
-    "User-Agent": f"VahanClient/{uuid.uuid4().hex[:8]}",
-    "Accept": "application/json, text/plain, */*",
-    "Referer": "https://vahan.parivahan.gov.in/vahan4dashboard/",
-}
-TIMEOUT = 25
-MAX_RETRIES = 3
+# # =====================================================
+# # ⚙️ API CONFIG
+# # =====================================================
+# BASE_URL = "https://vahan.parivahan.gov.in/vahan/vahandashboard"
+# HEADERS = {
+#     "User-Agent": f"VahanClient/{uuid.uuid4().hex[:8]}",
+#     "Accept": "application/json, text/plain, */*",
+#     "Referer": "https://vahan.parivahan.gov.in/vahan4dashboard/",
+# }
+# TIMEOUT = 25
+# MAX_RETRIES = 3
 
-# =====================================================
-# 🧱 Robust Session with Retry
-# =====================================================
-session = requests.Session()
-retries = Retry(
-    total=MAX_RETRIES,
-    backoff_factor=1.2,
-    status_forcelist=[429, 500, 502, 503, 504],
-)
-session.mount("https://", HTTPAdapter(max_retries=retries))
+# # =====================================================
+# # 🧱 Robust Session with Retry
+# # =====================================================
+# session = requests.Session()
+# retries = Retry(
+#     total=MAX_RETRIES,
+#     backoff_factor=1.2,
+#     status_forcelist=[429, 500, 502, 503, 504],
+# )
+# session.mount("https://", HTTPAdapter(max_retries=retries))
 
-# =====================================================
-# ♻️ Streamlit Caching Layer (1 hr TTL)
-# =====================================================
-@st.cache_data(ttl=3600, show_spinner=False, max_entries=200)
-def cached_request(endpoint: str, params=None):
-    url = f"{BASE_URL}/{endpoint.strip('/')}"
-    log_ist(f"🌐 API CALL (cached): {url}")
+# # =====================================================
+# # ♻️ Streamlit Caching Layer (1 hr TTL)
+# # =====================================================
+# @st.cache_data(ttl=3600, show_spinner=False, max_entries=200)
+# def cached_request(endpoint: str, params=None):
+#     url = f"{BASE_URL}/{endpoint.strip('/')}"
+#     log_ist(f"🌐 API CALL (cached): {url}")
 
-    try:
-        resp = session.get(url, headers=HEADERS, params=params, timeout=TIMEOUT)
-        resp.raise_for_status()
-        data = resp.json()
+#     try:
+#         resp = session.get(url, headers=HEADERS, params=params, timeout=TIMEOUT)
+#         resp.raise_for_status()
+#         data = resp.json()
 
-        if not data:
-            raise ValueError("Empty response")
+#         if not data:
+#             raise ValueError("Empty response")
 
-        log_ist(f"✅ SUCCESS: {endpoint} [{len(str(data))} chars]")
-        return data
+#         log_ist(f"✅ SUCCESS: {endpoint} [{len(str(data))} chars]")
+#         return data
 
-    except Exception as e:
-        logging.error(f"❌ API Error ({endpoint}): {e}")
-        log_ist(f"⚠️ Retrying via fallback for {endpoint}")
-        return playwright_fallback(endpoint, params=params)
+#     except Exception as e:
+#         logging.error(f"❌ API Error ({endpoint}): {e}")
+#         log_ist(f"⚠️ Retrying via fallback for {endpoint}")
+#         return playwright_fallback(endpoint, params=params)
 
-# =====================================================
-# 🕸️ Playwright Fallback (Headless Fetch)
-# =====================================================
-def playwright_fallback(endpoint, params=None):
-    """Fallback if direct API fails — uses Playwright to render."""
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        log_ist("⚠️ Playwright not installed — skipping fallback")
-        return {}
+# # =====================================================
+# # 🕸️ Playwright Fallback (Headless Fetch)
+# # =====================================================
+# def playwright_fallback(endpoint, params=None):
+#     """Fallback if direct API fails — uses Playwright to render."""
+#     try:
+#         from playwright.sync_api import sync_playwright
+#     except ImportError:
+#         log_ist("⚠️ Playwright not installed — skipping fallback")
+#         return {}
 
-    try:
-        with sync_playwright() as p:
-            browser = p.firefox.launch(headless=True)
-            context = browser.new_context()
-            page = context.new_page()
-            url = f"{BASE_URL}/{endpoint.strip('/')}"
-            page.goto(url, wait_until="networkidle", timeout=40000)
-            time.sleep(2)
-            content = page.content()
-            browser.close()
+#     try:
+#         with sync_playwright() as p:
+#             browser = p.firefox.launch(headless=True)
+#             context = browser.new_context()
+#             page = context.new_page()
+#             url = f"{BASE_URL}/{endpoint.strip('/')}"
+#             page.goto(url, wait_until="networkidle", timeout=40000)
+#             time.sleep(2)
+#             content = page.content()
+#             browser.close()
 
-            if "{" not in content:
-                raise ValueError("Non-JSON HTML response")
+#             if "{" not in content:
+#                 raise ValueError("Non-JSON HTML response")
 
-            json_str = content.split("{", 1)[1].rsplit("}", 1)[0]
-            json_data = json.loads("{" + json_str + "}")
-            log_ist(f"🧩 Playwright fallback succeeded for {endpoint}")
-            return json_data
+#             json_str = content.split("{", 1)[1].rsplit("}", 1)[0]
+#             json_data = json.loads("{" + json_str + "}")
+#             log_ist(f"🧩 Playwright fallback succeeded for {endpoint}")
+#             return json_data
 
-    except Exception as e:
-        logging.error(f"💀 Playwright fallback failed: {e}")
-        return {}
+#     except Exception as e:
+#         logging.error(f"💀 Playwright fallback failed: {e}")
+#         return {}
 
-# =====================================================
-# 🧠 Safe Wrapper (Error-Proof Execution)
-# =====================================================
-def safe_exec(fn):
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        try:
-            return fn(*args, **kwargs)
-        except Exception as e:
-            logging.error(f"⚠️ Exception in {fn.__name__}: {e}")
-            traceback.print_exc()
-            st.error(f"An internal error occurred in {fn.__name__}")
-            return None
-    return wrapper
+# # =====================================================
+# # 🧠 Safe Wrapper (Error-Proof Execution)
+# # =====================================================
+# def safe_exec(fn):
+#     @wraps(fn)
+#     def wrapper(*args, **kwargs):
+#         try:
+#             return fn(*args, **kwargs)
+#         except Exception as e:
+#             logging.error(f"⚠️ Exception in {fn.__name__}: {e}")
+#             traceback.print_exc()
+#             st.error(f"An internal error occurred in {fn.__name__}")
+#             return None
+#     return wrapper
 
-# =====================================================
-# 📦 Utility: to_df() — JSON → DataFrame
-# =====================================================
-@safe_exec
-def to_df(data):
-    if not data:
-        return pd.DataFrame()
-    if isinstance(data, dict):
-        for key in ["result", "data", "records"]:
-            if key in data and isinstance(data[key], list):
-                return pd.DataFrame(data[key])
-        return pd.DataFrame([data])
-    elif isinstance(data, list):
-        return pd.DataFrame(data)
-    return pd.DataFrame()
+# # =====================================================
+# # 📦 Utility: to_df() — JSON → DataFrame
+# # =====================================================
+# @safe_exec
+# def to_df(data):
+#     if not data:
+#         return pd.DataFrame()
+#     if isinstance(data, dict):
+#         for key in ["result", "data", "records"]:
+#             if key in data and isinstance(data[key], list):
+#                 return pd.DataFrame(data[key])
+#         return pd.DataFrame([data])
+#     elif isinstance(data, list):
+#         return pd.DataFrame(data)
+#     return pd.DataFrame()
 
-# =====================================================
-# 🔥 Unified Fetch Function
-# =====================================================
-@safe_exec
-def fetch_vahan(endpoint, params=None):
-    """Primary function to fetch data with retry + cache + fallback."""
-    cache_key = f"{endpoint}_{json.dumps(params or {}, sort_keys=True)}"
-    log_ist(f"📡 Fetching endpoint: {endpoint} | params: {params}")
+# # =====================================================
+# # 🔥 Unified Fetch Function
+# # =====================================================
+# @safe_exec
+# def fetch_vahan(endpoint, params=None):
+#     """Primary function to fetch data with retry + cache + fallback."""
+#     cache_key = f"{endpoint}_{json.dumps(params or {}, sort_keys=True)}"
+#     log_ist(f"📡 Fetching endpoint: {endpoint} | params: {params}")
 
-    data = cached_request(endpoint, params)
-    if not data:
-        st.warning(f"⚠️ No data returned for {endpoint}")
-    return data
+#     data = cached_request(endpoint, params)
+#     if not data:
+#         st.warning(f"⚠️ No data returned for {endpoint}")
+#     return data
 
-# =====================================================
-# 🧩 Example API Endpoints
-# =====================================================
-@safe_exec
-def fetch_registration_trend(state_code=None):
-    params = {"stateCode": state_code} if state_code else None
-    return fetch_vahan("registrationtrend", params=params)
+# # =====================================================
+# # 🧩 Example API Endpoints
+# # =====================================================
+# @safe_exec
+# def fetch_registration_trend(state_code=None):
+#     params = {"stateCode": state_code} if state_code else None
+#     return fetch_vahan("registrationtrend", params=params)
 
-@safe_exec
-def fetch_category_distribution(state_code=None):
-    params = {"stateCode": state_code} if state_code else None
-    return fetch_vahan("categorywise", params=params)
+# @safe_exec
+# def fetch_category_distribution(state_code=None):
+#     params = {"stateCode": state_code} if state_code else None
+#     return fetch_vahan("categorywise", params=params)
 
-@safe_exec
-def fetch_top_makers(year=None):
-    params = {"year": year or datetime.now().year}
-    return fetch_vahan("topmakers", params=params)
+# @safe_exec
+# def fetch_top_makers(year=None):
+#     params = {"year": year or datetime.now().year}
+#     return fetch_vahan("topmakers", params=params)
 
-# =====================================================
-# 🧾 Example Usage (Test Mode)
-# =====================================================
-if __name__ == "__main__":
-    log_ist("🧪 Running self-test for MAXED API")
-    res = fetch_registration_trend()
-    df = to_df(res)
-    print(df.head())
-    log_ist("✅ Test completed")
+# # =====================================================
+# # 🧾 Example Usage (Test Mode)
+# # =====================================================
+# if __name__ == "__main__":
+#     log_ist("🧪 Running self-test for MAXED API")
+#     res = fetch_registration_trend()
+#     df = to_df(res)
+#     print(df.head())
+#     log_ist("✅ Test completed")
 
 import os
 import sys
@@ -1331,21 +1331,21 @@ def universal_fetch(
     print(f"[{session_id}] ❌ Failed after {retries} retries")
     return {"error": True, "data": []}
 
-# =====================================================
-# 🧠 FETCH WRAPPER FOR VAHAN — MAXED
-# =====================================================
-def get_vahan_json(tag: str = "RegistrationTrend", params: dict = None):
-    """Unified call for Parivahan endpoints with logging + retry safety."""
-    endpoint = f"https://vahan.parivahan.gov.in/vahandashboard/{tag.lower()}"
-    st.info(f"🚀 Fetching `{tag}` from Parivahan...", icon="🛰️")
+# # =====================================================
+# # 🧠 FETCH WRAPPER FOR VAHAN — MAXED
+# # =====================================================
+# def get_vahan_json(tag: str = "RegistrationTrend", params: dict = None):
+#     """Unified call for Parivahan endpoints with logging + retry safety."""
+#     endpoint = f"https://vahan.parivahan.gov.in/vahandashboard/{tag.lower()}"
+#     st.info(f"🚀 Fetching `{tag}` from Parivahan...", icon="🛰️")
 
-    data = universal_fetch(endpoint, params=params or {}, retries=5, backoff=2.5)
-    if data.get("error"):
-        st.error(f"❌ {tag} fetch failed.")
-    else:
-        st.success(f"✅ {tag} data fetched ({len(data.get('data', [])) if isinstance(data, dict) else 'OK'})")
+#     data = universal_fetch(endpoint, params=params or {}, retries=5, backoff=2.5)
+#     if data.get("error"):
+#         st.error(f"❌ {tag} fetch failed.")
+#     else:
+#         st.success(f"✅ {tag} data fetched ({len(data.get('data', [])) if isinstance(data, dict) else 'OK'})")
 
-    return data
+#     return data
 
 # =====================================================
 # 📊 DIAGNOSTIC LOG
