@@ -2241,7 +2241,7 @@ import altair as alt
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 import streamlit as st
-from vahan.api import fetch_json, deepinfra_chat, params_common
+# from vahan.api import fetch_json, deepinfra_chat, params_common
 from vahan.parsing import parse_makers
 warnings.filterwarnings("ignore")
 
@@ -2437,7 +2437,7 @@ import altair as alt
 from datetime import datetime, date
 from zoneinfo import ZoneInfo
 import streamlit as st
-from vahan.api import fetch_json, deepinfra_chat, params_common
+# from vahan.api import fetch_json, deepinfra_chat, params_common
 from vahan.parsing import normalize_trend
 from vahan.metrics import compute_yoy, compute_qoq
 
