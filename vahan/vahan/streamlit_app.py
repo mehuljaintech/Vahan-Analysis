@@ -2293,56 +2293,65 @@ THIS_YEAR = TODAY.year
 NEXT_YEAR = THIS_YEAR + 1
 
 # ------------------ Helpers ------------------
+from datetime import datetime
+import pandas as pd
+import numpy as np
+
 def normalize_maker_df(df):
     """
     Normalize parse_makers output into canonical columns:
     returns DataFrame with columns ['maker','date','value'] (date may be same for all rows).
     If df already has time-series rows, parse date; otherwise set to THIS_YEAR start.
     """
-    if df is None:
-        return pd.DataFrame(columns=["maker","date","value"])
+    THIS_YEAR = datetime.now().year
+
+    # Handle empty / None input safely
+    if df is None or len(df) == 0:
+        return pd.DataFrame(columns=["maker", "date", "value"])
+
     df = df.copy()
     cols_lower = {c.lower(): c for c in df.columns}
 
     # detect maker column
-    maker_col = None
-    for k in ("maker","manufacturer","label","name"):
-        if k in cols_lower:
-            maker_col = cols_lower[k]; break
-    if maker_col is None:
-        # fallback: first column
-        maker_col = df.columns[0] if len(df.columns) > 0 else None
+    maker_col = next((cols_lower[k] for k in ("maker", "manufacturer", "label", "name") if k in cols_lower), None)
+    if maker_col is None and len(df.columns) > 0:
+        maker_col = df.columns[0]
 
     # detect value column
-    value_col = None
-    for k in ("value","count","registrations","total","y"):
-        if k in cols_lower:
-            value_col = cols_lower[k]; break
+    value_col = next((cols_lower[k] for k in ("value", "count", "registrations", "total", "regcount", "y") if k in cols_lower), None)
     if value_col is None:
-        # pick numeric column if present
         num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-        value_col = num_cols[0] if num_cols else (df.columns[-1] if len(df.columns)>=2 else None)
+        if num_cols:
+            value_col = num_cols[0]
+        elif len(df.columns) >= 2:
+            value_col = df.columns[-1]
 
     # detect date-like column
-    date_col = None
-    for k in ("date","ds","month","period","time"):
-        if k in cols_lower:
-            date_col = cols_lower[k]; break
+    date_col = next((cols_lower[k] for k in ("date", "ds", "month", "period", "time") if k in cols_lower), None)
     if date_col is not None:
         df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
 
-    # If dataset is simple maker -> value (no dates), create a single-row per maker dated THIS_YEAR start
+    # fallback if missing
+    valid_cols = [c for c in [maker_col, value_col] if c in df.columns]
+    if len(valid_cols) < 2:
+        # not enough valid cols to continue
+        print(f"⚠️ normalize_maker_df: invalid cols — maker_col={maker_col}, value_col={value_col}, df_cols={df.columns.tolist()}")
+        return pd.DataFrame(columns=["maker", "date", "value"])
+
+    # if no date col, assign static date (current year start)
     if date_col is None:
         df = df[[maker_col, value_col]].rename(columns={maker_col: "maker", value_col: "value"})
-        df["date"] = pd.to_datetime(datetime(THIS_YEAR,1,1))
+        df["date"] = pd.to_datetime(datetime(THIS_YEAR, 1, 1))
     else:
         df = df.rename(columns={maker_col: "maker", value_col: "value", date_col: "date"})
         if "date" not in df.columns:
-            df["date"] = pd.to_datetime(datetime(THIS_YEAR,1,1))
+            df["date"] = pd.to_datetime(datetime(THIS_YEAR, 1, 1))
+
     df["maker"] = df["maker"].astype(str)
     df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
-    df["date"] = pd.to_datetime(df["date"], errors="coerce").fillna(pd.to_datetime(datetime(THIS_YEAR,1,1)))
-    return df[["maker","date","value"]]
+    df["date"] = pd.to_datetime(df["date"], errors="coerce").fillna(pd.to_datetime(datetime(THIS_YEAR, 1, 1)))
+
+    return df[["maker", "date", "value"]]
 
 def pct_change(a, b):
     try:
