@@ -48,48 +48,48 @@
 #     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
 #     "Mozilla/5.0 (X11; Linux x86_64; rv:115.0) Gecko/20100101 Firefox/115.0"
 # ]
-# # ---------------- PARAMETER BUILDER (RESTORED) ----------------
-# def build_params(
-#     from_year: int,
-#     to_year: int,
-#     state_code: str = "",
-#     rto_code: str = "0",
-#     vehicle_classes: str = "",
-#     vehicle_makers: str = "",
-#     time_period: int = 0,
-#     fitness_check: int = 0,
-#     vehicle_type: str = "",
-#     extra: Optional[dict] = None,
-# ) -> dict:
-#     """
-#     Build full query parameters for Vahan API (with flexibility for extras).
-#     Compatible with old and new dashboard endpoints.
-#     """
-#     params = {
-#         "fromYear": from_year,
-#         "toYear": to_year,
-#         "stateCode": state_code,
-#         "rtoCode": rto_code,
-#         "vehicleClasses": vehicle_classes,
-#         "vehicleMakers": vehicle_makers,
-#         "vehicleSubCategories": "",
-#         "vehicleEmissions": "",
-#         "vehicleFuels": "",
-#         "timePeriod": time_period,
-#         "vehicleCategoryGroup": "",
-#         "evType": "",
-#         "vehicleStatus": "",
-#         "vehicleOwnerType": "",
-#         "fitnessCheck": fitness_check,
-#         "vehicleType": vehicle_type,
-#     }
+# ---------------- PARAMETER BUILDER (RESTORED) ----------------
+def build_params(
+    from_year: int,
+    to_year: int,
+    state_code: str = "",
+    rto_code: str = "0",
+    vehicle_classes: str = "",
+    vehicle_makers: str = "",
+    time_period: int = 0,
+    fitness_check: int = 0,
+    vehicle_type: str = "",
+    extra: Optional[dict] = None,
+) -> dict:
+    """
+    Build full query parameters for Vahan API (with flexibility for extras).
+    Compatible with old and new dashboard endpoints.
+    """
+    params = {
+        "fromYear": from_year,
+        "toYear": to_year,
+        "stateCode": state_code,
+        "rtoCode": rto_code,
+        "vehicleClasses": vehicle_classes,
+        "vehicleMakers": vehicle_makers,
+        "vehicleSubCategories": "",
+        "vehicleEmissions": "",
+        "vehicleFuels": "",
+        "timePeriod": time_period,
+        "vehicleCategoryGroup": "",
+        "evType": "",
+        "vehicleStatus": "",
+        "vehicleOwnerType": "",
+        "fitnessCheck": fitness_check,
+        "vehicleType": vehicle_type,
+    }
 
-#     if extra and isinstance(extra, dict):
-#         params.update(extra)
-#     elif extra:
-#         logger.warning(Fore.YELLOW + "Extra parameters ignored (must be dict).")
+    if extra and isinstance(extra, dict):
+        params.update(extra)
+    elif extra:
+        logger.warning(Fore.YELLOW + "Extra parameters ignored (must be dict).")
 
-#     return params
+    return params
 
 # # ---------------- LOGGING ----------------
 # color_init(autoreset=True)
