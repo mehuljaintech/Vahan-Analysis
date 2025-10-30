@@ -283,20 +283,31 @@ if diskcache:
 else:
     cache = None
 
+from functools import wraps
+import time
+
 def cached(ttl=3600):
-    """Universal cache decorator (diskcache if available, else memory)."""
+    """Universal cache decorator — supports diskcache (if available) or in-memory fallback."""
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            key = f\"{fn.__name__}:{str(args)}:{str(kwargs)}\"
-            if cache:
-                if key in cache and (time.time() - cache.created(key) < ttl):
-                    return cache[key]
-                val = fn(*args, **kwargs)
-                cache[key] = val
-                return val
-            else:
+            key = f"{fn.__name__}:{str(args)}:{str(kwargs)}"  # ✅ no backslashes
+
+            try:
+                if cache:
+                    # Check if cached and within TTL
+                    if key in cache and (time.time() - cache.created(key) < ttl):
+                        return cache[key]
+                    val = fn(*args, **kwargs)
+                    cache[key] = val
+                    return val
+                else:
+                    # No cache available, just run the function
+                    return fn(*args, **kwargs)
+            except Exception as e:
+                print(f"[cache] Error in {fn.__name__}: {e}")
                 return fn(*args, **kwargs)
+
         return wrapper
     return decorator
 
