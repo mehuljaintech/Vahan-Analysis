@@ -2225,97 +2225,97 @@ with st.expander("⚙️ Comparison Filters", expanded=True):
 # import streamlit as st
 # from datetime import datetime
 
-# # ---------------------------------------------------------------
-# # ⚙️ Core Safe Utilities
-# # ---------------------------------------------------------------
-# def safe_to_df(obj):
-#     try:
-#         if isinstance(obj, pd.DataFrame):
-#             return obj
-#         if isinstance(obj, (list, dict)):
-#             return pd.json_normalize(obj)
-#         return pd.DataFrame()
-#     except Exception as e:
-#         st.warning(f"⚠️ Data conversion failed: {e}")
-#         return pd.DataFrame()
+# ---------------------------------------------------------------
+# ⚙️ Core Safe Utilities
+# ---------------------------------------------------------------
+def safe_to_df(obj):
+    try:
+        if isinstance(obj, pd.DataFrame):
+            return obj
+        if isinstance(obj, (list, dict)):
+            return pd.json_normalize(obj)
+        return pd.DataFrame()
+    except Exception as e:
+        st.warning(f"⚠️ Data conversion failed: {e}")
+        return pd.DataFrame()
 
-# def safe_col(df, options):
-#     if df is None or df.empty:
-#         return None
-#     cols = [c.strip().lower() for c in df.columns]
-#     for opt in options:
-#         if opt.lower() in cols:
-#             return df.columns[cols.index(opt.lower())]
-#     return None
+def safe_col(df, options):
+    if df is None or df.empty:
+        return None
+    cols = [c.strip().lower() for c in df.columns]
+    for opt in options:
+        if opt.lower() in cols:
+            return df.columns[cols.index(opt.lower())]
+    return None
 
-# def normalize_df(df):
-#     if df.empty:
-#         return df
-#     df.columns = [c.strip().lower() for c in df.columns]
-#     label = safe_col(df, ["label", "category", "makename", "manufacturer", "type", "name"])
-#     value = safe_col(df, ["value", "count", "total", "registeredvehiclecount", "y"])
-#     period = safe_col(df, ["date", "month", "year", "period", "time", "updateddate"])
-#     if label and value:
-#         df = df.rename(columns={label: "label", value: "value"})
-#     if period:
-#         df = df.rename(columns={period: "period"})
-#         df["period"] = pd.to_datetime(df["period"], errors="coerce")
-#     return df
+def normalize_df(df):
+    if df.empty:
+        return df
+    df.columns = [c.strip().lower() for c in df.columns]
+    label = safe_col(df, ["label", "category", "makename", "manufacturer", "type", "name"])
+    value = safe_col(df, ["value", "count", "total", "registeredvehiclecount", "y"])
+    period = safe_col(df, ["date", "month", "year", "period", "time", "updateddate"])
+    if label and value:
+        df = df.rename(columns={label: "label", value: "value"})
+    if period:
+        df = df.rename(columns={period: "period"})
+        df["period"] = pd.to_datetime(df["period"], errors="coerce")
+    return df
 
-# def ai_summary_block(df, role_desc, user_prompt):
-#     try:
-#         if not enable_ai:
-#             return
-#         st.markdown("### 🤖 AI-Powered Insights")
-#         with st.expander("🔍 AI Narrative", expanded=True):
-#             with st.spinner("🧠 DeepInfra analyzing data..."):
-#                 sample = df.head(12).to_dict(orient="records")
-#                 system = (
-#                     f"You are a senior analytics expert specializing in {role_desc}. "
-#                     "Write clear, comparative insights (YoY, MoM, QoQ, daily) in 3–6 sentences."
-#                 )
-#                 user = user_prompt + f"\nDataset sample: {json.dumps(sample, default=str)}"
-#                 ai_resp = deepinfra_chat(system, user, max_tokens=380, temperature=0.45)
-#                 text = ai_resp.get("text", "").strip()
-#                 if text:
-#                     st.toast("✅ AI Insight Ready!", icon="🤖")
-#                     st.markdown(f"""
-#                     <div style="margin-top:10px;padding:16px 18px;
-#                                 background:linear-gradient(90deg,#fafaff,#f5f7ff);
-#                                 border-left:4px solid #6C63FF;border-radius:12px;">
-#                         <b>AI Summary:</b>
-#                         <p style="margin-top:6px;font-size:15px;color:#333;">{text}</p>
-#                     </div>
-#                     """, unsafe_allow_html=True)
-#                     st.snow()
-#     except Exception as e:
-#         st.error(f"AI generation error: {e}")
+def ai_summary_block(df, role_desc, user_prompt):
+    try:
+        if not enable_ai:
+            return
+        st.markdown("### 🤖 AI-Powered Insights")
+        with st.expander("🔍 AI Narrative", expanded=True):
+            with st.spinner("🧠 DeepInfra analyzing data..."):
+                sample = df.head(12).to_dict(orient="records")
+                system = (
+                    f"You are a senior analytics expert specializing in {role_desc}. "
+                    "Write clear, comparative insights (YoY, MoM, QoQ, daily) in 3–6 sentences."
+                )
+                user = user_prompt + f"\nDataset sample: {json.dumps(sample, default=str)}"
+                ai_resp = deepinfra_chat(system, user, max_tokens=380, temperature=0.45)
+                text = ai_resp.get("text", "").strip()
+                if text:
+                    st.toast("✅ AI Insight Ready!", icon="🤖")
+                    st.markdown(f"""
+                    <div style="margin-top:10px;padding:16px 18px;
+                                background:linear-gradient(90deg,#fafaff,#f5f7ff);
+                                border-left:4px solid #6C63FF;border-radius:12px;">
+                        <b>AI Summary:</b>
+                        <p style="margin-top:6px;font-size:15px;color:#333;">{text}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.snow()
+    except Exception as e:
+        st.error(f"AI generation error: {e}")
 
-# # ---------------------------------------------------------------
-# # 📊 Period Comparison Utilities
-# # ---------------------------------------------------------------
-# def compute_comparisons(df, value_col="value", period_col="period"):
-#     """Add daily, monthly, quarterly, yearly comparisons."""
-#     try:
-#         if period_col not in df.columns:
-#             return df
-#         df = df.sort_values(period_col)
-#         df["Year"] = df[period_col].dt.year
-#         df["Month"] = df[period_col].dt.month
-#         df["Quarter"] = df[period_col].dt.to_period("Q").astype(str)
-#         df["Day"] = df[period_col].dt.date
+# ---------------------------------------------------------------
+# 📊 Period Comparison Utilities
+# ---------------------------------------------------------------
+def compute_comparisons(df, value_col="value", period_col="period"):
+    """Add daily, monthly, quarterly, yearly comparisons."""
+    try:
+        if period_col not in df.columns:
+            return df
+        df = df.sort_values(period_col)
+        df["Year"] = df[period_col].dt.year
+        df["Month"] = df[period_col].dt.month
+        df["Quarter"] = df[period_col].dt.to_period("Q").astype(str)
+        df["Day"] = df[period_col].dt.date
 
-#         comparisons = {}
-#         for freq, label in [("D", "Daily"), ("M", "Monthly"), ("Q", "Quarterly"), ("Y", "Yearly")]:
-#             period_df = df.groupby(pd.Grouper(key=period_col, freq=freq))[value_col].sum().reset_index()
-#             if len(period_df) > 1:
-#                 prev, curr = period_df.iloc[-2][value_col], period_df.iloc[-1][value_col]
-#                 change = round(((curr - prev) / prev * 100), 2) if prev else 0
-#                 comparisons[label] = {"prev": prev, "curr": curr, "change": change}
-#         return comparisons
-#     except Exception as e:
-#         st.warning(f"Comparison failed: {e}")
-#         return {}
+        comparisons = {}
+        for freq, label in [("D", "Daily"), ("M", "Monthly"), ("Q", "Quarterly"), ("Y", "Yearly")]:
+            period_df = df.groupby(pd.Grouper(key=period_col, freq=freq))[value_col].sum().reset_index()
+            if len(period_df) > 1:
+                prev, curr = period_df.iloc[-2][value_col], period_df.iloc[-1][value_col]
+                change = round(((curr - prev) / prev * 100), 2) if prev else 0
+                comparisons[label] = {"prev": prev, "curr": curr, "change": change}
+        return comparisons
+    except Exception as e:
+        st.warning(f"Comparison failed: {e}")
+        return {}
 
 # # ===============================================================
 # # 1️⃣ CATEGORY DISTRIBUTION
