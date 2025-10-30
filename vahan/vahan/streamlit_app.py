@@ -1,148 +1,81 @@
 # =====================================================
-# 🌏 GLOBAL TIMEZONE ENFORCEMENT — IST LOGGING + MAXED+ DIAGNOSTICS
+# 🌏 GLOBAL TIMEZONE ENFORCEMENT — IST LOGGING + STARTUP BANNER
 # =====================================================
 import logging
 import platform
-import sys
-import psutil
-import socket
-import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import streamlit as st
 
 # =====================================================
-# 🕒 1️⃣ Universal IST Logger
+# 🕒 1️⃣ Universal IST print-based logger
 # =====================================================
-def log_ist(msg: str, level: str = "INFO"):
-    """Log with IST timestamp + console print."""
+def log_ist(msg: str):
+    """Print message with current IST timestamp."""
     ist_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
-    prefix = f"[{level.upper():<5}]"
-    print(f"[IST {ist_time}] {prefix} {msg}")
+    print(f"[IST {ist_time}] {msg}")
 
 # =====================================================
-# 🧭 2️⃣ Force All Logging to IST
+# 🧭 2️⃣ Force all Python logging timestamps to IST
 # =====================================================
 class ISTFormatter(logging.Formatter):
+    """Custom logging formatter that forces timestamps to IST."""
     def converter(self, timestamp):
         return datetime.fromtimestamp(timestamp, ZoneInfo("Asia/Kolkata"))
     def formatTime(self, record, datefmt=None):
         dt = self.converter(record.created)
-        return dt.strftime(datefmt or "%Y-%m-%d %H:%M:%S")
+        if datefmt:
+            return dt.strftime(datefmt)
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
 
+# Configure global logging
 root_logger = logging.getLogger()
 if not root_logger.handlers:
     logging.basicConfig(level=logging.INFO)
+
 for handler in root_logger.handlers:
-    handler.setFormatter(
-        ISTFormatter("%(asctime)s | %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S")
-    )
+    handler.setFormatter(ISTFormatter("%(asctime)s | %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S"))
 
 logging.info("✅ Logging timezone forced to IST")
 log_ist("🚀 Streamlit App Initialization Started")
 
 # =====================================================
-# ⚙️ 3️⃣ Environment Snapshot
-# =====================================================
-def system_snapshot() -> dict:
-    """Collect environment + hardware info."""
-    try:
-        vmem = psutil.virtual_memory()
-        return {
-            "Python": platform.python_version(),
-            "Streamlit": st.__version__,
-            "Platform": f"{platform.system()} {platform.release()}",
-            "CPU Cores": psutil.cpu_count(logical=True),
-            "RAM Total (GB)": round(vmem.total / (1024**3), 2),
-            "RAM Used (%)": vmem.percent,
-            "Host": socket.gethostname(),
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
-# =====================================================
-# ⏱️ 4️⃣ App Boot Banner (UI + Console)
+# 🚀 3️⃣ Streamlit Startup Banner — Visual & Console Mirror
 # =====================================================
 def app_boot_banner():
     ist_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
-    snap = system_snapshot()
+    python_ver = platform.python_version()
+    streamlit_ver = st.__version__
 
-    # Display fancy Streamlit banner
+    # UI banner
     st.markdown(f"""
     <div style='
         background:linear-gradient(90deg,#0072ff,#00c6ff);
         color:white;
-        padding:18px 28px;
-        border-radius:16px;
-        margin:16px 0 30px 0;
-        box-shadow:0 4px 25px rgba(0,0,0,0.25);
-        font-family:monospace;
-        line-height:1.6;
-        font-size:15px;'>
-        🕒 <b>App Booted:</b> {ist_time} (IST)<br>
-        ⚙️ <b>Python:</b> {snap.get("Python")} | <b>Streamlit:</b> {snap.get("Streamlit")}<br>
-        💻 <b>System:</b> {snap.get("Platform")} | <b>Host:</b> {snap.get("Host")}<br>
-        🧠 <b>CPU Cores:</b> {snap.get("CPU Cores")} | <b>RAM:</b> {snap.get("RAM Total (GB)")} GB ({snap.get("RAM Used (%)")}% used)
+        padding:14px 24px;
+        border-radius:14px;
+        margin:15px 0 25px 0;
+        box-shadow:0 4px 20px rgba(0,0,0,0.25);
+        font-family:monospace;'>
+        🕒 <b>App booted at:</b> {ist_time} (IST)<br>
+        ⚙️ <b>Environment:</b> Python {python_ver} | Streamlit {streamlit_ver}
     </div>
     """, unsafe_allow_html=True)
 
-    # Console Mirror
-    print("=" * 90)
+    # Console mirror
+    print("=" * 65)
     print(f"[IST {ist_time}] ✅ Streamlit App Booted Successfully")
-    for k, v in snap.items():
-        print(f"{k:>15}: {v}")
-    print("=" * 90)
+    print(f"[IST {ist_time}] Python {python_ver} | Streamlit {streamlit_ver}")
+    print("=" * 65)
 
-    logging.info("Streamlit boot banner displayed")
-    log_ist("💡 Environment snapshot logged")
-
-# Show only once
-if "boot_banner_shown" not in st.session_state:
-    app_boot_banner()
-    st.session_state["boot_banner_shown"] = True
-    st.session_state["boot_time"] = time.time()
+app_boot_banner()
 
 # =====================================================
-# 🧩 5️⃣ Live Diagnostics Panel (RAM, CPU, Uptime)
+# 🧩 Example Usage Anywhere Below
 # =====================================================
-def diagnostics_panel():
-    try:
-        current_ram = psutil.virtual_memory()
-        cpu_load = psutil.cpu_percent(interval=0.5)
-        uptime = time.time() - st.session_state.get("boot_time", time.time())
-        mins, secs = divmod(int(uptime), 60)
+# log_ist("Fetching data from API...")
+# logging.info("Data pull completed.")
 
-        with st.expander("🧠 System Diagnostics (Live)", expanded=False):
-            st.markdown(f"""
-            **🕒 Uptime:** {mins} min {secs} sec  
-            **💾 RAM Used:** {current_ram.percent}% of {round(current_ram.total / (1024**3), 2)} GB  
-            **⚙️ CPU Load:** {cpu_load}%  
-            **🧩 Platform:** {platform.system()} {platform.release()}
-            """)
-    except Exception as e:
-        st.warning(f"Diagnostics unavailable: {e}")
-
-diagnostics_panel()
-
-# =====================================================
-# 🔍 6️⃣ Optional Developer Console (Toggle)
-# =====================================================
-st.markdown("---")
-debug_toggle = st.toggle("🪛 Show Developer Console", value=False)
-if debug_toggle:
-    st.markdown("### 🔧 Runtime Context")
-    st.json({
-        "Session Keys": list(st.session_state.keys()),
-        "Current Time (IST)": datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p"),
-        "Python Version": platform.python_version(),
-        "Streamlit Version": st.__version__,
-        "Working Directory": sys.path[0],
-    })
-
-# Example usage
-# log_ist("Fetching latest Vahan data…")
-# logging.warning("Slow API detected")
-# log_ist("✅ Dashboard initialized successfully")
 
 
 
@@ -1537,31 +1470,6 @@ st.markdown("""
     <div style="font-size:14px;opacity:0.85;">Auto-synced with filters 🔁</div>
 </div>
 """, unsafe_allow_html=True)
-
-st.write("")
-
-# =====================================================
-# 🧠 INPUTS — Dynamic UI Bindings (Connected to Filters)
-# =====================================================
-st.markdown("### 🎛️ Parameter Inputs")
-col1, col2, col3 = st.columns(3)
-from_year = col1.number_input("From Year", 2018, 2025, 2022)
-to_year = col2.number_input("To Year", 2018, 2025, 2025)
-time_period = col3.selectbox("Time Period", ["Yearly", "Monthly", "Daily"], index=0)
-
-col4, col5 = st.columns(2)
-state_code = col4.text_input("State Code", value="MH")
-rto_code = col5.text_input("RTO Code (Optional)", value="")
-
-vehicle_classes = st.multiselect("Vehicle Classes", 
-                                 ["Car", "Truck", "Motorcycle", "Bus", "Tractor"],
-                                 default=["Car", "Truck"])
-vehicle_makers = st.multiselect("Vehicle Makers",
-                                ["Tata", "Mahindra", "Maruti", "Hyundai", "Bajaj"],
-                                default=["Tata", "Maruti"])
-
-fitness_check = st.selectbox("Fitness Check Status", ["All", "Valid", "Expired"], index=0)
-vehicle_type = st.selectbox("Vehicle Type", ["All", "Commercial", "Private"], index=0)
 
 st.write("")
 
