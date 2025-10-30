@@ -2655,34 +2655,34 @@ def compute_comparisons(df, value_col="value", period_col="period"):
 # else:
 #     st.warning("⚠️ No registration trend data available.")
 
-# # vahan_duration_maxed.py
-# # MAXED Duration fetch + UI utilities (drop into your Streamlit app)
-# import os
-# import time
-# import random
-# import logging
-# import pickle
-# import hashlib
-# from datetime import datetime
-# from zoneinfo import ZoneInfo
-# from typing import Optional, Any, Dict
+# vahan_duration_maxed.py
+# MAXED Duration fetch + UI utilities (drop into your Streamlit app)
+import os
+import time
+import random
+import logging
+import pickle
+import hashlib
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from typing import Optional, Any, Dict
 
-# import streamlit as st
-# import pandas as pd
-# import altair as alt
-# import requests
+import streamlit as st
+import pandas as pd
+import altair as alt
+import requests
 
-# # -------------------------
-# # Logging & IST helper
-# # -------------------------
-# LOG = logging.getLogger("vahan_maxed")
-# if not LOG.handlers:
-#     logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
-# def ist_now(fmt: str = "%Y-%m-%d %I:%M:%S %p") -> str:
-#     return datetime.now(ZoneInfo("Asia/Kolkata")).strftime(fmt)
+# -------------------------
+# Logging & IST helper
+# -------------------------
+LOG = logging.getLogger("vahan_maxed")
+if not LOG.handlers:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
+def ist_now(fmt: str = "%Y-%m-%d %I:%M:%S %p") -> str:
+    return datetime.now(ZoneInfo("Asia/Kolkata")).strftime(fmt)
 
-# def log_ist(msg: str, level: str = "info"):
-#     getattr(LOG, level)(f"[IST {ist_now()}] {msg}")
+def log_ist(msg: str, level: str = "info"):
+    getattr(LOG, level)(f"[IST {ist_now()}] {msg}")
 
 # # -------------------------
 # # CONFIG
@@ -2700,168 +2700,168 @@ def compute_comparisons(df, value_col="value", period_col="period"):
 # ]
 # os.makedirs(CACHE_DIR, exist_ok=True)
 
-# # -------------------------
-# # Simple file cache helpers
-# # -------------------------
-# def _cache_path(url: str) -> str:
-#     key = hashlib.sha256(url.encode("utf-8")).hexdigest()
-#     return os.path.join(CACHE_DIR, f"{key}.pkl")
+# -------------------------
+# Simple file cache helpers
+# -------------------------
+def _cache_path(url: str) -> str:
+    key = hashlib.sha256(url.encode("utf-8")).hexdigest()
+    return os.path.join(CACHE_DIR, f"{key}.pkl")
 
-# def load_cache(url: str) -> Optional[Any]:
-#     p = _cache_path(url)
-#     try:
-#         if not os.path.exists(p):
-#             return None
-#         with open(p, "rb") as f:
-#             ts, data = pickle.load(f)
-#         if time.time() - ts > CACHE_TTL:
-#             try: os.remove(p)
-#             except Exception: pass
-#             return None
-#         log_ist(f"Cache hit: {url}")
-#         return data
-#     except Exception as e:
-#         log_ist(f"Cache load failed: {e}", "warning")
-#         return None
+def load_cache(url: str) -> Optional[Any]:
+    p = _cache_path(url)
+    try:
+        if not os.path.exists(p):
+            return None
+        with open(p, "rb") as f:
+            ts, data = pickle.load(f)
+        if time.time() - ts > CACHE_TTL:
+            try: os.remove(p)
+            except Exception: pass
+            return None
+        log_ist(f"Cache hit: {url}")
+        return data
+    except Exception as e:
+        log_ist(f"Cache load failed: {e}", "warning")
+        return None
 
-# def save_cache(url: str, data: Any) -> None:
-#     if data is None:
-#         return
-#     p = _cache_path(url)
-#     try:
-#         with open(p, "wb") as f:
-#             pickle.dump((time.time(), data), f)
-#         log_ist(f"Saved to cache: {url}")
-#     except Exception as e:
-#         log_ist(f"Cache save failed: {e}", "warning")
+def save_cache(url: str, data: Any) -> None:
+    if data is None:
+        return
+    p = _cache_path(url)
+    try:
+        with open(p, "wb") as f:
+            pickle.dump((time.time(), data), f)
+        log_ist(f"Saved to cache: {url}")
+    except Exception as e:
+        log_ist(f"Cache save failed: {e}", "warning")
 
-# # -------------------------
-# # Token bucket rate limiter
-# # -------------------------
-# class TokenBucket:
-#     def __init__(self, capacity: float, rate: float):
-#         self.capacity = float(capacity)
-#         self.rate = float(rate)
-#         self._tokens = float(capacity)
-#         self._last = time.time()
-#     def _refill(self):
-#         now = time.time()
-#         self._tokens = min(self.capacity, self._tokens + (now - self._last) * self.rate)
-#         self._last = now
-#     def consume(self, tokens: float = 1.0) -> bool:
-#         self._refill()
-#         if self._tokens >= tokens:
-#             self._tokens -= tokens
-#             return True
-#         return False
-#     def wait_for_token(self, tokens: float = 1.0, timeout: int = 15) -> bool:
-#         start = time.time()
-#         while not self.consume(tokens):
-#             if time.time() - start > timeout:
-#                 return False
-#             time.sleep(max(0.02, 0.1 * random.random()))
-#         return True
+# -------------------------
+# Token bucket rate limiter
+# -------------------------
+class TokenBucket:
+    def __init__(self, capacity: float, rate: float):
+        self.capacity = float(capacity)
+        self.rate = float(rate)
+        self._tokens = float(capacity)
+        self._last = time.time()
+    def _refill(self):
+        now = time.time()
+        self._tokens = min(self.capacity, self._tokens + (now - self._last) * self.rate)
+        self._last = now
+    def consume(self, tokens: float = 1.0) -> bool:
+        self._refill()
+        if self._tokens >= tokens:
+            self._tokens -= tokens
+            return True
+        return False
+    def wait_for_token(self, tokens: float = 1.0, timeout: int = 15) -> bool:
+        start = time.time()
+        while not self.consume(tokens):
+            if time.time() - start > timeout:
+                return False
+            time.sleep(max(0.02, 0.1 * random.random()))
+        return True
 
-# # default small rate so we don't slam upstream
-# _bucket = TokenBucket(capacity=10.0, rate=1.0)
+# default small rate so we don't slam upstream
+_bucket = TokenBucket(capacity=10.0, rate=1.0)
 
-# # -------------------------
-# # Robust fetch (safe_get)
-# # -------------------------
-# def safe_get(path: str, params: Optional[Dict[str,Any]] = None, use_cache: bool = True, timeout: int = DEFAULT_TIMEOUT) -> Optional[Any]:
-#     params = params or {}
-#     # build canonical URL for caching/diagnostics
-#     try:
-#         from urllib.parse import urlencode
-#         query = urlencode(params, doseq=True)
-#         url = f"{BASE.rstrip('/')}/{path.lstrip('/')}?{query}"
-#     except Exception as e:
-#         log_ist(f"URL build failed: {e}", "error")
-#         return None
+# -------------------------
+# Robust fetch (safe_get)
+# -------------------------
+def safe_get(path: str, params: Optional[Dict[str,Any]] = None, use_cache: bool = True, timeout: int = DEFAULT_TIMEOUT) -> Optional[Any]:
+    params = params or {}
+    # build canonical URL for caching/diagnostics
+    try:
+        from urllib.parse import urlencode
+        query = urlencode(params, doseq=True)
+        url = f"{BASE.rstrip('/')}/{path.lstrip('/')}?{query}"
+    except Exception as e:
+        log_ist(f"URL build failed: {e}", "error")
+        return None
 
-#     # cache fast-path
-#     if use_cache:
-#         cached = load_cache(url)
-#         if cached is not None:
-#             return cached
+    # cache fast-path
+    if use_cache:
+        cached = load_cache(url)
+        if cached is not None:
+            return cached
 
-#     # token-bucket wait
-#     if not _bucket.wait_for_token(timeout=10):
-#         log_ist(f"Rate limiter timeout for {url}", "warning")
-#         return None
+    # token-bucket wait
+    if not _bucket.wait_for_token(timeout=10):
+        log_ist(f"Rate limiter timeout for {url}", "warning")
+        return None
 
-#     attempt = 0
-#     while attempt < MAX_RETRIES:
-#         attempt += 1
-#         ua = random.choice(ROTATING_UAS)
-#         headers = {
-#             "User-Agent": ua,
-#             "Accept": "application/json, text/plain, */*",
-#             "Accept-Language": "en-US,en;q=0.9",
-#             "Referer": "https://analytics.parivahan.gov.in",
-#             "X-Requested-With": "XMLHttpRequest",
-#         }
-#         try:
-#             log_ist(f"Fetching ({attempt}/{MAX_RETRIES}): {url}")
-#             resp = requests.get(url, headers=headers, params=None, timeout=timeout)
-#             status = getattr(resp, "status_code", None)
+    attempt = 0
+    while attempt < MAX_RETRIES:
+        attempt += 1
+        ua = random.choice(ROTATING_UAS)
+        headers = {
+            "User-Agent": ua,
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Referer": "https://analytics.parivahan.gov.in",
+            "X-Requested-With": "XMLHttpRequest",
+        }
+        try:
+            log_ist(f"Fetching ({attempt}/{MAX_RETRIES}): {url}")
+            resp = requests.get(url, headers=headers, params=None, timeout=timeout)
+            status = getattr(resp, "status_code", None)
 
-#             if status == 200:
-#                 try:
-#                     data = resp.json()
-#                 except Exception:
-#                     data = {"raw_text": resp.text[:8000]}
-#                 if use_cache and data:
-#                     save_cache(url, data)
-#                 return data
+            if status == 200:
+                try:
+                    data = resp.json()
+                except Exception:
+                    data = {"raw_text": resp.text[:8000]}
+                if use_cache and data:
+                    save_cache(url, data)
+                return data
 
-#             if status == 400:
-#                 # Bad request - don't retry
-#                 log_ist(f"400 Bad Request for {url}", "error")
-#                 log_ist(f"Snippet: {resp.text[:800]}", "error")
-#                 return None
+            if status == 400:
+                # Bad request - don't retry
+                log_ist(f"400 Bad Request for {url}", "error")
+                log_ist(f"Snippet: {resp.text[:800]}", "error")
+                return None
 
-#             if status == 404:
-#                 log_ist(f"404 Not Found for {url}", "error")
-#                 return None
+            if status == 404:
+                log_ist(f"404 Not Found for {url}", "error")
+                return None
 
-#             if status == 429:
-#                 wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) + random.uniform(0.5, 2.0)
-#                 log_ist(f"429 Rate limited. Sleeping {wait:.1f}s then retrying.", "warning")
-#                 time.sleep(wait)
-#                 continue
+            if status == 429:
+                wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) + random.uniform(0.5, 2.0)
+                log_ist(f"429 Rate limited. Sleeping {wait:.1f}s then retrying.", "warning")
+                time.sleep(wait)
+                continue
 
-#             if status and status >= 500:
-#                 wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) + random.uniform(0.3, 1.3)
-#                 log_ist(f"Server error {status}. Sleeping {wait:.1f}s then retrying.", "warning")
-#                 time.sleep(wait)
-#                 continue
+            if status and status >= 500:
+                wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) + random.uniform(0.3, 1.3)
+                log_ist(f"Server error {status}. Sleeping {wait:.1f}s then retrying.", "warning")
+                time.sleep(wait)
+                continue
 
-#             # otherwise treat as error
-#             log_ist(f"Unexpected HTTP {status} for {url}. Snippet: {resp.text[:400]}", "error")
-#             return None
+            # otherwise treat as error
+            log_ist(f"Unexpected HTTP {status} for {url}. Snippet: {resp.text[:400]}", "error")
+            return None
 
-#         except requests.Timeout:
-#             wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) * random.uniform(0.8, 1.2)
-#             log_ist(f"Timeout on attempt {attempt}. Sleeping {wait:.1f}s", "warning")
-#             time.sleep(wait)
-#             continue
-#         except requests.ConnectionError as e:
-#             wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) * random.uniform(0.8, 1.2)
-#             log_ist(f"Connection error: {e}. Sleeping {wait:.1f}s", "warning")
-#             time.sleep(wait)
-#             continue
-#         except Exception as e:
-#             log_ist(f"Unexpected fetch error: {e}", "error")
-#             return None
+        except requests.Timeout:
+            wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) * random.uniform(0.8, 1.2)
+            log_ist(f"Timeout on attempt {attempt}. Sleeping {wait:.1f}s", "warning")
+            time.sleep(wait)
+            continue
+        except requests.ConnectionError as e:
+            wait = BACKOFF_FACTOR * (2 ** (attempt - 1)) * random.uniform(0.8, 1.2)
+            log_ist(f"Connection error: {e}. Sleeping {wait:.1f}s", "warning")
+            time.sleep(wait)
+            continue
+        except Exception as e:
+            log_ist(f"Unexpected fetch error: {e}", "error")
+            return None
 
-#     log_ist(f"Max retries reached for {url}", "error")
-#     return None
+    log_ist(f"Max retries reached for {url}", "error")
+    return None
 
-# # convenience wrapper matching your earlier API
-# def fetch_json(path: str, params: Optional[Dict[str,Any]] = None, desc: str = "", use_cache: bool = True):
-#     res = safe_get(path, params=params or {}, use_cache=use_cache)
-#     return res
+# convenience wrapper matching your earlier API
+def fetch_json(path: str, params: Optional[Dict[str,Any]] = None, desc: str = "", use_cache: bool = True):
+    res = safe_get(path, params=params or {}, use_cache=use_cache)
+    return res
 
 # # -------------------------
 # # Default params_common and helpful randomization
