@@ -285,659 +285,390 @@ st.set_page_config(
 )
 
 # =====================================================
-# 🎨 GLOBAL UI TWEAKS & STYLES
+# 🧭 SIDEBAR — DYNAMIC FILTER PANEL ()
 # =====================================================
-st.markdown("""
-<style>
-/* ===== Scrollbar ===== */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: linear-gradient(180deg,#6C63FF,#918BFF); border-radius: 10px; }
-::-webkit-scrollbar-track { background: #f1f1f1; }
-
-/* ===== Headings & Font ===== */
-html, body, [class*="st-"] {
-    font-family: "Inter", "Segoe UI", Roboto, sans-serif;
-}
-
-/* ===== Sidebar Gradient ===== */
-[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #f6f4ff 0%, #ffffff 100%) !important;
-    border-right: 2px solid rgba(108,99,255,0.1);
-}
-
-/* ===== Card Shadows ===== */
-.block-container {
-    padding-top: 1rem;
-    padding-bottom: 1rem;
-}
-
-/* ===== Toast Animation ===== */
-@keyframes glow {
-    0% { box-shadow: 0 0 8px rgba(108,99,255,0.3); }
-    50% { box-shadow: 0 0 18px rgba(108,99,255,0.6); }
-    100% { box-shadow: 0 0 8px rgba(108,99,255,0.3); }
-}
-.toast-glow {
-    animation: glow 2s infinite;
-    border-radius: 12px;
-    background: linear-gradient(90deg, #f3f1ff, #ffffff);
-    color: #4338ca;
-    font-weight: 500;
-    padding: 10px 16px;
-    display: inline-block;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# =====================================================
-# 🎉 FIRST-LAUNCH EXPERIENCE — MAXED HYBRID
-# =====================================================
-if "launched" not in st.session_state:
-    st.session_state.launched = True
-    
-    # Welcome toast with animated style
-    st.toast("🚀 Welcome to Parivahan Analytics — Hybrid Intelligence Dashboard!", icon="🌍")
-    
-    # Animated confetti + banner
-    st.balloons()
-    
-    with st.container():
-        st.markdown("""
-        <div style="
-            text-align:center;
-            background:linear-gradient(90deg,#6C63FF15,#918BFF10);
-            border-radius:18px;
-            padding:18px;
-            margin:12px 0 24px 0;
-            border:1px solid rgba(108,99,255,0.15);
-            box-shadow:0 4px 20px rgba(108,99,255,0.05);
-        ">
-            <h2 style="color:#4F46E5; margin-bottom:6px;">✨ Parivahan Analytics — Hybrid Experience</h2>
-            <p style="color:#555; font-size:0.95rem;">
-                Real-time Insights • AI Narratives • Forecasts • Clustering • Smart Exports
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-# =====================================================
-# 🕒 FOOTER TIMESTAMP (for clarity)
-# =====================================================
-from datetime import datetime
-from zoneinfo import ZoneInfo
-st.markdown(f"""
-<div style='text-align:right; color:#888; font-size:0.8rem; margin-top:-10px;'>
-🕒 {datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%d %b %Y, %I:%M %p IST")}
-</div>
-""", unsafe_allow_html=True)
-
-# =====================================================
-# 💠 PARIVAHAN SIDEBAR OS — FUSION MAXED 2025 EDITION ⚡
-# =====================================================
-from datetime import date
-import streamlit as st
-
 today = date.today()
-min_year, max_year = 2017, today.year
 default_from_year = max(2017, today.year - 1)
 
 # =====================================================
-# 🌈 MASTER SIDEBAR STYLING — FUSION OF LIGHT + NEON
+# 🌈  SIDEBAR — GLASS NEON THEME
 # =====================================================
 st.sidebar.markdown("""
 <style>
-/* ---------------- BASE CONTAINER ---------------- */
+/* Sidebar Container */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #fdfcff 0%, #ffffff 50%, #020617 95%);
+    background: linear-gradient(180deg, #030712 0%, #0f172a 60%, #1e293b 100%);
     color: #E2E8F0;
-    border-right: 2px solid rgba(0,255,255,0.1);
-    box-shadow: 0 0 40px rgba(0,255,255,0.15), inset 0 0 25px rgba(0,255,255,0.05);
-    animation: fadeInSlide 1.2s ease-in-out;
-    backdrop-filter: blur(25px) saturate(140%);
-    -webkit-backdrop-filter: blur(25px) saturate(140%);
-    transition: all 0.4s ease-in-out;
-    position: relative;
-    overflow-x: hidden;
-}
-@keyframes fadeInSlide {
-  0% { opacity: 0; transform: translateX(-25px); filter: blur(5px);}
-  100% { opacity: 1; transform: translateX(0); filter: blur(0);}
+    box-shadow: 0 0 25px rgba(0,255,255,0.15);
+    border-right: 1px solid rgba(0,255,255,0.1);
+    animation: slideIn 1.2s ease-in-out;
+    backdrop-filter: blur(20px);
 }
 
-/* Ambient glow aura */
-[data-testid="stSidebar"]::before {
-    content: "";
-    position: absolute;
-    top: -20%;
-    left: -25%;
-    width: 150%;
-    height: 150%;
-    background: radial-gradient(circle at 30% 20%, rgba(0,255,255,0.12), transparent 70%);
-    filter: blur(80px);
-    z-index: 0;
+/* Smooth entrance animation */
+@keyframes slideIn {
+  from {opacity: 0; transform: translateX(-25px);}
+  to {opacity: 1; transform: translateX(0);}
 }
 
-/* ---------------- HEADER (NEON HOLO FUSION) ---------------- */
-.sidebar-header {
-    position: relative;
-    text-align: center;
-    padding: 22px 10px 16px 10px;
-    background: linear-gradient(135deg, rgba(0,255,255,0.08) 0%, rgba(0,0,0,0.25) 50%, rgba(0,255,255,0.08) 100%);
-    border-radius: 18px;
-    border: 1px solid rgba(0,255,255,0.25);
-    box-shadow: 0 0 25px rgba(0,255,255,0.12), inset 0 0 20px rgba(0,255,255,0.06);
-    margin: 12px 6px 18px 6px;
-    overflow: hidden;
-    animation: headerFadeIn 1.4s ease-in-out;
-}
-.sidebar-header::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -30%;
-    width: 160%;
-    height: 3px;
-    background: linear-gradient(90deg, rgba(0,255,255,0), rgba(0,255,255,0.9), rgba(0,255,255,0));
-    animation: neonSlide 3s linear infinite;
-}
-.sidebar-header::after {
-    content: "";
-    position: absolute;
-    width: 180px;
-    height: 180px;
-    top: -50px;
-    left: calc(50% - 90px);
-    background: radial-gradient(circle, rgba(0,255,255,0.2), transparent 70%);
-    filter: blur(60px);
-    animation: orbGlow 6s ease-in-out infinite alternate;
-}
-.sidebar-header h2 {
-    color: #00FFFF;
-    text-shadow: 0 0 14px rgba(0,255,255,0.7), 0 0 28px rgba(0,255,255,0.5);
-    font-weight: 800;
-    font-size: 23px;
-    letter-spacing: 1.2px;
-    margin: 0 0 4px 0;
-    animation: glowPulse 2.5s infinite alternate ease-in-out;
-}
-.sidebar-header p {
-    font-size: 13px;
-    color: #9CA3AF;
-    opacity: 0.85;
-    margin: 0;
-    letter-spacing: 0.4px;
-}
-
-/* Header Animations */
-@keyframes neonSlide {
-  0% { transform: translateX(-100%);}
-  100% { transform: translateX(100%);}
-}
-@keyframes glowPulse {
-  from { text-shadow: 0 0 10px rgba(0,255,255,0.5);}
-  to { text-shadow: 0 0 30px rgba(0,255,255,1);}
-}
-@keyframes orbGlow {
-  0% { opacity: 0.4; transform: scale(0.95);}
-  100% { opacity: 0.9; transform: scale(1.05);}
-}
-@keyframes headerFadeIn {
-  from { opacity: 0; transform: translateY(-10px);}
-  to { opacity: 1; transform: translateY(0);}
-}
-
-/* ---------------- FILTER SECTIONS ---------------- */
+/* Sidebar Sections */
 .sidebar-section {
-    position: relative;
-    padding: 14px 14px;
-    margin: 12px 8px;
-    border-radius: 16px;
+    padding: 14px 10px;
+    margin: 10px 0;
+    border-radius: 14px;
     background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(0,255,255,0.18);
-    box-shadow: inset 0 0 12px rgba(0,255,255,0.05), 0 4px 22px rgba(0,255,255,0.08);
-    transition: all 0.4s ease-in-out;
+    border: 1px solid rgba(0,255,255,0.15);
+    box-shadow: 0 4px 18px rgba(0,255,255,0.08);
+    transition: all 0.35s ease-in-out;
 }
+
+/* Hover Glow Effect */
 .sidebar-section:hover {
-    background: rgba(0,224,255,0.12);
+    background: rgba(0,224,255,0.1);
     border-color: rgba(0,255,255,0.4);
-    box-shadow: 0 6px 24px rgba(0,255,255,0.3), inset 0 0 20px rgba(0,255,255,0.1);
-    transform: translateY(-3px) scale(1.01);
+    box-shadow: 0 6px 20px rgba(0,255,255,0.3);
+    transform: translateY(-3px) scale(1.02);
 }
+
+/* Section Headings */
 .sidebar-section h4 {
     color: #00E0FF;
     margin-bottom: 8px;
     font-size: 16px;
-    font-weight: 700;
-    text-shadow: 0 0 15px rgba(0,255,255,0.7);
+    letter-spacing: 0.5px;
+    text-shadow: 0 0 12px rgba(0,255,255,0.6);
 }
 
-/* ---------------- INPUT FIELDS ---------------- */
-div[data-baseweb="input"],
-div[data-baseweb="select"],
-div[data-baseweb="slider"] {
-    background: rgba(0,0,0,0.25);
-    border-radius: 10px;
+/* Input + Select fields */
+div[data-baseweb="input"], div[data-baseweb="select"] {
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
     border: 1px solid rgba(255,255,255,0.15);
-    transition: all 0.3s ease-in-out;
+    transition: all 0.2s ease-in-out;
 }
-div[data-baseweb="input"]:hover,
-div[data-baseweb="select"]:hover,
-div[data-baseweb="slider"]:hover {
+div[data-baseweb="input"]:hover, div[data-baseweb="select"]:hover {
     border-color: rgba(0,255,255,0.4);
-    box-shadow: 0 0 14px rgba(0,255,255,0.25);
-    background: rgba(0,255,255,0.05);
+    box-shadow: 0 0 12px rgba(0,255,255,0.2);
 }
 
-/* ---------------- BUTTON ---------------- */
-button[kind="secondary"] {
-    background: linear-gradient(90deg, #00E0FF, #00B8FF);
-    border: none;
-    color: #001F2E;
-    font-weight: 700;
-    border-radius: 10px !important;
-    box-shadow: 0 0 14px rgba(0,255,255,0.35);
-    transition: all 0.3s ease-in-out;
-}
-button[kind="secondary"]:hover {
-    box-shadow: 0 0 25px rgba(0,255,255,0.7);
-    transform: scale(1.03);
+/* Toggle / Checkbox style */
+.stCheckbox, .stSwitch {
+    accent-color: #00E0FF !important;
 }
 
-/* ---------------- FOOTER ---------------- */
-.sidebar-footer {
+/* Sidebar Title Block */
+.sidebar-header {
     text-align: center;
-    color: #7DD3FC;
-    font-size: 12px;
-    opacity: 0.85;
-    margin-top: 16px;
-    padding-top: 10px;
-    border-top: 1px solid rgba(0,255,255,0.08);
-    text-shadow: 0 0 10px rgba(0,255,255,0.4);
+    padding: 15px 0 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 15px;
+}
+.sidebar-header h2 {
+    color: #00E0FF;
+    text-shadow: 0 0 18px rgba(0,255,255,0.8);
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+}
+.sidebar-header p {
+    font-size: 13px;
+    color: #9CA3AF;
+    opacity: 0.8;
+    margin: 0;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # =====================================================
-# 🧭 SIDEBAR CONTENT — FILTER PANEL
+# ✨ SIDEBAR HEADER —  CONTROL PANEL
 # =====================================================
-with st.sidebar:
-    st.markdown("""
-    <div class="sidebar-header">
-        <h2>💠 Parivahan Control</h2>
-        <p>Fusion · Glass · Neon Intelligence</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # --- Time Range ---
-    with st.expander("📆 Time Range", expanded=True):
-        col1, col2 = st.columns(2)
-        with col1:
-            from_year = st.number_input("From Year", min_value=min_year, max_value=max_year, value=default_from_year)
-        with col2:
-            to_year = st.number_input("To Year", min_value=min_year, max_value=max_year, value=max_year)
-
-        month_filter = st.selectbox(
-            "Select Month",
-            ["All","January","February","March","April","May","June","July","August","September","October","November","December"],
-            index=0
-        )
-
-    # --- Category & Region ---
-    with st.expander("🏷️ Category & Region", expanded=False):
-        state_filter = st.selectbox(
-            "State",
-            ["All","Maharashtra","Karnataka","Delhi","Gujarat","Tamil Nadu"]
-        )
-        vehicle_class = st.multiselect(
-            "Vehicle Class",
-            ["Two Wheeler","Four Wheeler","Commercial","Tractor","EV"],
-            default=["Two Wheeler","Four Wheeler"]
-        )
-        ownership = st.selectbox(
-            "Ownership Type", ["All","Individual","Corporate","Government"]
-        )
-
-    # --- Advanced Options ---
-    with st.expander("🧠 Advanced Analysis", expanded=False):
-        enable_forecast = st.toggle("Enable Forecasting", value=False)
-        enable_anomaly = st.toggle("Detect Anomalies", value=False)
-        enable_cluster = st.toggle("Enable Clustering", value=False)
-
-    # --- Apply Filters ---
-    st.markdown("<hr>", unsafe_allow_html=True)
-    if st.button("🔄 Apply Filters", use_container_width=True):
-        st.toast("Filters applied successfully ✅", icon="⚡")
-
-    # --- Footer ---
-    st.markdown(f"""
-    <div class="sidebar-footer">
-        📅 <b>{today.strftime('%d %b %Y')}</b> | Parivahan Analytics MAXED 2025 ⚡
-    </div>
-    """, unsafe_allow_html=True)
+st.sidebar.markdown("""
+<div class="sidebar-header">
+    <h2>⚙️ Control Panel</h2>
+    <p>Customize analytics, filters, and AI insights dynamically.</p>
+</div>
+""", unsafe_allow_html=True)
 
 # =====================================================
-# 📊 SMART DATA FILTER HUB — MAXED 2025 EDITION
+# 📊  DATA FILTERS (Supports ANY filter)
 # =====================================================
 with st.sidebar.expander("📊 Data Filters", expanded=True):
+    from_year = st.number_input("📅 From Year", min_value=2012, max_value=today.year, value=default_from_year)
+    to_year = st.number_input("📆 To Year", min_value=from_year, max_value=today.year, value=today.year)
 
-    st.markdown("""
-    <style>
-    /* Fade-in filter group animation */
-    .stExpander {
-        animation: fadeIn 1.2s ease-in-out;
-    }
-    @keyframes fadeIn {
-        from {opacity: 0; transform: translateY(-6px);}
-        to {opacity: 1; transform: translateY(0);}
-    }
-
-    /* Label Styling */
-    label, .stSelectbox label, .stNumberInput label {
-        color: #E2E8F0 !important;
-        font-weight: 500;
-    }
-
-    /* Input Glow */
-    div[data-baseweb="input"] input {
-        background: rgba(0,0,0,0.25);
-        color: #E2E8F0 !important;
-        border: none;
-        border-radius: 8px;
-        box-shadow: inset 0 0 10px rgba(0,255,255,0.1);
-    }
-    div[data-baseweb="input"] input:focus {
-        box-shadow: 0 0 12px rgba(0,255,255,0.3);
-    }
-
-    /* Buttons */
-    div[data-testid="stButton"] > button {
-        background: linear-gradient(90deg,#00e0ff,#0072ff);
-        color: white !important;
-        border-radius: 10px;
-        font-weight: 600;
-        transition: all 0.25s ease;
-        border: 1px solid rgba(255,255,255,0.1);
-    }
-    div[data-testid="stButton"] > button:hover {
-        transform: scale(1.05);
-        box-shadow: 0 0 20px rgba(0,255,255,0.4);
-    }
-
-    /* Divider Line */
-    .filter-divider {
-        margin: 8px 0;
-        height: 1px;
-        background: linear-gradient(90deg,transparent,#00E0FF,transparent);
-        opacity: 0.4;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # 🗓️ Date Range Filters
-    st.markdown("<div class='filter-divider'></div>", unsafe_allow_html=True)
-    st.markdown("#### 📅 Temporal Filters")
-    col1, col2 = st.columns(2)
-    with col1:
-        from_year = st.number_input("From Year", min_value=2012, max_value=today.year, value=default_from_year)
-    with col2:
-        to_year = st.number_input("To Year", min_value=from_year, max_value=today.year, value=today.year)
-
-    month_filter = st.selectbox(
-        "🗓️ Month Filter",
-        ["All", "January", "February", "March", "April", "May", "June",
-         "July", "August", "September", "October", "November", "December"],
-        index=0
-    )
-
-    # 🌍 Region Filters
-    st.markdown("<div class='filter-divider'></div>", unsafe_allow_html=True)
-    st.markdown("#### 🌍 Regional Filters")
     col1, col2 = st.columns(2)
     with col1:
         state_code = st.text_input("🏙️ State Code", value="", placeholder="Blank = All-India")
     with col2:
         rto_code = st.text_input("🏢 RTO Code", value="0", placeholder="0 = aggregate")
 
-    region_filter = st.text_input("🗺️ Region Filter", value="", placeholder="North / South / East / West (optional)")
-
-    # 🚘 Vehicle Parameters
-    st.markdown("<div class='filter-divider'></div>", unsafe_allow_html=True)
-    st.markdown("#### 🚘 Vehicle Filters")
-    vehicle_classes = st.text_input("🚗 Vehicle Classes", value="", placeholder="e.g. 2W, 3W, 4W")
+    vehicle_classes = st.text_input("🚘 Vehicle Classes", value="", placeholder="e.g. 2W, 3W, 4W")
     vehicle_makers = st.text_input("🏭 Vehicle Makers", value="", placeholder="Comma-separated or IDs")
     vehicle_type = st.text_input("🛻 Vehicle Type", value="", placeholder="Optional: EV/Diesel/Petrol")
+    region_filter = st.text_input("🗺️ Region Filter", value="", placeholder="North / South / East / West (optional)")
+    month_filter = st.selectbox("🗓️ Month Filter", ["All", "January", "February", "March", "April", "May", "June",
+                                                    "July", "August", "September", "October", "November", "December"], index=0)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        fuel_type = st.multiselect("⛽ Fuel Type", ["Petrol", "Diesel", "CNG", "Electric", "Hybrid"], default=[])
-    with col2:
-        fitness_check = st.selectbox("🧾 Fitness Check", ["All", "Only Fit", "Expired"], index=0)
-
-    # 📆 Age & Period
-    st.markdown("<div class='filter-divider'></div>", unsafe_allow_html=True)
-    st.markdown("#### ⏱️ Period & Age Filters")
     col1, col2 = st.columns(2)
     with col1:
         time_period = st.selectbox("⏱️ Time Period", ["All Time", "Yearly", "Monthly", "Daily"], index=0)
     with col2:
-        vehicle_age = st.slider("📆 Vehicle Age (years)", 0, 20, (0, 10))
+        fitness_check = st.selectbox("🧾 Fitness Check", ["All", "Only Fit", "Expired"], index=0)
 
-    # 🎛️ Reset / Apply Buttons
-    st.markdown("<div class='filter-divider'></div>", unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🔁 Apply Filters"):
-            st.toast("✅ Filters applied successfully!", icon="✨")
-    with col2:
-        if st.button("♻️ Reset Filters"):
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            st.toast("♻️ Filters reset — restoring defaults...", icon="🔄")
-            st.rerun()
+    vehicle_age = st.slider("📆 Vehicle Age (years)", 0, 20, (0, 10))
+    fuel_type = st.multiselect("⛽ Fuel Type", ["Petrol", "Diesel", "CNG", "Electric", "Hybrid"], default=[])
+
+    if st.button("🔄 Reset Filters"):
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.toast("♻️ Filters reset — applying defaults...", icon="🔁")
+        st.experimental_rerun()
 
 # =====================================================
-# 🧠 SMART ANALYTICS & AI ENGINE — MAXED 2025 EDITION
+# 🧠 SMART ANALYTICS & AI ENGINE — 
 # =====================================================
 with st.sidebar.expander("🧠 Smart Analytics & AI Engine", expanded=True):
-
-    # -------------------------------
-    # 🪄 Inject Custom Styling
-    # -------------------------------
-    st.markdown("""
-    <style>
-    /* Glow animation for AI section */
-    .stExpander {
-        animation: fadeSlideIn 0.8s ease-in-out;
-    }
-    @keyframes fadeSlideIn {
-        from {opacity: 0; transform: translateY(-8px);}
-        to {opacity: 1; transform: translateY(0);}
-    }
-
-    /* Section headings */
-    .stExpander label, .stExpander h5 {
-        color: #E2E8F0 !important;
-        font-weight: 500 !important;
-    }
-
-    /* Checkbox customization */
-    div[data-testid="stCheckbox"] label {
-        color: #C7D2FE !important;
-    }
-    div[data-testid="stCheckbox"]:hover label {
-        text-shadow: 0 0 10px rgba(0,255,255,0.6);
-    }
-
-    /* Radio Buttons */
-    div[role="radiogroup"] label {
-        color: #93C5FD !important;
-    }
-
-    /* Input boxes */
-    div[data-baseweb="input"] input {
-        background: rgba(0,0,0,0.25);
-        border: 1px solid rgba(255,255,255,0.1);
-        color: #E2E8F0;
-        border-radius: 8px;
-    }
-    div[data-baseweb="input"] input:focus {
-        border-color: #00E0FF;
-        box-shadow: 0 0 10px rgba(0,255,255,0.3);
-    }
-
-    /* Divider Line */
-    .ai-divider {
-        margin: 8px 0;
-        height: 1px;
-        background: linear-gradient(90deg,transparent,#00E0FF,transparent);
-        opacity: 0.5;
-    }
-
-    /* AI Ready Badge */
-    .ai-badge {
-        text-align: center;
-        background: linear-gradient(90deg,#00e0ff33,#0072ff22);
-        border: 1px solid rgba(0,255,255,0.2);
-        border-radius: 10px;
-        padding: 6px;
-        margin-top: 8px;
-        font-size: 12px;
-        color: #93C5FD;
-        box-shadow: 0 0 15px rgba(0,255,255,0.15);
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # -------------------------------
-    # ⚙️ Toggle Controls
-    # -------------------------------
     enable_forecast = st.checkbox("📈 Enable Forecasting", value=True)
     enable_anomaly = st.checkbox("⚠️ Enable Anomaly Detection", value=True)
     enable_clustering = st.checkbox("🔍 Enable Clustering", value=True)
     enable_ai = st.checkbox("🤖 DeepInfra AI Narratives", value=False)
 
-    forecast_periods = st.number_input(
-        "⏳ Forecast Horizon (months)",
-        min_value=1, max_value=36, value=3,
-        help="Defines how far ahead to predict using Prophet/Regression models."
-    )
-
+    forecast_periods = st.number_input("⏳ Forecast Horizon (months)", min_value=1, max_value=36, value=3)
     enable_trend = st.checkbox("📊 Trend Line Overlay", value=True)
     enable_comparison = st.checkbox("📅 Year/Month Comparison", value=True)
 
-    st.markdown("<div class='ai-divider'></div>", unsafe_allow_html=True)
-    st.markdown("##### ⚡ AI Presets (Auto-Tune Your Engine)")
-
+    st.markdown("##### ⚡ AI Presets")
     preset = st.radio(
         "Choose Mode:",
-        ["Balanced (Default)", "Aggressive Forecasting", "Minimal Analysis", "Custom Mode"],
+        ["Balanced (Default)", "Aggressive Forecasting", "Minimal Analysis", "Custom  Mode"],
         index=0,
         horizontal=True
     )
 
-    # -------------------------------
-    # 🎛️ Preset Logic & Reactions
-    # -------------------------------
     if preset == "Aggressive Forecasting":
-        enable_forecast = enable_anomaly = enable_clustering = True
+        enable_forecast, enable_anomaly, enable_clustering = True, True, True
         forecast_periods = 12
-        st.toast("🚀 Aggressive Forecasting Mode — 12-month horizon activated!", icon="✨")
+        st.toast("🚀 Aggressive Forecasting (12-month horizon) enabled!", icon="✨")
 
     elif preset == "Minimal Analysis":
         enable_forecast = enable_anomaly = enable_clustering = enable_ai = False
-        st.toast("💤 Minimal Analysis Mode — lightweight analytics active.", icon="⚙️")
+        st.toast("💤 Minimal Analysis Mode Activated", icon="⚙️")
 
-    elif preset == "Custom Mode":
+    elif preset == "Custom  Mode":
         enable_forecast = enable_anomaly = enable_clustering = enable_ai = True
-        enable_trend = enable_comparison = True
         forecast_periods = 24
-        st.toast("💎 Custom Mode — all engines running at full capacity!", icon="⚡")
-
-    # -------------------------------
-    # 🧩 Live AI Status Badge
-    # -------------------------------
-    ai_status = "✅ Ready — DeepInfra Connected" if enable_ai else "⚙️ Offline — AI Disabled"
-    st.markdown(f"<div class='ai-badge'>{ai_status}</div>", unsafe_allow_html=True)
+        enable_comparison = enable_trend = True
+        st.toast("💎 Custom  Mode — all analytics active!", icon="⚡")
 
     st.markdown("""
-    <div class='ai-divider'></div>
+    <hr style='margin:10px 0;border:none;height:1px;
+    background:linear-gradient(90deg,transparent,#00E0FF66,transparent);'>
     <p style='text-align:center;font-size:12px;opacity:0.7;'>
-        🧩 All filters and AI toggles auto-refresh dashboard insights in real time.<br>
-        🪄 Forecasts & clustering adapt dynamically to current data window.
+        🧩 All filters and AI toggles auto-refresh dashboards instantly.
     </p>
     """, unsafe_allow_html=True)
 
 # =====================================================
-# 🎨 UNIVERSAL HYBRID THEME ENGINE — MAXED 2025+ EDITION ⚡
+# 🎨 UNIVERSAL HYBRID THEME ENGINE —  EDITION 🚀
 # =====================================================
 
-import streamlit as st
-import platform
-from datetime import datetime
-
-# 🌈 Theme definitions
 THEMES = {
     "VSCode": {
-        "bg": "#0E101A", "text": "#D4D4D4", "card": "#1E1E2E",
-        "accent": "#007ACC", "glow": "rgba(0,122,204,0.6)"
+        "bg": "#0E101A",
+        "text": "#D4D4D4",
+        "card": "#1E1E2E",
+        "accent": "#007ACC",
+        "glow": "rgba(0,122,204,0.6)"
     },
     "Glass": {
-        "bg": "rgba(15,23,42,0.9)", "text": "#E0F2FE", "card": "rgba(255,255,255,0.06)",
-        "accent": "#00E0FF", "glow": "rgba(0,224,255,0.5)"
-    },
-    "Cyberpunk": {
-        "bg": "linear-gradient(135deg,#1a002b,#ff00ff,#00ffff)", "text": "#E0E0E0",
-        "card": "rgba(255,255,255,0.08)", "accent": "#00FFFF", "glow": "rgba(0,255,255,0.5)"
-    },
-    "Aurora": {
-        "bg": "linear-gradient(135deg,#0f172a,#312e81,#16a34a)", "text": "#e0f2fe",
-        "card": "rgba(255,255,255,0.05)", "accent": "#22d3ee", "glow": "rgba(34,211,238,0.4)"
+        "bg": "rgba(15,23,42,0.9)",
+        "text": "#E0F2FE",
+        "card": "rgba(255,255,255,0.06)",
+        "accent": "#00E0FF",
+        "glow": "rgba(0,224,255,0.5)"
     },
     "Neumorphic": {
-        "bg": "#E5E9F0", "text": "#1E293B", "card": "#F8FAFC",
-        "accent": "#0078FF", "glow": "rgba(0,120,255,0.35)"
+        "bg": "#E5E9F0",
+        "text": "#1E293B",
+        "card": "#F8FAFC",
+        "accent": "#0078FF",
+        "glow": "rgba(0,120,255,0.35)"
     },
-    "Matrix": {
-        "bg": "#000000", "text": "#00FF41", "card": "rgba(0,255,65,0.05)",
-        "accent": "#00FF41", "glow": "rgba(0,255,65,0.5)"
+    "Gradient": {
+        "bg": "linear-gradient(135deg,#0F172A,#1E3A8A)",
+        "text": "#E0F2FE",
+        "card": "rgba(255,255,255,0.05)",
+        "accent": "#38BDF8",
+        "glow": "rgba(56,189,248,0.4)"
+    },
+    "High Contrast": {
+        "bg": "#000000",
+        "text": "#FFFFFF",
+        "card": "#111111",
+        "accent": "#FFDE00",
+        "glow": "rgba(255,222,0,0.6)"
+    },
+    "Windows": {
+        "bg": "linear-gradient(120deg,#0078D7,#003C8F)",
+        "text": "#FFFFFF",
+        "card": "rgba(255,255,255,0.08)",
+        "accent": "#00B7FF",
+        "glow": "rgba(0,183,255,0.45)"
+    },
+    "MacOS": {
+        "bg": "linear-gradient(120deg,#FFFFFF,#EEF2FF)",
+        "text": "#111827",
+        "card": "rgba(255,255,255,0.85)",
+        "accent": "#007AFF",
+        "glow": "rgba(0,122,255,0.4)"
     },
     "Fluent": {
-        "bg": "linear-gradient(120deg,#0E1624,#1B2838)", "text": "#E6F0FF",
-        "card": "rgba(255,255,255,0.04)", "accent": "#0099FF", "glow": "rgba(0,153,255,0.4)"
+        "bg": "linear-gradient(120deg,#0E1624,#1B2838)",
+        "text": "#E6F0FF",
+        "card": "rgba(255,255,255,0.04)",
+        "accent": "#0099FF",
+        "glow": "rgba(0,153,255,0.4)"
+    },
+    "Aurora": {
+        "bg": "linear-gradient(135deg,#0f172a,#312e81,#16a34a)",
+        "text": "#e0f2fe",
+        "card": "rgba(255,255,255,0.05)",
+        "accent": "#22d3ee",
+        "glow": "rgba(34,211,238,0.4)"
+    },
+    "Matrix": {
+        "bg": "#000000",
+        "text": "#00FF41",
+        "card": "rgba(0,255,65,0.05)",
+        "accent": "#00FF41",
+        "glow": "rgba(0,255,65,0.5)"
+    },
+    "Cyberpunk": {
+        "bg": "linear-gradient(135deg,#1a002b,#ff00ff,#00ffff)",
+        "text": "#E0E0E0",
+        "card": "rgba(255,255,255,0.08)",
+        "accent": "#00FFFF",
+        "glow": "rgba(0,255,255,0.5)"
+    },
+    "Neon Glass": {
+        "bg": "radial-gradient(circle at 20% 30%, #0f2027, #203a43, #2c5364)",
+        "text": "#E6F9FF",
+        "card": "rgba(255,255,255,0.05)",
+        "accent": "#00E0FF",
+        "glow": "rgba(0,224,255,0.45)"
+    },
+    "Terminal": {
+        "bg": "#000000",
+        "text": "#33FF00",
+        "card": "rgba(0,0,0,0.8)",
+        "accent": "#33FF00",
+        "glow": "rgba(51,255,0,0.5)"
+    },
+    "Solarized": {
+        "bg": "#002b36",
+        "text": "#93a1a1",
+        "card": "#073642",
+        "accent": "#b58900",
+        "glow": "rgba(181,137,0,0.4)"
+    },
+    "Monokai": {
+        "bg": "#272822",
+        "text": "#f8f8f2",
+        "card": "#383830",
+        "accent": "#f92672",
+        "glow": "rgba(249,38,114,0.4)"
     }
 }
 
-# =====================================================
-# 🧩 SIDEBAR CONTROLS — Theme Panel
-# =====================================================
+# Sidebar controls
 st.sidebar.markdown("## 🎨 Appearance & Layout")
-
-# Auto dark mode suggestion
-is_dark = datetime.now().hour >= 18 or datetime.now().hour < 6
-default_theme = "Glass" if is_dark else "Neumorphic"
-
-col1, col2 = st.sidebar.columns([3, 1])
-ui_mode = col1.selectbox("🌗 Theme", list(THEMES.keys()), index=list(THEMES.keys()).index(default_theme))
-if col2.button("🌈 Preview"):
-    st.toast(f"Theme preview applied: {ui_mode}", icon="🎨")
-
-font_size = st.sidebar.slider("🔠 Font Size", 12, 22, 15)
-radius = st.sidebar.slider("🟣 Corner Radius", 4, 30, 12)
+ui_mode = st.sidebar.selectbox("Theme", list(THEMES.keys()), index=list(THEMES.keys()).index("VSCode"))
+font_size = st.sidebar.slider("Font Size", 12, 20, 15)
+radius = st.sidebar.slider("Corner Radius", 6, 24, 12)
 motion = st.sidebar.toggle("✨ Motion & Glow Effects", value=True)
-cinematic = st.sidebar.toggle("🎬 Cinematic Mode (Immersive Blur)", value=False)
-
 palette = THEMES[ui_mode]
 
-# =====================================================
-# 💅 CSS Builder — Dynamic Glow + Motion
-# =====================================================
-def build_css(palette, font_size, radius, motion, cinematic):
-    accent, text, bg, card, glow = (
-        palette["accent"], palette["text"], palette["bg"], palette["card"],
-        palette["glow"] if motion else "none"
-    )
+# CSS builder
+def build_css(palette, font_size, radius, motion):
+    accent, text, bg, card, glow = palette["accent"], palette["text"], palette["bg"], palette["card"], palette["glow"]
+    effect = f"0 0 18px {glow}" if motion else "none"
+    return f"""
+    <style>
+    html, body, .stApp {{
+        background: {bg};
+        color: {text};
+        font-size: {font_size}px;
+        font-family: 'Inter', 'Segoe UI', 'SF Pro Display', sans-serif;
+        transition: all 0.4s ease-in-out;
+    }}
+    .block-container {{
+        max-width: 1300px;
+        padding: 1.5rem 2rem 3rem 2rem;
+    }}
+    h1, h2, h3, h4, h5 {{
+        color: {accent};
+        text-shadow: {effect};
+        font-weight: 800;
+    }}
+    div.stButton > button {{
+        background: {accent};
+        color: white;
+        border: none;
+        border-radius: {radius}px;
+        padding: 0.6rem 1.1rem;
+        transition: all 0.25s ease-in-out;
+        font-weight: 600;
+    }}
+    div.stButton > button:hover {{
+        transform: translateY(-2px);
+        box-shadow: 0 0 20px {accent}77;
+    }}
+    .glass-card {{
+        background: {card};
+        backdrop-filter: blur(10px);
+        border-radius: {radius}px;
+        padding: 20px;
+        margin-bottom: 1rem;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.15);
+        transition: all 0.3s ease;
+    }}
+    .glass-card:hover {{
+        transform: translateY(-4px);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+    }}
+    [data-testid="stSidebar"] {{
+        background: {card};
+        border-right: 1px solid {accent}33;
+        box-shadow: 4px 0 12px rgba(0,0,0,0.1);
+    }}
+    [data-testid="stMetricValue"] {{
+        color: {accent} !important;
+        font-size: 1.6rem !important;
+        font-weight: 800 !important;
+    }}
+    hr {{
+        border: none;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, {accent}66, transparent);
+        margin: 1rem 0;
+    }}
+    </style>
+    """
 
-    cinematic_blur = "blur(20px)" if cinematic else "none"
-    effect = f"0 0 25px {glow}" if motion else "none"
+# Apply dynamic CSS
+st.markdown(build_css(palette, font_size, radius, motion), unsafe_allow_html=True)
+
+
+# =====================================================
+# 🧩 BUILD DYNAMIC CSS — Supports Motion / Glow / Themes
+# =====================================================
+def build_css(palette, font_size, radius, motion):
+    accent = palette["accent"]
+    text = palette["text"]
+    bg = palette["bg"]
+    card = palette["card"]
+    glow = palette["glow"] if motion else "none"
 
     return f"""
     <style>
@@ -945,75 +676,62 @@ def build_css(palette, font_size, radius, motion, cinematic):
         background: {bg};
         color: {text};
         font-size: {font_size}px;
-        font-family: 'Inter','Segoe UI','SF Pro Display',sans-serif;
-        transition: all 0.6s ease-in-out;
+        font-family: 'Inter', 'Segoe UI', 'SF Pro Display', sans-serif;
+        transition: all 0.5s ease-in-out;
     }}
-
     .block-container {{
-        max-width: 1380px;
-        padding: 1.6rem 2rem 3rem 2rem;
-        transition: all 0.3s ease;
+        max-width: 1350px;
+        padding: 1.5rem 2rem 3rem 2rem;
     }}
-
-    [data-testid="stSidebar"], section[data-testid="stSidebar"] {{
-        background: {card};
-        backdrop-filter: {cinematic_blur};
-        border-right: 1px solid {accent}33;
-        box-shadow: 3px 0 15px rgba(0,0,0,0.2);
-        transition: all 0.5s ease;
-    }}
-
     h1, h2, h3, h4, h5 {{
         color: {accent};
-        text-shadow: {effect};
+        text-shadow: 0 0 15px {glow};
         font-weight: 800;
-        letter-spacing: 0.5px;
-        transition: color 0.3s ease;
     }}
-
     div.stButton > button {{
         background: {accent};
         color: white;
         border: none;
         border-radius: {radius}px;
-        padding: 0.65rem 1.2rem;
+        padding: 0.6rem 1.1rem;
         transition: all 0.25s ease-in-out;
         font-weight: 600;
     }}
     div.stButton > button:hover {{
-        transform: translateY(-3px) scale(1.02);
-        box-shadow: 0 0 25px {accent}88;
+        transform: translateY(-2px);
+        box-shadow: 0 0 22px {glow};
     }}
-
     .glass-card {{
         background: {card};
-        backdrop-filter: {cinematic_blur};
+        backdrop-filter: blur(10px);
         border-radius: {radius}px;
         padding: 20px;
-        margin-bottom: 1.2rem;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-        transition: all 0.4s ease;
+        margin-bottom: 1rem;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.15);
+        transition: all 0.35s ease;
     }}
     .glass-card:hover {{
-        transform: translateY(-5px);
-        box-shadow: 0 10px 30px {glow};
+        transform: translateY(-4px);
+        box-shadow: 0 12px 28px {glow};
     }}
-
+    [data-testid="stSidebar"] {{
+        background: {card};
+        border-right: 1px solid {accent}33;
+        box-shadow: 4px 0 12px rgba(0,0,0,0.1);
+        backdrop-filter: blur(15px);
+    }}
     [data-testid="stMetricValue"] {{
         color: {accent} !important;
         font-size: 1.6rem !important;
         font-weight: 800 !important;
-        text-shadow: 0 0 10px {glow};
+        text-shadow: 0 0 12px {glow};
     }}
-
     hr {{
         border: none;
         height: 1px;
-        background: linear-gradient(90deg,transparent,{accent}66,transparent);
+        background: linear-gradient(90deg, transparent, {accent}66, transparent);
         margin: 1rem 0;
     }}
-
-    /* Tabs & Chips */
     .stTabs [data-baseweb="tab-list"] button {{
         border-radius: {radius}px;
         color: {text};
@@ -1024,191 +742,149 @@ def build_css(palette, font_size, radius, motion, cinematic):
         color: {accent};
         text-shadow: 0 0 10px {glow};
     }}
-
-    /* Smooth scrollbar */
-    ::-webkit-scrollbar {{
-        width: 10px;
-        background: rgba(0,0,0,0.2);
-    }}
-    ::-webkit-scrollbar-thumb {{
-        background: {accent}55;
-        border-radius: 10px;
-    }}
     </style>
     """
 
 # =====================================================
-# 🚀 APPLY THEME
+# 💾 APPLY THEME
 # =====================================================
-st.markdown(build_css(palette, font_size, radius, motion, cinematic), unsafe_allow_html=True)
+st.markdown(build_css(palette, font_size, radius, motion), unsafe_allow_html=True)
+    
+# =====================================================
+# 💹 DASHBOARD SECTION — PURE COMPARISON ANALYTICS
+# =====================================================
 
-# =====================================================
-# 💬 Theme info toast
-# =====================================================
-st.toast(f"🎨 {ui_mode} theme applied with {'motion' if motion else 'static'} effects.", icon="💫")
-   
-# =====================================================
-# 🚗 PARIVAHAN ANALYTICS — PURE COMPARISON DASHBOARD (REAL + MAXED)
-# =====================================================
-import streamlit as st
-import pandas as pd
-import numpy as np
-import datetime
-import pytz
-import time
-
-# =====================================================
-# 🎨 THEME + COLOR PALETTE
-# =====================================================
-palette = {
-    "accent": "#6C63FF",
-    "text": "#FFFFFF",
-    "glow": "#8F8CFF",
-    "card": "rgba(255, 255, 255, 0.06)"
-}
-
-# =====================================================
-# ⏰ CURRENT TIME (IST)
-# =====================================================
-ist = pytz.timezone("Asia/Kolkata")
-current_date = datetime.datetime.now(ist)
-current_date_str = current_date.strftime("%A, %d %B %Y • %I:%M %p")
-version_tag = f"v{current_date.strftime('%Y.%m.%d')}"
-
-# =====================================================
-# 💠 GLOBAL STYLES — Glassmorphism + Motion
-# =====================================================
-st.markdown("""
-<style>
-.main {
-    background: radial-gradient(circle at 20% 20%, #0f2027, #203a43, #2c5364);
-    color: white;
-}
-[data-testid="stHeader"] {background: rgba(0,0,0,0); height: 0;}
-hr {border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 1rem 0;}
-h1, h2, h3, p {color: white !important;}
-.metric-box {
-    background: rgba(255, 255, 255, 0.08);
-    padding: 20px;
-    border-radius: 20px;
-    text-align: center;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-    backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
-}
-.metric-box:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-}
-.footer {
-    text-align:center;
-    opacity:0.65;
-    font-size:13px;
-    margin-top:20px;
-}
-.fade-in {
-    animation: fadeIn 1.5s ease-in-out;
-}
-@keyframes fadeIn {
-    from {opacity: 0; transform: translateY(10px);}
-    to {opacity: 1; transform: translateY(0);}
-}
-</style>
-""", unsafe_allow_html=True)
-
-# =====================================================
-# 🧭 APP HEADER (with Version + Real-Time IST)
-# =====================================================
-if "app_start_time" not in st.session_state:
-    st.session_state["app_start_time"] = time.time()
-    print(f"🕒 App booted at: {current_date_str}")
-
-st.markdown(f"""
-<div class="fade-in" style='text-align:center;padding:30px;border-radius:25px;
-background:rgba(255,255,255,0.05);
-box-shadow:0 8px 30px rgba(0,0,0,0.3);
-backdrop-filter:blur(10px);
-margin-bottom:35px;'>
-    <h1 style='font-size:2.5rem;margin-bottom:10px;'>🚗 Parivahan Analytics — Real Data Dashboard</h1>
-    <p style='opacity:0.85;font-size:15px;margin:0;'>🗓 Updated: <b>{current_date_str}</b></p>
-    <p style='opacity:0.6;font-size:13px;'>Build {version_tag} • All Data from Live Parivahan API</p>
-</div>
-""", unsafe_allow_html=True)
-
-# =====================================================
-# 📊 REAL ANALYTICS SECTION (Dynamic)
-# =====================================================
+st.markdown(
+    f"<h2 style='text-align:center;'>🚗 Parivahan Analytics — {ui_mode} Mode</h2>",
+    unsafe_allow_html=True
+)
+# -- Divider --
 st.markdown("<hr>", unsafe_allow_html=True)
 
-st.markdown("""
-<div class="fade-in" style='text-align:center;margin-bottom:1.5rem;'>
-    <h2 style='font-size:1.8rem;'>📈 Real Comparative Analytics</h2>
-    <p style='opacity:0.75;'>All metrics and trends below are calculated from live, verified Parivahan API data</p>
-</div>
-""", unsafe_allow_html=True)
 
 # =====================================================
-# 🔍 KPI METRICS — No Fake Data
+# 🧾 FOOTER
 # =====================================================
-try:
-    # Assume df is already loaded from API
-    total_registrations = int(df["registeredVehicleCount"].sum())
-    total_rtos = df["rtoCode"].nunique() if "rtoCode" in df.columns else 0
-    avg_revenue = df["revenue"].mean() if "revenue" in df.columns else None
+st.markdown(
+    """
+    <hr>
+    <div style='text-align:center;opacity:0.7;margin-top:2rem;'>
+        ✨ Parivahan Analytics • Comparison Dashboard</div>
+    """,
+    unsafe_allow_html=True,
+)
 
-    if "year" in df.columns:
-        years = sorted(df["year"].unique())
-        if len(years) >= 2:
-            yoy_growth = (
-                (df[df["year"] == years[-1]]["registeredVehicleCount"].sum() -
-                 df[df["year"] == years[-2]]["registeredVehicleCount"].sum()) /
-                max(df[df["year"] == years[-2]]["registeredVehicleCount"].sum(), 1)
-            ) * 100
-        else:
-            yoy_growth = None
-    else:
-        yoy_growth = None
+# # =====================================================
+# # 🚗 PARIVAHAN ANALYTICS — HEADER + LAYOUT
+# # =====================================================
+# from datetime import datetime
+# import pytz
+# import streamlit as st
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("🚘 Total Registrations", f"{total_registrations:,}", 
-                  f"{yoy_growth:.2f}% YoY" if yoy_growth else "")
-    with col2:
-        st.metric("🏢 Active RTOs", f"{total_rtos:,}")
-    with col3:
-        if avg_revenue:
-            st.metric("💰 Avg. Revenue / Vehicle", f"₹{avg_revenue:,.0f}")
-        else:
-            st.metric("💰 Avg. Revenue / Vehicle", "—")
+# # ================= TIME (IST) =================
+# ist = pytz.timezone("Asia/Kolkata")
+# current_time = datetime.now(ist).strftime("%A, %d %B %Y • %I:%M %p")
 
-except Exception as e:
-    st.warning(f"⚠️ Unable to load metrics: {e}")
+# # ================= GLOBAL STYLES =================
+# st.markdown("""
+# <style>
+# /* Smooth fade + glassmorphism */
+# .main {
+#     background: radial-gradient(circle at 20% 20%, #0f2027, #203a43, #2c5364);
+#     color: white;
+# }
+# [data-testid="stHeader"] {background: rgba(0,0,0,0); height: 0;}
+# hr {border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 1rem 0;}
+# h1, h2, h3, p {color: white !important;}
 
-st.markdown("""
-<div style='margin-top:1rem;text-align:center;opacity:0.7;font-size:13px;'>
-✅ All values shown are from verified Parivahan API responses — zero mock or static data used.
-</div>
-""", unsafe_allow_html=True)
+# /* Card-style elements */
+# .metric-box {
+#     background: rgba(255, 255, 255, 0.08);
+#     padding: 20px;
+#     border-radius: 20px;
+#     text-align: center;
+#     box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+#     backdrop-filter: blur(10px);
+#     transition: all 0.3s ease;
+# }
+# .metric-box:hover {
+#     transform: translateY(-5px);
+#     box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+# }
+# .footer {
+#     text-align:center;
+#     opacity:0.65;
+#     font-size:13px;
+#     margin-top:20px;
+# }
+# .fade-in {
+#     animation: fadeIn 1.5s ease-in-out;
+# }
+# @keyframes fadeIn {
+#     from {opacity: 0; transform: translateY(10px);}
+#     to {opacity: 1; transform: translateY(0);}
+# }
+# </style>
+# """, unsafe_allow_html=True)
 
-# =====================================================
-# 🧾 FOOTER — Real-Time Build Info
-# =====================================================
-st.markdown(f"""
-<hr style="border:none;height:2px;background:linear-gradient(90deg,transparent,{palette['accent']}99,transparent);margin-top:3rem;">
-<div style="
-    text-align:center;
-    opacity:0.9;
-    font-size:14px;
-    padding:14px;
-    background:{palette['card']};
-    border-radius:12px;
-    box-shadow:0 0 14px {palette['glow']};
-">
-    ✨ <b>Parivahan Analytics • Comparison Dashboard (Maxed)</b><br>
-    <span style='font-size:12px;opacity:0.7;'>Last Updated: {current_date_str} • Build {version_tag}</span><br>
-    <span style='font-size:11px;opacity:0.6;'>Powered by Streamlit • DeepInfra AI • Parivahan API</span>
-</div>
-""", unsafe_allow_html=True)
+# # =====================================================
+# # 🧭 HEADER (with IST Time & Runtime Logging — All Maxed)
+# # =====================================================
+# import pytz
+# from datetime import datetime
+# import time
+
+# # --- Accurate Indian Standard Time (IST) ---
+# ist = pytz.timezone("Asia/Kolkata")
+# current_time = datetime.now(ist).strftime("%Y-%m-%d %I:%M:%S %p")
+
+# # --- Record App Boot Time in Console ---
+# if "app_start_time" not in st.session_state:
+#     st.session_state["app_start_time"] = time.time()
+#     print(f"🕒 Streamlit app booted at (IST): {current_time}")
+
+# # --- Display Stylish Header with Time ---
+# st.markdown(f"""
+# <div class="fade-in" style='text-align:center;padding:30px;border-radius:25px;
+# background:rgba(255,255,255,0.05);
+# box-shadow:0 8px 30px rgba(0,0,0,0.3);
+# backdrop-filter:blur(10px);
+# margin-bottom:35px;'>
+#     <h1 style='font-size:2.5rem;margin-bottom:10px;'>🚗 Parivahan Analytics Dashboard</h1>
+#     <p style='opacity:0.85;font-size:15px;margin:0;'>
+#         🗓 Updated: <b>{current_time} (IST)</b>
+#     </p>
+# </div>
+# """, unsafe_allow_html=True)
+
+# # --- Console Timestamp Log for Each Run ---
+# print(f"🔁 Refresh triggered — Current IST Time: {current_time}")
+
+# # =====================================================
+# # 📊 MAIN SECTION
+# # =====================================================
+# st.markdown("<hr>", unsafe_allow_html=True)
+
+# layout = st.container()
+# with layout:
+#     st.markdown("""
+#     <div class="fade-in" style='text-align:center;margin-bottom:1.5rem;'>
+#         <h2 style='font-size:1.8rem;'>📈 Analytics Overview</h2>
+#         <p style='opacity:0.75;'>Dynamic KPIs, charts, forecasts, and insights update automatically from live data</p>
+#     </div>
+#     """, unsafe_allow_html=True)
+
+    
+#     st.markdown("<br>", unsafe_allow_html=True)
+
+# # =====================================================
+# # 🧩 FOOTER
+# # =====================================================
+# st.markdown("<hr>", unsafe_allow_html=True)
+# st.markdown(
+#     "<div class='footer'>🌐 Parivahan Analytics • Hybrid Intelligence Engine</div>",
+#     unsafe_allow_html=True,
+# )
 
 # =====================================================
 # 🤖 DEEPINFRA AI — INTELLIGENT INTEGRATION (REAL + MAXED)
