@@ -1142,7 +1142,7 @@ params_common["request_ts"] = datetime.now(ZoneInfo("Asia/Kolkata")).isoformat()
 # =====================================================
 # 🧠 SAFE FETCH FUNCTION — MAXED
 # =====================================================
-@st.cache_data(ttl=CACHE_TTL, show_spinner=False)
+# @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
 def safe_fetch(endpoint: str = VAHAN_ENDPOINT, params: dict = None, retries: int = MAX_RETRIES):
     """Universal fetcher with retry, caching, error resilience, and rich logging."""
     if not params:
