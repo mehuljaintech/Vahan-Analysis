@@ -168,40 +168,40 @@ import streamlit as st
 
 warnings.filterwarnings("ignore")
 
-# =====================================================
-# ⚙️ AUTO REFRESH + CACHE CLEAR ON CODE CHANGE
-# =====================================================
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+# # =====================================================
+# # ⚙️ AUTO REFRESH + CACHE CLEAR ON CODE CHANGE
+# # =====================================================
+# from watchdog.observers import Observer
+# from watchdog.events import FileSystemEventHandler
 
-class _AutoReload(FileSystemEventHandler):
-    def __init__(self, watch_dir="."):
-        self.watch_dir = watch_dir
-        self.last_reload = time.time()
-    def on_any_event(self, event):
-        # Limit frequency of restarts to prevent loops
-        if time.time() - self.last_reload > 3:
-            print("🔁 Code change detected — restarting Streamlit app...")
-            try:
-                st.cache_data.clear()
-                st.cache_resource.clear()
-                time.sleep(1)
-                st.rerun()
-            except Exception as e:
-                print(f"[auto-reload] Failed to rerun: {e}")
-            self.last_reload = time.time()
+# class _AutoReload(FileSystemEventHandler):
+#     def __init__(self, watch_dir="."):
+#         self.watch_dir = watch_dir
+#         self.last_reload = time.time()
+#     def on_any_event(self, event):
+#         # Limit frequency of restarts to prevent loops
+#         if time.time() - self.last_reload > 3:
+#             print("🔁 Code change detected — restarting Streamlit app...")
+#             try:
+#                 st.cache_data.clear()
+#                 st.cache_resource.clear()
+#                 time.sleep(1)
+#                 st.rerun()
+#             except Exception as e:
+#                 print(f"[auto-reload] Failed to rerun: {e}")
+#             self.last_reload = time.time()
 
-def start_auto_reload():
-    """Start watchdog observer to monitor file changes (even on Streamlit Cloud)."""
-    watch_dir = os.path.dirname(os.path.abspath(__file__))
-    event_handler = _AutoReload(watch_dir)
-    observer = Observer()
-    observer.schedule(event_handler, path=watch_dir, recursive=True)
-    observer.daemon = True
-    observer.start()
+# def start_auto_reload():
+#     """Start watchdog observer to monitor file changes (even on Streamlit Cloud)."""
+#     watch_dir = os.path.dirname(os.path.abspath(__file__))
+#     event_handler = _AutoReload(watch_dir)
+#     observer = Observer()
+#     observer.schedule(event_handler, path=watch_dir, recursive=True)
+#     observer.daemon = True
+#     observer.start()
 
-# Start watcher
-start_auto_reload()
+# # Start watcher
+# start_auto_reload()
 
 # =====================================================
 # 🌱 ENVIRONMENT MANAGEMENT
@@ -672,7 +672,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
     menu_items={
         "Get Help": "https://parivahan.gov.in",
-        "Report a bug": "mailto:support@parivahan.gov.in",
         "About": "Vahan Analytics — Smart AI-Powered Registration Insights Dashboard",
     },
 )
