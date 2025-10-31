@@ -951,7 +951,6 @@ import traceback
 # safe_fetch(endpoint, params) -> dict
 # ist_now() -> str (returns current IST time as formatted string)
 
-@st.cache_data(show_spinner=False, ttl=900)
 def _cached_fetch(endpoint: str, params: Dict[str, Any]):
     """Cached low-level API call."""
     return safe_fetch(endpoint, params)
@@ -1407,7 +1406,6 @@ freq_choice = st.selectbox("Monthly / Quarterly trend", ["Monthly", "Quarterly"]
 # ---------------------------
 # Helper caches
 # ---------------------------
-@st.cache_data(ttl=3600)
 def fetch_maker_for_year(year: int):
     """Call the VAHAN endpoint for the top makers by year. Returns parsed dataframe."""
     try:
@@ -1435,7 +1433,6 @@ def fetch_maker_for_year(year: int):
         df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
     return df
 
-@st.cache_data(ttl=3600)
 def fetch_monthly_trend_for_maker(maker_label: str, years: List[int]):
     """Attempt to fetch monthly trend for a maker across years by calling a generic endpoint.
        This uses a best-effort approach and falls back to creating a synthetic trend if unavailable."""
@@ -1770,7 +1767,6 @@ def linear_forecast_series(ts: pd.DataFrame, months:int=6):
 # -------------------------
 # Fetch & prepare data (makers + states)
 # -------------------------
-@st.cache_data(ttl=60*15, show_spinner=False)
 def fetch_makers_states():
     # Try common VAHAN endpoints (you may adjust endpoints to your setup)
     makers_json = fetch_json("vahandashboard/top5Makerchart", desc="Top Makers")
