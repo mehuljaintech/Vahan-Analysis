@@ -107,40 +107,48 @@ app_boot_banner()
 # =============================
 # 📚 Cleaned & Consolidated Imports
 # =============================
-# Standard library
-import time
-import traceback
+
+# ---------- Standard Library ----------
 import io
 import json
+import time
 import random
+import traceback
 from datetime import date, timedelta
 
-# Third-party
-import requests
+# ---------- Third-Party Libraries ----------
 import numpy as np
 import pandas as pd
+import requests
 import altair as alt
 from dotenv import load_dotenv
 
-# Excel / Openpyxl
+# ---------- Excel / OpenPyXL ----------
 from openpyxl import load_workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import LineChart, Reference
 
-# Local vahan package modules (keep unchanged)
+# ---------- Local VAHAN Package ----------
 from vahan.api import build_params, get_json
 from vahan.parsing import (
-    to_df, normalize_trend, parse_duration_table,
-    parse_top5_revenue, parse_revenue_trend, parse_makers
+    to_df,
+    normalize_trend,
+    parse_duration_table,
+    parse_top5_revenue,
+    parse_revenue_trend,
+    parse_makers,
 )
 from vahan.metrics import compute_yoy, compute_qoq
 from vahan.charts import (
-    bar_from_df, pie_from_df, line_from_trend,
-    show_metrics, show_tables
+    bar_from_df,
+    pie_from_df,
+    line_from_trend,
+    show_metrics,
+    show_tables,
 )
 
-# Optional advanced libraries (import gracefully)
+# ---------- Optional Advanced Libraries ----------
 SKLEARN_AVAILABLE = False
 try:
     from sklearn.ensemble import IsolationForest
@@ -148,6 +156,7 @@ try:
     from sklearn.preprocessing import StandardScaler
     from sklearn.decomposition import PCA
     from sklearn.linear_model import LinearRegression
+
     SKLEARN_AVAILABLE = True
 except Exception:
     SKLEARN_AVAILABLE = False
@@ -155,11 +164,12 @@ except Exception:
 PROPHET_AVAILABLE = False
 try:
     from prophet import Prophet
+
     PROPHET_AVAILABLE = True
 except Exception:
     PROPHET_AVAILABLE = False
 
-# Load environment variables
+# ---------- Load Environment Variables ----------
 load_dotenv()
 
 # =====================================================
