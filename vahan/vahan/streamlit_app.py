@@ -938,26 +938,79 @@ def safe_fetch(path:str, params:Dict[str,Any], cache=True)->Optional[Any]:
     return None
 
 # =====================================================
-# 🧠 STREAMLIT WRAPPER — Interactive Display
+# 🧠 STREAMLIT WRAPPER — Interactive & All-Maxed Fetcher
 # =====================================================
-def fetch_json(endpoint:str, params:Dict[str,Any], desc:str=""):
-    """Streamlit interactive fetch block with expanders, retries & visuals."""
-    with st.spinner(f"🔄 Fetching {desc or endpoint} ..."):
-        data=safe_fetch(endpoint,params)
-        time.sleep(0.3)
+import streamlit as st
+import time
+import random
+import datetime
+from typing import Dict, Any
+import traceback
+
+# Assuming safe_fetch and ist_now() are already defined in the same module
+# safe_fetch(endpoint, params) -> dict
+# ist_now() -> str (returns current IST time as formatted string)
+
+@st.cache_data(show_spinner=False, ttl=900)
+def _cached_fetch(endpoint: str, params: Dict[str, Any]):
+    """Cached low-level API call."""
+    return safe_fetch(endpoint, params)
+
+def fetch_json(endpoint: str, params: Dict[str, Any] = None, desc: str = "") -> Dict[str, Any]:
+    """
+    Streamlit interactive API fetcher.
+    Includes caching, retries, timing, status UI, and JSON preview.
+    """
+    params = params or {}
+    desc_display = desc or endpoint
+
+    with st.spinner(f"🔄 Fetching {desc_display} ..."):
+        start_time = time.time()
+        data = None
+        max_retries = 3
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                data = _cached_fetch(endpoint, params)
+                if data:
+                    break
+                else:
+                    st.warning(f"⚠️ Attempt {attempt}/{max_retries} — Empty response, retrying...")
+                    time.sleep(1.5)
+            except Exception as e:
+                st.error(f"❌ Attempt {attempt}/{max_retries} failed: {e}")
+                st.code(traceback.format_exc(), language="python")
+                time.sleep(1.5)
+
+        elapsed = round(time.time() - start_time, 2)
+
+    # ✅ SUCCESS UI
     if data:
-        st.success(f"✅ {desc or endpoint} fetched successfully.")
-        with st.expander(f"📦 {desc or endpoint} JSON Preview"):
-            st.json(data)
-        st.markdown(f"<div style='background:linear-gradient(90deg,#00c6ff,#0072ff);"
-                    "color:white;padding:10px 15px;border-radius:10px;'>"
-                    f"✅ Ready for analytics at {ist_now()} (IST)</div>",
-                    unsafe_allow_html=True)
-    else:
-        st.error(f"❌ Failed to fetch {desc or endpoint}.")
+        st.success(f"✅ {desc_display} fetched successfully in {elapsed}s.")
+        with st.expander(f"📦 {desc_display} JSON Preview"):
+            st.json(data, expanded=False)
+        st.markdown(
+            f"""
+            <div style='background:linear-gradient(90deg,#00c6ff,#0072ff);
+                        color:white;padding:10px 15px;border-radius:10px;
+                        margin-top:10px;'>
+                ✅ <b>Ready for analytics</b> — {ist_now()} IST
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        return data
+
+    # ❌ FAILURE UI
+    st.error(f"🚫 Failed to fetch {desc_display} after {max_retries} attempts.")
+    col1, col2 = st.columns([1, 1.2])
+    with col1:
         if st.button("🔁 Retry Fetch", key=f"retry_{random.randint(1,9999)}"):
-            st.toast("Reattempting fetch...", icon="🔄"); st.rerun()
-    return data or {}
+            st.toast("Reattempting fetch...", icon="🔄")
+            st.rerun()
+    with col2:
+        st.info("💡 Check your network or API availability.")
+    return {}
 
 # ===============================================================
 # 🤖 DeepInfra AI Helper — ALL-MAXED EDITION
