@@ -64,7 +64,7 @@ REFERERS = [
 ]
 
 # -------------------- Logging --------------------
-logger = logging.getLogger("vahan_allmaxed")
+logger = logging.getLogger("vahan")
 if not logger.handlers:
     fmt = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
     sh = logging.StreamHandler()
@@ -214,7 +214,7 @@ class SimpleMetrics:
             self.last_reset = time.time()
 
 # -------------------- AllMaxedClient --------------------
-class AllMaxedClient:
+class Client:
     def __init__(self,
                  base: str = DEFAULT_BASE,
                  timeout: int = DEFAULT_TIMEOUT,
@@ -609,16 +609,3 @@ def build_params(from_year: int, to_year: int, state_code: str = "", rto_code: s
     if extra and isinstance(extra, dict):
         p.update(extra)
     return p
-
-# -------------------- Example quick-run guard --------------------
-if __name__ == "__main__":
-    client = AllMaxedClient(debug_logfile=os.path.join(DEFAULT_CACHE_DIR, "vahan_debug.log"))
-    # simple demo: preview
-    params = build_params(2020, 2020, state_code="", vehicle_makers="", vehicle_classes="", time_period=0)
-    data, url = client.get_json("getRegisteredVehiclesByFuel", params)
-    print("URL:", url)
-    if data is None:
-        print("Fetch failed or no data")
-    else:
-        print("Preview:", json.dumps(data if isinstance(data, dict) else (data[:3] if isinstance(data, list) else data), indent=2, ensure_ascii=False))
-    client.close()
