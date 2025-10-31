@@ -131,14 +131,7 @@ from openpyxl.chart import LineChart, Reference
 
 # ---------- Local VAHAN Package ----------
 from vahan.api import *
-from vahan.parsing import (
-    to_df,
-    normalize_trend,
-    parse_duration_table,
-    parse_top5_revenue,
-    parse_revenue_trend,
-    parse_makers,
-)
+from vahan.parsing import *
 from vahan.metrics import compute_yoy, compute_qoq
 from vahan.charts import (
     bar_from_df,
