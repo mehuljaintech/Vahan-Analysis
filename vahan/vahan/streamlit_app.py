@@ -130,7 +130,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.chart import LineChart, Reference
 
 # ---------- Local VAHAN Package ----------
-from vahan.api import build_params, get_json
+from vahan.api import *
 from vahan.parsing import (
     to_df,
     normalize_trend,
