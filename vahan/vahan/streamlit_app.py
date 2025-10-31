@@ -1187,27 +1187,33 @@ with st.container():
     """, unsafe_allow_html=True)
 
     # --------------------------------------------------------------
-    # 🔄 Fetch All Years Data
-    # --------------------------------------------------------------
-    with st.spinner("📡 Fetching multi-year category data from Vahan API..."):
-        year_list = list(range(2018, datetime.datetime.now().year + 1))
-        df_all_years = []
+# 🔄 Fetch All Years Data
+# --------------------------------------------------------------
+from datetime import datetime  # ensure correct import (can be at top)
 
-        for y in year_list:
-            try:
-                data_json = fetch_json(f"vahandashboard/categoriesdonutchart?year={y}", desc=f"Category {y}")
-                df_y = to_df(data_json)
-                if not df_y.empty:
-                    df_y["year"] = y
-                    df_all_years.append(df_y)
-            except Exception as e:
-                st.warning(f"⚠️ Failed for {y}: {e}")
+with st.spinner("📡 Fetching multi-year category data from Vahan API..."):
+    # ✅ Fix: use datetime.now(), not datetime.datetime.now()
+    year_list = list(range(2018, datetime.now().year + 1))
+    df_all_years = []
 
-        if not df_all_years:
-            st.error("🚫 No data found for any year.")
-            st.stop()
+    for y in year_list:
+        try:
+            data_json = fetch_json(
+                f"vahandashboard/categoriesdonutchart?year={y}",
+                desc=f"Category {y}"
+            )
+            df_y = to_df(data_json)
+            if not df_y.empty:
+                df_y["year"] = y
+                df_all_years.append(df_y)
+        except Exception as e:
+            st.warning(f"⚠️ Failed for {y}: {e}")
 
-        df_cat_all = pd.concat(df_all_years, ignore_index=True)
+    if not df_all_years:
+        st.error("🚫 No data found for any year.")
+        st.stop()
+
+    df_cat_all = pd.concat(df_all_years, ignore_index=True)
 
     # --------------------------------------------------------------
     # 📊 Aggregation and Visualization
