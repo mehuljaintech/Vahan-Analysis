@@ -940,7 +940,7 @@ def safe_fetch(path:str, params:Dict[str,Any], cache=True)->Optional[Any]:
 # =====================================================
 # 🧠 STREAMLIT WRAPPER — Interactive Display
 # =====================================================
-def fetch_json_ui(endpoint:str, params:Dict[str,Any], desc:str=""):
+def fetch_json(endpoint:str, params:Dict[str,Any], desc:str=""):
     """Streamlit interactive fetch block with expanders, retries & visuals."""
     with st.spinner(f"🔄 Fetching {desc or endpoint} ..."):
         data=safe_fetch(endpoint,params)
