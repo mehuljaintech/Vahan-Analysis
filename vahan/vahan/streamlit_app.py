@@ -2128,284 +2128,284 @@ def all_maxed_category_block(params: Optional[dict] = None):
     pivot_year = resampled.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
 
     # -------------------------
-# 💎 Key Metrics & Growth (All-Maxed) — FIXED
-# -------------------------
-import numpy as np
-import math
-import pandas as pd
-import plotly.express as px
-
-st.subheader("💎 Key Metrics & Growth (All-Maxed)")
-
-# --- Safety checks ---
-if pivot_year is None or (isinstance(pivot_year, pd.DataFrame) and pivot_year.empty):
-    st.warning("⚠️ No yearly data found for KPI computation.")
-else:
-    try:
-        # Ensure index is chronological (ascending)
-        pivot_year = pivot_year.sort_index()
-
-        # Build a numeric year list robustly (handles ints, strings, Periods, datetimes)
-        raw_index = list(pivot_year.index)
+    # 💎 Key Metrics & Growth (All-Maxed) — FIXED
+    # -------------------------
+    import numpy as np
+    import math
+    import pandas as pd
+    import plotly.express as px
+    
+    st.subheader("💎 Key Metrics & Growth (All-Maxed)")
+    
+    # --- Safety checks ---
+    if pivot_year is None or (isinstance(pivot_year, pd.DataFrame) and pivot_year.empty):
+        st.warning("⚠️ No yearly data found for KPI computation.")
+    else:
         try:
-            years_list = [int(x) for x in raw_index]
-        except Exception:
-            # fallback: try parsing as datetimes
-            years_list = pd.to_datetime(raw_index).year.tolist()
-
-        # Compute year totals (sum across categories)
-        year_totals = pivot_year.sum(axis=1).rename("TotalRegistrations").to_frame()
-
-        # Sort the totals by the derived years (to guarantee correct order)
-        # We align using the detected years_list
-        year_totals["_year_for_sort"] = years_list
-        year_totals = year_totals.sort_values("_year_for_sort").drop(columns="_year_for_sort")
-        year_totals.index = pd.Index(sorted(list(set(years_list)))) if len(year_totals)==len(set(years_list)) else year_totals.index
-
-        # Convert totals to numeric and guard against zeros / negatives
-        year_totals["TotalRegistrations"] = pd.to_numeric(year_totals["TotalRegistrations"], errors="coerce").fillna(0).astype(int)
-
-        # YoY percent change (safe)
-        year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
-        # Replace infinities and NaNs with np.nan then present as "n/a" later
-        year_totals["YoY_%"] = year_totals["YoY_%"].replace([np.inf, -np.inf], np.nan)
-
-        # --- CAGR calculation using actual year span (not row count) ---
-        if len(year_totals) >= 2:
-            # derive first & last year values and their year numbers
+            # Ensure index is chronological (ascending)
+            pivot_year = pivot_year.sort_index()
+    
+            # Build a numeric year list robustly (handles ints, strings, Periods, datetimes)
+            raw_index = list(pivot_year.index)
             try:
-                # attempt to get numeric year labels from index
-                idx_years = []
-                for ix in year_totals.index:
-                    try:
-                        idx_years.append(int(ix))
-                    except Exception:
-                        idx_years.append(pd.to_datetime(ix).year)
-                first_year = min(idx_years)
-                last_year = max(idx_years)
-                start_val = float(year_totals.loc[[i for i in year_totals.index if int(pd.to_datetime(i).year) == first_year][0], "TotalRegistrations"])
-                end_val = float(year_totals.loc[[i for i in year_totals.index if int(pd.to_datetime(i).year) == last_year][0], "TotalRegistrations"])
-                year_span = last_year - first_year
+                years_list = [int(x) for x in raw_index]
             except Exception:
-                # fallback to using first/last rows
-                first_year = None
-                last_year = None
-                start_val = float(year_totals["TotalRegistrations"].iloc[0])
-                end_val = float(year_totals["TotalRegistrations"].iloc[-1])
-                year_span = len(year_totals) - 1
-
-            if start_val > 0 and year_span > 0:
-                cagr = ((end_val / start_val) ** (1.0 / year_span) - 1.0) * 100
+                # fallback: try parsing as datetimes
+                years_list = pd.to_datetime(raw_index).year.tolist()
+    
+            # Compute year totals (sum across categories)
+            year_totals = pivot_year.sum(axis=1).rename("TotalRegistrations").to_frame()
+    
+            # Sort the totals by the derived years (to guarantee correct order)
+            # We align using the detected years_list
+            year_totals["_year_for_sort"] = years_list
+            year_totals = year_totals.sort_values("_year_for_sort").drop(columns="_year_for_sort")
+            year_totals.index = pd.Index(sorted(list(set(years_list)))) if len(year_totals)==len(set(years_list)) else year_totals.index
+    
+            # Convert totals to numeric and guard against zeros / negatives
+            year_totals["TotalRegistrations"] = pd.to_numeric(year_totals["TotalRegistrations"], errors="coerce").fillna(0).astype(int)
+    
+            # YoY percent change (safe)
+            year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
+            # Replace infinities and NaNs with np.nan then present as "n/a" later
+            year_totals["YoY_%"] = year_totals["YoY_%"].replace([np.inf, -np.inf], np.nan)
+    
+            # --- CAGR calculation using actual year span (not row count) ---
+            if len(year_totals) >= 2:
+                # derive first & last year values and their year numbers
+                try:
+                    # attempt to get numeric year labels from index
+                    idx_years = []
+                    for ix in year_totals.index:
+                        try:
+                            idx_years.append(int(ix))
+                        except Exception:
+                            idx_years.append(pd.to_datetime(ix).year)
+                    first_year = min(idx_years)
+                    last_year = max(idx_years)
+                    start_val = float(year_totals.loc[[i for i in year_totals.index if int(pd.to_datetime(i).year) == first_year][0], "TotalRegistrations"])
+                    end_val = float(year_totals.loc[[i for i in year_totals.index if int(pd.to_datetime(i).year) == last_year][0], "TotalRegistrations"])
+                    year_span = last_year - first_year
+                except Exception:
+                    # fallback to using first/last rows
+                    first_year = None
+                    last_year = None
+                    start_val = float(year_totals["TotalRegistrations"].iloc[0])
+                    end_val = float(year_totals["TotalRegistrations"].iloc[-1])
+                    year_span = len(year_totals) - 1
+    
+                if start_val > 0 and year_span > 0:
+                    cagr = ((end_val / start_val) ** (1.0 / year_span) - 1.0) * 100
+                else:
+                    cagr = float("nan")
             else:
                 cagr = float("nan")
-        else:
-            cagr = float("nan")
-
-        # --- MoM if monthly (safe) ---
-        if freq == "Monthly" and not resampled.empty:
-            pivot_month = resampled.copy()
-            pivot_month["month"] = pivot_month["ds"].dt.to_period("M")
-            month_totals = pivot_month.groupby("month")["value"].sum().reset_index()
-            month_totals["MoM_%"] = month_totals["value"].pct_change() * 100
-            latest_mom_val = month_totals["MoM_%"].iloc[-1] if len(month_totals) > 1 else np.nan
-            latest_mom = f"{latest_mom_val:.2f}%" if not pd.isna(latest_mom_val) and np.isfinite(latest_mom_val) else "n/a"
-        else:
-            latest_mom = "n/a"
-
-        # --- Latest year, totals, and category shares (robust lookup) ---
-        # find latest year label usable in year_totals
-        try:
-            # prefer numeric year if available
-            latest_year_label = max([int(x) for x in year_totals.index])
-            # find matching index key (could be int or string)
-            # attempt direct match
-            if latest_year_label in year_totals.index:
-                key_for_latest = latest_year_label
+    
+            # --- MoM if monthly (safe) ---
+            if freq == "Monthly" and not resampled.empty:
+                pivot_month = resampled.copy()
+                pivot_month["month"] = pivot_month["ds"].dt.to_period("M")
+                month_totals = pivot_month.groupby("month")["value"].sum().reset_index()
+                month_totals["MoM_%"] = month_totals["value"].pct_change() * 100
+                latest_mom_val = month_totals["MoM_%"].iloc[-1] if len(month_totals) > 1 else np.nan
+                latest_mom = f"{latest_mom_val:.2f}%" if not pd.isna(latest_mom_val) and np.isfinite(latest_mom_val) else "n/a"
             else:
-                # try string representation
-                key_for_latest = str(latest_year_label)
-                if key_for_latest not in year_totals.index:
-                    # fallback to last index
-                    key_for_latest = year_totals.index[-1]
-        except Exception:
-            key_for_latest = year_totals.index[-1]
-
-        try:
-            latest_total = int(year_totals.loc[key_for_latest, "TotalRegistrations"])
-        except Exception:
-            latest_total = int(year_totals["TotalRegistrations"].iloc[-1])
-
-        # category share for that latest year (guard pivot_year lookup)
-        try:
-            # find the pivot_year row for the latest year (index type flexible)
-            if key_for_latest in pivot_year.index:
-                row_latest = pivot_year.loc[key_for_latest]
-            else:
-                # try matching by year number
-                possible_matches = [idx for idx in pivot_year.index if str(latest_year_label) in str(idx)]
-                if possible_matches:
-                    row_latest = pivot_year.loc[possible_matches[0]]
-                else:
-                    row_latest = pivot_year.iloc[-1]
-            cat_share = (row_latest / row_latest.sum() * 100).sort_values(ascending=False).round(1)
-        except Exception:
-            cat_share = pd.Series(dtype=float)
-
-        # --- Display metrics ---
-        # Years loaded display (safe)
-        try:
-            display_first_year = min([int(x) for x in year_totals.index])
-            display_last_year = max([int(x) for x in year_totals.index])
-            display_years_count = display_last_year - display_first_year + 1
-        except Exception:
-            display_first_year = year_totals.index[0]
-            display_last_year = year_totals.index[-1]
-            display_years_count = len(year_totals)
-
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("📅 Years Loaded", f"{display_first_year} → {display_last_year}", f"{display_years_count} yrs")
-        c2.metric("📈 CAGR (Total)", f"{cagr:.2f}%" if not (cagr is None or math.isnan(cagr)) else "n/a")
-        # Latest YoY: show nicely even if NaN
-        latest_yoy_val = year_totals["YoY_%"].iloc[-1] if len(year_totals["YoY_%"])>0 else np.nan
-        c3.metric("📊 Latest YoY", f"{latest_yoy_val:.2f}%" if not pd.isna(latest_yoy_val) else "n/a")
-        c4.metric("📆 Latest MoM", latest_mom)
-
-        # --- Category share table (latest year) ---
-        st.markdown("#### 📘 Category Share (Latest Year)")
-        if not cat_share.empty and cat_share.sum() > 0:
-            df_share = pd.DataFrame({
-                "Category": cat_share.index,
-                "Share_%": cat_share.values,
-                "Volume": pivot_year.loc[row_latest.name].astype(int).values if 'row_latest' in locals() else [0]*len(cat_share)
-            })
-            st.dataframe(df_share.sort_values("Share_%", ascending=False), use_container_width=True)
-        else:
-            st.info("No category share data available for the latest year.")
-
-        # --- Optional small charts for quick verification ---
-        # Yearly totals bar
-        try:
-            fig_tot = px.bar(year_totals.reset_index().rename(columns={"index":"Year"}), x=year_totals.index, y="TotalRegistrations",
-                             title="Yearly Total Registrations", text_auto=True)
-            fig_tot.update_layout(template="plotly_white", xaxis_title="Year", yaxis_title="Registrations")
-            st.plotly_chart(fig_tot, use_container_width=True)
-        except Exception:
-            pass
-
-    except Exception as e:
-        st.error(f"💥 KPI computation failed: {e}")
-        logger.exception(f"KPI block failure: {e}")
-
-# =====================================================
-# 📊 VISUALIZATIONS (ALL-MAXED)
-# =====================================================
-st.subheader("📊 Visualizations — Multi-year & Multi-frequency (All-Maxed)")
-
-# --- Safety Checks ---
-if "resampled" not in locals() or resampled is None or resampled.empty:
-    st.warning("⚠️ No valid 'resampled' data available for visualization.")
-    st.stop()
-
-if "pivot" not in locals() or pivot is None or pivot.empty:
-    st.warning("⚠️ No valid 'pivot' data available for visualization.")
-    st.stop()
-
-if "mode" not in locals():
-    mode = "Combined (Overlay / Stacked)"
-
-# -------------------------
-# Combined View
-# -------------------------
-if mode.startswith("Combined"):
-    st.markdown("### 🌈 Stacked & Overlay Trends — Combined View")
-
-    # --- Stacked Area Chart ---
-    try:
-        fig_area = px.area(
-            resampled,
-            x="ds",
-            y="value",
-            color="label",
-            title="Stacked Registrations by Category Over Time",
-            color_discrete_sequence=px.colors.qualitative.Set3,
-        )
-        fig_area.update_layout(
-            legend_title_text="Category",
-            xaxis_title="Date",
-            yaxis_title="Registrations",
-            template="plotly_white",
-            hovermode="x unified",
-        )
-        st.plotly_chart(fig_area, use_container_width=True)
-    except Exception as e:
-        st.warning(f"⚠️ Stacked area failed: {e}")
-
-    # --- Overlay Line Chart ---
-    try:
-        fig_line = px.line(
-            resampled,
-            x="ds",
-            y="value",
-            color="label",
-            title="Category Trends (Overlay)",
-            markers=True,
-            color_discrete_sequence=px.colors.qualitative.Bold,
-        )
-        fig_line.update_traces(line=dict(width=2))
-        fig_line.update_layout(
-            template="plotly_white",
-            xaxis_title="Date",
-            yaxis_title="Registrations",
-            hovermode="x unified",
-        )
-        st.plotly_chart(fig_line, use_container_width=True)
-    except Exception as e:
-        st.warning(f"⚠️ Overlay lines failed: {e}")
-
-# -------------------------
-# Separate Mode (Small Multiples)
-# -------------------------
-else:
-    st.markdown("### 🧩 Small Multiples — Yearly Category Distribution")
-
-    try:
-        years_sorted = sorted(resampled["year"].unique())
-    except Exception:
-        years_sorted = []
-
-    sel_small = st.multiselect(
-        "Select specific years for small multiples (limit 6)",
-        years_sorted,
-        default=years_sorted[-min(3, len(years_sorted)):] if years_sorted else [],
-    )
-
-    if not sel_small:
-        st.info("Select at least one year to show small multiples.")
-    else:
-        for y in sel_small[:6]:
-            d = resampled[resampled["year"] == y]
-            if d.empty:
-                st.caption(f"⚠️ No data for {y}")
-                continue
+                latest_mom = "n/a"
+    
+            # --- Latest year, totals, and category shares (robust lookup) ---
+            # find latest year label usable in year_totals
             try:
-                fig_bar = px.bar(
-                    d,
-                    x="label",
-                    y="value",
-                    color="label",
-                    text_auto=True,
-                    title=f"Category Distribution — {y}",
-                    color_discrete_sequence=px.colors.qualitative.Pastel1,
-                )
-                fig_bar.update_traces(textfont_size=11, textangle=0)
-                fig_bar.update_layout(
-                    showlegend=False,
-                    template="plotly_white",
-                    yaxis_title="Registrations",
-                )
-                st.plotly_chart(fig_bar, use_container_width=True)
-            except Exception as e:
-                st.warning(f"⚠️ Failed to plot {y}: {e}")
+                # prefer numeric year if available
+                latest_year_label = max([int(x) for x in year_totals.index])
+                # find matching index key (could be int or string)
+                # attempt direct match
+                if latest_year_label in year_totals.index:
+                    key_for_latest = latest_year_label
+                else:
+                    # try string representation
+                    key_for_latest = str(latest_year_label)
+                    if key_for_latest not in year_totals.index:
+                        # fallback to last index
+                        key_for_latest = year_totals.index[-1]
+            except Exception:
+                key_for_latest = year_totals.index[-1]
+    
+            try:
+                latest_total = int(year_totals.loc[key_for_latest, "TotalRegistrations"])
+            except Exception:
+                latest_total = int(year_totals["TotalRegistrations"].iloc[-1])
+    
+            # category share for that latest year (guard pivot_year lookup)
+            try:
+                # find the pivot_year row for the latest year (index type flexible)
+                if key_for_latest in pivot_year.index:
+                    row_latest = pivot_year.loc[key_for_latest]
+                else:
+                    # try matching by year number
+                    possible_matches = [idx for idx in pivot_year.index if str(latest_year_label) in str(idx)]
+                    if possible_matches:
+                        row_latest = pivot_year.loc[possible_matches[0]]
+                    else:
+                        row_latest = pivot_year.iloc[-1]
+                cat_share = (row_latest / row_latest.sum() * 100).sort_values(ascending=False).round(1)
+            except Exception:
+                cat_share = pd.Series(dtype=float)
+    
+            # --- Display metrics ---
+            # Years loaded display (safe)
+            try:
+                display_first_year = min([int(x) for x in year_totals.index])
+                display_last_year = max([int(x) for x in year_totals.index])
+                display_years_count = display_last_year - display_first_year + 1
+            except Exception:
+                display_first_year = year_totals.index[0]
+                display_last_year = year_totals.index[-1]
+                display_years_count = len(year_totals)
+    
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("📅 Years Loaded", f"{display_first_year} → {display_last_year}", f"{display_years_count} yrs")
+            c2.metric("📈 CAGR (Total)", f"{cagr:.2f}%" if not (cagr is None or math.isnan(cagr)) else "n/a")
+            # Latest YoY: show nicely even if NaN
+            latest_yoy_val = year_totals["YoY_%"].iloc[-1] if len(year_totals["YoY_%"])>0 else np.nan
+            c3.metric("📊 Latest YoY", f"{latest_yoy_val:.2f}%" if not pd.isna(latest_yoy_val) else "n/a")
+            c4.metric("📆 Latest MoM", latest_mom)
+    
+            # --- Category share table (latest year) ---
+            st.markdown("#### 📘 Category Share (Latest Year)")
+            if not cat_share.empty and cat_share.sum() > 0:
+                df_share = pd.DataFrame({
+                    "Category": cat_share.index,
+                    "Share_%": cat_share.values,
+                    "Volume": pivot_year.loc[row_latest.name].astype(int).values if 'row_latest' in locals() else [0]*len(cat_share)
+                })
+                st.dataframe(df_share.sort_values("Share_%", ascending=False), use_container_width=True)
+            else:
+                st.info("No category share data available for the latest year.")
+    
+            # --- Optional small charts for quick verification ---
+            # Yearly totals bar
+            try:
+                fig_tot = px.bar(year_totals.reset_index().rename(columns={"index":"Year"}), x=year_totals.index, y="TotalRegistrations",
+                                 title="Yearly Total Registrations", text_auto=True)
+                fig_tot.update_layout(template="plotly_white", xaxis_title="Year", yaxis_title="Registrations")
+                st.plotly_chart(fig_tot, use_container_width=True)
+            except Exception:
+                pass
+    
+        except Exception as e:
+            st.error(f"💥 KPI computation failed: {e}")
+            logger.exception(f"KPI block failure: {e}")
+    
+    # =====================================================
+    # 📊 VISUALIZATIONS (ALL-MAXED)
+    # =====================================================
+    st.subheader("📊 Visualizations — Multi-year & Multi-frequency (All-Maxed)")
+    
+    # --- Safety Checks ---
+    if "resampled" not in locals() or resampled is None or resampled.empty:
+        st.warning("⚠️ No valid 'resampled' data available for visualization.")
+        st.stop()
+    
+    if "pivot" not in locals() or pivot is None or pivot.empty:
+        st.warning("⚠️ No valid 'pivot' data available for visualization.")
+        st.stop()
+    
+    if "mode" not in locals():
+        mode = "Combined (Overlay / Stacked)"
+    
+    # -------------------------
+    # Combined View
+    # -------------------------
+    if mode.startswith("Combined"):
+        st.markdown("### 🌈 Stacked & Overlay Trends — Combined View")
+    
+        # --- Stacked Area Chart ---
+        try:
+            fig_area = px.area(
+                resampled,
+                x="ds",
+                y="value",
+                color="label",
+                title="Stacked Registrations by Category Over Time",
+                color_discrete_sequence=px.colors.qualitative.Set3,
+            )
+            fig_area.update_layout(
+                legend_title_text="Category",
+                xaxis_title="Date",
+                yaxis_title="Registrations",
+                template="plotly_white",
+                hovermode="x unified",
+            )
+            st.plotly_chart(fig_area, use_container_width=True)
+        except Exception as e:
+            st.warning(f"⚠️ Stacked area failed: {e}")
+    
+        # --- Overlay Line Chart ---
+        try:
+            fig_line = px.line(
+                resampled,
+                x="ds",
+                y="value",
+                color="label",
+                title="Category Trends (Overlay)",
+                markers=True,
+                color_discrete_sequence=px.colors.qualitative.Bold,
+            )
+            fig_line.update_traces(line=dict(width=2))
+            fig_line.update_layout(
+                template="plotly_white",
+                xaxis_title="Date",
+                yaxis_title="Registrations",
+                hovermode="x unified",
+            )
+            st.plotly_chart(fig_line, use_container_width=True)
+        except Exception as e:
+            st.warning(f"⚠️ Overlay lines failed: {e}")
+    
+    # -------------------------
+    # Separate Mode (Small Multiples)
+    # -------------------------
+    else:
+        st.markdown("### 🧩 Small Multiples — Yearly Category Distribution")
+    
+        try:
+            years_sorted = sorted(resampled["year"].unique())
+        except Exception:
+            years_sorted = []
+    
+        sel_small = st.multiselect(
+            "Select specific years for small multiples (limit 6)",
+            years_sorted,
+            default=years_sorted[-min(3, len(years_sorted)):] if years_sorted else [],
+        )
+    
+        if not sel_small:
+            st.info("Select at least one year to show small multiples.")
+        else:
+            for y in sel_small[:6]:
+                d = resampled[resampled["year"] == y]
+                if d.empty:
+                    st.caption(f"⚠️ No data for {y}")
+                    continue
+                try:
+                    fig_bar = px.bar(
+                        d,
+                        x="label",
+                        y="value",
+                        color="label",
+                        text_auto=True,
+                        title=f"Category Distribution — {y}",
+                        color_discrete_sequence=px.colors.qualitative.Pastel1,
+                    )
+                    fig_bar.update_traces(textfont_size=11, textangle=0)
+                    fig_bar.update_layout(
+                        showlegend=False,
+                        template="plotly_white",
+                        yaxis_title="Registrations",
+                    )
+                    st.plotly_chart(fig_bar, use_container_width=True)
+                except Exception as e:
+                    st.warning(f"⚠️ Failed to plot {y}: {e}")
 
     # -------------------------
     # Optional Advanced Visuals
