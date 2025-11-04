@@ -2034,6 +2034,13 @@ def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.
 # -------------------------
 # =====================================================
 def all_maxed_category_block(params: Optional[dict] = None):
+    import numpy as np 
+    import pandas as pd 
+    import plotly.express as px 
+    import plotly.graph_objects as go 
+    import time, math, json 
+    from dateutil.relativedelta import relativedelta 
+    import streamlit as st
     """Render the maxed category analytics block inside Streamlit.
 
     Provide `params` to pass to API calls (e.g., region filters). If omitted, defaults are used.
