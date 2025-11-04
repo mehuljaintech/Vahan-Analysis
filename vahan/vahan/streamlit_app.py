@@ -3096,11 +3096,8 @@ def all_maxed_category_block(params: Optional[dict] = None):
         # ----------------------------------------------------
         # 5️⃣ DISPLAY KPIs
         # ----------------------------------------------------
-        c1, c2, c3, c4 = st.columns(4)
+        c1= st.columns(1)
         c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
-        c2.metric("📈 CAGR (Total)", f"{cagr:.2f}%")
-        c3.metric("📊 Latest YoY", f"{year_totals['YoY_%'].iloc[-1]:.2f}%")
-        c4.metric("📆 Latest MoM", latest_mom)
     
         st.markdown("#### 📘 Category Share (Latest Year)")
         st.dataframe(
@@ -3160,32 +3157,6 @@ def all_maxed_category_block(params: Optional[dict] = None):
         fig_top10.update_layout(template="plotly_white", margin=dict(t=50, b=40))
         st.plotly_chart(fig_top10, use_container_width=True)
     
-        # --- Trend: Top 3 Categories
-        st.write("### 📊 Trend Comparison — Top 3 Categories")
-        top3 = top_debug.head(3)["label"].tolist()
-        df_top3 = df_src[df_src["label"].isin(top3)]
-        fig_trend3 = px.line(
-            df_top3,
-            x="year",
-            y="value",
-            color="label",
-            markers=True,
-            title=f"Top 3 Category Trends ({years[0]}–{years[-1]})",
-        )
-        st.plotly_chart(fig_trend3, use_container_width=True)
-    
-        # --- Peak category detailed trend
-        st.write(f"### 🔧 Detailed Trend — {top_cat['label']}")
-        df_topcat = df_src[df_src["label"] == top_cat["label"]]
-        fig_cat = px.line(
-            df_topcat,
-            x="year",
-            y="value",
-            markers=True,
-            title=f"{top_cat['label']} — Yearly Registrations",
-        )
-        st.plotly_chart(fig_cat, use_container_width=True)
-    
         # ----------------------------------------------------
         # 7️⃣ ADVANCED DEBUG METRICS
         # ----------------------------------------------------
@@ -3207,8 +3178,6 @@ def all_maxed_category_block(params: Optional[dict] = None):
     Total registrations: {total_all:,.0f}
     Top category: {top_cat['label']} → {top_cat['value']:,.0f} ({top_cat_share:.2f}%)
     Peak year: {int(top_year['year'])} → {top_year['value']:,.0f}
-    CAGR: {cagr:.2f}%
-    Volatility (YoY std): {volatility:.2f}%
     Dominance ratio: {dominance_ratio:.2f}
     Runtime: {summary_time:.2f}s
             """,
@@ -3220,10 +3189,8 @@ def all_maxed_category_block(params: Optional[dict] = None):
         # ----------------------------------------------------
         st.success(
             f"From **{years[0]}** to **{years[-1]}**, total registrations {direction} "
-            f"by ~{abs(cagr):.2f}% CAGR. "
             f"**{top_cat['label']}** leads with **{top_cat_share:.2f}%** share. "
             f"Peak year: **{int(top_year['year'])}** with **{top_year['value']:,.0f}** registrations. "
-            f"YoY volatility: **{volatility:.2f}%** → {'stable' if volatility < 10 else 'volatile'} trend."
         )
     
         logger.info(f"✅ ALL-MAXED summary completed in {summary_time:.2f}s")
