@@ -1,18 +1,13 @@
-# ==========================================================
-# 🚗 Parivahan Intelligence Dashboard — ALL-MAXED Requirements
-# Full-stack: Streamlit + Data + AI + Forecast + Viz + Cloud
-# ==========================================================
-
-# --- Core Web/UI ---
-streamlit
-streamlit-extras
+# ===== Core web / UI
+streamlit>=1.24.0
+streamlit-extras>=0.0.1
 streamlit-option-menu
 streamlit-aggrid
 streamlit-lottie
 
-# --- Data Manipulation & Processing ---
-pandas
-numpy
+# ===== Data & I/O
+pandas>=1.5
+numpy>=1.23
 python-dateutil
 openpyxl
 xlrd
@@ -20,7 +15,7 @@ xlsxwriter
 pyarrow
 fastparquet
 
-# --- Visualization (All Maxed) ---
+# ===== Visualization (all maxed)
 plotly
 altair
 matplotlib
@@ -30,7 +25,7 @@ folium
 pydeck
 wordcloud
 
-# --- API, HTTP & Parsing ---
+# ===== HTTP / scraping / async
 requests
 urllib3
 aiohttp
@@ -42,36 +37,36 @@ tenacity
 ratelimit
 python-dotenv
 
-# --- Logging, Debugging & Config ---
+# ===== Logging / CLI / utils
 loguru
 rich
 colorama
 pyfiglet
 
-# --- AI, ML, DL, Forecasting ---
+# ===== ML / Stats / Forecasting
 scikit-learn
 scipy
 statsmodels
-prophet
+prophet            # note: often requires system deps OR conda install
 xgboost
 lightgbm
 catboost
-tensorflow
-torch
+tensorflow>=2.12    # choose appropriate version for your GPU/CPU
+torch                # pin in conda/docker depending on CUDA
 transformers
 huggingface-hub
 sentence-transformers
 deep-translator
 pydantic
 
-# --- Anomaly Detection & Time Series ---
+# ===== Time series / anomaly / Auto-TS
 pyod
 tsfresh
 darts
 sktime
 pmdarima
 
-# --- Database & Storage ---
+# ===== Databases & storage
 sqlite-utils
 sqlalchemy
 pymysql
@@ -80,21 +75,19 @@ pandas-gbq
 gspread
 google-auth
 
-# --- Advanced Visual Analytics / KPI ---
+# ===== Profiling & advanced analytics
 ydata-profiling
 sweetviz
 dtale
 autoviz
-pandas-profiling
 
-# --- PDF / Excel / Export Tools ---
+# ===== PDF/Export
 reportlab
 fpdf
-xlsxwriter
 pdfkit
 tabulate
 
-# --- System, Logging & Utils ---
+# ===== System / utils
 psutil
 platformdirs
 pathlib
@@ -102,20 +95,22 @@ retrying
 timezonefinder
 tzdata
 
-# --- Forecasting & AI API Integrations (Optional) ---
+# ===== Optional AI / Cloud integrations
 openai
 deepinfra
 anthropic
 groq
 ollama
 
-# --- Geo/Mapping (Optional for RTO/State Maps) ---
+# ===== Geo / mapping (optional)
 geopandas
 shapely
 geopy
 leafmap
+fiona
+rtree
 
-# --- Optional Web/Cloud Integrations ---
+# ===== Optional web / cloud
 fastapi
 uvicorn
 gunicorn
@@ -123,15 +118,19 @@ flask
 requests-cache
 cachetools
 
-# --- Optional Notebook/Dev Tools ---
+# ===== Notebook / dev
 ipython
 jupyterlab
 black
 isort
 
-# --- Security & Performance ---
+# ===== Security / perf
 cryptography
 pyjwt
 orjson
 brotli
 uvloop
+
+# ===== Optional heavy (install with conda for reliability)
+# faiss-cpu          # prefer conda-forge/pip wheel; many platforms need CPU/GPU variant
+# sentencepiece      # required by some HF models
