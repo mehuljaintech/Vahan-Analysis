@@ -1,205 +1,151 @@
-# ===== Core web / UI =====
-streamlit
-streamlit-extras
-streamlit-option-menu
-streamlit-aggrid
-streamlit-lottie
+# ======================================================
+# 🚀 PARIVAHAN ANALYTICS 2025 — MAXED+ CLOUD EDITION
+# ======================================================
 
-# ===== Data & I/O =====
+# ===============================
+# 🚀 CORE FRAMEWORK
+# ===============================
+streamlit
 pandas
 numpy
+requests
 python-dateutil
-openpyxl
-xlrd
-xlsxwriter
-pyarrow
-fastparquet
+python-dotenv
+urllib3
+tqdm
 
-# ===== Visualization (ALL MAXED) =====
+# ===============================
+# 🎨 VISUALIZATION / DASHBOARD
+# ===============================
 plotly
 altair
 matplotlib
 seaborn
-bokeh
+vega-datasets
 folium
 pydeck
-wordcloud
-vega
-dash
-holoviews
-panel
-plotnine
+streamlit-echarts
+streamlit-aggrid
+streamlit-lottie
+streamlit-extras
 
-# ===== HTTP / Scraping / Async =====
-requests
-urllib3
-aiohttp
-httpx
-beautifulsoup4
-lxml
-tqdm
-tenacity
-ratelimit
-python-dotenv
-fake-useragent
-
-# ===== Logging / CLI / Utils =====
-loguru
-rich
-colorama
-pyfiglet
-typer
-click
-fire
-
-# ===== ML / Stats / Forecasting =====
-scikit-learn
-scipy
-statsmodels
-prophet
-xgboost
-lightgbm
-catboost
-tensorflow
-torch
-transformers
-huggingface-hub
-sentence-transformers
-deep-translator
-pydantic
-numpy-financial
-mlxtend
-optuna
-imbalanced-learn
-mlflow
-gradio
-
-# ===== Time Series / Anomaly / Auto-TS =====
-pyod
-tsfresh
-darts
-sktime
-pmdarima
-neuralprophet
-ruptures
-
-# ===== Databases & Storage =====
-sqlite-utils
-sqlalchemy
-pymysql
-duckdb
-pandas-gbq
-gspread
-google-auth
-psycopg2-binary
-redis
-tinydb
-
-# ===== Profiling / Auto Analytics / EDA =====
-ydata-profiling
-sweetviz
-dtale
-autoviz
-pandas-profiling
-lux-api
-skimpy
-dataprep
-explorer
-
-# ===== PDF / Excel / Export =====
-reportlab
-fpdf
-pdfkit
-tabulate
-weasyprint
+# ===============================
+# 📊 EXCEL / EXPORT / REPORTING
+# ===============================
 openpyxl
 xlsxwriter
-pyexcel
-camelot-py
+odfpy
+reportlab
+pypandoc
+fpdf2
+python-docx
+python-pptx
 pdfplumber
+PyPDF2
 
-# ===== System / Utils =====
-psutil
-platformdirs
-pathlib
-retrying
-timezonefinder
-tzdata
-schedule
-asyncio
-joblib
+# ===============================
+# 🤖 MACHINE LEARNING / ANALYTICS
+# ===============================
+scikit-learn
+prophet
+statsmodels
+xgboost
+scipy
+catboost
+lightgbm
+mlxtend
 
-# ===== AI / Cloud / API Integrations =====
+# ===============================
+# 💡 AI / LLM INTEGRATION
+# ===============================
 openai
+tiktoken
 deepinfra
-anthropic
-groq
-ollama
-replicate
+httpx
+tenacity
+transformers
+torch
+accelerate
+sentencepiece
 huggingface-hub
-cohere
-vertexai
+
+# ===============================
+# 🧠 DATA PROCESSING / TRANSFORMATION
+# ===============================
+pyarrow
+fastparquet
+numexpr
+tabulate
+dask
+polars
+dataclasses-json
+
+# ===============================
+# ⚙️ UTILITIES / PERFORMANCE / LOGGING
+# ===============================
+cachetools
+pyyaml
+python-json-logger
+loguru
+colorama
+rich
+psutil
+aiofiles
+
+# ===============================
+# ☁️ STREAMLIT CLOUD / DEPLOYMENT
+# ===============================
+validators
+watchdog
+gunicorn
+uvicorn
+fastapi
+flask
+werkzeug
+jinja2
+
+# ===============================
+# 🕸️ NETWORKING / SCRAPING (LIGHT)
+# ===============================
+fake-useragent
+requests-toolbelt
+aiohttp
+beautifulsoup4
+lxml
+html5lib
+
+# ===============================
+# 🧩 DATABASE CONNECTORS
+# ===============================
+sqlalchemy
+pymysql
+psycopg2-binary
+sqlite-utils
+duckdb
+redis
+pymongo
+
+# ===============================
+# 🔐 SECURITY / AUTH / CRYPTO
+# ===============================
+cryptography
+pyjwt
+bcrypt
+
+# ===============================
+# 🌐 OPTIONAL — CLOUD & API CLIENTS
+# ===============================
+boto3
+google-cloud-storage
+azure-storage-blob
+dropbox
+gspread
+oauthlib
+
+# ===============================
+# 🎯 BONUS — ENHANCEMENTS / AI AGENTS
+# ===============================
 langchain
-langchain-core
 langchain-community
 chromadb
 faiss-cpu
-sentencepiece
-tiktoken
-
-# ===== Geo / Mapping =====
-geopandas
-shapely
-geopy
-leafmap
-fiona
-rtree
-contextily
-keplergl
-
-# ===== Web / Cloud Frameworks =====
-fastapi
-uvicorn
-gunicorn
-flask
-requests-cache
-cachetools
-starlette
-jinja2
-
-# ===== Notebook / Dev / Lint =====
-ipython
-jupyterlab
-black
-isort
-notebook
-nbformat
-nbconvert
-
-# ===== Security / Performance =====
-cryptography
-pyjwt
-orjson
-brotli
-uvloop
-bcrypt
-argon2-cffi
-
-# ===== Optional / Heavy / Experimental =====
-pytorch-lightning
-transformers[sentencepiece]
-keras
-onnx
-onnxruntime
-fastai
-stable-baselines3
-opencv-python
-mediapipe
-timm
-torchvision
-torchaudio
-pytorch-forecasting
-pytorch-tabnet
-ultralytics
-deepspeed
-bitsandbytes
