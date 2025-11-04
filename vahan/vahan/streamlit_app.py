@@ -3427,7 +3427,7 @@ def _safe_df(df: pd.DataFrame, required: list[str]) -> pd.DataFrame:
 # -----------------------------------------------------
 # 🟦 MAXED BAR CHART (COMBINED / STACKED / NORMALIZED)
 # -----------------------------------------------------
-def bar_maxed(
+def bar_from_df(
     df: pd.DataFrame,
     title: str,
     combined: bool = False,
@@ -3512,7 +3512,7 @@ def bar_maxed(
 # -----------------------------------------------------
 # 🟣 MAXED PIE / DONUT CHART (3D FEEL + CENTER LABEL)
 # -----------------------------------------------------
-def pie_maxed(
+def pie_from_df(
     df: pd.DataFrame,
     title: str,
     section_id: str = "",
@@ -3572,7 +3572,7 @@ def pie_maxed(
 # -----------------------------------------------------
 # 🟨 MAXED LINE / TREND CHART
 # -----------------------------------------------------
-def line_maxed(
+def line_from_df(
     df: pd.DataFrame,
     x_field: str = "year",
     y_field: str = "value",
