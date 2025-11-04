@@ -2988,179 +2988,249 @@ def all_maxed_category_block(params: Optional[dict] = None):
             st.error(f"💥 AI Narrative generation failed: {e}")
 
     # =====================================================
-    # 🧩 ALL-MAXED FINAL SUMMARY + DEBUG INSIGHTS
+    # 🧩 ALL-MAXED FINAL SUMMARY + DEBUG INSIGHTS (FULL SELF-CONTAINED)
     # =====================================================
     st.markdown("## 🧠 Final Summary & Debug Insights — ALL-MAXED")
-
+    
     try:
         summary_start = time.time()
-
-        if df_cat_all is None or df_cat_all.empty:
-            st.warning("⚠️ No valid data to summarize.")
+    
+        # ----------------------------------------------------
+        # 1️⃣ SAFE INPUT + FALLBACKS
+        # ----------------------------------------------------
+        df_src = df_cat_all.copy() if "df_cat_all" in locals() else pd.DataFrame()
+        freq = freq if "freq" in locals() else "Monthly"
+        years = years if "years" in locals() and years else [2024, 2025]
+        current_year = datetime.now().year
+    
+        if df_src.empty:
+            st.warning("⚠️ No valid ALL-MAXED data found to summarize.")
+            st.stop()
+    
+        # ----------------------------------------------------
+        # 2️⃣ BASIC CLEANUP + ADD TIME FIELDS
+        # ----------------------------------------------------
+        df_src = df_src.copy()
+        if "ds" not in df_src.columns and "date" in df_src.columns:
+            df_src["ds"] = pd.to_datetime(df_src["date"])
+        elif "ds" not in df_src.columns:
+            df_src["ds"] = pd.to_datetime(df_src["year"].astype(str) + "-01-01")
+    
+        df_src["year"] = df_src["ds"].dt.year
+        df_src["month"] = df_src["ds"].dt.month
+        df_src["label"] = df_src["label"].astype(str)
+    
+        # ----------------------------------------------------
+        # 3️⃣ RESAMPLING BASED ON FREQUENCY
+        # ----------------------------------------------------
+        resampled = (
+            df_src.groupby(["label", "year"])["value"].sum().reset_index()
+            if freq == "Yearly"
+            else df_src.copy()
+        )
+    
+        pivot = resampled.pivot_table(
+            index="ds", columns="label", values="value", aggfunc="sum"
+        ).fillna(0)
+    
+        pivot_year = (
+            resampled.pivot_table(
+                index="year", columns="label", values="value", aggfunc="sum"
+            ).fillna(0)
+            if "year" in resampled.columns
+            else pd.DataFrame()
+        )
+    
+        # ----------------------------------------------------
+        # 4️⃣ KPI METRICS (YoY, CAGR, MoM, Category Shares)
+        # ----------------------------------------------------
+        st.subheader("💎 Key Metrics & Growth (All-Maxed)")
+    
+        if pivot_year.empty:
+            st.warning("⚠️ No yearly data found for KPI computation.")
+            st.stop()
+    
+        # --- Compute totals and YoY
+        year_totals = pivot_year.sum(axis=1).rename("TotalRegistrations").to_frame()
+        year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
+        year_totals["TotalRegistrations"] = (
+            year_totals["TotalRegistrations"].fillna(0).astype(int)
+        )
+        year_totals["YoY_%"] = (
+            year_totals["YoY_%"].replace([np.inf, -np.inf], np.nan).fillna(0)
+        )
+    
+        # --- CAGR
+        if len(year_totals) >= 2:
+            first = float(year_totals["TotalRegistrations"].iloc[0])
+            last = float(year_totals["TotalRegistrations"].iloc[-1])
+            years_count = max(1, len(year_totals) - 1)
+            cagr = ((last / first) ** (1 / years_count) - 1) * 100 if first > 0 else 0.0
         else:
-            # Basic totals
-            total_all = df_cat_all["value"].sum()
-            n_cats = df_cat_all["label"].nunique()
-            n_years = df_cat_all["year"].nunique()
-
-            # --- Top category ---
-            top_cat = (
-                df_cat_all.groupby("label")["value"]
-                .sum()
-                .reset_index()
-                .sort_values("value", ascending=False)
-                .iloc[0]
+            cagr = 0.0
+    
+        # --- MoM if monthly
+        if freq == "Monthly":
+            resampled["month_period"] = resampled["year"].astype(str) + "-" + resampled["month"].astype(str)
+            month_totals = (
+                resampled.groupby("month_period")["value"].sum().reset_index()
             )
-            top_cat_share = (top_cat["value"] / total_all) * 100 if total_all > 0 else 0
-
-            # --- Peak year ---
-            top_year = (
-                df_cat_all.groupby("year")["value"]
-                .sum()
-                .reset_index()
-                .sort_values("value", ascending=False)
-                .iloc[0]
+            month_totals["MoM_%"] = month_totals["value"].pct_change() * 100
+            latest_mom = (
+                f"{month_totals['MoM_%'].iloc[-1]:.2f}%"
+                if len(month_totals) > 1 and not np.isnan(month_totals["MoM_%"].iloc[-1])
+                else "n/a"
             )
-
-            # --- Metrics summary ---
-            st.metric("🏆 Absolute Top Category", f"{top_cat['label']}", f"{top_cat_share:.2f}% share")
-            st.caption(f"Total registrations for **{top_cat['label']}**: {top_cat['value']:,.0f}")
-
-            st.metric("📅 Peak Year", f"{int(top_year['year'])}", f"{top_year['value']:,.0f} registrations")
-
-            # --- YoY growth ---
-            if "year_totals" in locals() and not year_totals.empty and "YoY_%" in year_totals.columns:
-                last_growth = year_totals["YoY_%"].iloc[-1]
-                avg_growth = year_totals["YoY_%"].mean()
-                st.metric("📈 Latest YoY Growth", f"{last_growth:.2f}%", f"Avg {avg_growth:.2f}%")
-            else:
-                st.info("ℹ️ Insufficient yearly data for growth metrics.")
-
-            # --- Full category summary ---
-            top_debug = (
-                df_cat_all.groupby("label")["value"]
-                .sum()
-                .reset_index()
-                .sort_values("value", ascending=False)
-            )
-            st.write("### 🧾 Full Category Summary (Sorted by Total Registrations)")
+        else:
+            latest_mom = "n/a"
+    
+        # --- Category shares
+        latest_year = int(year_totals.index.max())
+        latest_total = int(year_totals.loc[latest_year, "TotalRegistrations"])
+        cat_share = (
+            (pivot_year.loc[latest_year] / pivot_year.loc[latest_year].sum() * 100)
+            .sort_values(ascending=False)
+            .round(1)
+        )
+    
+        # ----------------------------------------------------
+        # 5️⃣ DISPLAY KPIs
+        # ----------------------------------------------------
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
+        c2.metric("📈 CAGR (Total)", f"{cagr:.2f}%")
+        c3.metric("📊 Latest YoY", f"{year_totals['YoY_%'].iloc[-1]:.2f}%")
+        c4.metric("📆 Latest MoM", latest_mom)
+    
+        st.markdown("#### 📘 Category Share (Latest Year)")
+        st.dataframe(
+            pd.DataFrame(
+                {
+                    "Category": cat_share.index,
+                    "Share_%": cat_share.values,
+                    "Volume": pivot_year.loc[latest_year].astype(int).values,
+                }
+            ).sort_values("Share_%", ascending=False),
+            use_container_width=True,
+        )
+    
+        with st.expander("🔍 Yearly Totals & Growth"):
             st.dataframe(
-                top_debug.style.format({"value": "{:,.0f}"}).background_gradient(
-                    cmap="Blues", subset=["value"]
+                year_totals.style.format(
+                    {"TotalRegistrations": "{:,}", "YoY_%": "{:.2f}"}
                 )
             )
-
-            # --- Top 10 bar ---
-            fig_top10 = px.bar(
-                top_debug.head(10),
-                x="label",
-                y="value",
-                text_auto=True,
-                title="Top 10 Categories — Overall",
-                color="value",
-                color_continuous_scale="Blues",
-            )
-            fig_top10.update_layout(
-                template="plotly_white",
-                xaxis_title="Category",
-                yaxis_title="Registrations",
-                margin=dict(t=60, b=40),
-            )
-            st.plotly_chart(fig_top10, use_container_width=True)
-
-            # --- YoY trend overlay (Top 3 categories) ---
-            st.write("### 📊 Trend Over Time — Top 3 Categories")
-            top3_cats = top_debug.head(3)["label"].tolist()
-            df_trend_top3 = df_cat_all[df_cat_all["label"].isin(top3_cats)]
-            fig_trend3 = px.line(
-                df_trend_top3,
-                x="year",
-                y="value",
-                color="label",
-                markers=True,
-                title=f"Trend Comparison — Top 3 Categories ({years[0]}–{years[-1]})",
-            )
-            fig_trend3.update_layout(template="plotly_white")
-            st.plotly_chart(fig_trend3, use_container_width=True)
-
-            # --- Individual top trend with annotation ---
-            st.write(f"### 🔧 Detailed Trend — {top_cat['label']}")
-            topcat_df = df_cat_all[df_cat_all["label"] == top_cat["label"]]
-            fig_trend = px.line(
-                topcat_df,
-                x="year",
-                y="value",
-                markers=True,
-                title=f"{top_cat['label']} — Yearly Registrations ({years[0]}–{years[-1]})",
-            )
-            fig_trend.add_annotation(
-                text=f"Peak: {int(top_year['year'])}",
-                x=int(top_year["year"]),
-                y=float(top_year["value"]),
-                showarrow=True,
-                arrowhead=2,
-                arrowcolor="red",
-            )
-            fig_trend.update_layout(template="plotly_white")
-            st.plotly_chart(fig_trend, use_container_width=True)
-
-            # --- Additional Debug KPIs ---
-            volatility = (
-                df_cat_all.groupby("year")["value"].sum().pct_change().std() * 100
-                if len(df_cat_all["year"].unique()) > 2
-                else 0
-            )
-            dominance_ratio = (top_cat["value"] / total_all) * n_cats if total_all > 0 else 0
-            direction = "increased" if not math.isnan(cagr) and cagr > 0 else "declined"
-
-            summary_time = time.time() - summary_start
-
-            st.markdown("### ⚙️ Debug Performance Metrics")
-            st.code(
-                f"""
-Data years: {years}
-Total categories: {n_cats}
-Rows processed: {len(df_cat_all):,}
-Total registrations (all): {total_all:,.0f}
-Top category: {top_cat['label']} → {top_cat['value']:,.0f} ({top_cat_share:.2f}% share)
-Peak year: {int(top_year['year'])} → {top_year['value']:,.0f}
-CAGR: {cagr:.2f}%
-Volatility (YoY std): {volatility:.2f}%
-Dominance ratio: {dominance_ratio:.2f}
-Computation time: {summary_time:.2f} sec
+    
+        # ----------------------------------------------------
+        # 6️⃣ DEEP INSIGHTS + TRENDS
+        # ----------------------------------------------------
+        total_all = df_src["value"].sum()
+        n_cats = df_src["label"].nunique()
+        n_years = df_src["year"].nunique()
+    
+        top_cat = (
+            df_src.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
+        )
+        top_cat_share = (top_cat["value"] / total_all) * 100 if total_all > 0 else 0
+    
+        top_year = (
+            df_src.groupby("year")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
+        )
+    
+        st.metric("🏆 Absolute Top Category", f"{top_cat['label']}", f"{top_cat_share:.2f}% share")
+        st.metric("📅 Peak Year", f"{int(top_year['year'])}", f"{top_year['value']:,.0f} registrations")
+    
+        # --- Plot: Top 10 Categories
+        st.write("### 🧾 Top 10 Categories — Overall")
+        top_debug = (
+            df_src.groupby("label")["value"]
+            .sum()
+            .reset_index()
+            .sort_values("value", ascending=False)
+        )
+        fig_top10 = px.bar(
+            top_debug.head(10),
+            x="label",
+            y="value",
+            text_auto=True,
+            color="value",
+            color_continuous_scale="Blues",
+            title="Top 10 Categories (All Years)",
+        )
+        fig_top10.update_layout(template="plotly_white", margin=dict(t=50, b=40))
+        st.plotly_chart(fig_top10, use_container_width=True)
+    
+        # --- Trend: Top 3 Categories
+        st.write("### 📊 Trend Comparison — Top 3 Categories")
+        top3 = top_debug.head(3)["label"].tolist()
+        df_top3 = df_src[df_src["label"].isin(top3)]
+        fig_trend3 = px.line(
+            df_top3,
+            x="year",
+            y="value",
+            color="label",
+            markers=True,
+            title=f"Top 3 Category Trends ({years[0]}–{years[-1]})",
+        )
+        st.plotly_chart(fig_trend3, use_container_width=True)
+    
+        # --- Peak category detailed trend
+        st.write(f"### 🔧 Detailed Trend — {top_cat['label']}")
+        df_topcat = df_src[df_src["label"] == top_cat["label"]]
+        fig_cat = px.line(
+            df_topcat,
+            x="year",
+            y="value",
+            markers=True,
+            title=f"{top_cat['label']} — Yearly Registrations",
+        )
+        st.plotly_chart(fig_cat, use_container_width=True)
+    
+        # ----------------------------------------------------
+        # 7️⃣ ADVANCED DEBUG METRICS
+        # ----------------------------------------------------
+        volatility = (
+            df_src.groupby("year")["value"].sum().pct_change().std() * 100
+            if len(df_src["year"].unique()) > 2
+            else 0
+        )
+        dominance_ratio = (top_cat["value"] / total_all) * n_cats if total_all > 0 else 0
+        direction = "increased" if cagr > 0 else "declined"
+    
+        summary_time = time.time() - summary_start
+        st.markdown("### ⚙️ Debug Performance Metrics")
+        st.code(
+            f"""
+    Years analyzed: {years}
+    Categories: {n_cats}
+    Rows processed: {len(df_src):,}
+    Total registrations: {total_all:,.0f}
+    Top category: {top_cat['label']} → {top_cat['value']:,.0f} ({top_cat_share:.2f}%)
+    Peak year: {int(top_year['year'])} → {top_year['value']:,.0f}
+    CAGR: {cagr:.2f}%
+    Volatility (YoY std): {volatility:.2f}%
+    Dominance ratio: {dominance_ratio:.2f}
+    Runtime: {summary_time:.2f}s
             """,
-                language="yaml",
-            )
-
-            # --- Smart narrative summary ---
-            st.success(
-                f"From **{years[0]}** to **{years[-1]}**, total registrations {direction} by "
-                f"~{abs(cagr):.2f}% CAGR. "
-                f"The leading category is **{top_cat['label']}**, contributing **{top_cat_share:.2f}%** of total registrations. "
-                f"Peak year: **{int(top_year['year'])}** with **{top_year['value']:,.0f}** total registrations. "
-                f"YoY volatility stands at **{volatility:.2f}%**, indicating {'high' if volatility>10 else 'stable'} yearly variation."
-            )
-
-            # --- Auto-detect notable movers ---
-            st.markdown("### 🚀 Top Movers & Decliners (Year-over-Year)")
-            yoy_df = (
-                df_cat_all.groupby(["label", "year"])["value"].sum().groupby(level=0).pct_change().reset_index()
-            )
-            yoy_df["YoY_%"] = yoy_df["value"] * 100
-            top_movers = yoy_df[yoy_df["year"] == yoy_df["year"].max()].sort_values("YoY_%", ascending=False)
-            st.dataframe(top_movers.head(5).style.format({"YoY_%": "{:.2f}%"}).highlight_max("YoY_%", color="lightgreen"))
-            st.dataframe(top_movers.tail(5).style.format({"YoY_%": "{:.2f}%"}).highlight_min("YoY_%", color="#ffcccc"))
-
-        # Timing log
-        total_time = time.time() - start_overall
-        logger.info(f"✅ ALL-MAXED Final Summary completed in {total_time:.2f}s")
-
+            language="yaml",
+        )
+    
+        # ----------------------------------------------------
+        # 8️⃣ SMART SUMMARY
+        # ----------------------------------------------------
+        st.success(
+            f"From **{years[0]}** to **{years[-1]}**, total registrations {direction} "
+            f"by ~{abs(cagr):.2f}% CAGR. "
+            f"**{top_cat['label']}** leads with **{top_cat_share:.2f}%** share. "
+            f"Peak year: **{int(top_year['year'])}** with **{top_year['value']:,.0f}** registrations. "
+            f"YoY volatility: **{volatility:.2f}%** → {'stable' if volatility < 10 else 'volatile'} trend."
+        )
+    
+        logger.info(f"✅ ALL-MAXED summary completed in {summary_time:.2f}s")
+    
     except Exception as e:
-        logger.exception(f"Summary block failed: {e}")
-        st.error(f"⛔ Summary generation failed: {e}")
-
-    total_time = time.time() - start_overall
-    logger.info(f"ALL-MAXED block finished in {total_time:.2f}s")
+        logger.exception(f"ALL-MAXED summary failed: {e}")
+        st.error(f"⛔ ALL-MAXED summary failed: {e}")
 
 # -----------------------------------------------------
 # 🧩 Safe Entry Point — Streamlit-only Execution Guard
