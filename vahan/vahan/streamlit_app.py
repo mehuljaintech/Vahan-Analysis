@@ -3098,175 +3098,175 @@ if enable_ai and do_forecast:
     except Exception as e:
         st.error(f"💥 AI Narrative (ALL-MAXED) failed: {e}")
 
-# =====================================================
-# 🧩 ALL-MAXED FINAL SUMMARY — SEPARATE PER-CATEGORY (NO GLOBAL SUM)
-# =====================================================
-st.markdown("## 🧠 Final Summary & Debug Insights — ALL-MAXED (Per-category, no global sum)")
-
-try:
-    summary_start = time.time()
-
-    # Basic session info
-    n_cats = int(df_cat_all['label'].nunique())
-    n_rows = int(len(df_cat_all))
-    year_list = sorted(df_cat_all['year'].unique())
-
-    st.info(f"🔎 Categories: {n_cats} | Rows: {n_rows:,} | Years: {year_list[0]} → {year_list[-1]}")
-
-    # -------------------------
-    # Per-category aggregated metrics (no single global total)
-    # -------------------------
-    grp = df_cat_all.groupby("label")["value"].agg(
-        total="sum",
-        mean="mean",
-        median="median",
-        std="std",
-        observations="count"
-    ).reset_index()
-
-    # mode (robust)
-    def safe_mode(s):
-        m = s.mode()
-        return float(m.iloc[0]) if not m.empty else np.nan
-
-    modes = df_cat_all.groupby("label")["value"].agg(mode=safe_mode).reset_index()
-    grp = grp.merge(modes, on="label", how="left")
-
-    # Per-category CAGR (first vs last year) — use pivot_year if present, else compute from df_cat_all
-    cat_cagr = []
-    years_sorted = sorted(df_cat_all["year"].unique())
-    n_periods = max(1, len(years_sorted) - 1)
-    pivot_year_local = df_cat_all.groupby(["year", "label"])["value"].sum().unstack(fill_value=0)
-
-    for cat in grp["label"].tolist():
-        try:
-            # use pivot_year_local to find first & last
-            first = float(pivot_year_local[cat].iloc[0]) if cat in pivot_year_local.columns and len(pivot_year_local[cat])>0 else 0.0
-            last = float(pivot_year_local[cat].iloc[-1]) if cat in pivot_year_local.columns and len(pivot_year_local[cat])>0 else 0.0
-            if first > 0:
-                cagr_cat = ((last / first) ** (1 / max(1, n_periods)) - 1) * 100
-            else:
-                cagr_cat = np.nan
-        except Exception:
-            cagr_cat = np.nan
-        cat_cagr.append(cagr_cat)
-
-    grp["CAGR_%"] = cat_cagr
-
-    # Format for display
-    disp = grp.copy()
-    disp["total"] = disp["total"].map(lambda x: int(x))
-    disp["mean"] = disp["mean"].map(lambda x: float(x))
-    disp["median"] = disp["median"].map(lambda x: float(x))
-    disp["std"] = disp["std"].map(lambda x: float(x) if not pd.isna(x) else x)
-    disp["mode"] = disp["mode"].map(lambda x: float(x) if not pd.isna(x) else x)
-    disp["CAGR_%"] = disp["CAGR_%"].map(lambda x: f"{x:.2f}%" if not pd.isna(x) else "n/a")
-
-    st.write("### 🧾 Per-Category Summary (total, mean, median, std, mode, CAGR, observations)")
-    st.dataframe(disp.sort_values("total", ascending=False).reset_index(drop=True).style.format({
-        "total":"{:,}",
-        "mean":"{:,.1f}",
-        "median":"{:,.1f}",
-        "std":"{:,.1f}",
-        "mode":"{:.0f}",
-    }))
-
-    # -------------------------
-    # Per-year × category table (no grand sum)
-    # -------------------------
-    st.write("### 📋 Year × Category (wide table, no full-sum row)")
-    year_cat = df_cat_all.groupby(["year","label"])["value"].sum().unstack(fill_value=0)
-    st.dataframe(year_cat.style.format("{:,.0f}").reset_index().rename_axis(None, axis=1))
-
-    # -------------------------
-    # Top N categories (by total) — bar & table
-    # -------------------------
-    top_n = 10
-    top_df = grp.sort_values("total", ascending=False).head(top_n)
-    st.markdown(f"### 🏆 Top {top_n} Categories (by total) — separate totals")
-    fig_top = px.bar(top_df, x="label", y="total", text="total", title=f"Top {top_n} Categories (Separate totals)", labels={"label":"Category","total":"Registrations"})
-    fig_top.update_traces(texttemplate="%{text:,}", textposition="outside")
-    fig_top.update_layout(uniformtext_minsize=8, uniformtext_mode='hide', template="plotly_white")
-    st.plotly_chart(fig_top, use_container_width=True)
-
-    # -------------------------
-    # Distribution visuals (boxplots / violin) using expanded timeseries if available
-    # -------------------------
-    st.markdown("### 📈 Distributions — per-category (boxplot / violin)")
-
-    if "df_ts" in globals() and not df_ts.empty:
-        # use df_ts which has ds,label,value,year
-        ds_vis = df_ts.copy()
-        # if too many categories, limit to top 12 for visibility
-        cat_order = top_df["label"].tolist()
-        ds_vis = ds_vis[ds_vis["label"].isin(cat_order)]
-        fig_box = px.box(ds_vis, x="label", y="value", points="outliers", title="Boxplot: value distribution per category (sampled)", labels={"value":"Registrations","label":"Category"})
-        st.plotly_chart(fig_box, use_container_width=True)
-
-        fig_violin = px.violin(ds_vis, x="label", y="value", box=True, points="outliers", title="Violin: value distribution per category", labels={"value":"Registrations","label":"Category"})
-        st.plotly_chart(fig_violin, use_container_width=True)
-    else:
-        st.info("No expanded timeseries (df_ts) available — box/violin plots skipped.")
-
-    # -------------------------
-    # Monthly heatmap (if we can compute months)
-    # -------------------------
-    st.markdown("### 🔥 Month × Category Heatmap (if monthly data exists)")
+    # =====================================================
+    # 🧩 ALL-MAXED FINAL SUMMARY — SEPARATE PER-CATEGORY (NO GLOBAL SUM)
+    # =====================================================
+    st.markdown("## 🧠 Final Summary & Debug Insights — ALL-MAXED (Per-category, no global sum)")
+    
     try:
+        summary_start = time.time()
+    
+        # Basic session info
+        n_cats = int(df_cat_all['label'].nunique())
+        n_rows = int(len(df_cat_all))
+        year_list = sorted(df_cat_all['year'].unique())
+    
+        st.info(f"🔎 Categories: {n_cats} | Rows: {n_rows:,} | Years: {year_list[0]} → {year_list[-1]}")
+    
+        # -------------------------
+        # Per-category aggregated metrics (no single global total)
+        # -------------------------
+        grp = df_cat_all.groupby("label")["value"].agg(
+            total="sum",
+            mean="mean",
+            median="median",
+            std="std",
+            observations="count"
+        ).reset_index()
+    
+        # mode (robust)
+        def safe_mode(s):
+            m = s.mode()
+            return float(m.iloc[0]) if not m.empty else np.nan
+    
+        modes = df_cat_all.groupby("label")["value"].agg(mode=safe_mode).reset_index()
+        grp = grp.merge(modes, on="label", how="left")
+    
+        # Per-category CAGR (first vs last year) — use pivot_year if present, else compute from df_cat_all
+        cat_cagr = []
+        years_sorted = sorted(df_cat_all["year"].unique())
+        n_periods = max(1, len(years_sorted) - 1)
+        pivot_year_local = df_cat_all.groupby(["year", "label"])["value"].sum().unstack(fill_value=0)
+    
+        for cat in grp["label"].tolist():
+            try:
+                # use pivot_year_local to find first & last
+                first = float(pivot_year_local[cat].iloc[0]) if cat in pivot_year_local.columns and len(pivot_year_local[cat])>0 else 0.0
+                last = float(pivot_year_local[cat].iloc[-1]) if cat in pivot_year_local.columns and len(pivot_year_local[cat])>0 else 0.0
+                if first > 0:
+                    cagr_cat = ((last / first) ** (1 / max(1, n_periods)) - 1) * 100
+                else:
+                    cagr_cat = np.nan
+            except Exception:
+                cagr_cat = np.nan
+            cat_cagr.append(cagr_cat)
+    
+        grp["CAGR_%"] = cat_cagr
+    
+        # Format for display
+        disp = grp.copy()
+        disp["total"] = disp["total"].map(lambda x: int(x))
+        disp["mean"] = disp["mean"].map(lambda x: float(x))
+        disp["median"] = disp["median"].map(lambda x: float(x))
+        disp["std"] = disp["std"].map(lambda x: float(x) if not pd.isna(x) else x)
+        disp["mode"] = disp["mode"].map(lambda x: float(x) if not pd.isna(x) else x)
+        disp["CAGR_%"] = disp["CAGR_%"].map(lambda x: f"{x:.2f}%" if not pd.isna(x) else "n/a")
+    
+        st.write("### 🧾 Per-Category Summary (total, mean, median, std, mode, CAGR, observations)")
+        st.dataframe(disp.sort_values("total", ascending=False).reset_index(drop=True).style.format({
+            "total":"{:,}",
+            "mean":"{:,.1f}",
+            "median":"{:,.1f}",
+            "std":"{:,.1f}",
+            "mode":"{:.0f}",
+        }))
+    
+        # -------------------------
+        # Per-year × category table (no grand sum)
+        # -------------------------
+        st.write("### 📋 Year × Category (wide table, no full-sum row)")
+        year_cat = df_cat_all.groupby(["year","label"])["value"].sum().unstack(fill_value=0)
+        st.dataframe(year_cat.style.format("{:,.0f}").reset_index().rename_axis(None, axis=1))
+    
+        # -------------------------
+        # Top N categories (by total) — bar & table
+        # -------------------------
+        top_n = 10
+        top_df = grp.sort_values("total", ascending=False).head(top_n)
+        st.markdown(f"### 🏆 Top {top_n} Categories (by total) — separate totals")
+        fig_top = px.bar(top_df, x="label", y="total", text="total", title=f"Top {top_n} Categories (Separate totals)", labels={"label":"Category","total":"Registrations"})
+        fig_top.update_traces(texttemplate="%{text:,}", textposition="outside")
+        fig_top.update_layout(uniformtext_minsize=8, uniformtext_mode='hide', template="plotly_white")
+        st.plotly_chart(fig_top, use_container_width=True)
+    
+        # -------------------------
+        # Distribution visuals (boxplots / violin) using expanded timeseries if available
+        # -------------------------
+        st.markdown("### 📈 Distributions — per-category (boxplot / violin)")
+    
         if "df_ts" in globals() and not df_ts.empty:
-            df_ts_local = df_ts.copy()
-            df_ts_local["month"] = df_ts_local["ds"].dt.strftime("%b")
-            # pivot month x category
-            heat = df_ts_local.groupby(["month","label"])["value"].sum().unstack(fill_value=0)
-            # reorder months to calendar if possible
-            month_order = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-            heat = heat.reindex(index=month_order).fillna(0)
-            # short-circuit if empty
-            if not heat.empty:
-                fig_hm = px.imshow(heat.fillna(0), labels=dict(x="Category", y="Month", color="Registrations"), x=heat.columns, y=heat.index, title="Month × Category Heatmap")
-                st.plotly_chart(fig_hm, use_container_width=True)
-            else:
-                st.info("Month × Category heatmap not available (no monthly-like data).")
+            # use df_ts which has ds,label,value,year
+            ds_vis = df_ts.copy()
+            # if too many categories, limit to top 12 for visibility
+            cat_order = top_df["label"].tolist()
+            ds_vis = ds_vis[ds_vis["label"].isin(cat_order)]
+            fig_box = px.box(ds_vis, x="label", y="value", points="outliers", title="Boxplot: value distribution per category (sampled)", labels={"value":"Registrations","label":"Category"})
+            st.plotly_chart(fig_box, use_container_width=True)
+    
+            fig_violin = px.violin(ds_vis, x="label", y="value", box=True, points="outliers", title="Violin: value distribution per category", labels={"value":"Registrations","label":"Category"})
+            st.plotly_chart(fig_violin, use_container_width=True)
         else:
-            st.info("Monthly heatmap skipped — df_ts missing or empty.")
-    except Exception as e:
-        st.warning(f"Monthly heatmap generation failed: {e}")
-
-    # -------------------------
-    # Basic descriptive stats (mean, median, mode) across categories
-    # -------------------------
-    st.markdown("### ⚙️ Descriptive Stats (quick): mean / median / mode across categories")
-    desc = grp[["label","total","mean","median","std","mode","observations"]].sort_values("total", ascending=False).reset_index(drop=True)
-    st.dataframe(desc.head(50).style.format({"total":"{:,}","mean":"{:,.1f}","median":"{:,.1f}","std":"{:,.1f}","mode":"{:.0f}"}))
-
-    # -------------------------
-    # Debug: trend for each of top 5 categories separately (no global sum)
-    # -------------------------
-    st.write("### 🔧 Per-Category Trend (Top 5)")
-    top5 = top_df["label"].tolist()[:5]
-    for cat in top5:
-        dcat = df_cat_all[df_cat_all["label"]==cat].groupby("year")["value"].sum().reset_index()
-        if dcat.empty:
-            continue
-        fig_tr = px.line(dcat, x="year", y="value", markers=True, title=f"Trend — {cat}")
-        fig_tr.update_layout(template="plotly_white", yaxis_title="Registrations", xaxis_title="Year")
-        st.plotly_chart(fig_tr, use_container_width=True)
-
-    # -------------------------
-    # Performance / debug info
-    # -------------------------
-    summary_time = time.time() - summary_start
-    st.markdown("### 🧪 Debug Performance & Notes")
-    st.code(
-        f"""
-Categories: {n_cats}
-Rows processed: {n_rows:,}
-Years: {year_list[0]} → {year_list[-1]}
-Pivot years shape: {pivot_year.shape if 'pivot_year' in locals() else 'n/a'}
-Computation time: {summary_time:.2f} sec
-        """,
-        language="yaml",
-    )
+            st.info("No expanded timeseries (df_ts) available — box/violin plots skipped.")
+    
+        # -------------------------
+        # Monthly heatmap (if we can compute months)
+        # -------------------------
+        st.markdown("### 🔥 Month × Category Heatmap (if monthly data exists)")
+        try:
+            if "df_ts" in globals() and not df_ts.empty:
+                df_ts_local = df_ts.copy()
+                df_ts_local["month"] = df_ts_local["ds"].dt.strftime("%b")
+                # pivot month x category
+                heat = df_ts_local.groupby(["month","label"])["value"].sum().unstack(fill_value=0)
+                # reorder months to calendar if possible
+                month_order = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+                heat = heat.reindex(index=month_order).fillna(0)
+                # short-circuit if empty
+                if not heat.empty:
+                    fig_hm = px.imshow(heat.fillna(0), labels=dict(x="Category", y="Month", color="Registrations"), x=heat.columns, y=heat.index, title="Month × Category Heatmap")
+                    st.plotly_chart(fig_hm, use_container_width=True)
+                else:
+                    st.info("Month × Category heatmap not available (no monthly-like data).")
+            else:
+                st.info("Monthly heatmap skipped — df_ts missing or empty.")
+        except Exception as e:
+            st.warning(f"Monthly heatmap generation failed: {e}")
+    
+        # -------------------------
+        # Basic descriptive stats (mean, median, mode) across categories
+        # -------------------------
+        st.markdown("### ⚙️ Descriptive Stats (quick): mean / median / mode across categories")
+        desc = grp[["label","total","mean","median","std","mode","observations"]].sort_values("total", ascending=False).reset_index(drop=True)
+        st.dataframe(desc.head(50).style.format({"total":"{:,}","mean":"{:,.1f}","median":"{:,.1f}","std":"{:,.1f}","mode":"{:.0f}"}))
+    
+        # -------------------------
+        # Debug: trend for each of top 5 categories separately (no global sum)
+        # -------------------------
+        st.write("### 🔧 Per-Category Trend (Top 5)")
+        top5 = top_df["label"].tolist()[:5]
+        for cat in top5:
+            dcat = df_cat_all[df_cat_all["label"]==cat].groupby("year")["value"].sum().reset_index()
+            if dcat.empty:
+                continue
+            fig_tr = px.line(dcat, x="year", y="value", markers=True, title=f"Trend — {cat}")
+            fig_tr.update_layout(template="plotly_white", yaxis_title="Registrations", xaxis_title="Year")
+            st.plotly_chart(fig_tr, use_container_width=True)
+    
+        # -------------------------
+        # Performance / debug info
+        # -------------------------
+        summary_time = time.time() - summary_start
+        st.markdown("### 🧪 Debug Performance & Notes")
+        st.code(
+            f"""
+    Categories: {n_cats}
+    Rows processed: {n_rows:,}
+    Years: {year_list[0]} → {year_list[-1]}
+    Pivot years shape: {pivot_year.shape if 'pivot_year' in locals() else 'n/a'}
+    Computation time: {summary_time:.2f} sec
+            """,
+            language="yaml",
+        )
 
     except Exception as e:
         logger.exception(f"Summary block (separate) failed: {e}")
