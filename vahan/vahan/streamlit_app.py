@@ -2119,12 +2119,6 @@ def all_maxed_category_block(params: Optional[dict] = None):
     pivot = resampled.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
     pivot_year = resampled.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
 
-    # Show table of top categories by last year
-    last_year = sorted(df_cat_all["year"].unique())[-1]
-    df_last = df_cat_all[df_cat_all["year"]==last_year].sort_values("value", ascending=False)
-    st.markdown(f"**Top categories in {last_year}**")
-    st.dataframe(df_last.reset_index(drop=True).style.format({"value":"{:,}"}))
-
     # =====================================================
     # 📊 VISUALIZATIONS (ALL-MAXED)
     # =====================================================
