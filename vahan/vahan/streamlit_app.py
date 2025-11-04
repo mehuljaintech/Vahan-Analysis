@@ -2119,25 +2119,6 @@ def all_maxed_category_block(params: Optional[dict] = None):
     pivot = resampled.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
     pivot_year = resampled.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
 
-    # -------------------------
-    # KPI Metrics: YoY, MoM (if monthly), CAGR
-    # -------------------------
-    st.subheader("💎 Key Metrics & Growth")
-    year_totals = pivot_year.sum(axis=1).rename("TotalRegistrations").to_frame()
-    year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
-    if len(year_totals) >= 2:
-        first = year_totals["TotalRegistrations"].iloc[0]
-        last = year_totals["TotalRegistrations"].iloc[-1]
-        years_count = max(1, len(year_totals)-1)
-        cagr = ((last/first) ** (1/years_count) - 1) * 100 if first>0 else np.nan
-    else:
-        cagr = np.nan
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} years")
-    c2.metric("📈 CAGR (Total)", f"{cagr:.2f}%" if not math.isnan(cagr) else "n/a")
-    c3.metric("📊 Latest YoY", f"{year_totals['YoY_%'].iloc[-1]:.2f}%" if "YoY_%" in year_totals.columns and not np.isnan(year_totals['YoY_%'].iloc[-1]) else "n/a")
-
     # Show table of top categories by last year
     last_year = sorted(df_cat_all["year"].unique())[-1]
     df_last = df_cat_all[df_cat_all["year"]==last_year].sort_values("value", ascending=False)
