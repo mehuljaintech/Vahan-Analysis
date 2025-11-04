@@ -2296,85 +2296,98 @@ else:
         st.error(f"💥 KPI computation failed: {e}")
         logger.exception(f"KPI block failure: {e}")
 
-    # -------------------------
-    # Visualization Panel
-    # -------------------------
-    # -------------------------
-    # VISUALIZATIONS (ALL-MAXED)
-    # -------------------------
-    st.subheader("📊 Visualizations — Multi-year & Multi-frequency (All-Maxed)")
+# =====================================================
+# 📊 VISUALIZATIONS (ALL-MAXED)
+# =====================================================
+st.subheader("📊 Visualizations — Multi-year & Multi-frequency (All-Maxed)")
 
-    # --- Handle empty case ---
-    if resampled.empty or pivot.empty:
-        st.warning("⚠️ No data available for visualization. Try adjusting filters or years.")
-        return
+# --- Safety Checks ---
+if "resampled" not in locals() or resampled is None or resampled.empty:
+    st.warning("⚠️ No valid 'resampled' data available for visualization.")
+    st.stop()
 
-    # --- Combined View ---
-    if mode.startswith("Combined"):
-        st.markdown("### 🌈 Stacked & Overlay Trends — Combined View")
+if "pivot" not in locals() or pivot is None or pivot.empty:
+    st.warning("⚠️ No valid 'pivot' data available for visualization.")
+    st.stop()
 
-        # --- Stacked Area Chart ---
-        try:
-            fig_area = px.area(
-                resampled,
-                x="ds",
-                y="value",
-                color="label",
-                title="Stacked Registrations by Category Over Time",
-                color_discrete_sequence=px.colors.qualitative.Set3,
-            )
-            fig_area.update_layout(
-                legend_title_text="Category",
-                xaxis_title="Date",
-                yaxis_title="Registrations",
-                template="plotly_white",
-                hovermode="x unified",
-            )
-            st.plotly_chart(fig_area, use_container_width=True)
-        except Exception as e:
-            st.warning(f"⚠️ Stacked area failed: {e}")
+if "mode" not in locals():
+    mode = "Combined (Overlay / Stacked)"
 
-        # --- Overlay Line Chart ---
-        try:
-            fig_line = px.line(
-                resampled,
-                x="ds",
-                y="value",
-                color="label",
-                title="Category Trends (Overlay)",
-                markers=True,
-                color_discrete_sequence=px.colors.qualitative.Bold,
-            )
-            fig_line.update_traces(line=dict(width=2))
-            fig_line.update_layout(
-                template="plotly_white",
-                xaxis_title="Date",
-                yaxis_title="Registrations",
-                hovermode="x unified",
-            )
-            st.plotly_chart(fig_line, use_container_width=True)
-        except Exception as e:
-            st.warning(f"⚠️ Overlay lines failed: {e}")
+# -------------------------
+# Combined View
+# -------------------------
+if mode.startswith("Combined"):
+    st.markdown("### 🌈 Stacked & Overlay Trends — Combined View")
 
-    # --- Separate Mode (Small Multiples) ---
-    else:
-        st.markdown("### 🧩 Small Multiples — Yearly Category Distribution")
-
-        years_sorted = sorted(resampled["year"].unique())
-        sel_small = st.multiselect(
-            "Select specific years for small multiples (limit 6)",
-            years_sorted,
-            default=years_sorted[-min(3, len(years_sorted)):] if years_sorted else [],
+    # --- Stacked Area Chart ---
+    try:
+        fig_area = px.area(
+            resampled,
+            x="ds",
+            y="value",
+            color="label",
+            title="Stacked Registrations by Category Over Time",
+            color_discrete_sequence=px.colors.qualitative.Set3,
         )
+        fig_area.update_layout(
+            legend_title_text="Category",
+            xaxis_title="Date",
+            yaxis_title="Registrations",
+            template="plotly_white",
+            hovermode="x unified",
+        )
+        st.plotly_chart(fig_area, use_container_width=True)
+    except Exception as e:
+        st.warning(f"⚠️ Stacked area failed: {e}")
 
-        if not sel_small:
-            st.info("Select at least one year to show small multiples.")
-        else:
-            for y in sel_small[:6]:
-                d = resampled[resampled["year"] == y]
-                if d.empty:
-                    st.caption(f"⚠️ No data for {y}")
-                    continue
+    # --- Overlay Line Chart ---
+    try:
+        fig_line = px.line(
+            resampled,
+            x="ds",
+            y="value",
+            color="label",
+            title="Category Trends (Overlay)",
+            markers=True,
+            color_discrete_sequence=px.colors.qualitative.Bold,
+        )
+        fig_line.update_traces(line=dict(width=2))
+        fig_line.update_layout(
+            template="plotly_white",
+            xaxis_title="Date",
+            yaxis_title="Registrations",
+            hovermode="x unified",
+        )
+        st.plotly_chart(fig_line, use_container_width=True)
+    except Exception as e:
+        st.warning(f"⚠️ Overlay lines failed: {e}")
+
+# -------------------------
+# Separate Mode (Small Multiples)
+# -------------------------
+else:
+    st.markdown("### 🧩 Small Multiples — Yearly Category Distribution")
+
+    try:
+        years_sorted = sorted(resampled["year"].unique())
+    except Exception:
+        years_sorted = []
+
+    sel_small = st.multiselect(
+        "Select specific years for small multiples (limit 6)",
+        years_sorted,
+        default=years_sorted[-min(3, len(years_sorted)):] if years_sorted else [],
+    )
+
+    if not sel_small:
+        st.info("Select at least one year to show small multiples.")
+    else:
+        for y in sel_small[:6]:
+            d = resampled[resampled["year"] == y]
+            if d.empty:
+                st.caption(f"⚠️ No data for {y}")
+                continue
+            try:
                 fig_bar = px.bar(
                     d,
                     x="label",
@@ -2391,6 +2404,8 @@ else:
                     yaxis_title="Registrations",
                 )
                 st.plotly_chart(fig_bar, use_container_width=True)
+            except Exception as e:
+                st.warning(f"⚠️ Failed to plot {y}: {e}")
 
     # -------------------------
     # Optional Advanced Visuals
