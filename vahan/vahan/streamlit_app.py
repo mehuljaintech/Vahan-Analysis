@@ -2299,7 +2299,7 @@ else:
     # -------------------------
     # Visualization Panel
     # -------------------------
-        # -------------------------
+    # -------------------------
     # VISUALIZATIONS (ALL-MAXED)
     # -------------------------
     st.subheader("📊 Visualizations — Multi-year & Multi-frequency (All-Maxed)")
