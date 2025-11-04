@@ -2116,144 +2116,107 @@ def all_maxed_category_block(params: Optional[dict] = None):
 
     resampled["year"] = resampled["ds"].dt.year
 
-    pivot = resampled.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
-    pivot_year = resampled.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
-
-    # -------------------------
-    # 💎 Key Metrics & Growth (All-Maxed) — Robust Replacement
-    # -------------------------
-    import numpy as np
-    import math
-    import pandas as pd
-    import plotly.express as px
+    pivot = (
+    resampled
+    .pivot_table(index="ds", columns="label", values="value", aggfunc="sum")
+    .fillna(0)
+    .sort_index()
+)
+    pivot_year = (
+        resampled
+        .pivot_table(index="year", columns="label", values="value", aggfunc="sum")
+        .fillna(0)
+        .sort_index()
+    )
     
+    # -------------------------
+    # 💎 Key Metrics & Growth (All-Maxed)
+    # -------------------------
     st.subheader("💎 Key Metrics & Growth (All-Maxed)")
     
-    # Safety guard
-    if "pivot_year" not in locals() or pivot_year is None or (isinstance(pivot_year, pd.DataFrame) and pivot_year.empty):
+    if pivot_year.empty:
         st.warning("⚠️ No yearly data found for KPI computation.")
+        return
+    
+    # --- Compute totals, YoY, CAGR ---
+    year_totals = pivot_year.sum(axis=1).rename("TotalRegistrations").to_frame()
+    year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
+    year_totals["TotalRegistrations"] = year_totals["TotalRegistrations"].fillna(0).astype(int)
+    year_totals["YoY_%"] = year_totals["YoY_%"].replace([np.inf, -np.inf], np.nan).fillna(0)
+    
+    if len(year_totals) >= 2:
+        first_val = float(year_totals["TotalRegistrations"].iloc[0])
+        last_val = float(year_totals["TotalRegistrations"].iloc[-1])
+        years_count = max(1, len(year_totals) - 1)
+        cagr = ((last_val / first_val) ** (1 / years_count) - 1) * 100 if first_val > 0 else 0.0
     else:
-        try:
-            # work on a copy
-            py = pivot_year.copy()
+        cagr = 0.0
     
-            # --- Normalize index to integer years when possible ---
-            # Try parsing as datetimes first, then fall back to ints or leave as-is
-            parsed_years = pd.to_datetime(py.index.astype(str), errors="coerce").year
-            if parsed_years.isna().all():
-                # maybe index already numeric-like (e.g., ints or strings '2024')
-                try:
-                    parsed_years = py.index.astype(int)
-                except Exception:
-                    # final fallback: use 0..n-1 to preserve order
-                    parsed_years = pd.Index(range(len(py)))
-            # Assign normalized integer-year index
-            py.index = pd.Index(parsed_years)
+    # --- MoM (Monthly) ---
+    if freq == "Monthly":
+        pivot_month = resampled.copy()
+        pivot_month["month"] = pivot_month["ds"].dt.to_period("M")
+        month_totals = pivot_month.groupby("month")["value"].sum().reset_index()
+        month_totals["MoM_%"] = month_totals["value"].pct_change() * 100
+        latest_mom = (
+            f"{month_totals['MoM_%'].iloc[-1]:.2f}%"
+            if len(month_totals) > 1 and not np.isnan(month_totals['MoM_%'].iloc[-1])
+            else "n/a"
+        )
+    else:
+        latest_mom = "n/a"
     
-            # sort ascending by year
-            py = py.sort_index()
+    # -------------------------
+    # 📘 Category Share & Year Info
+    # -------------------------
+    actual_first = int(year_totals.index.min())
+    actual_last = int(year_totals.index.max())
+    latest_year = actual_last
+    latest_total = int(year_totals.loc[latest_year, "TotalRegistrations"])
     
-            # --- Yearly totals (numeric) ---
-            year_totals = py.sum(axis=1).rename("TotalRegistrations").to_frame()
-            year_totals["TotalRegistrations"] = pd.to_numeric(year_totals["TotalRegistrations"], errors="coerce").fillna(0)
+    cat_share = (
+        (pivot_year.loc[latest_year] / pivot_year.loc[latest_year].sum() * 100)
+        .sort_values(ascending=False)
+        .round(1)
+    )
     
-            # --- YoY %
-            year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
-            year_totals["YoY_%"] = year_totals["YoY_%"].replace([np.inf, -np.inf], np.nan)
+    # -------------------------
+    # 📈 Display Metrics
+    # -------------------------
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("📅 Years Loaded", f"{actual_first} → {actual_last}", f"{len(year_totals)} yrs")
+    c2.metric("📈 CAGR (Total)", f"{cagr:.2f}%")
+    c3.metric("📊 Latest YoY", f"{year_totals['YoY_%'].iloc[-1]:.2f}%")
+    c4.metric("📆 Latest MoM", latest_mom)
     
-            # --- CAGR using real year span ---
-            cagr = np.nan
-            if len(year_totals) >= 2:
-                first_year = int(year_totals.index.min())
-                last_year = int(year_totals.index.max())
-                year_span = last_year - first_year
-                start_val = float(year_totals.loc[first_year, "TotalRegistrations"]) if first_year in year_totals.index else float(year_totals.iloc[0, 0])
-                end_val = float(year_totals.loc[last_year, "TotalRegistrations"]) if last_year in year_totals.index else float(year_totals.iloc[-1, 0])
-                if start_val > 0 and year_span > 0:
-                    cagr = ((end_val / start_val) ** (1.0 / year_span) - 1.0) * 100
-                else:
-                    cagr = np.nan
+    # -------------------------
+    # 📘 Category Share Table
+    # -------------------------
+    st.markdown(f"#### 📘 Category Share — {latest_year}")
+    if not cat_share.empty:
+        st.dataframe(
+            pd.DataFrame({
+                "Category": cat_share.index,
+                "Share_%": cat_share.values,
+                "Volume": pivot_year.loc[latest_year].astype(int).values,
+            }).sort_values("Share_%", ascending=False),
+            use_container_width=True,
+        )
+    else:
+        st.info("No category share data available for latest year.")
     
-            # --- MoM (if Monthly) computed from resampled (chronological) ---
-            latest_mom = "n/a"
-            try:
-                if freq and str(freq).lower().startswith("month") and "resampled" in locals() and not resampled.empty:
-                    m = resampled.copy()
-                    m["month"] = m["ds"].dt.to_period("M")
-                    month_totals = m.groupby("month")["value"].sum().sort_index()
-                    if len(month_totals) > 1:
-                        mom_val = month_totals.pct_change().iloc[-1] * 100
-                        latest_mom = f"{mom_val:.2f}%" if np.isfinite(mom_val) and not pd.isna(mom_val) else "n/a"
-            except Exception:
-                latest_mom = "n/a"
-    
-            # --- Latest year detection & category share ---
-            latest_year = int(year_totals.index.max())
-            latest_total = int(year_totals.loc[latest_year, "TotalRegistrations"]) if latest_year in year_totals.index else int(year_totals["TotalRegistrations"].iloc[-1])
-    
-            # find matching row in original pivot_year for category shares
-            cat_share = pd.Series(dtype=float)
-            try:
-                # try direct match
-                if latest_year in pivot_year.index:
-                    row_latest = pivot_year.loc[latest_year]
-                else:
-                    # try matching by string inclusion (handles '2024-25' or timestamps)
-                    matches = [idx for idx in pivot_year.index if str(latest_year) in str(idx)]
-                    if matches:
-                        row_latest = pivot_year.loc[matches[0]]
-                    else:
-                        row_latest = pivot_year.iloc[-1]
-                # compute share
-                row_vals = pd.to_numeric(row_latest, errors="coerce").fillna(0)
-                total_row = row_vals.sum()
-                if total_row > 0:
-                    cat_share = (row_vals / total_row * 100).sort_values(ascending=False).round(1)
-            except Exception:
-                cat_share = pd.Series(dtype=float)
-    
-            # --- Display cleaned KPIs ---
-            # year display
-            display_first = int(year_totals.index.min())
-            display_last = int(year_totals.index.max())
-            display_count = len(year_totals)
-    
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("📅 Years Loaded", f"{display_first} → {display_last}", f"{display_count} yrs")
-            c2.metric("📈 CAGR (Total)", f"{cagr:.2f}%" if not pd.isna(cagr) else "n/a")
-            latest_yoy = year_totals["YoY_%"].iloc[-1] if len(year_totals) > 0 else np.nan
-            c3.metric("📊 Latest YoY", f"{latest_yoy:.2f}%" if not pd.isna(latest_yoy) else "n/a")
-            c4.metric("📆 Latest MoM", latest_mom)
-    
-            # small debug table (collapsible)
-            with st.expander("🔎 Debug: Yearly totals & YoY (for verification)", expanded=False):
-                st.dataframe(year_totals.style.format({"TotalRegistrations": "{:,.0f}", "YoY_%": "{:.2f}"}))
-    
-            # category share table
-            st.markdown("#### 📘 Category Share (Latest Year)")
-            if not cat_share.empty and cat_share.sum() > 0:
-                df_share = pd.DataFrame({
-                    "Category": cat_share.index,
-                    "Share_%": cat_share.values,
-                    "Volume": row_vals.astype(int).values
-                })
-                st.dataframe(df_share, use_container_width=True)
-            else:
-                st.info("No category share data available for the latest year.")
-    
-            # optional: yearly total chart
-            try:
-                fig_tot = px.bar(year_totals.reset_index().rename(columns={"index":"Year"}), x=year_totals.index, y="TotalRegistrations",
-                                 title="Yearly Total Registrations", text_auto=True)
-                fig_tot.update_layout(template="plotly_white", xaxis_title="Year", yaxis_title="Registrations")
-                st.plotly_chart(fig_tot, use_container_width=True)
-            except Exception:
-                pass
-    
-        except Exception as ex:
-            st.error(f"💥 KPI computation failed: {ex}")
-            logger.exception(f"KPI block failure: {ex}")
-    
+    # -------------------------
+    # 🔍 Yearly Totals & Growth Table
+    # -------------------------
+    with st.expander("🔍 Yearly Totals & Growth", expanded=False):
+        st.dataframe(
+            year_totals.style.format({
+                "TotalRegistrations": "{:,}",
+                "YoY_%": "{:.2f}"
+            }),
+            use_container_width=True,
+        )
+
     # =====================================================
     # 📊 VISUALIZATIONS (ALL-MAXED)
     # =====================================================
