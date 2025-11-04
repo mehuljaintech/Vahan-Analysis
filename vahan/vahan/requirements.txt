@@ -13,6 +13,7 @@ python-dateutil
 python-dotenv
 urllib3
 tqdm
+pycountry
 
 # ===============================
 # 🎨 VISUALIZATION / DASHBOARD
