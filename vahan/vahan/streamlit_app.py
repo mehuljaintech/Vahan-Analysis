@@ -2043,1260 +2043,421 @@ def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.
 # =====================================================
 
 def all_maxed_category_block(params: Optional[dict] = None):
-    """Render the ALL-MAXED Category Analytics block inside Streamlit.
+    """Render the maxed category analytics block inside Streamlit.
 
-    Fully enhanced with advanced UI, legends, charts, KPIs, forecasting, and clustering.
+    Provide `params` to pass to API calls (e.g., region filters). If omitted, defaults are used.
     """
-    import plotly.express as px
-    import plotly.graph_objects as go
-    from sklearn.cluster import KMeans
-    from sklearn.preprocessing import StandardScaler
-
     start_overall = time.time()
     params = params or {}
 
-    st.markdown("## 🚗 **ALL-MAXED — Category Analytics (Multi-Frequency, Multi-Year)**")
-    st.caption("⚡ Deep insights powered by synthetic time-series, AI commentary, and full visualization suite.")
+    st.markdown("## 🚗 ALL-MAXED — Category Analytics (Multi-frequency, Multi-year)")
 
     # -------------------------
-    # ⚙️ Controls
+    # Controls
     # -------------------------
     freq = st.radio("Aggregation Frequency", ["Daily", "Monthly", "Quarterly", "Yearly"], index=1, horizontal=True)
     mode = st.radio("View Mode", ["Separate (Small Multiples)", "Combined (Overlay / Stacked)"], index=1, horizontal=True)
     current_year = datetime.now().year
-    c1, c2 = st.columns(2)
-    with c1:
-        start_year = st.number_input("From Year", 2010, current_year, current_year - 4)
-    with c2:
-        end_year = st.number_input("To Year", start_year, current_year, current_year)
-    years = list(range(int(start_year), int(end_year) + 1))
+    start_year = st.number_input("From Year", 2010, current_year, current_year-1)
+    end_year = st.number_input("To Year", start_year, current_year, current_year)
+    years = list(range(int(start_year), int(end_year)+1))
 
-    st.divider()
-    c3, c4, c5, c6 = st.columns(4)
-    show_heatmap = c3.toggle("Heatmap", True)
-    show_radar = c4.toggle("Radar", True)
-    do_forecast = c5.toggle("Forecast", True)
-    do_cluster = c6.toggle("Cluster", False)
+    show_heatmap = st.checkbox("Show Heatmap (year × category)", True)
+    show_radar = st.checkbox("Show Radar (per year)", True)
+    do_forecast = st.checkbox("Enable Forecasting", True)
+    do_anomaly = st.checkbox("Enable Anomaly Detection", False)
+    do_clustering = st.checkbox("Enable Clustering (KMeans)", False)
+    enable_ai = st.checkbox("Enable AI Narrative (requires provider)", False)
 
-    st.info(f"🚀 Starting ALL-MAXED Category Analytics — Years: {years} | Freq: {freq} | Mode: {mode}")
+    st.info(f"🚀 Starting ALL-MAXED category pipeline (debug ON) — years: {years} | freq: {freq} | mode: {mode}")
 
     # -------------------------
-    # 📡 Data Fetching
+    # Fetch multi-year category data
     # -------------------------
     all_year_dfs = []
-    with st.spinner("Fetching category data for all selected years..."):
+    with st.spinner("Fetching category data for selected years..."):
         for y in years:
             try:
                 df_y = fetch_year_category(y, params, show_debug=False)
-                if df_y is not None and not df_y.empty:
-                    all_year_dfs.append(df_y)
+                if df_y is None or df_y.empty:
+                    st.warning(f"No category data for {y}")
+                    continue
+                all_year_dfs.append(df_y)
             except Exception as e:
-                logger.exception(e)
-                st.warning(f"⚠️ Using mock data for {y}")
-                all_year_dfs.append(to_df(deterministic_mock_categories(y)).assign(year=y))
+                logger.exception(f"Error fetching {y}: {e}")
+                st.error(f"Error fetching {y}: {e}")
 
     if not all_year_dfs:
-        st.error("No category data available. Using deterministic mocks.")
-        all_year_dfs = [to_df(deterministic_mock_categories(y)).assign(year=y) for y in years]
+        st.info("No category data loaded for selected range. Displaying deterministic mocks for demonstration.")
+        # Generate mocks
+        for y in years:
+            all_year_dfs.append(to_df(deterministic_mock_categories(y)).assign(year=y))
 
     df_cat_all = pd.concat(all_year_dfs, ignore_index=True)
 
     # -------------------------
-    # ⏱️ Frequency expansion → synthetic time-series
+    # Frequency expansion -> time series (synthetic if needed)
     # -------------------------
-    ts_list = [year_to_timeseries(df_cat_all[df_cat_all["year"] == y], y, freq=freq) for y in years]
-    df_ts = pd.concat(ts_list, ignore_index=True)
+    ts_list = []
+    for y in sorted(df_cat_all["year"].unique()):
+        df_y = df_cat_all[df_cat_all["year"]==y].reset_index(drop=True)
+        ts = year_to_timeseries(df_y, int(y), freq=freq)
+        ts_list.append(ts)
+    df_ts = pd.concat(ts_list, ignore_index=True) if ts_list else pd.DataFrame(columns=["ds","label","value","year"])
     df_ts["ds"] = pd.to_datetime(df_ts["ds"])
 
-    # Group by
-    resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq={"Daily": "D", "Monthly": "M", "Quarterly": "Q", "Yearly": "Y"}[freq])])["value"].sum().reset_index()
+    # Resample to requested frequency (group-by label)
+    if freq == "Daily":
+        resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq="D")])["value"].sum().reset_index()
+    elif freq == "Monthly":
+        resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq="M")])["value"].sum().reset_index()
+    elif freq == "Quarterly":
+        resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq="Q")])["value"].sum().reset_index()
+    else:
+        resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq="Y")])["value"].sum().reset_index()
+
     resampled["year"] = resampled["ds"].dt.year
 
+    pivot = resampled.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
     pivot_year = resampled.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
 
     # -------------------------
-    # 💎 KPI Metrics
+    # KPI Metrics: YoY, MoM (if monthly), CAGR
     # -------------------------
-    st.subheader("💎 Key Metrics")
-    year_totals = pivot_year.sum(axis=1).rename("Total").to_frame()
-    year_totals["YoY_%"] = year_totals["Total"].pct_change() * 100
+    st.subheader("💎 Key Metrics & Growth")
+    year_totals = pivot_year.sum(axis=1).rename("TotalRegistrations").to_frame()
+    year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
     if len(year_totals) >= 2:
-        first, last = year_totals["Total"].iloc[0], year_totals["Total"].iloc[-1]
-        years_count = len(year_totals) - 1
-        cagr = ((last / first) ** (1 / years_count) - 1) * 100 if first > 0 else np.nan
+        first = year_totals["TotalRegistrations"].iloc[0]
+        last = year_totals["TotalRegistrations"].iloc[-1]
+        years_count = max(1, len(year_totals)-1)
+        cagr = ((last/first) ** (1/years_count) - 1) * 100 if first>0 else np.nan
     else:
         cagr = np.nan
 
     c1, c2, c3 = st.columns(3)
-    c1.metric("Years", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
-    c2.metric("CAGR", f"{cagr:.2f}%" if not np.isnan(cagr) else "n/a")
-    c3.metric("Latest YoY", f"{year_totals['YoY_%'].iloc[-1]:.2f}%" if not np.isnan(year_totals['YoY_%'].iloc[-1]) else "n/a")
+    c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} years")
+    c2.metric("📈 CAGR (Total)", f"{cagr:.2f}%" if not math.isnan(cagr) else "n/a")
+    c3.metric("📊 Latest YoY", f"{year_totals['YoY_%'].iloc[-1]:.2f}%" if "YoY_%" in year_totals.columns and not np.isnan(year_totals['YoY_%'].iloc[-1]) else "n/a")
 
-# -------------------------
-# ALL-MAXED: Unlimited Charts, Stats & Model Metrics (drop-in)
-# -------------------------
-import io, math
-import numpy as np
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from collections import Counter
-from statistics import mode as stat_mode
-from datetime import datetime
-from io import BytesIO
-
-st.markdown("## 🔥 ALL-MAXED EXTENDED VISUALS & METRICS")
-
-# --- defensive references to existing data objects ---
-_resampled = globals().get("resampled", pd.DataFrame()).copy()
-_pivot = globals().get("pivot", pd.DataFrame()).copy()         # wide timeseries (ds x category)
-_pivot_year = globals().get("pivot_year", pd.DataFrame()).copy()  # year x category
-_df_cat_all = globals().get("df_cat_all", pd.DataFrame()).copy()  # raw per-year totals
-
-if _resampled.empty and _pivot.empty and _pivot_year.empty and _df_cat_all.empty:
-    st.info("No data available for extended visuals. Run fetch/pipeline first.")
-else:
-    # --- Normalize/derive columns ---
-    try:
-        if "ds" in _resampled.columns:
-            _resampled["ds"] = pd.to_datetime(_resampled["ds"])
-            _resampled["year"] = _resampled["ds"].dt.year
-            _resampled["month"] = _resampled["ds"].dt.month
-            _resampled["month_name"] = _resampled["ds"].dt.strftime("%b")
-        elif "year" in _resampled.columns:
-            _resampled["year"] = _resampled["year"].astype(int)
-            _resampled["ds"] = pd.to_datetime(_resampled["year"].astype(str) + "-01-01")
-            _resampled["month"] = 1
-            _resampled["month_name"] = "Jan"
-    except Exception:
-        pass
-
-    # --- Controls: which categories to focus on ---
-    all_categories = []
-    if not _pivot.empty:
-        all_categories = list(_pivot.columns)
-    elif not _df_cat_all.empty:
-        all_categories = sorted(_df_cat_all["label"].unique().tolist())
-    elif not _resampled.empty:
-        all_categories = sorted(_resampled["label"].unique().tolist())
-
-    top_n_default = 8 if len(all_categories) >= 8 else max(1, len(all_categories))
-    top_n = st.number_input("Max categories to show (top-N by total)", min_value=1, max_value=max(1, len(all_categories)), value=top_n_default, step=1)
-    top_labels = []
-    if not _resampled.empty:
-        top_labels = _resampled.groupby("label")["value"].sum().sort_values(ascending=False).head(top_n).index.tolist()
-    elif not _pivot_year.empty:
-        top_labels = _pivot_year.sum(axis=0).sort_values(ascending=False).head(top_n).index.tolist()
-    else:
-        top_labels = all_categories[:top_n]
-
-    st.caption(f"Showing top {len(top_labels)} categories: {', '.join(top_labels[:6])}{'...' if len(top_labels)>6 else ''}")
+    # Show table of top categories by last year
+    last_year = sorted(df_cat_all["year"].unique())[-1]
+    df_last = df_cat_all[df_cat_all["year"]==last_year].sort_values("value", ascending=False)
+    st.markdown(f"**Top categories in {last_year}**")
+    st.dataframe(df_last.reset_index(drop=True).style.format({"value":"{:,}"}))
 
     # -------------------------
-    # 1) Time series overview: stacked + per-category small multiples + interactive legend
+    # Visualization Panel
     # -------------------------
-    st.subheader("1 — Time Series Overview")
+    st.subheader("📊 Visualizations — Multi-year & Multi-frequency")
 
-    # Stacked area for top categories only (handles wide pivot or resampled)
-    try:
-        if not _pivot.empty:
-            df_area = _pivot.reset_index()[["ds"] + top_labels] if "ds" in _pivot.reset_index().columns else _pivot[top_labels].reset_index()
-            fig_area = px.area(df_area, x="ds", y=top_labels, title="Stacked area — top categories (interactive legend)", labels={"value":"Registrations","ds":"Date"})
-            fig_area.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="left", x=0))
-            st.plotly_chart(fig_area, use_container_width=True)
-        elif not _resampled.empty:
-            df_area = _resampled[_resampled["label"].isin(top_labels)].pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0).reset_index()
-            fig_area = px.area(df_area, x="ds", y=[c for c in df_area.columns if c!="ds"], title="Stacked area — top categories", labels={"value":"Registrations","ds":"Date"})
-            fig_area.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="left", x=0))
-            st.plotly_chart(fig_area, use_container_width=True)
-        else:
-            st.info("Not enough time-series data for stacked area.")
-    except Exception as e:
-        st.warning(f"Stacked area error: {e}")
-
-    # Overlay lines with smoothing option
-    try:
-        st.markdown("### Overlay lines (per category)")
-        smoothing = st.checkbox("Apply rolling smoothing (window months)", value=False)
-        smooth_window = st.slider("Smoothing window (points)", 1, 12, 3) if smoothing else 1
-        df_lines = _resampled[_resampled["label"].isin(top_labels)].sort_values("ds").copy()
-        if smoothing and smooth_window > 1 and not df_lines.empty:
-            df_lines["value_smooth"] = df_lines.groupby("label")["value"].transform(lambda s: s.rolling(smooth_window, min_periods=1).mean())
-            ycol = "value_smooth"
-        else:
-            ycol = "value"
-        fig_lines = px.line(df_lines, x="ds", y=ycol, color="label", title="Overlay lines — category trends", labels={ycol:"Registrations","ds":"Date"})
-        fig_lines.update_layout(legend=dict(orientation="h", y=-0.2))
-        st.plotly_chart(fig_lines, use_container_width=True)
-    except Exception as e:
-        st.warning(f"Overlay lines error: {e}")
-
-    # -------------------------
-    # 2) Small multiples (grid) — bar or line per category
-    # -------------------------
-    st.subheader("2 — Small Multiples")
-    try:
-        kind = st.selectbox("Small multiples: chart type", ["bar","line","area"], index=1)
-        chosen_years = st.multiselect("Which years (small multiples) - leave empty = all", sorted(_resampled["year"].unique().tolist() if "year" in _resampled.columns else []), default=sorted(_resampled["year"].unique().tolist()[-3:]) if "year" in _resampled.columns else [])
-        display_labels = top_labels
-        small_df = _resampled[_resampled["label"].isin(display_labels)].copy()
-        if chosen_years:
-            small_df = small_df[small_df["year"].isin(chosen_years)]
-        # limit amount
-        max_plots = st.number_input("Max small multiples to render", 1, 12, 6)
-        for i, lab in enumerate(display_labels[:max_plots]):
-            sub = small_df[small_df["label"]==lab]
-            if sub.empty: continue
-            title = f"{lab} — {sub['year'].min() if 'year' in sub.columns else ''} → {sub['year'].max() if 'year' in sub.columns else ''}"
-            if kind=="bar":
-                f = px.bar(sub, x="ds", y="value", title=title, text_auto=True)
-            elif kind=="area":
-                f = px.area(sub, x="ds", y="value", title=title)
-            else:
-                f = px.line(sub, x="ds", y="value", title=title)
-            f.update_layout(showlegend=False, template="plotly_white")
-            st.plotly_chart(f, use_container_width=True)
-    except Exception as e:
-        st.warning(f"Small multiples error: {e}")
-
-    # -------------------------
-    # 3) Donut, Sunburst, Treemap (rich legends & hover)
-    # -------------------------
-    st.subheader("3 — Donut / Sunburst / Treemap (rich hover)")
-    try:
-        latest_ds = None
-        if not _resampled.empty:
-            latest_ds = _resampled["ds"].max()
-            period_label = latest_ds.strftime("%Y-%m-%d")
-            d_latest = _resampled[_resampled["ds"]==latest_ds].groupby("label")["value"].sum().reset_index()
-        else:
-            if not _df_cat_all.empty:
-                d_latest = _df_cat_all.groupby("label")["value"].sum().reset_index()
-                period_label = f"{_df_cat_all['year'].max()} (aggregate)"
-            else:
-                d_latest = pd.DataFrame(columns=["label","value"])
-                period_label = "latest"
-        if not d_latest.empty:
-            fig_p = px.pie(d_latest.sort_values("value", ascending=False).head(50), names="label", values="value", hole=0.5,
-                           title=f"Donut — Category split ({period_label})")
-            fig_p.update_traces(textposition="inside", textinfo="percent+label", hovertemplate="<b>%{label}</b><br>%{value:,.0f} registrations<br>%{percent}")
-            st.plotly_chart(fig_p, use_container_width=True)
-
-            # sunburst (year->category)
-            if not _df_cat_all.empty:
-                sb = _df_cat_all.groupby(["year","label"])["value"].sum().reset_index()
-                fig_s = px.sunburst(sb, path=["year","label"], values="value", title="Sunburst: Year → Category")
-                st.plotly_chart(fig_s, use_container_width=True)
-            # treemap
-            fig_t = px.treemap(d_latest.sort_values("value", ascending=False).head(200), path=["label"], values="value", title="Treemap — latest category sizes")
-            st.plotly_chart(fig_t, use_container_width=True)
-        else:
-            st.info("No data to draw donut/sunburst/treemap.")
-    except Exception as e:
-        st.warning(f"Donut/Sunburst/Treemap error: {e}")
-
-    # -------------------------
-    # 4) Monthly x Category heatmap and sortable top-months
-    # -------------------------
-    st.subheader("4 — Month × Category Heatmap & Rankings")
-    try:
-        if "month_name" in _resampled.columns:
-            mon = _resampled.groupby(["month_name","label"])["value"].sum().reset_index()
-            month_order = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-            mon["month_name"] = pd.Categorical(mon["month_name"], categories=month_order, ordered=True)
-            mon_pivot = mon.pivot_table(index="month_name", columns="label", values="value", aggfunc="sum").fillna(0)
-            # restrict columns to top_labels
-            mon_small = mon_pivot[top_labels] if len(top_labels)>0 else mon_pivot
-            fig_heat = go.Figure(data=go.Heatmap(z=mon_small.values, x=mon_small.columns, y=mon_small.index, colorscale="Cividis"))
-            fig_heat.update_layout(title="Month vs Category heatmap", xaxis_title="Category", yaxis_title="Month")
-            st.plotly_chart(fig_heat, use_container_width=True)
-
-            # show top months per category
-            if st.checkbox("Show top months per selected category"):
-                sel_cat = st.selectbox("Select category for monthly ranking", top_labels)
-                temp = mon[mon["label"]==sel_cat].sort_values("value", ascending=False).reset_index(drop=True)
-                st.dataframe(temp.head(12).style.format({"value":"{:,}"}))
-        else:
-            st.info("Monthly breakdown not available (no 'ds' dates).")
-    except Exception as e:
-        st.warning(f"Month×Category heatmap error: {e}")
-
-    # -------------------------
-    # 5) Distribution & Descriptive Stats (mean/median/mode/std/CV)
-    # -------------------------
-    st.subheader("5 — Distribution & Stats")
-    try:
-        stats = _resampled.groupby("label")["value"].agg(["count","sum","mean","median","std"]).reset_index().rename(columns={"sum":"total"})
-        # compute mode robustly (use try/except)
-        def safe_mode(s):
-            try:
-                m = s.mode()
-                if not m.empty:
-                    return float(m.iloc[0])
-                return np.nan
-            except Exception:
-                return np.nan
-        stats["mode"] = _resampled.groupby("label")["value"].apply(safe_mode).values
-        stats["cv_pct"] = (stats["std"] / stats["mean"]).replace([np.inf, -np.inf], np.nan) * 100
-        st.write("Descriptive summary (top categories):")
-        st.dataframe(stats.sort_values("total", ascending=False).head(top_n).style.format({"mean":"{:.1f}", "median":"{:.1f}", "std":"{:.1f}", "total":"{:,}", "mode":"{:.1f}", "cv_pct":"{:.1f}%"}))
-        # histogram/kde per chosen category
-        cat_for_dist = st.selectbox("Distribution: pick a category", top_labels)
-        dist_kind = st.selectbox("Plot distribution as", ["histogram","box","violin","kde"], index=0)
-        dcat = _resampled[_resampled["label"]==cat_for_dist]
-        if not dcat.empty:
-            if dist_kind=="histogram":
-                fig = px.histogram(dcat, x="value", nbins=40, title=f"Histogram — {cat_for_dist}")
-            elif dist_kind=="box":
-                fig = px.box(dcat, y="value", title=f"Boxplot — {cat_for_dist}", points="all")
-            elif dist_kind=="violin":
-                fig = px.violin(dcat, y="value", box=True, points="all", title=f"Violin — {cat_for_dist}")
-            else:  # kde - approximate via histogram + smooth line
-                fig = px.histogram(dcat, x="value", nbins=60, histnorm='density', title=f"KDE-like histogram — {cat_for_dist}")
+    if mode.startswith("Combined"):
+        # Stacked area across all categories (combined)
+        st.markdown("### Stacked Area — Combined (All selected years & freq)")
+        try:
+            fig = px.area(pivot.reset_index(), x="ds", y=pivot.columns.tolist(), title="Stacked registrations by category over time")
+            fig.update_layout(legend_title_text="Category", xaxis_title="Date", yaxis_title="Registrations", template="plotly_white")
             st.plotly_chart(fig, use_container_width=True)
-    except Exception as e:
-        st.warning(f"Distribution/stats error: {e}")
+        except Exception as e:
+            st.warning(f"Stacked area failed: {e}")
 
-    # -------------------------
-    # 6) Correlation matrix & scatter-matrix
-    # -------------------------
-    st.subheader("6 — Correlation & Pairwise")
-    try:
-        if not _pivot.empty:
-            corr = _pivot.corr()
-            fig_corr = px.imshow(corr, text_auto=False, aspect="auto", title="Correlation matrix (Pearson) - categories")
-            st.plotly_chart(fig_corr, use_container_width=True)
-            if st.checkbox("Show scatter matrix (scatter_matrix) for top categories"):
-                from plotly.express import scatter_matrix
-                sm = _resampled[_resampled["label"].isin(top_labels)].pivot_table(index="ds", columns="label", values="value", aggfunc="sum").reset_index().drop(columns=["ds"], errors="ignore")
-                if not sm.empty:
-                    fig_sm = scatter_matrix(sm[top_labels[:min(6,len(top_labels))]], dimensions=top_labels[:min(6,len(top_labels))], title="Scatter matrix (top categories)")
-                    st.plotly_chart(fig_sm, use_container_width=True)
+        # Overlay line chart per-category for clarity
+        st.markdown("### Overlay Lines — Category Trends")
+        try:
+            fig2 = px.line(resampled, x="ds", y="value", color="label", line_group="label", title="Category trends (overlay)")
+            fig2.update_layout(template="plotly_white", xaxis_title="Date", yaxis_title="Registrations")
+            st.plotly_chart(fig2, use_container_width=True)
+        except Exception as e:
+            st.warning(f"Overlay lines failed: {e}")
+
+    else:
+        # Separate small multiples: one chart per year (or per category)
+        st.markdown("### Small Multiples — One plot per Year (Category Split)")
+        years_sorted = sorted(resampled["year"].unique())
+        sel_small = st.multiselect("Select specific years for small multiples (limit 6)", years_sorted, default=years_sorted[-3:])
+        if not sel_small:
+            st.info("Select at least one year to show small multiples.")
         else:
-            st.info("No wide pivot table for correlation/pairwise plots.")
-    except Exception as e:
-        st.warning(f"Correlation/pairwise error: {e}")
+            for y in sel_small[:6]:
+                d = resampled[resampled["year"]==y]
+                if d.empty: continue
+                fig = px.bar(d, x="label", y="value", color="label", title=f"Category distribution — {y}", text_auto=True)
+                fig.update_layout(showlegend=False, template="plotly_white")
+                st.plotly_chart(fig, use_container_width=True)
+
+    # Donut / Sunburst for last selected period (last ds)
+    st.markdown("### 🍩 Donut & Sunburst (Latest Period)")
+    latest_period = resampled["ds"].max() if not resampled.empty else None
+    if latest_period is not None:
+        d_latest = resampled[resampled["ds"]==latest_period].groupby("label")["value"].sum().reset_index()
+        if not d_latest.empty:
+            fig_p = px.pie(d_latest, names="label", values="value", hole=0.55, title=f"Category split — {latest_period.strftime('%Y-%m')}")
+            st.plotly_chart(fig_p, use_container_width=True)
+            # Sunburst (year -> category)
+            sb = df_cat_all.groupby(["year","label"])["value"].sum().reset_index()
+            fig_s = px.sunburst(sb, path=["year","label"], values="value", title="Sunburst: Year -> Category -> Value")
+            st.plotly_chart(fig_s, use_container_width=True)
+        else:
+            st.info("No data for the most recent period to show donut.")
+    else:
+        st.info("No resampled data to visualize donut/sunburst.")
+
+    # Heatmap: year × category (if selected)
+    if show_heatmap:
+        st.markdown("### 🔥 Heatmap — Year × Category")
+        heat = pivot_year.copy()
+        if not heat.empty:
+            try:
+                fig_h = go.Figure(data=go.Heatmap(
+                    z=heat.values,
+                    x=heat.columns.astype(str),
+                    y=heat.index.astype(str),
+                    colorscale="Viridis"
+                ))
+                fig_h.update_layout(title="Registrations: Year vs Category", xaxis_title="Category", yaxis_title="Year")
+                st.plotly_chart(fig_h, use_container_width=True)
+            except Exception as e:
+                st.warning(f"Heatmap failed: {e}")
+
+    # Radar per year (last 3)
+    if show_radar:
+        st.markdown("### 🌈 Radar — Snapshot per Year")
+        yrs_for_radar = sorted(pivot_year.index)[-3:]
+        try:
+            fig_r = go.Figure()
+            for y in yrs_for_radar:
+                vals = pivot_year.loc[y].values.tolist()
+                cats = pivot_year.columns.tolist()
+                fig_r.add_trace(go.Scatterpolar(r=vals, theta=cats, fill="toself", name=str(y)))
+            fig_r.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True, title="Category distribution radar (last 3 years)")
+            st.plotly_chart(fig_r, use_container_width=True)
+        except Exception as e:
+            st.warning(f"Radar error: {e}")
 
     # -------------------------
-    # 7) Top / bottom lists + downloads (CSV/Excel)
-    # -------------------------
-    st.subheader("7 — Top/Bottom & Exports")
-    try:
-        totals = _resampled.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False)
-        topk = totals.head(50)
-        botk = totals.tail(50)
-        st.markdown("**Top categories (by total)**")
-        st.dataframe(topk.style.format({"value":"{:,}"}))
-        st.markdown("**Bottom categories (by total)**")
-        st.dataframe(botk.style.format({"value":"{:,}"}))
-
-        # CSV downloads
-        csv_bytes = topk.to_csv(index=False).encode("utf-8")
-        st.download_button("⬇️ Download top categories (CSV)", csv_bytes, file_name="top_categories.csv", mime="text/csv")
-
-        # Excel workbook: sheets = totals, resampled sample, pivot_year
-        excel_buffer = BytesIO()
-        with pd.ExcelWriter(excel_buffer, engine="xlsxwriter") as writer:
-            totals.to_excel(writer, sheet_name="totals", index=False)
-            if not _resampled.empty:
-                _resampled.head(1000).to_excel(writer, sheet_name="resampled_sample", index=False)
-            if not _pivot_year.empty:
-                _pivot_year.to_excel(writer, sheet_name="pivot_year", index=True)
-            writer.save()
-        excel_buffer.seek(0)
-        st.download_button("⬇️ Download summary workbook (XLSX)", excel_buffer, file_name="vahan_summary.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    except Exception as e:
-        st.warning(f"Export error: {e}")
-
-# -------------------------
-# MODEL EVALUATION: Confusion / Classification / ROC-AUC (if you provide y_true/y_pred/y_score)
-# -------------------------
-st.markdown("## 🧪 Model Evaluation (optional)")
-
-# look for candidate DF that may have model columns
-candidate = None
-for nm in ("df_model", "candidate_df", "df_cat_all", "resampled"):
-    df_try = globals().get(nm)
-    if isinstance(df_try, pd.DataFrame) and not df_try.empty and set(["y_true","y_pred"]).issubset(df_try.columns):
-        candidate = df_try
-        break
-
-# fallback: scan any global DF for those columns
-if candidate is None:
-    for k,v in list(globals().items()):
-        if isinstance(v, pd.DataFrame) and not v.empty:
-            if set(["y_true","y_pred"]).issubset(v.columns):
-                candidate = v
-                break
-
-if candidate is None:
-    st.info("No DataFrame with columns `y_true` and `y_pred` found. To evaluate a model, provide a DataFrame with columns: y_true, y_pred, optional y_score.")
-else:
-    try:
-        from sklearn.metrics import confusion_matrix, classification_report, roc_auc_score, roc_curve, auc
-        y_true = candidate["y_true"]
-        y_pred = candidate["y_pred"]
-        y_score = candidate["y_score"] if "y_score" in candidate.columns else None
-
-        st.write("### Confusion Matrix")
-        labels = np.unique(np.concatenate([y_true.unique(), y_pred.unique()]))
-        cm = confusion_matrix(y_true, y_pred, labels=labels)
-        fig_cm = go.Figure(data=go.Heatmap(z=cm, x=labels, y=labels, colorscale="Blues", text=cm))
-        fig_cm.update_layout(title="Confusion Matrix", xaxis_title="Predicted", yaxis_title="Actual")
-        st.plotly_chart(fig_cm, use_container_width=True)
-
-        st.write("### Classification Report")
-        report = classification_report(y_true, y_pred, output_dict=True)
-        df_report = pd.DataFrame(report).transpose().fillna(0)
-        st.dataframe(df_report.style.format({"precision":"{:.2f}","recall":"{:.2f}","f1-score":"{:.2f}","support":"{:.0f}"}))
-
-        if y_score is not None:
-            # binary case
-            if len(np.unique(y_true)) == 2:
-                auc_val = roc_auc_score(y_true, y_score)
-                fpr, tpr, _ = roc_curve(y_true, y_score)
-                fig_roc = go.Figure()
-                fig_roc.add_trace(go.Scatter(x=fpr, y=tpr, mode="lines", name=f"AUC={auc_val:.3f}"))
-                fig_roc.add_trace(go.Scatter(x=[0,1], y=[0,1], mode="lines", line=dict(dash="dash"), name="random"))
-                fig_roc.update_layout(title="ROC Curve", xaxis_title="FPR", yaxis_title="TPR")
-                st.plotly_chart(fig_roc, use_container_width=True)
-                st.success(f"ROC AUC: {auc_val:.4f}")
-            else:
-                st.info("y_score provided but multiclass ROC/AUC not plotted here.")
-    except Exception as e:
-        st.warning(f"Model evaluation error: {e}")
-
-    # Final note & summary
-    st.markdown("---")
-    st.success("✅ ALL-MAXED visuals rendered. Use controls above to show/hide charts and export data.")
-
-    # -------------------------
-    # 🔮 All-Maxed Forecasting & Analytics
+    # Forecasting (simple + Prophet if available)
     # -------------------------
     if do_forecast:
-        st.header("🔮 All-Maxed Forecasting & Predictive Intelligence")
-    
+        st.subheader("🔮 Forecasting")
         categories = pivot_year.columns.tolist() if not pivot_year.empty else df_cat_all["label"].unique().tolist()
         if not categories:
             st.info("No categories available for forecasting.")
         else:
-            cat = st.selectbox("📊 Choose category", categories)
-            horizon_years = st.slider("Forecast horizon (years)", 1, 5, 2)
-            horizon_months = horizon_years * 12
-    
-            # Prepare series
-            df = pivot_year[[cat]].reset_index().rename(columns={cat: "y", "year": "ds"})
-            df["ds"] = pd.to_datetime(df["ds"].astype(str) + "-01-01")
-    
-            # --- Basic stats
-            st.subheader("📈 Data Profile")
-            stats = df["y"].describe()
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Mean", f"{stats['mean']:,.0f}")
-            col2.metric("Median", f"{df['y'].median():,.0f}")
-            col3.metric("Std Dev", f"{stats['std']:,.0f}")
-    
-            # ===============================
-            # LINEAR REGRESSION
-            # ===============================
-            from sklearn.linear_model import LinearRegression
-            X = np.arange(len(df)).reshape(-1, 1)
-            y = df["y"].values
-            lr = LinearRegression().fit(X, y)
-            future_X = np.arange(len(df) + horizon_years).reshape(-1, 1)
-            lr_pred = lr.predict(future_X)
-            lr_dates = pd.date_range(df["ds"].iloc[0], periods=len(future_X), freq="YS")
-            df_lr = pd.DataFrame({"ds": lr_dates, "Forecast": lr_pred, "Model": "Linear"})
-    
-            # ===============================
-            # PROPHET (Yearly)
-            # ===============================
-            try:
-                from prophet import Prophet
-                m = Prophet(yearly_seasonality=True)
-                m.fit(df)
-                fut = m.make_future_dataframe(periods=horizon_years, freq="Y")
-                fc = m.predict(fut)
-                df_prophet_y = fc[["ds", "yhat"]].rename(columns={"yhat": "Forecast"})
-                df_prophet_y["Model"] = "Prophet (Yearly)"
-            except Exception:
-                df_prophet_y = pd.DataFrame()
-    
-            # ===============================
-            # PROPHET (Monthly)
-            # ===============================
-            try:
-                df_m = df.copy().resample("M", on="ds").mean(numeric_only=True).dropna().reset_index()
-                m2 = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
-                m2.fit(df_m.rename(columns={"ds": "ds", "y": "y"}))
-                fut_m = m2.make_future_dataframe(periods=horizon_months, freq="M")
-                fc_m = m2.predict(fut_m)
-                df_prophet_m = fc_m[["ds", "yhat"]].rename(columns={"yhat": "Forecast"})
-                df_prophet_m["Model"] = "Prophet (Monthly)"
-            except Exception:
-                df_prophet_m = pd.DataFrame()
-    
-            # ===============================
-            # ARIMA
-            # ===============================
-            try:
-                from statsmodels.tsa.arima.model import ARIMA
-                model = ARIMA(df["y"], order=(1, 1, 1))
-                fit = model.fit()
-                fc = fit.forecast(steps=horizon_years)
-                df_arima = pd.DataFrame({
-                    "ds": pd.date_range(df["ds"].iloc[-1], periods=horizon_years + 1, freq="Y")[1:],
-                    "Forecast": fc,
-                    "Model": "ARIMA"
-                })
-            except Exception:
-                df_arima = pd.DataFrame()
-    
-            # Merge
-            forecast_all = pd.concat([df_lr, df_prophet_y, df_prophet_m, df_arima], ignore_index=True)
-    
-            # ===============================
-            # VISUALS
-            # ===============================
-            fig = px.line(forecast_all, x="ds", y="Forecast", color="Model",
-                          title=f"Forecast Comparison — {cat}",
-                          template="plotly_white")
-            fig.add_scatter(x=df["ds"], y=df["y"], mode="markers+lines",
-                            name="Actual", line=dict(width=3, color="black"))
-            fig.update_layout(legend_title="Model", xaxis_title="Date",
-                              yaxis_title="Registrations", hovermode="x unified")
-            st.plotly_chart(fig, use_container_width=True)
-    
-            # ===============================
-            # METRICS
-            # ===============================
-            from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-            y_pred = lr.predict(X)
-            rmse = np.sqrt(mean_squared_error(y, y_pred))
-            mae = mean_absolute_error(y, y_pred)
-            r2 = r2_score(y, y_pred)
-            mape = np.mean(np.abs((y - y_pred) / y)) * 100
-            st.write(f"**Linear Model Metrics:** RMSE {rmse:,.0f}, MAE {mae:,.0f}, R² {r2:.3f}, MAPE {mape:.2f}%")
-    
-            # ===============================
-            # RESIDUALS
-            # ===============================
-            resid = y - y_pred
-            fig_res = px.scatter(x=df["ds"], y=resid, title="Residuals Over Time")
-            fig_res.add_hline(y=0, line_dash="dot")
-            st.plotly_chart(fig_res, use_container_width=True)
-    
-            # ===============================
-            # CONFUSION + ROC (directional)
-            # ===============================
-            try:
-                dirs = np.sign(np.diff(y))
-                pred_dirs = np.sign(np.diff(y_pred))
-                from sklearn.metrics import confusion_matrix, roc_curve, auc
-                cm = confusion_matrix(dirs > 0, pred_dirs > 0)
-                fig_cm = px.imshow(cm, text_auto=True, color_continuous_scale="Blues",
-                                   title="Directional Accuracy Confusion Matrix")
-                st.plotly_chart(fig_cm, use_container_width=True)
-                fpr, tpr, _ = roc_curve(dirs > 0, pred_dirs)
-                roc_auc = auc(fpr, tpr)
-                fig_roc = px.area(x=fpr, y=tpr, title=f"ROC Curve — AUC {roc_auc:.3f}")
-                st.plotly_chart(fig_roc, use_container_width=True)
-            except Exception:
-                st.info("Directional metrics unavailable.")
-    
-            # ===============================
-            # GROWTH
-            # ===============================
-            last, nxt = df["y"].iloc[-1], df_lr["Forecast"].iloc[-1]
-            growth = ((nxt - last) / last) * 100
-            st.metric("Projected Growth", f"{growth:.2f} %", f"Next {horizon_years} years")
-    
-            # ===============================
-            # CORRELATION HEATMAP (optional)
-            # ===============================
-            st.subheader("📊 Correlation Between Categories")
-            try:
-                corr = pivot_year.corr()
-                fig_corr = px.imshow(corr, text_auto=True, color_continuous_scale="Viridis")
-                st.plotly_chart(fig_corr, use_container_width=True)
-            except Exception:
-                st.info("Correlation heatmap unavailable.")
-    
-        # -------------------------
-    # ⚠️ ALL-MAXED Anomaly Detection (multi-algo, visual, exportable)
+            cat_to_forecast = st.selectbox("Choose category to forecast", categories)
+            horizon_years = st.number_input("Forecast horizon (years)", 1, 5, 2)
+
+            series = pivot_year[cat_to_forecast].reset_index().rename(columns={cat_to_forecast: "y"}) if cat_to_forecast in pivot_year.columns else pd.DataFrame(columns=["year","y"]) 
+            if not series.empty:
+                series["ds"] = pd.to_datetime(series["year"].astype(str)+"-01-01")
+                series = series[["ds","y"]]
+
+                # Linear trend
+                X = np.arange(len(series)).reshape(-1,1)
+                from sklearn.linear_model import LinearRegression
+                lr = LinearRegression()
+                try:
+                    lr.fit(X, series["y"].values)
+                    fut_idx = np.arange(len(series)+horizon_years).reshape(-1,1)
+                    preds = lr.predict(fut_idx)
+                    fut_dates = pd.to_datetime([ (series["ds"].iloc[0] + relativedelta(years=int(i))).strftime("%Y-01-01") for i in range(len(series)+horizon_years) ])
+                    df_fore = pd.DataFrame({"ds":fut_dates, "Linear": preds})
+                    fig = px.line(df_fore, x="ds", y="Linear", title=f"Linear Forecast — {cat_to_forecast}")
+                    fig.add_scatter(x=series["ds"], y=series["y"], mode="markers+lines", name="Historical")
+                    st.plotly_chart(fig, use_container_width=True)
+                except Exception as e:
+                    st.warning(f"Linear forecast failed: {e}")
+
+                # Prophet (if available)
+                try:
+                    from prophet import Prophet
+                    m = Prophet(yearly_seasonality=True)
+                    m.fit(series.rename(columns={"ds":"ds","y":"y"}))
+                    future = m.make_future_dataframe(periods=horizon_years, freq="Y")
+                    forecast = m.predict(future)
+                    figp = go.Figure()
+                    figp.add_trace(go.Scatter(x=series["ds"], y=series["y"], mode="markers+lines", name="Historic"))
+                    figp.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat"], mode="lines", name="Prophet Forecast"))
+                    st.plotly_chart(figp, use_container_width=True)
+                except Exception:
+                    st.info("Prophet not available — skipped Prophet forecasting.")
+            else:
+                st.info("Insufficient series data for forecasting this category.")
+
+    # -------------------------
+    # Anomaly Detection
     # -------------------------
     if do_anomaly:
-        st.subheader("⚠️ ALL-MAXED Anomaly Detection — Multi-Algorithm")
-    
-        # --- UI controls ---
-        algs = {
-            "IsolationForest": "isolation",
-            "LocalOutlierFactor": "lof",
-            "Z-score (pointwise)": "zscore",
-            "MAD (robust)": "mad",
-            "Seasonal Residual (decompose)": "seasonal"
-        }
-        chosen = st.multiselect("Choose detectors to run", list(algs.keys()), default=list(algs.keys()))
-        contamination = st.slider("Contamination / expected anomaly fraction (for model-based)", 0.001, 0.2, 0.03, step=0.001)
-        zscore_thresh = st.slider("Z-score threshold (abs)", 1.5, 5.0, 3.0, step=0.1)
-        mad_thresh = st.slider("MAD multiplier (robust)", 2.0, 6.0, 3.5, step=0.1)
-        use_seasonal = "Seasonal Residual (decompose)" in chosen
-        category_choice = st.multiselect("Select categories to analyze (blank = all)", sorted(resampled["label"].unique().tolist()), default=[])
-        run_btn = st.button("🔎 Run Anomaly Detection (ALL-MAXED)")
-    
-        # --- helpers ---
-        from datetime import datetime as _dt
-        import math
-        import pandas as _pd
-        import numpy as _np
-    
-        def _mad_based_outlier(points, thresh=3.5):
-            """Return boolean mask of outliers using Median Absolute Deviation"""
-            if len(points) == 0:
-                return _np.array([], dtype=bool)
-            med = _np.median(points)
-            diff = _np.abs(points - med)
-            mad = _np.median(diff)
-            if mad == 0:
-                # fallback to std
-                return _np.abs(points - med) > (thresh * (_np.std(points) + 1e-9))
-            mod_z_score = 0.6745 * diff / mad
-            return mod_z_score > thresh
-    
-        # Try optional imports; graceful fallback
+        st.subheader("⚠️ Anomaly Detection (per category timeseries)")
         try:
             from sklearn.ensemble import IsolationForest
-        except Exception:
-            IsolationForest = None
-        try:
-            from sklearn.neighbors import LocalOutlierFactor
-        except Exception:
-            LocalOutlierFactor = None
-        try:
-            from scipy.stats import zscore
-        except Exception:
-            zscore = None
-        try:
-            from statsmodels.tsa.seasonal import seasonal_decompose
-        except Exception:
-            seasonal_decompose = None
-    
-        # --- prepare categories list ---
-        all_categories = sorted(resampled["label"].unique().tolist())
-        if category_choice:
-            cats_to_run = category_choice
-        else:
-            cats_to_run = all_categories
-    
-        # Guard
-        if run_btn:
-            st.info(f"Running {len(chosen)} detectors over {len(cats_to_run)} categories (contamination={contamination})...")
-            overall_anomalies = []  # list of dicts
-            progress_bar = st.progress(0)
-            total = len(cats_to_run)
-            idx = 0
-    
-            for cat in cats_to_run:
-                idx += 1
-                progress_bar.progress(idx / total)
-                # series for category
-                ser_df = resampled[resampled["label"] == cat].sort_values("ds").reset_index(drop=True)
-                if ser_df.empty or ser_df["value"].isna().all():
+            anomalies = []
+            for cat in pivot.columns:
+                ser = resampled[resampled["label"]==cat].set_index("ds")["value"].fillna(0)
+                if len(ser) < 10:
                     continue
-    
-                ser = ser_df["value"].fillna(0).astype(float).values
-                dates = pd.to_datetime(ser_df["ds"]).values
-    
-                # results collector per timestamp
-                results_mask = _np.zeros(len(ser), dtype=int)  # counts how many detectors flagged
-                details = { "category": cat, "n_points": len(ser), "detectors": {} }
-    
-                # 1) IsolationForest
-                if "IsolationForest" in chosen and IsolationForest is not None and len(ser) >= 6:
-                    try:
-                        iso = IsolationForest(contamination=contamination, random_state=RANDOM_SEED)
-                        iso_preds = iso.fit_predict(ser.reshape(-1,1))  # -1 outlier, 1 inlier
-                        iso_mask = iso_preds == -1
-                        results_mask += iso_mask.astype(int)
-                        details["detectors"]["IsolationForest"] = int(iso_mask.sum())
-                    except Exception as e:
-                        details["detectors"]["IsolationForest_error"] = str(e)
-    
-                # 2) LocalOutlierFactor (unsupervised, non-probabilistic)
-                if "LocalOutlierFactor" in chosen and LocalOutlierFactor is not None and len(ser) >= 6:
-                    try:
-                        lof = LocalOutlierFactor(n_neighbors=min(20, max(2, len(ser)-1)), contamination=contamination)
-                        lof_preds = lof.fit_predict(ser.reshape(-1,1))  # -1 outlier
-                        lof_mask = lof_preds == -1
-                        results_mask += lof_mask.astype(int)
-                        details["detectors"]["LocalOutlierFactor"] = int(lof_mask.sum())
-                    except Exception as e:
-                        details["detectors"]["LocalOutlierFactor_error"] = str(e)
-    
-                # 3) Z-score
-                if "Z-score (pointwise)" in chosen and zscore is not None:
-                    try:
-                        zs = zscore(ser, nan_policy="omit")
-                        zs_mask = _np.abs(zs) > zscore_thresh
-                        results_mask += zs_mask.astype(int)
-                        details["detectors"]["Z-score"] = int(zs_mask.sum())
-                    except Exception as e:
-                        details["detectors"]["Zscore_error"] = str(e)
-    
-                # 4) MAD
-                if "MAD (robust)" in chosen:
-                    try:
-                        mad_mask = _mad_based_outlier(ser, thresh=mad_thresh)
-                        results_mask += mad_mask.astype(int)
-                        details["detectors"]["MAD"] = int(mad_mask.sum())
-                    except Exception as e:
-                        details["detectors"]["MAD_error"] = str(e)
-    
-                # 5) Seasonal residuals (decompose)
-                if "Seasonal Residual (decompose)" in chosen and seasonal_decompose is not None:
-                    try:
-                        # build a freq-aware series if dates are regular; fallback to monthly if possible
-                        s_idx = pd.to_datetime(ser_df["ds"])
-                        tmp = pd.Series(ser, index=s_idx)
-                        # choose period based on median spacing
-                        if len(tmp) >= 12:
-                            # attempt monthly seasonality if monthly index
-                            period = 12 if tmp.index.inferred_freq and ("M" in tmp.index.inferred_freq or "MS" in tmp.index.inferred_freq) else max(2, int(len(tmp)/4))
-                        else:
-                            period = max(2, int(len(tmp)/2))
-                        dec = seasonal_decompose(tmp, period=period, model="additive", extrapolate_trend="freq")
-                        resid = dec.resid.fillna(0).values
-                        # flag large residuals > 3*std or > 3*mad
-                        resid_mask = _np.abs(resid) > (3 * (_np.nanstd(resid) + 1e-9))
-                        results_mask += resid_mask.astype(int)
-                        details["detectors"]["SeasonalResiduals"] = int(resid_mask.sum())
-                    except Exception as e:
-                        details["detectors"]["Seasonal_error"] = str(e)
-    
-                # final selection: any detector flagged
-                any_mask = results_mask > 0
-                n_anom = int(any_mask.sum())
-                details["n_anomalies"] = n_anom
-                details["anomaly_pct"] = float(n_anom / max(1, len(ser))) * 100.0
-    
-                # collect anomaly rows
-                for i, flagged in enumerate(any_mask):
-                    if flagged:
-                        overall_anomalies.append({
-                            "category": cat,
-                            "ds": str(pd.to_datetime(dates[i])),
-                            "value": float(ser[i]),
-                            "detector_score": int(results_mask[i]),
-                            "detector_details": details["detectors"]
-                        })
-    
-            progress_bar.progress(1.0)
-            st.success(f"Anomaly detection finished. Found {len(overall_anomalies)} anomaly points across {len(cats_to_run)} categories.")
-    
-            # --- summary table per category ---
-            if overall_anomalies:
-                df_anom = pd.DataFrame(overall_anomalies)
-                # aggregate summary
-                summary = df_anom.groupby("category").agg(
-                    anomalies_count=("ds", "count"),
-                    avg_detector_score=("detector_score", "mean")
-                ).reset_index().sort_values("anomalies_count", ascending=False)
-    
-                st.markdown("### 🧾 Anomaly Summary (per category)")
-                st.dataframe(summary)
-    
-                # show top categories with example anomalies
-                top_examples = df_anom.groupby("category").agg(sample_dates=("ds", lambda x: ", ".join(list(x.astype(str)[:5]))),
-                                                              sample_values=("value", lambda x: ", ".join([f"{v:,.0f}" for v in list(x[:5])]))
-                                                             ).reset_index().sort_values("category")
-                st.markdown("### 🔎 Example anomaly timestamps and values")
-                st.dataframe(top_examples)
-    
-                # Allow choosing one category to inspect visually
-                inspect_cat = st.selectbox("Inspect anomalies for category", top_examples["category"].tolist())
-                inspect_rows = df_anom[df_anom["category"] == inspect_cat]
-                ser_df = resampled[resampled["label"] == inspect_cat].sort_values("ds").reset_index(drop=True)
-                ser_df["ds"] = pd.to_datetime(ser_df["ds"])
-                ser_df["is_anom"] = ser_df["ds"].astype(str).isin(inspect_rows["ds"].astype(str).tolist())
-    
-                # Plot time series with anomalies highlighted
-                import plotly.graph_objects as go
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(x=ser_df["ds"], y=ser_df["value"], mode="lines+markers", name="Value",
-                                         hovertemplate="%{x}<br>%{y:,.0f}"))
-                # anomalies
-                anom_rows = ser_df[ser_df["is_anom"]]
-                if not anom_rows.empty:
-                    fig.add_trace(go.Scatter(x=anom_rows["ds"], y=anom_rows["value"], mode="markers", name="Anomaly",
-                                             marker=dict(color="red", size=10, symbol="x"),
-                                             hovertemplate="ANOMALY: %{x}<br>%{y:,.0f}"))
-                fig.update_layout(title=f"Time series with anomalies — {inspect_cat}",
-                                  xaxis_title="Date", yaxis_title="Value", template="plotly_white", hovermode="x unified")
-                st.plotly_chart(fig, use_container_width=True)
-    
-                # Residuals panel if seasonal was run
-                if seasonal_decompose is not None and "Seasonal Residual (decompose)" in chosen:
-                    try:
-                        tmp = pd.Series(ser_df["value"].values, index=ser_df["ds"])
-                        dec = seasonal_decompose(tmp, period=max(2, min(12, int(len(tmp)/2))), model="additive", extrapolate_trend="freq")
-                        resid = dec.resid.fillna(0)
-                        fig2 = go.Figure()
-                        fig2.add_trace(go.Scatter(x=resid.index, y=resid.values, mode="lines+markers", name="Residuals"))
-                        fig2.add_hline(y=0, line_dash="dash", line_color="gray")
-                        st.plotly_chart(fig2, use_container_width=True)
-                    except Exception:
-                        pass
-    
-                # Download buttons
-                st.download_button("⬇️ Download anomalies CSV", df_anom.to_csv(index=False).encode("utf-8"), "anomalies_allmaxed.csv", "text/csv")
-                st.download_button("⬇️ Download anomalies JSON", df_anom.to_json(orient="records", indent=2).encode("utf-8"), "anomalies_allmaxed.json", "application/json")
-    
-            else:
-                st.info("No anomalies detected with current settings.")
-    
-        # --- End run_btn block ---
+                X = ser.values.reshape(-1,1)
+                iso = IsolationForest(contamination=0.03, random_state=42)
+                iso.fit(X)
+                preds = iso.predict(X)
+                an_idxs = ser.index[preds == -1]
+                anomalies.append({"category":cat, "anomalies": list(an_idxs.strftime("%Y-%m-%d"))[:5]})
+            st.json(anomalies)
+        except Exception as e:
+            st.warning(f"Anomaly detection failed (sklearn missing?): {e}")
 
     # -------------------------
-    # 🔍 ALL-MAXED Clustering
+    # Clustering (KMeans)
     # -------------------------
     if do_clustering:
-        st.subheader("🔍 ALL-MAXED Clustering — Multi-Algorithm with Visual Analytics")
-    
+        st.subheader("🔍 Clustering (KMeans) — years grouped by category mix")
         try:
-            import numpy as np
-            import pandas as pd
-            import plotly.express as px
-            import plotly.graph_objects as go
-            from sklearn.preprocessing import StandardScaler, MinMaxScaler
-            from sklearn.cluster import KMeans, MiniBatchKMeans, AgglomerativeClustering, DBSCAN
-            from sklearn.metrics import silhouette_score
-            from sklearn.decomposition import PCA
-    
-            try:
-                import umap
-                HAS_UMAP = True
-            except Exception:
-                HAS_UMAP = False
-    
-            # --- UI controls ---
-            algo_choice = st.selectbox(
-                "Choose clustering algorithm",
-                ["KMeans", "MiniBatchKMeans", "Agglomerative", "DBSCAN"]
-            )
-            n_clusters = st.slider("Number of clusters (KMeans/Agglomerative)", 2, min(10, len(pivot_year)), 3)
-            scale_method = st.radio("Scaling method", ["StandardScaler", "MinMaxScaler", "None"], horizontal=True)
-            show_3d = st.toggle("Show 3D PCA/UMAP projection", value=False)
-            use_umap = HAS_UMAP and st.toggle("Use UMAP for projection (if available)", value=False)
-            random_state = 42
-            run_cluster = st.button("🚀 Run Clustering (ALL-MAXED)")
-    
-            if run_cluster:
-                st.info(f"Running {algo_choice} clustering on {pivot_year.shape[0]} samples × {pivot_year.shape[1]} features...")
-    
-                X = pivot_year.fillna(0).values
-                # --- Scaling ---
-                if scale_method == "StandardScaler":
-                    X_scaled = StandardScaler().fit_transform(X)
-                elif scale_method == "MinMaxScaler":
-                    X_scaled = MinMaxScaler().fit_transform(X)
-                else:
-                    X_scaled = X.copy()
-    
-                # --- Fit clustering model ---
-                if algo_choice == "KMeans":
-                    model = KMeans(n_clusters=n_clusters, n_init="auto", random_state=random_state)
-                    labels = model.fit_predict(X_scaled)
-                elif algo_choice == "MiniBatchKMeans":
-                    model = MiniBatchKMeans(n_clusters=n_clusters, random_state=random_state)
-                    labels = model.fit_predict(X_scaled)
-                elif algo_choice == "Agglomerative":
-                    model = AgglomerativeClustering(n_clusters=n_clusters)
-                    labels = model.fit_predict(X_scaled)
-                elif algo_choice == "DBSCAN":
-                    eps = st.slider("DBSCAN eps (radius)", 0.1, 5.0, 1.0, step=0.1)
-                    min_samples = st.slider("DBSCAN min_samples", 2, 20, 5)
-                    model = DBSCAN(eps=eps, min_samples=min_samples)
-                    labels = model.fit_predict(X_scaled)
-    
-                # --- Prepare DataFrame ---
-                df_cluster = pd.DataFrame({
-                    "year": pivot_year.index,
-                    "cluster": labels.astype(int)
-                })
-                df_cluster["cluster_label"] = df_cluster["cluster"].apply(lambda x: f"Cluster {x}" if x >= 0 else "Noise")
-                st.success(f"✅ Clustering done — {df_cluster['cluster'].nunique()} clusters found.")
-    
-                # --- Cluster summary ---
-                cluster_sizes = df_cluster["cluster"].value_counts().rename_axis("cluster").reset_index(name="count")
-                st.markdown("### 📊 Cluster Size Summary")
-                st.dataframe(cluster_sizes)
-    
-                # --- Optional silhouette score ---
-                if len(set(labels)) > 1 and algo_choice != "DBSCAN":
-                    try:
-                        sil = silhouette_score(X_scaled, labels)
-                        st.metric("Silhouette Score", f"{sil:.3f}")
-                    except Exception:
-                        st.caption("Silhouette score unavailable for current configuration.")
-    
-                # --- Cluster means per category ---
-                df_means = pivot_year.copy()
-                df_means["cluster"] = labels
-                cluster_means = df_means.groupby("cluster").mean(numeric_only=True)
-                st.markdown("### 🧠 Cluster Means (per category variable)")
-                st.dataframe(cluster_means.style.background_gradient(cmap="Blues"))
-    
-                # --- 2D / 3D projection ---
-                reducer = PCA(n_components=3 if show_3d else 2, random_state=random_state)
-                proj = reducer.fit_transform(X_scaled)
-    
-                if use_umap and HAS_UMAP:
-                    reducer = umap.UMAP(random_state=random_state, n_neighbors=10, min_dist=0.3)
-                    proj = reducer.fit_transform(X_scaled)
-    
-                df_proj = pd.DataFrame(proj, columns=["x", "y"] + (["z"] if show_3d else []))
-                df_proj["cluster"] = labels
-                df_proj["year"] = pivot_year.index
-    
-                if show_3d:
-                    fig = px.scatter_3d(
-                        df_proj, x="x", y="y", z="z", color=df_proj["cluster"].astype(str),
-                        hover_data=["year"], title="3D Cluster Visualization (PCA/UMAP Projection)"
-                    )
-                else:
-                    fig = px.scatter(
-                        df_proj, x="x", y="y", color=df_proj["cluster"].astype(str),
-                        hover_data=["year"], title="2D Cluster Visualization (PCA/UMAP Projection)"
-                    )
-                fig.update_traces(marker=dict(size=8, line=dict(width=0.5, color="DarkSlateGrey")))
-                fig.update_layout(template="plotly_white", legend_title="Cluster")
-                st.plotly_chart(fig, use_container_width=True)
-    
-                # --- Radar plot (mean per cluster per top features) ---
-                st.markdown("### 🕸️ Radar Chart (cluster feature profiles)")
-                try:
-                    import plotly.express as px
-                    n_features = min(6, pivot_year.shape[1])
-                    top_feats = pivot_year.sum().nlargest(n_features).index.tolist()
-                    radar_df = cluster_means[top_feats].reset_index()
-                    radar_melt = radar_df.melt(id_vars="cluster", var_name="feature", value_name="value")
-                    fig_radar = px.line_polar(
-                        radar_melt, r="value", theta="feature", color=radar_melt["cluster"].astype(str),
-                        line_close=True, markers=True, title="Cluster Profiles (Top Features)"
-                    )
-                    fig_radar.update_traces(fill='toself', opacity=0.6)
-                    st.plotly_chart(fig_radar, use_container_width=True)
-                except Exception as e:
-                    st.warning(f"Radar chart failed: {e}")
-    
+            from sklearn.cluster import KMeans
+            X = pivot_year.fillna(0).values
+            k = st.slider("Number of clusters", 2, min(8, max(2, len(pivot_year))), 3)
+            km = KMeans(n_clusters=k, n_init="auto", random_state=42).fit(X)
+            labels = km.labels_
+            df_cluster = pd.DataFrame({"year":pivot_year.index, "cluster":labels})
+            st.dataframe(df_cluster)
+            figc = px.scatter(x=pivot_year.sum(axis=1).values, y=range(len(pivot_year)), color=labels.astype(str),
+                              labels={"x":"Total registrations","y":"index"}, title="Cluster overview (proxy)")
+            st.plotly_chart(figc, use_container_width=True)
         except Exception as e:
-            st.warning(f"ALL-MAXED clustering failed: {e}")
+            st.warning(f"Clustering failed: {e}")
 
     # =====================================================
-    # 🤖 AI Narrative (ALL-MAXED Analytics + Forecast Insight)
+    # 🤖 AI Narrative (guarded)
     # =====================================================
     if enable_ai and do_forecast:
-        st.subheader("🤖 AI Narrative — Advanced Multi-Year Insight Engine")
-    
+        st.subheader("🤖 AI Narrative (Summary & Recommendations)")
         try:
-            import numpy as np, json, math
-            import pandas as pd
-            from io import StringIO
-            import plotly.express as px
-            from sklearn.preprocessing import MinMaxScaler
-    
             if pivot_year is None or pivot_year.empty:
                 st.warning("⚠️ No valid data available for AI narrative.")
             else:
-                # --- Data prep ---
-                df_flat = pivot_year.reset_index().melt(id_vars="year", var_name="category", value_name="registrations")
-                df_flat["registrations"] = pd.to_numeric(df_flat["registrations"], errors="coerce").fillna(0)
-                total_reg = df_flat.groupby("year")["registrations"].sum().reset_index()
-                small = df_flat.to_dict(orient="records")
-                st.caption(f"📊 {len(small)} records ready for AI analysis.")
-    
-                # --- Core stats ---
-                years = sorted(pivot_year.index)
-                cagr = None
-                if len(years) >= 2:
-                    first, last = years[0], years[-1]
-                    v0 = total_reg.loc[total_reg["year"] == first, "registrations"].values[0]
-                    v1 = total_reg.loc[total_reg["year"] == last, "registrations"].values[0]
-                    if v0 > 0:
-                        cagr = ((v1 / v0) ** (1 / (len(years) - 1)) - 1) * 100
-    
-                top_overall = (
-                    df_flat.groupby("category")["registrations"].sum().sort_values(ascending=False).head(5)
-                )
-                st.metric("📈 CAGR (overall)", f"{cagr:.2f}%" if cagr else "N/A")
-                st.metric("🏆 Top Category", top_overall.index[0] if len(top_overall) else "N/A")
-    
-                # --- Correlation matrix (numeric only) ---
-                corr = pivot_year.corr(numeric_only=True)
-                if not corr.empty:
-                    fig_corr = px.imshow(
-                        corr, text_auto=".2f", aspect="auto", color_continuous_scale="RdBu_r",
-                        title="🔗 Correlation between Categories (registrations)"
-                    )
-                    st.plotly_chart(fig_corr, use_container_width=True)
-    
-                # --- AI Analysis ---
+                small = pivot_year.reset_index().to_dict(orient="records")
+                st.caption(f"📊 {len(small)} records prepared for AI analysis.")
+                # Basic prompt and fallback — users should configure their universal_chat or provider
                 system_prompt = (
-                    "You are a senior transport data scientist. "
-                    "Analyze multi-year vehicle category trends, year-over-year growth, CAGR, and category correlations. "
-                    "Identify top-growing and declining segments, anomalies, and forecast implications. "
-                    "Provide a concise, actionable summary and 5 recommendations for policymakers or planners. "
-                    "Include quantified % changes, insights on volatility, and relevant sustainability context."
+                    "You are a senior transport data analyst. "
+                    "Analyze multi-year vehicle category distribution trends, "
+                    "identify top categories, quantify year-over-year changes, "
+                    "and highlight key insights. "
+                    "Conclude with 3 concise, actionable recommendations "
+                    "for policymakers or transport planners. "
+                    "Use clear, factual language and cite % changes."
                 )
-    
                 user_prompt = (
-                    f"Dataset (partial preview): {json.dumps(small)[:4000]}...\n\n"
-                    f"Years: {years}\n"
-                    f"Top overall: {top_overall.to_dict()}\n"
-                    f"CAGR: {cagr:.2f if cagr else 0}%\n"
+                    f"Dataset: {json.dumps(small)[:3000]}...\n\n"
                     f"Forecast Target: {cat_to_forecast if 'cat_to_forecast' in locals() else 'N/A'}\n"
                     f"Horizon: {horizon_years if 'horizon_years' in locals() else 'N/A'} years.\n"
-                    "Generate an advanced summary and 5 bullet-point recommendations with real insight."
+                    f"Generate an insightful summary of trends and recommendations."
                 )
-    
-                # --- Try universal_chat or fallback ---
-                ai_text = None
+
+                # universal_chat is external; we provide a safe stub that returns a concise fallback if it's not available.
                 try:
-                    ai_resp = universal_chat(
-                        system_prompt, user_prompt,
-                        stream=True, temperature=0.3, max_tokens=800, retries=3
-                    )
-                    if isinstance(ai_resp, dict):
-                        ai_text = ai_resp.get("text") or ai_resp.get("response") or ai_resp.get("output")
-                    elif isinstance(ai_resp, str):
-                        ai_text = ai_resp
+                    ai_resp = universal_chat(system_prompt, user_prompt, stream=True, temperature=0.3, max_tokens=600, retries=3)
                 except Exception:
-                    ai_text = None
-    
-                # --- Fallback (no AI available) ---
+                    ai_resp = None
+
+                ai_text = None
+                if isinstance(ai_resp, dict):
+                    ai_text = ai_resp.get("text") or ai_resp.get("response") or ai_resp.get("output")
+                elif isinstance(ai_resp, str):
+                    ai_text = ai_resp
+
                 if not ai_text:
-                    st.markdown("### 🧠 Quick Narrative (Fallback Mode)")
-                    lines = []
-                    lines.append(f"Top categories overall: **{', '.join(top_overall.index.tolist())}**.")
-                    if cagr:
-                        direction = "increased" if cagr > 0 else "declined"
-                        lines.append(f"From {years[0]} to {years[-1]}, total registrations {direction} by **{abs(cagr):.2f}% CAGR**.")
-                    top_growth = (
-                        df_flat.groupby("category")["registrations"].agg(["first","last"])
-                        .assign(growth=lambda d: ((d["last"]/d["first"])-1)*100)
-                        .sort_values("growth", ascending=False)
+                    # Non-LLM humanized fallback summary
+                    top_debug = (
+                        df_cat_all.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False)
                     )
-                    g_up = top_growth.head(3)
-                    g_down = top_growth.tail(3)
-                    lines.append(f"Top growth: {', '.join([f'{i} (+{g_up.loc[i,'growth']:.1f}%)' for i in g_up.index])}.")
-                    lines.append(f"Declining: {', '.join([f'{i} ({g_down.loc[i,'growth']:.1f}%)' for i in g_down.index])}.")
-                    lines.append("**Recommendations:**")
-                    lines.append("1️⃣ Prioritize infrastructure for fast-growing EV and commercial segments.")
-                    lines.append("2️⃣ Introduce scrappage incentives for older declining categories.")
-                    lines.append("3️⃣ Enhance data cadence to monthly for granular policy feedback.")
-                    lines.append("4️⃣ Monitor high-volatility categories for demand shocks.")
-                    lines.append("5️⃣ Integrate forecasting outputs into policy dashboards.")
-                    st.markdown("\n\n".join(lines))
+                    top3 = top_debug.head(3)
+                    lines = [f"Top categories overall: {', '.join(top3['label'].tolist())}." ]
+                    if not math.isnan(cagr):
+                        direction = "increased" if cagr>0 else "declined"
+                        lines.append(f"From {years[0]} to {years[-1]} total registrations {direction} by ~{abs(cagr):.2f}% CAGR.")
+                    lines.append("Recommendations: 1) Monitor growth of EV and small-commercial segments. 2) Target safety and inspection for top-heavy categories. 3) Improve data collection cadence to enable monthly forecasting.")
+                    st.markdown("### 🧠 Quick Narrative (fallback)")
+                    st.markdown("\n".join(lines))
                 else:
-                    st.markdown("### 🧠 AI Summary & Recommendations")
+                    st.markdown("### 🧠 AI Summary")
                     st.markdown(ai_text)
-    
-                # --- Optional: AI-generated chart summary ---
-                st.markdown("### 📊 AI-Assisted Insight Chart (category growth)")
-                df_growth = (
-                    df_flat.groupby("category")["registrations"].agg(["first","last"])
-                    .assign(GrowthPct=lambda d: ((d["last"]/d["first"])-1)*100)
-                    .reset_index().sort_values("GrowthPct", ascending=False)
-                )
-                fig_growth = px.bar(df_growth, x="category", y="GrowthPct",
-                                    color="GrowthPct", text_auto=".1f",
-                                    title="Growth % by Category (First vs Last Year)")
-                st.plotly_chart(fig_growth, use_container_width=True)
-    
-                # --- Radar of volatility ---
-                st.markdown("### 🌪️ Volatility Radar (standard deviation per category)")
-                vol = df_flat.groupby("category")["registrations"].std().reset_index(name="std_dev")
-                fig_vol = px.line_polar(vol, r="std_dev", theta="category",
-                                        line_close=True, title="Volatility across Categories")
-                fig_vol.update_traces(fill='toself', opacity=0.6)
-                st.plotly_chart(fig_vol, use_container_width=True)
-    
+
         except Exception as e:
-            st.error(f"💥 AI Narrative (ALL-MAXED) failed: {e}")
+            st.error(f"💥 AI Narrative generation failed: {e}")
 
     # =====================================================
-    # 🧩 ALL-MAXED FINAL SUMMARY — SEPARATE PER-CATEGORY (NO GLOBAL SUM)
+    # 🧩 ALL-MAXED FINAL SUMMARY + DEBUG INSIGHTS
     # =====================================================
-    st.markdown("## 🧠 Final Summary & Debug Insights — ALL-MAXED (Per-category, no global sum)")
-    
+    st.markdown("## 🧠 Final Summary & Debug Insights — ALL-MAXED")
     try:
         summary_start = time.time()
-    
-        # Basic session info
-        n_cats = int(df_cat_all['label'].nunique())
-        n_rows = int(len(df_cat_all))
-        year_list = sorted(df_cat_all['year'].unique())
-    
-        st.info(f"🔎 Categories: {n_cats} | Rows: {n_rows:,} | Years: {year_list[0]} → {year_list[-1]}")
-    
-        # -------------------------
-        # Per-category aggregated metrics (no single global total)
-        # -------------------------
-        grp = df_cat_all.groupby("label")["value"].agg(
-            total="sum",
-            mean="mean",
-            median="median",
-            std="std",
-            observations="count"
-        ).reset_index()
-    
-        # mode (robust)
-        def safe_mode(s):
-            m = s.mode()
-            return float(m.iloc[0]) if not m.empty else np.nan
-    
-        modes = df_cat_all.groupby("label")["value"].agg(mode=safe_mode).reset_index()
-        grp = grp.merge(modes, on="label", how="left")
-    
-        # Per-category CAGR (first vs last year) — use pivot_year if present, else compute from df_cat_all
-        cat_cagr = []
-        years_sorted = sorted(df_cat_all["year"].unique())
-        n_periods = max(1, len(years_sorted) - 1)
-        pivot_year_local = df_cat_all.groupby(["year", "label"])["value"].sum().unstack(fill_value=0)
-    
-        for cat in grp["label"].tolist():
-            try:
-                # use pivot_year_local to find first & last
-                first = float(pivot_year_local[cat].iloc[0]) if cat in pivot_year_local.columns and len(pivot_year_local[cat])>0 else 0.0
-                last = float(pivot_year_local[cat].iloc[-1]) if cat in pivot_year_local.columns and len(pivot_year_local[cat])>0 else 0.0
-                if first > 0:
-                    cagr_cat = ((last / first) ** (1 / max(1, n_periods)) - 1) * 100
-                else:
-                    cagr_cat = np.nan
-            except Exception:
-                cagr_cat = np.nan
-            cat_cagr.append(cagr_cat)
-    
-        grp["CAGR_%"] = cat_cagr
-    
-        # Format for display
-        disp = grp.copy()
-        disp["total"] = disp["total"].map(lambda x: int(x))
-        disp["mean"] = disp["mean"].map(lambda x: float(x))
-        disp["median"] = disp["median"].map(lambda x: float(x))
-        disp["std"] = disp["std"].map(lambda x: float(x) if not pd.isna(x) else x)
-        disp["mode"] = disp["mode"].map(lambda x: float(x) if not pd.isna(x) else x)
-        disp["CAGR_%"] = disp["CAGR_%"].map(lambda x: f"{x:.2f}%" if not pd.isna(x) else "n/a")
-    
-        st.write("### 🧾 Per-Category Summary (total, mean, median, std, mode, CAGR, observations)")
-        st.dataframe(disp.sort_values("total", ascending=False).reset_index(drop=True).style.format({
-            "total":"{:,}",
-            "mean":"{:,.1f}",
-            "median":"{:,.1f}",
-            "std":"{:,.1f}",
-            "mode":"{:.0f}",
-        }))
-    
-        # -------------------------
-        # Per-year × category table (no grand sum)
-        # -------------------------
-        st.write("### 📋 Year × Category (wide table, no full-sum row)")
-        year_cat = df_cat_all.groupby(["year","label"])["value"].sum().unstack(fill_value=0)
-        st.dataframe(year_cat.style.format("{:,.0f}").reset_index().rename_axis(None, axis=1))
-    
-        # -------------------------
-        # Top N categories (by total) — bar & table
-        # -------------------------
-        top_n = 10
-        top_df = grp.sort_values("total", ascending=False).head(top_n)
-        st.markdown(f"### 🏆 Top {top_n} Categories (by total) — separate totals")
-        fig_top = px.bar(top_df, x="label", y="total", text="total", title=f"Top {top_n} Categories (Separate totals)", labels={"label":"Category","total":"Registrations"})
-        fig_top.update_traces(texttemplate="%{text:,}", textposition="outside")
-        fig_top.update_layout(uniformtext_minsize=8, uniformtext_mode='hide', template="plotly_white")
-        st.plotly_chart(fig_top, use_container_width=True)
-    
-        # -------------------------
-        # Distribution visuals (boxplots / violin) using expanded timeseries if available
-        # -------------------------
-        st.markdown("### 📈 Distributions — per-category (boxplot / violin)")
-    
-        if "df_ts" in globals() and not df_ts.empty:
-            # use df_ts which has ds,label,value,year
-            ds_vis = df_ts.copy()
-            # if too many categories, limit to top 12 for visibility
-            cat_order = top_df["label"].tolist()
-            ds_vis = ds_vis[ds_vis["label"].isin(cat_order)]
-            fig_box = px.box(ds_vis, x="label", y="value", points="outliers", title="Boxplot: value distribution per category (sampled)", labels={"value":"Registrations","label":"Category"})
-            st.plotly_chart(fig_box, use_container_width=True)
-    
-            fig_violin = px.violin(ds_vis, x="label", y="value", box=True, points="outliers", title="Violin: value distribution per category", labels={"value":"Registrations","label":"Category"})
-            st.plotly_chart(fig_violin, use_container_width=True)
+
+        total_all = df_cat_all["value"].sum()
+        top_cat = (
+            df_cat_all.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
+        )
+        top_cat_share = (top_cat["value"] / total_all) * 100 if total_all>0 else 0
+
+        top_year = (
+            df_cat_all.groupby("year")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
+        )
+
+        st.metric("🏆 Absolute Top Category", f"{top_cat['label']}", f"{top_cat_share:.2f}% share")
+        st.caption(f"Total registrations for **{top_cat['label']}**: {top_cat['value']:,.0f}")
+
+        st.metric("📅 Peak Year", f"{int(top_year['year'])}", f"{top_year['value']:,.0f} registrations")
+
+        if len(year_totals) >= 2:
+            last_growth = year_totals["YoY_%"].iloc[-1]
+            avg_growth = year_totals["YoY_%"].mean()
+            st.metric("📈 Latest YoY Growth", f"{last_growth:.2f}%", f"Avg {avg_growth:.2f}%")
         else:
-            st.info("No expanded timeseries (df_ts) available — box/violin plots skipped.")
-    
-        # -------------------------
-        # Monthly heatmap (if we can compute months)
-        # -------------------------
-        st.markdown("### 🔥 Month × Category Heatmap (if monthly data exists)")
-        try:
-            if "df_ts" in globals() and not df_ts.empty:
-                df_ts_local = df_ts.copy()
-                df_ts_local["month"] = df_ts_local["ds"].dt.strftime("%b")
-                # pivot month x category
-                heat = df_ts_local.groupby(["month","label"])["value"].sum().unstack(fill_value=0)
-                # reorder months to calendar if possible
-                month_order = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-                heat = heat.reindex(index=month_order).fillna(0)
-                # short-circuit if empty
-                if not heat.empty:
-                    fig_hm = px.imshow(heat.fillna(0), labels=dict(x="Category", y="Month", color="Registrations"), x=heat.columns, y=heat.index, title="Month × Category Heatmap")
-                    st.plotly_chart(fig_hm, use_container_width=True)
-                else:
-                    st.info("Month × Category heatmap not available (no monthly-like data).")
-            else:
-                st.info("Monthly heatmap skipped — df_ts missing or empty.")
-        except Exception as e:
-            st.warning(f"Monthly heatmap generation failed: {e}")
-    
-        # -------------------------
-        # Basic descriptive stats (mean, median, mode) across categories
-        # -------------------------
-        st.markdown("### ⚙️ Descriptive Stats (quick): mean / median / mode across categories")
-        desc = grp[["label","total","mean","median","std","mode","observations"]].sort_values("total", ascending=False).reset_index(drop=True)
-        st.dataframe(desc.head(50).style.format({"total":"{:,}","mean":"{:,.1f}","median":"{:,.1f}","std":"{:,.1f}","mode":"{:.0f}"}))
-    
-        # -------------------------
-        # Debug: trend for each of top 5 categories separately (no global sum)
-        # -------------------------
-        st.write("### 🔧 Per-Category Trend (Top 5)")
-        top5 = top_df["label"].tolist()[:5]
-        for cat in top5:
-            dcat = df_cat_all[df_cat_all["label"]==cat].groupby("year")["value"].sum().reset_index()
-            if dcat.empty:
-                continue
-            fig_tr = px.line(dcat, x="year", y="value", markers=True, title=f"Trend — {cat}")
-            fig_tr.update_layout(template="plotly_white", yaxis_title="Registrations", xaxis_title="Year")
-            st.plotly_chart(fig_tr, use_container_width=True)
-    
-        # -------------------------
-        # Performance / debug info
-        # -------------------------
+            st.info("Insufficient years for growth metrics.")
+
+        top_debug = (
+            df_cat_all.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False)
+        )
+        st.write("### 🧾 Full Category Summary (Sorted by Total Registrations)")
+        st.dataframe(top_debug.style.format({"value": "{:,.0f}"}))
+
+        fig_top10 = px.bar(top_debug.head(10), x="label", y="value", text_auto=True, title="Top 10 Categories — Overall")
+        fig_top10.update_layout(template="plotly_white", xaxis_title="Category", yaxis_title="Registrations")
+        st.plotly_chart(fig_top10, use_container_width=True)
+
+        st.write("### 🔧 Debug: Yearly Trend for Top Category")
+        topcat_df = df_cat_all[df_cat_all["label"] == top_cat["label"]]
+        fig_trend = px.line(topcat_df, x="year", y="value", markers=True, title=f"Trend — {top_cat['label']} ({years[0]}–{years[-1]})")
+        fig_trend.update_layout(template="plotly_white")
+        st.plotly_chart(fig_trend, use_container_width=True)
+
         summary_time = time.time() - summary_start
-        st.markdown("### 🧪 Debug Performance & Notes")
+        st.markdown("### ⚙️ Debug Performance Metrics")
         st.code(
             f"""
-    Categories: {n_cats}
-    Rows processed: {n_rows:,}
-    Years: {year_list[0]} → {year_list[-1]}
-    Pivot years shape: {pivot_year.shape if 'pivot_year' in locals() else 'n/a'}
-    Computation time: {summary_time:.2f} sec
+Data years: {years}
+Total categories: {df_cat_all['label'].nunique()}
+Rows processed: {len(df_cat_all):,}
+Total value sum: {total_all:,.0f}
+Top category: {top_cat['label']} → {top_cat['value']:,.0f} ({top_cat_share:.2f}%)
+Computation time: {summary_time:.2f} sec
             """,
             language="yaml",
         )
 
+        direction = "increased" if not math.isnan(cagr) and cagr > 0 else "declined"
+        st.success(
+            f"From **{years[0]}** to **{years[-1]}**, total registrations {direction} by "
+            f"~{abs(cagr):.2f}% CAGR. The leading category is **{top_cat['label']}**, "
+            f"contributing **{top_cat_share:.2f}%** of total registrations. "
+            f"The peak activity year was **{int(top_year['year'])}**, "
+            f"with **{top_year['value']:,.0f}** total registrations."
+        )
+
     except Exception as e:
-        logger.exception(f"Summary block (separate) failed: {e}")
+        logger.exception(f"Summary block failed: {e}")
         st.error(f"⛔ Summary generation failed: {e}")
+
+    total_time = time.time() - start_overall
+    logger.info(f"ALL-MAXED block finished in {total_time:.2f}s")
 
 
 # If invoked directly, render the block
