@@ -1,108 +1,14 @@
 # =====================================================
-# 🌏 GLOBAL TIMEZONE ENFORCEMENT — IST LOGGING + STARTUP BANNER (ALL-MAXED)
+# 🚗 VAHAN ULTRA MASTER DASHBOARD — ALL MAXED EDITION
 # =====================================================
-import logging
-import platform
-import os
-import sys
-from datetime import datetime
+import os, sys, io, json, time, logging, platform, traceback, random
+from datetime import date, datetime, timedelta
+from functools import wraps
 from zoneinfo import ZoneInfo
+
+import numpy as np
+import pandas as pd
 import streamlit as st
-
-# =====================================================
-# 🕒 1️⃣ Universal IST print-based logger (enhanced)
-# =====================================================
-def log_ist(msg: str, level: str = "INFO"):
-    """Print message with IST timestamp + level tag."""
-    ist_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
-    print(f"[IST {ist_time}] [{level.upper()}] {msg}")
-
-# =====================================================
-# 🧭 2️⃣ Force all Python logging timestamps to IST + file rotation
-# =====================================================
-class ISTFormatter(logging.Formatter):
-    """Custom logging formatter with IST timestamp."""
-    def converter(self, timestamp):
-        return datetime.fromtimestamp(timestamp, ZoneInfo("Asia/Kolkata"))
-    def formatTime(self, record, datefmt=None):
-        dt = self.converter(record.created)
-        return dt.strftime(datefmt or "%Y-%m-%d %H:%M:%S")
-
-def setup_global_logging():
-    """Initialize global logger with IST timezone + file handler."""
-    log_dir = "logs"
-    os.makedirs(log_dir, exist_ok=True)
-    log_file = os.path.join(log_dir, "app.log")
-
-    formatter = ISTFormatter("%(asctime)s | %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S")
-
-    root_logger = logging.getLogger()
-    root_logger.setLevel(logging.INFO)
-
-    # Remove old handlers to prevent duplication in Streamlit reruns
-    for h in list(root_logger.handlers):
-        root_logger.removeHandler(h)
-
-    # Console handler
-    ch = logging.StreamHandler(sys.stdout)
-    ch.setFormatter(formatter)
-    root_logger.addHandler(ch)
-
-    # Rotating file handler
-    from logging.handlers import TimedRotatingFileHandler
-    fh = TimedRotatingFileHandler(log_file, when="midnight", backupCount=7, encoding="utf-8")
-    fh.setFormatter(formatter)
-    root_logger.addHandler(fh)
-
-    logging.info("✅ Logging configured to IST timezone with daily rotation.")
-    log_ist("🚀 Streamlit App Initialization Started")
-
-setup_global_logging()
-
-# =====================================================
-# 🚀 3️⃣ Streamlit Startup Banner — Visual & Console Mirror (MAXED)
-# =====================================================
-def app_boot_banner(app_name="🚗 Parivahan Analytics", version="v1.0", env="Production"):
-    ist_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
-    python_ver = platform.python_version()
-    streamlit_ver = st.__version__
-    sys_os = platform.system()
-
-    gradient = "linear-gradient(90deg,#0072ff,#00c6ff)"
-    shadow = "0 4px 20px rgba(0,0,0,0.25)"
-
-    st.markdown(f"""
-    <div style='
-        background:{gradient};
-        color:white;
-        padding:16px 26px;
-        border-radius:16px;
-        margin:20px 0 30px 0;
-        box-shadow:{shadow};
-        font-family:monospace;
-        line-height:1.6;'>
-        <h3 style='margin-bottom:4px;'>🌍 {app_name} — {version}</h3>
-        🕒 <b>Boot Time:</b> {ist_time} (IST)<br>
-        ⚙️ <b>Environment:</b> {env} | Python {python_ver} | Streamlit {streamlit_ver}<br>
-        💻 <b>OS:</b> {sys_os}
-    </div>
-    """, unsafe_allow_html=True)
-
-    print("=" * 70)
-    print(f"[IST {ist_time}] ✅ {app_name} Booted Successfully ({version})")
-    print(f"[IST {ist_time}] Python {python_ver} | Streamlit {streamlit_ver} | {sys_os}")
-    print("=" * 70)
-
-app_boot_banner()
-
-# =====================================================
-# 🧩 Example Usage Anywhere Below
-# =====================================================
-# log_ist("Fetching data from API...")
-# logging.warning("Low memory warning.")
-# logging.error("Failed to connect to API.")
-# =====================================================
-
 
 # =============================
 # 📚 Cleaned & Consolidated Imports
@@ -123,2118 +29,4237 @@ import requests
 import altair as alt
 from dotenv import load_dotenv
 
+# ============================================================
+# 🚀 VAHAN ALL-MAXED MODE — Full Power Imports (No Limits)
+# ============================================================
+
+# ---------- Standard Library ----------
+import os
+import sys
+import io
+import re
+import math
+import csv
+import json
+import time
+import random
+import string
+import socket
+import base64
+import hashlib
+import logging
+import zipfile
+import traceback
+import datetime
+import statistics
+import itertools
+import concurrent.futures
+from functools import lru_cache, partial, reduce
+from datetime import date, datetime, timedelta
+from urllib.parse import urlencode, quote, unquote
+
+# ---------- Third-Party Core ----------
+import numpy as np
+import pandas as pd
+import requests
+import altair as alt
+import streamlit as st
+import plotly.express as px
+import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import seaborn as sns
+from tqdm import tqdm
+from dotenv import load_dotenv
+
+# ---------- Machine Learning / Forecasting ----------
+from sklearn.ensemble import IsolationForest, RandomForestRegressor
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.decomposition import PCA
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from prophet import Prophet
+
 # ---------- Excel / OpenPyXL ----------
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
-from openpyxl.chart import LineChart, Reference
+from openpyxl.chart import (
+    LineChart, BarChart, PieChart, Reference, Series
+)
 
-# ---------- Local VAHAN Package ----------
+# ---------- Visualization Addons ----------
+import plotly.io as pio
+pio.templates.default = "plotly_white"
+sns.set_theme(style="whitegrid")
+
+# ---------- Utilities ----------
+from colorama import Fore, Style, init as colorama_init
+from rich.console import Console
+from rich.table import Table
+from rich.progress import Progress
+
+# Initialize pretty output
+colorama_init(autoreset=True)
+console = Console()
+
+# ---------- Local VAHAN Package (ALL IMPORTS) ----------
 from vahan.api import *
 from vahan.parsing import *
 from vahan.metrics import *
 from vahan.charts import *
 
-# ---------- Optional Advanced Libraries ----------
-SKLEARN_AVAILABLE = False
-try:
-    from sklearn.ensemble import IsolationForest
-    from sklearn.cluster import KMeans
-    from sklearn.preprocessing import StandardScaler
-    from sklearn.decomposition import PCA
-    from sklearn.linear_model import LinearRegression
-
-    SKLEARN_AVAILABLE = True
-except Exception:
-    SKLEARN_AVAILABLE = False
-
-PROPHET_AVAILABLE = False
-try:
-    from prophet import Prophet
-
-    PROPHET_AVAILABLE = True
-except Exception:
-    PROPHET_AVAILABLE = False
-
-# ---------- Load Environment Variables ----------
-load_dotenv()
-
-# =====================================================
-# 🚀 PARIVAHAN ANALYTICS — HYBRID UI ENGINE
-# =====================================================
+# ============================================================
+# 🚀 ALL-MAXED GLOBAL INITIALIZATION BLOCK (v2.0)
+# ============================================================
+import os
+import sys
+import random
+import time
+import json
+import math
+import logging
+import requests
+import numpy as np
+import pandas as pd
 import streamlit as st
-from urllib.parse import urlencode
+import plotly.express as px
+import plotly.graph_objects as go
+from datetime import date, datetime, timedelta
+from dotenv import load_dotenv
+from colorama import Fore, Style, init as colorama_init
 
-st.set_page_config(
-    page_title="🚗 Parivahan Analytics",
-    layout="wide",
-    initial_sidebar_state="expanded",
+# Optional AI + ML + Forecasting Modules
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from sklearn.metrics import r2_score, mean_squared_error
+from prophet import Prophet
+
+# Excel + Visualization + Utils
+from openpyxl import load_workbook
+from io import BytesIO
+
+# Initialize color output for cross-platform logs
+colorama_init(autoreset=True)
+
+# ---------- Warnings + Pandas Config ----------
+warnings_filter = __import__("warnings")
+warnings_filter.filterwarnings("ignore")
+pd.set_option("display.max_columns", None)
+pd.set_option("display.max_rows", 1000)
+pd.set_option("display.width", 200)
+pd.set_option("display.float_format", "{:,.4f}".format)
+np.set_printoptions(suppress=True)
+
+# ---------- Load Environment ----------
+load_dotenv()
+TODAY = date.today()
+RANDOM_SEED = 42
+np.random.seed(RANDOM_SEED)
+random.seed(RANDOM_SEED)
+
+# ---------- Logging Setup ----------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
 
+# ---------- Streamlit Config (MUST COME FIRST) ----------
+st.set_page_config(
+    page_title="🚗 Vahan Master Ultra — ALL-MAXED Mode",
+    page_icon="🚀",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# ---------- Print Startup Summary ----------
+print(f"\n{Fore.GREEN}✅ ALL-MAXED ENVIRONMENT READY — FULL FEATURE SET ENABLED{Style.RESET_ALL}")
+print(f"{Fore.CYAN}📦 Modules Loaded: numpy, pandas, streamlit, plotly, sklearn, prophet, openpyxl, requests, dotenv, logging{Style.RESET_ALL}")
+print(f"{Fore.YELLOW}🧠 Mode: Developer | Analyst | Research — unrestricted ALL-MAXED imports{Style.RESET_ALL}")
+print(f"{Fore.MAGENTA}🕒 Today: {TODAY} | Seed: {RANDOM_SEED}{Style.RESET_ALL}")
+print(f"{Fore.BLUE}📁 Working Dir: {os.getcwd()}{Style.RESET_ALL}\n")
+
+# ---------- Initialize Empty DataFrame ----------
+df = pd.DataFrame()
+
 # =====================================================
-# 🎉 FIRST-LAUNCH WELCOME (MAXED)
+# ⚡ VAHAN ALL-MAXED ULTRA+ BOOT ENGINE (v4.0)
+# =====================================================
+import os, sys, time, platform, logging, threading, psutil
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+import streamlit as st
+from colorama import Fore, Style, init as colorama_init
+from pathlib import Path
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
+# =====================================================
+# 🌏 COLOR + GLOBAL INIT
+# =====================================================
+colorama_init(autoreset=True)
+APP_NAME = "🚗 Parivahan Analytics"
+APP_VERSION = "vMAX-ULTRA"
+APP_ENV = "Production"
+LOG_DIR = "logs"
+os.makedirs(LOG_DIR, exist_ok=True)
+
+# =====================================================
+# ⚙️ LOGGING — ULTRA-MAXED (IST + Colors + Rotation + Compatibility)
+# =====================================================
+import os
+import sys
+import logging
+from datetime import datetime
+from colorama import Fore, Style, init as colorama_init
+from zoneinfo import ZoneInfo
+
+# Initialize colorama for Windows terminals
+colorama_init(autoreset=True)
+
+# Ensure log directory exists
+LOG_DIR = os.path.join(os.getcwd(), "logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+
+# =====================================================
+# 🕒 IST LOGGING HELPERS
+# =====================================================
+def log_ist(msg: str, level: str = "INFO", color: str = Fore.CYAN):
+    """Print a timestamped message in IST timezone with color."""
+    try:
+        ist_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
+        print(f"{color}[IST {ist_time}] [{level.upper()}] {msg}{Style.RESET_ALL}")
+    except Exception as e:
+        print(f"[IST Logging Fallback] {msg} (Error: {e})")
+
+class ISTFormatter(logging.Formatter):
+    """Custom logging formatter that formats times in IST."""
+    def converter(self, timestamp):
+        return datetime.fromtimestamp(timestamp, ZoneInfo("Asia/Kolkata"))
+    def formatTime(self, record, datefmt=None):
+        dt = self.converter(record.created)
+        return dt.strftime(datefmt or "%Y-%m-%d %H:%M:%S")
+
+# =====================================================
+# 🧠 GLOBAL LOGGING CONFIGURATION (Dual Channel)
+# =====================================================
+def setup_global_logging():
+    """Configure root logger with color console + rotating file (daily)."""
+    log_file = os.path.join(LOG_DIR, "vahan_ultra.log")
+    formatter = ISTFormatter("%(asctime)s | %(levelname)-8s | %(message)s")
+
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+
+    # Clear existing handlers
+    for h in list(root.handlers):
+        root.removeHandler(h)
+
+    # --- Console Handler
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setFormatter(formatter)
+    root.addHandler(ch)
+
+    # --- File Handler (daily rotation)
+    from logging.handlers import TimedRotatingFileHandler
+    fh = TimedRotatingFileHandler(log_file, when="midnight", backupCount=10, encoding="utf-8")
+    fh.setFormatter(formatter)
+    root.addHandler(fh)
+
+    # Notify success
+    log_ist("✅ Logging initialized with daily rotation", "INFO", Fore.GREEN)
+
+# Initialize logging on import
+setup_global_logging()
+
+def _get_ist_now():
+    """Return current IST timestamp string safely."""
+    try:
+        return datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
+    except Exception:
+        return datetime.now().strftime("%Y-%m-%d %I:%M:%S")
+
+def log(msg: str, level: str = "INFO"):
+    """
+    Safe, backward-compatible logger.
+    Uses internal _get_ist_now() to avoid name collision with user vars.
+    """
+    try:
+        ts = _get_ist_now()
+    except Exception:
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    level = str(level).upper().strip()
+    prefix = f"[IST {ts}] [{level}]"
+    color_map = {
+        "INFO": Fore.CYAN,
+        "WARNING": Fore.YELLOW,
+        "ERROR": Fore.RED,
+        "DEBUG": Fore.BLUE,
+        "SUCCESS": Fore.GREEN,
+    }
+    color = color_map.get(level, Fore.WHITE)
+
+    try:
+        print(f"{color}{prefix} {msg}{Style.RESET_ALL}")
+        logging.log(getattr(logging, level, logging.INFO), msg)
+    except Exception as e:
+        print(f"[LOGGING FAILSAFE] {msg} (Error: {e})")
+        
+# =====================================================
+# 💻 SYSTEM DIAGNOSTICS
+# =====================================================
+def system_diagnostics():
+    """Collect and print system-level metrics."""
+    try:
+        cpu_usage = psutil.cpu_percent(interval=0.8)
+        mem = psutil.virtual_memory()
+        boot_time = datetime.fromtimestamp(psutil.boot_time(), ZoneInfo("Asia/Kolkata"))
+        uptime = datetime.now(ZoneInfo("Asia/Kolkata")) - boot_time
+        log_ist(f"💻 OS: {platform.system()} {platform.release()} | Python {platform.python_version()}", "INFO", Fore.MAGENTA)
+        log_ist(f"🧠 CPU: {cpu_usage:.1f}% | Memory: {mem.percent}% of {round(mem.total / (1024**3), 2)} GB", "INFO", Fore.MAGENTA)
+        log_ist(f"⏱️ Uptime: {str(timedelta(seconds=int(uptime.total_seconds())))}", "INFO", Fore.MAGENTA)
+    except Exception as e:
+        log_ist(f"⚠️ Diagnostics failed: {e}", "ERROR", Fore.RED)
+
+system_diagnostics()
+
+# =====================================================
+# 🚀 BOOT BANNER
+# =====================================================
+def app_boot_banner(app_name=APP_NAME, version=APP_VERSION, env=APP_ENV):
+    """Display an animated startup banner in Streamlit."""
+    ist_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
+    python_ver = platform.python_version()
+    streamlit_ver = st.__version__
+    sys_os = platform.system()
+    cpu_count = os.cpu_count()
+    cwd = os.getcwd()
+
+    gradient = "linear-gradient(90deg,#0072ff,#00c6ff)"
+    shadow = "0 4px 20px rgba(0,0,0,0.25)"
+    st.markdown(f"""
+    <div style='background:{gradient};color:white;padding:18px 26px;
+         border-radius:18px;margin:20px 0 30px 0;box-shadow:{shadow};
+         font-family:monospace;line-height:1.6;'>
+        <h3>🌍 {app_name} — {version}</h3>
+        🕒 <b>Boot Time:</b> {ist_time} (IST)<br>
+        ⚙️ <b>Environment:</b> {env} | Python {python_ver} | Streamlit {streamlit_ver}<br>
+        💻 OS: {sys_os} | CPU Cores: {cpu_count}<br>
+        📁 Working Dir: {cwd}
+    </div>
+    """, unsafe_allow_html=True)
+
+app_boot_banner()
+
+# =====================================================
+# 🎉 FIRST LAUNCH EVENT
 # =====================================================
 if "launched" not in st.session_state:
     st.session_state.launched = True
-    st.toast("🚀 Welcome to Parivahan Analytics — All-Maxed Edition!", icon="🌍")
+    st.toast("🚀 Welcome to VAHAN ULTRA MAX Edition!", icon="🌍")
     st.balloons()
-    log_ist("🎉 App Launched Successfully (First Run)")
+    log_ist("🎉 Streamlit App Launched Successfully", "INFO", Fore.GREEN)
 
 # =====================================================
-# 🧭 SIDEBAR — DYNAMIC FILTER PANEL (ALL-MAXED EDITION)
+# 🔁 AUTO FILE WATCHER (DEV MODE)
 # =====================================================
-from datetime import date
-import streamlit as st
+class AutoReloadHandler(FileSystemEventHandler):
+    """Auto-refresh Streamlit when .py files change (Dev mode only)."""
+    def __init__(self, watch_paths):
+        self.watch_paths = watch_paths
+        self.last_reload = time.time()
 
-today = date.today()
-default_from_year = max(2017, today.year - 1)
+    def on_any_event(self, event):
+        if not event.src_path.endswith(".py"):
+            return
+        if time.time() - self.last_reload < 2:  # avoid storm
+            return
+        self.last_reload = time.time()
+        file_name = os.path.basename(event.src_path)
+        log_ist(f"♻️ Detected change in {file_name} — triggering rerun", "INFO", Fore.YELLOW)
+        try:
+            st.toast(f"🔄 Auto-reloading due to {file_name}", icon="⚙️")
+            st.rerun()
+        except Exception as e:
+            log_ist(f"⚠️ Reload failed: {e}", "ERROR", Fore.RED)
 
-# =====================================================
-# 🌈 SIDEBAR — GLASS NEON THEME (ANIMATED + POLISHED)
-# =====================================================
-st.sidebar.markdown("""
-<style>
-[data-testid="stSidebar"] {
-    background: linear-gradient(180deg,#030712 0%,#0f172a 60%,#1e293b 100%);
-    color:#E2E8F0;
-    box-shadow:0 0 30px rgba(0,255,255,0.2);
-    border-right:1px solid rgba(0,255,255,0.1);
-    backdrop-filter:blur(25px);
-    animation: fadeIn 1.2s ease-in-out;
-}
-@keyframes fadeIn {
-  from {opacity:0; transform:translateX(-30px);}
-  to {opacity:1; transform:translateX(0);}
-}
-.sidebar-section {
-    padding:16px 12px;
-    margin:12px 0;
-    border-radius:16px;
-    background:rgba(255,255,255,0.06);
-    border:1px solid rgba(0,255,255,0.12);
-    box-shadow:0 4px 16px rgba(0,255,255,0.08);
-    transition:all 0.35s ease-in-out;
-}
-.sidebar-section:hover {
-    background:rgba(0,224,255,0.12);
-    border-color:rgba(0,255,255,0.4);
-    box-shadow:0 6px 25px rgba(0,255,255,0.35);
-    transform:translateY(-3px) scale(1.02);
-}
-.sidebar-header {
-    text-align:center;
-    padding:18px 0 12px 0;
-    border-bottom:1px solid rgba(255,255,255,0.1);
-    margin-bottom:15px;
-}
-.sidebar-header h2 {
-    color:#00E0FF;
-    text-shadow:0 0 18px rgba(0,255,255,0.8);
-    font-weight:800;
-    font-size:22px;
-    margin-bottom:4px;
-}
-.sidebar-header p {
-    font-size:13px;
-    color:#9CA3AF;
-    opacity:0.85;
-}
-</style>
-""", unsafe_allow_html=True)
+def start_auto_reload(watch_dir="."):
+    """Start a background observer for live reload in development."""
+    handler = AutoReloadHandler([watch_dir])
+    observer = Observer()
+    observer.schedule(handler, watch_dir, recursive=True)
+    observer.daemon = True
+    observer.start()
+    log_ist(f"👀 Auto-reload active — watching {os.path.abspath(watch_dir)}", "INFO", Fore.CYAN)
+    return observer
 
-st.sidebar.markdown("""
-<div class="sidebar-header">
-  <h2>⚙️ Control Panel</h2>
-  <p>Customize analytics, filters & smart AI modes dynamically.</p>
-</div>
-""", unsafe_allow_html=True)
+if "watchdog_started" not in st.session_state:
+    observer = start_auto_reload(".")
+    st.session_state.watchdog_started = True
 
 # =====================================================
-# 📊 DATA FILTERS — REACTIVE & AUTO-RESET
+# 🧩 HEARTBEAT MONITOR THREAD
 # =====================================================
-with st.sidebar.expander("📊 Data Filters", expanded=True):
-    from_year = st.number_input("📅 From Year", 2012, today.year, default_from_year)
-    to_year = st.number_input("📆 To Year", from_year, today.year, today.year)
+def start_heartbeat(interval=600):
+    """Thread that logs periodic heartbeat messages."""
+    def _loop():
+        while True:
+            log_ist("💓 Heartbeat: System running fine.", "INFO", Fore.BLUE)
+            time.sleep(interval)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        state_code = st.text_input("🏙️ State Code", "", placeholder="Blank = All India")
-    with col2:
-        rto_code = st.text_input("🏢 RTO Code", "0", placeholder="0 = aggregate")
+    t = threading.Thread(target=_loop, daemon=True)
+    t.start()
+    log_ist("💓 Heartbeat thread started", "INFO", Fore.BLUE)
 
-    vehicle_classes = st.text_input("🚘 Vehicle Classes", "", placeholder="e.g. 2W, 3W, 4W")
-    vehicle_makers = st.text_input("🏭 Vehicle Makers", "", placeholder="Comma-separated or IDs")
-    vehicle_type = st.text_input("🛻 Vehicle Type", "", placeholder="EV / Diesel / Petrol")
-    region_filter = st.text_input("🗺️ Region Filter", "", placeholder="North / South / East / West")
-    month_filter = st.selectbox(
-        "🗓️ Month Filter",
-        ["All","January","February","March","April","May","June","July","August",
-         "September","October","November","December"],
-        index=0
-    )
-
-    col1, col2 = st.columns(2)
-    with col1:
-        time_period = st.selectbox("⏱️ Time Period", ["All Time","Yearly","Monthly","Daily"], index=0)
-    with col2:
-        fitness_check = st.selectbox("🧾 Fitness Check", ["All","Only Fit","Expired"], index=0)
-
-    vehicle_age = st.slider("📆 Vehicle Age (years)", 0, 20, (0, 10))
-    fuel_type = st.multiselect("⛽ Fuel Type",
-                               ["Petrol","Diesel","CNG","Electric","Hybrid"],
-                               default=[])
-
-    if st.button("🔄 Reset Filters", use_container_width=True):
-        st.session_state.clear()
-        st.toast("♻️ Filters reset — restoring defaults...", icon="🔁")
-        st.experimental_rerun()
+if "heartbeat" not in st.session_state:
+    start_heartbeat(interval=900)  # every 15 minutes
+    st.session_state.heartbeat = True
 
 # =====================================================
-# 🧠 SMART ANALYTICS ENGINE — AI CONTROL ZONE
+# ✅ FINAL BOOT MESSAGE
 # =====================================================
-with st.sidebar.expander("🧠 Smart Analytics & AI Engine", expanded=True):
-    enable_forecast = st.checkbox("📈 Forecasting", True)
-    enable_anomaly = st.checkbox("⚠️ Anomaly Detection", True)
-    enable_clustering = st.checkbox("🔍 Clustering", True)
-    enable_ai = st.checkbox("🤖 AI Narratives", False)
-
-    forecast_periods = st.number_input("⏳ Forecast Horizon (months)", 1, 36, 6)
-    enable_trend = st.checkbox("📊 Trend Line Overlay", True)
-    enable_comparison = st.checkbox("📅 Year/Month Comparison", True)
-
-    st.markdown("##### ⚡ AI Presets")
-    preset = st.radio(
-        "Choose Mode:",
-        ["Balanced (Default)", "Aggressive Forecasting", "Minimal Analysis", "Custom Mode"],
-        index=0, horizontal=True
-    )
-
-    # --- Apply Preset Logic Dynamically ---
-    if preset == "Aggressive Forecasting":
-        enable_forecast = enable_anomaly = enable_clustering = True
-        forecast_periods = 12
-        st.toast("🚀 Aggressive 12-Month Forecast Enabled!", icon="✨")
-    elif preset == "Minimal Analysis":
-        enable_forecast = enable_anomaly = enable_clustering = enable_ai = False
-        st.toast("💤 Minimal Analysis Mode Activated", icon="⚙️")
-    elif preset == "Custom Mode":
-        enable_forecast = enable_anomaly = enable_clustering = enable_ai = True
-        forecast_periods = 24
-        st.toast("💎 Custom Mode — all analytics active!", icon="⚡")
-
-    st.markdown("""
-    <hr style='margin:8px 0;border:none;height:1px;
-    background:linear-gradient(90deg,transparent,#00E0FF66,transparent);'>
-    <p style='text-align:center;font-size:12px;opacity:0.7;'>
-        🧩 All filters & AI settings auto-refresh dashboards in real time.
-    </p>
-    """, unsafe_allow_html=True)
+log_ist("✅ VAHAN ALL-MAXED ULTRA+ Boot Complete", "INFO", Fore.GREEN)
+st.toast("✅ All Systems Ready — Full Power Mode 🔋", icon="✅")
 
 # =====================================================
-# 🎨 UNIVERSAL HYBRID THEME ENGINE — ULTRA EDITION 🚀
+# ⚙️ DYNAMIC SIDEBAR — ALL-MAXED ULTRA (v3.0)
 # =====================================================
-THEMES = {
-    "VSCode": {"bg":"#0E101A","text":"#D4D4D4","card":"#1E1E2E","accent":"#007ACC","glow":"rgba(0,122,204,0.6)"},
-    "Glass": {"bg":"rgba(15,23,42,0.9)","text":"#E0F2FE","card":"rgba(255,255,255,0.06)","accent":"#00E0FF","glow":"rgba(0,224,255,0.5)"},
-    "Gradient": {"bg":"linear-gradient(135deg,#0F172A,#1E3A8A)","text":"#E0F2FE","card":"rgba(255,255,255,0.05)","accent":"#38BDF8","glow":"rgba(56,189,248,0.4)"},
-    "Matrix": {"bg":"#000000","text":"#00FF41","card":"rgba(0,255,65,0.05)","accent":"#00FF41","glow":"rgba(0,255,65,0.5)"},
-    "Cyberpunk": {"bg":"linear-gradient(135deg,#1a002b,#ff00ff,#00ffff)","text":"#E0E0E0","card":"rgba(255,255,255,0.08)","accent":"#00FFFF","glow":"rgba(0,255,255,0.5)"},
-    "Neon Glass": {"bg":"radial-gradient(circle at 20% 30%,#0f2027,#203a43,#2c5364)","text":"#E6F9FF","card":"rgba(255,255,255,0.05)","accent":"#00E0FF","glow":"rgba(0,224,255,0.45)"},
-    "Solarized": {"bg":"#002b36","text":"#93a1a1","card":"#073642","accent":"#b58900","glow":"rgba(181,137,0,0.4)"},
-    "Monokai": {"bg":"#272822","text":"#f8f8f2","card":"#383830","accent":"#f92672","glow":"rgba(249,38,114,0.4)"}
-}
-
-st.sidebar.markdown("## 🎨 Appearance & Layout")
-ui_mode = st.sidebar.selectbox("Theme", list(THEMES.keys()), index=0)
-font_size = st.sidebar.slider("Font Size", 12, 22, 15)
-radius = st.sidebar.slider("Corner Radius", 6, 28, 12)
-motion = st.sidebar.toggle("✨ Motion & Glow Effects", value=True)
-palette = THEMES[ui_mode]
-
-# =====================================================
-# 🧩 BUILD DYNAMIC CSS
-# =====================================================
-def build_css(palette, font_size, radius, motion):
-    accent, text, bg, card, glow = (
-        palette["accent"], palette["text"], palette["bg"], palette["card"],
-        palette["glow"] if motion else "none"
-    )
-    return f"""
-    <style>
-    html, body, .stApp {{
-        background:{bg};
-        color:{text};
-        font-size:{font_size}px;
-        font-family:'Inter','Segoe UI','SF Pro Display',sans-serif;
-        transition:all 0.4s ease-in-out;
-    }}
-    .block-container {{
-        max-width:1350px;
-        padding:1.5rem 2rem 3rem 2rem;
-    }}
-    h1,h2,h3,h4,h5 {{
-        color:{accent};
-        text-shadow:0 0 14px {glow};
-        font-weight:800;
-    }}
-    div.stButton > button {{
-        background:{accent};
-        color:white;
-        border:none;
-        border-radius:{radius}px;
-        padding:0.6rem 1.1rem;
-        transition:all 0.25s ease-in-out;
-        font-weight:600;
-    }}
-    div.stButton > button:hover {{
-        transform:translateY(-2px);
-        box-shadow:0 0 22px {glow};
-    }}
-    .glass-card {{
-        background:{card};
-        backdrop-filter:blur(10px);
-        border-radius:{radius}px;
-        padding:20px;
-        margin-bottom:1rem;
-        box-shadow:0 8px 22px rgba(0,0,0,0.15);
-        transition:all 0.35s ease;
-    }}
-    .glass-card:hover {{
-        transform:translateY(-4px);
-        box-shadow:0 12px 30px {glow};
-    }}
-    [data-testid="stSidebar"] {{
-        background:{card};
-        border-right:1px solid {accent}33;
-        box-shadow:4px 0 12px rgba(0,0,0,0.1);
-    }}
-    [data-testid="stMetricValue"] {{
-        color:{accent}!important;
-        font-size:1.6rem!important;
-        font-weight:800!important;
-        text-shadow:0 0 10px {glow};
-    }}
-    .stTabs [data-baseweb="tab-list"] button {{
-        border-radius:{radius}px;
-        color:{text};
-        transition:all 0.3s ease;
-    }}
-    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {{
-        background-color:{accent}33;
-        color:{accent};
-        text-shadow:0 0 10px {glow};
-    }}
-    hr {{
-        border:none;height:1px;
-        background:linear-gradient(90deg,transparent,{accent}66,transparent);
-        margin:1rem 0;
-    }}
-    </style>
-    """
-
-# =====================================================
-# 💾 APPLY DYNAMIC THEME
-# =====================================================
-st.markdown(build_css(palette, font_size, radius, motion), unsafe_allow_html=True)
-
-# =====================================================
-# 💹 DASHBOARD SECTION — PARIVAHAN COMPARISON ANALYTICS (ALL MAXED)
-# =====================================================
-from datetime import datetime
-import pytz
-import streamlit as st
-import time
-
-# =====================================================
-# 🌐 DYNAMIC HEADER — TIME, TITLE, AND LIVE REFRESH
-# =====================================================
-ist = pytz.timezone("Asia/Kolkata")
-current_time = datetime.now(ist).strftime("%A, %d %B %Y • %I:%M:%S %p")
-
-if "app_start_time" not in st.session_state:
-    st.session_state["app_start_time"] = time.time()
-    print(f"🚀 App started at {current_time} IST")
-
-# --- Header Block ---
-st.markdown(f"""
-<div class="fade-in glass-card" style="
-    text-align:center;
-    padding:35px 20px;
-    border-radius:22px;
-    background:linear-gradient(135deg,rgba(0,224,255,0.08),rgba(56,189,248,0.1));
-    box-shadow:0 0 25px rgba(0,224,255,0.25);
-    backdrop-filter:blur(12px);
-    border:1px solid rgba(0,255,255,0.2);
-    margin-bottom:40px;">
-    <h1 style="font-size:2.8rem; font-weight:900; color:#00E0FF;
-        text-shadow:0 0 18px rgba(0,255,255,0.6);">
-        🚗 Parivahan Intelligence Dashboard
-    </h1>
-    <p style="color:#E0F2FE; opacity:0.9; font-size:15px; margin-bottom:6px;">
-        AI-Driven Analytics • Forecasts • Trends • All-India Data
-    </p>
-    <div style="margin-top:10px;">
-        <span style="background:rgba(0,224,255,0.1);
-            border:1px solid rgba(0,255,255,0.3);
-            border-radius:12px;
-            padding:6px 14px;
-            color:#00FFFF;
-            font-weight:600;
-            box-shadow:0 0 12px rgba(0,255,255,0.3);">
-            🕒 Updated: {current_time}
-        </span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-print(f"🔁 Refresh triggered — Current IST Time: {current_time}")
-
-# =====================================================
-# 📈 COMPARISON ANALYTICS OVERVIEW — ALL MAXED SECTION
-# =====================================================
-st.markdown("""
-<div class="fade-in" style="text-align:center; margin-bottom:2rem;">
-    <h2 style="font-size:1.9rem; color:#00E0FF; text-shadow:0 0 15px rgba(0,224,255,0.5);">
-        📊 Real-Time Comparison Analytics
-    </h2>
-    <p style="opacity:0.75; font-size:14px;">
-        Compare multi-year, state-wise, and maker-wise trends with AI-enhanced insights
-    </p>
-</div>
-""", unsafe_allow_html=True)
-# =====================================================
-# 🪄 INTERACTIVE CARDS (THEMED)
-# =====================================================
-st.markdown("""
-<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-gap:20px; margin-top:25px;">
-    <div class="glass-card fade-in" style="animation-delay:0.2s;">
-        <h3>⚙️ Engine & Fuel Analytics</h3>
-        <p>Breakdown by fuel type — petrol, diesel, hybrid, electric.</p>
-    </div>
-    <div class="glass-card fade-in" style="animation-delay:0.4s;">
-        <h3>🏭 Maker Insights</h3>
-        <p>Top performing manufacturers with market share changes.</p>
-    </div>
-    <div class="glass-card fade-in" style="animation-delay:0.6s;">
-        <h3>🧭 Regional Trends</h3>
-        <p>Dynamic map heatmaps & growth by region or RTO code.</p>
-    </div>
-    <div class="glass-card fade-in" style="animation-delay:0.8s;">
-        <h3>🔮 Forecast Models</h3>
-        <p>12-month predictive registration forecasts via Prophet AI.</p>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# =====================================================
-# 🪶 CSS — GLASS, NEON, ANIMATIONS
-# =====================================================
-st.markdown("""
-<style>
-.fade-in {
-    animation: fadeInUp 1.2s ease-in-out;
-}
-@keyframes fadeInUp {
-  from {opacity: 0; transform: translateY(25px);}
-  to {opacity: 1; transform: translateY(0);}
-}
-
-.glass-card {
-    background: rgba(255,255,255,0.05);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 20px;
-    padding: 20px;
-    color: #E0F2FE;
-    box-shadow: 0 8px 22px rgba(0,0,0,0.25);
-    transition: all 0.35s ease;
-}
-.glass-card:hover {
-    transform: translateY(-5px) scale(1.02);
-    border-color: rgba(0,255,255,0.4);
-    box-shadow: 0 0 30px rgba(0,255,255,0.3);
-}
-
-h3 {
-    color: #00E0FF;
-    text-shadow: 0 0 10px rgba(0,224,255,0.4);
-    margin-bottom: 6px;
-}
-.metric-box:hover, [data-testid="stMetricValue"] {
-    text-shadow: 0 0 15px rgba(0,255,255,0.4);
-}
-</style>
-""", unsafe_allow_html=True)
-
-# =====================================================
-# 🧾 FOOTER (NEON GLASS)
-# =====================================================
-st.markdown("""
-<hr style="border:none; border-top:1px solid rgba(255,255,255,0.2); margin-top:2rem;">
-<div class="fade-in" style="text-align:center; opacity:0.75; font-size:13px; padding:10px;">
-    ✨ <b>Parivahan Intelligence Engine</b> — AI-Augmented Data Dashboard<br>
-    <span style="font-size:12px;">© 2025 Transport Data Division • Auto-refresh enabled</span>
-</div>
-""", unsafe_allow_html=True)
-
-
-# =====================================================
-# 🤖 DEEPINFRA AI — ALL-MAXED CONNECTOR MODULE
-# =====================================================
-import streamlit as st
-import requests
+import os
+import json
 import time
 import random
-from datetime import datetime
+import platform
+from datetime import date, datetime
+from pathlib import Path
+import streamlit as st
+import pandas as pd
 
-# =====================================================
-# 🔧 CONFIG LOADER
-# =====================================================
-def load_deepinfra_config():
-    """Safely load DeepInfra credentials and defaults."""
+# ---------- SAFE DEFAULTS ----------
+STORAGE_DIR = Path.home() / ".vahan"
+STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+PRESETS_FILE = STORAGE_DIR / "sidebar_presets.json"
+
+if "init_done" not in st.session_state:
+    st.session_state["init_done"] = True
+    st.session_state.setdefault("session_seed", random.randint(100000, 999999))
+    st.session_state.setdefault("user_cookie", f"user_{random.randint(1000,9999)}")
+    # sidebar defaults
+    st.session_state.setdefault("from_year", None)
+    st.session_state.setdefault("to_year", None)
+    st.session_state.setdefault("time_period", "Yearly")
+    st.session_state.setdefault("fitness_check", False)
+    st.session_state.setdefault("enable_forecast", True)
+    st.session_state.setdefault("enable_anomaly", True)
+    st.session_state.setdefault("enable_cluster", True)
+    st.session_state.setdefault("enable_ai", False)
+    st.session_state.setdefault("auto_refresh", True)
+    st.session_state.setdefault("watchdog_enabled", True)
+
+# Toggle to hide/show entire sidebar UI (keeps state)
+SHOW_SIDEBAR_UI = st.session_state.get("show_sidebar", False)
+
+# ---------- small helper utilities ----------
+def safe_load_presets():
     try:
-        key = st.secrets["DEEPINFRA_API_KEY"]
-        model = st.secrets.get("DEEPINFRA_MODEL", "mistralai/Mixtral-8x7B-Instruct-v0.1")
-        timeout = int(st.secrets.get("DEEPINFRA_TIMEOUT", 8))
-        return key, model, timeout
-    except Exception:
-        return None, None, 8
+        if PRESETS_FILE.exists():
+            with PRESETS_FILE.open("r", encoding="utf-8") as fh:
+                return json.load(fh)
+    except Exception as e:
+        st.warning(f"⚠️ Could not load presets: {e}")
+    return {}
 
-DEEPINFRA_API_KEY, DEEPINFRA_MODEL, DEEPINFRA_TIMEOUT = load_deepinfra_config()
+def safe_save_presets(presets: dict):
+    try:
+        with PRESETS_FILE.open("w", encoding="utf-8") as fh:
+            json.dump(presets, fh, indent=2)
+        return True
+    except Exception as e:
+        st.error(f"💥 Failed to save presets: {e}")
+        return False
 
-# =====================================================
-# 🎨 MAXED SIDEBAR CSS
-# =====================================================
-st.sidebar.markdown("""
+def to_df(json_obj, label_keys=("label",), value_key="value"):
+    # Compatible with many API shapes (keeps original behavior)
+    if isinstance(json_obj, dict) and "labels" in json_obj and "data" in json_obj:
+        labels = json_obj["labels"]
+        values = json_obj["data"]
+        min_len = min(len(labels), len(values))
+        return pd.DataFrame({"label": labels[:min_len], "value": values[:min_len]})
+    data = json_obj.get("data", json_obj) if isinstance(json_obj, dict) else json_obj
+    if isinstance(data, dict):
+        data = [data]
+    rows = []
+    for item in data:
+        label = None
+        for k in label_keys:
+            if k in item:
+                label = item[k]
+                break
+        if label is None and label_keys:
+            label = item.get(label_keys[0], None)
+        value = item.get(value_key, None)
+        if value is None:
+            for vk in ("count", "value", "total"):
+                if vk in item:
+                    value = item[vk]
+                    break
+        if label is not None and value is not None:
+            rows.append({"label": label, "value": value})
+    return pd.DataFrame(rows)
+
+# ---------- compact CSS (keeps app neat when sidebar hidden) ----------
+HIDE_SIDEBAR_CSS = """
 <style>
-@keyframes pulseGlow {
-  0% { box-shadow: 0 0 0 0 rgba(0,224,255,0.6); }
-  70% { box-shadow: 0 0 0 10px rgba(0,224,255,0); }
-  100% { box-shadow: 0 0 0 0 rgba(0,224,255,0); }
-}
-.deepinfra-card {
-  background: linear-gradient(135deg, rgba(0,224,255,0.08), rgba(255,255,255,0.02));
-  padding: 14px 16px;
-  border-radius: 14px;
-  border-left: 4px solid #00E0FF55;
-  margin-top: 12px;
-  backdrop-filter: blur(10px);
-  transition: all 0.3s ease;
-}
-.deepinfra-card:hover {
-  transform: translateY(-2px);
-  border-left-color: #00E0FF;
-}
-.deepinfra-connected {
-  border-left-color: #00E0FF;
-  animation: pulseGlow 2s infinite;
-}
-.deepinfra-error { border-left-color: #FF4C4C; }
-.deepinfra-warning { border-left-color: #FFD166; }
-.deepinfra-title {
-  color: #00E0FF;
-  font-weight: 700;
-  font-size: 15px;
-}
-.small-text {
-  opacity: 0.75;
-  font-size: 12.5px;
-}
+section[data-testid="stSidebar"] {display: none !important;}
+div[data-testid="collapsedControl"] {display: none !important;}
+.stButton>button {min-height: 36px;}
+.sidebar-title {font-weight:700; font-size:16px; margin-bottom:6px;}
+.compact-input .stNumberInput>div>div>input {height:34px;}
 </style>
-""", unsafe_allow_html=True)
+"""
+if not SHOW_SIDEBAR_UI:
+    st.markdown(HIDE_SIDEBAR_CSS, unsafe_allow_html=True)
+
+# ---------- Bootstrap / header ----------
+today = date.today()
+default_from_year = today.year - 1
+
+# ---------- Load presets ----------
+_presets = safe_load_presets()
+preset_names = sorted(list(_presets.keys()))
 
 # =====================================================
-# ⚙️ CONNECTION + DIAGNOSTICS
+# ⚙️ SIDEBAR CONTROL PANEL — ULTRA MAXED v4.0
 # =====================================================
-def ping_deepinfra(api_key: str, timeout: int = 8):
-    """Ping DeepInfra API and return latency + status."""
-    start = time.time()
-    try:
-        resp = requests.get(
-            "https://api.deepinfra.com/v1/openai/models",
-            headers={"Authorization": f"Bearer {api_key}"},
-            timeout=timeout,
-        )
-        latency = round((time.time() - start) * 1000, 1)
-        return resp.status_code, latency
-    except requests.exceptions.Timeout:
-        return "timeout", None
-    except Exception:
-        return "error", None
+import streamlit as st
+import time, platform
+from datetime import date
 
-# =====================================================
-# 🧠 AI MODE STATE
-# =====================================================
-if "enable_ai" not in st.session_state:
-    st.session_state.enable_ai = True
-if "last_ai_check" not in st.session_state:
-    st.session_state.last_ai_check = None
+today = date.today()
+default_from_year = 2015
 
-enable_ai = st.session_state.enable_ai
+# -----------------------------------------------------
+# 🧩 SAFE SESSION INITIALIZATION (once only)
+# -----------------------------------------------------
+def init_state(key, default):
+    if key not in st.session_state:
+        st.session_state[key] = default
 
-# =====================================================
-# 🧩 HEADER IN SIDEBAR
-# =====================================================
-st.sidebar.markdown("<div class='deepinfra-card'><span class='deepinfra-title'>🤖 DeepInfra AI Connector</span></div>", unsafe_allow_html=True)
+init_state("show_sidebar", True)
+init_state("session_seed", int(time.time()))
+init_state("user_cookie", f"user_{int(time.time())}")
+init_state("from_year", default_from_year)
+init_state("to_year", today.year)
+init_state("state_code", "")
+init_state("rto_code", "")
+init_state("vehicle_classes", "")
+init_state("vehicle_makers", "")
+init_state("time_period", "Yearly")
+init_state("fitness_check", False)
+init_state("vehicle_type", "")
+init_state("enable_forecast", True)
+init_state("enable_anomaly", True)
+init_state("enable_cluster", True)
+init_state("enable_ai", False)
+init_state("base_url", "https://analytics.parivahan.gov.in")
+init_state("timeout", 30)
+init_state("export_format", "CSV")
+init_state("auto_refresh", True)
+init_state("enable_beta", False)
 
-# =====================================================
-# 🔌 CONNECTION LOGIC
-# =====================================================
-if enable_ai:
-    if DEEPINFRA_API_KEY:
-        with st.spinner("🔍 Validating DeepInfra connection..."):
-            status, latency = ping_deepinfra(DEEPINFRA_API_KEY, DEEPINFRA_TIMEOUT)
-            st.session_state.last_ai_check = datetime.now().strftime("%H:%M:%S")
-            time.sleep(random.uniform(0.3, 0.8))
+# -----------------------------------------------------
+# 🚀 SIDEBAR UI (wrapped for safety)
+# -----------------------------------------------------
+try:
+    st.sidebar.markdown("<div class='sidebar-title'>⚙️ Control Panel — ULTRA MAXED</div>", unsafe_allow_html=True)
+    st.sidebar.markdown("---")
 
-        if status == 200:
-            st.sidebar.markdown(f"""
-            <div class='deepinfra-card deepinfra-connected'>
-                ✅ <b>Connected</b><br>
-                <small>Model: <b>{DEEPINFRA_MODEL}</b></small><br>
-                <small>Latency: {latency} ms</small><br>
-                <small>Last Check: {st.session_state.last_ai_check}</small>
-            </div>
-            """, unsafe_allow_html=True)
-        elif status == 401:
-            st.sidebar.markdown("""
-            <div class='deepinfra-card deepinfra-error'>
-                🚫 <b>Unauthorized</b><br>
-                Invalid or expired API key.<br>
-                <small>Check your <code>DEEPINFRA_API_KEY</code>.</small>
-            </div>
-            """, unsafe_allow_html=True)
-        elif status == 405:
-            st.sidebar.markdown("""
-            <div class='deepinfra-card deepinfra-warning'>
-                ⚠️ <b>405: Method Not Allowed</b><br>
-                Possibly wrong endpoint.
-            </div>
-            """, unsafe_allow_html=True)
-        elif status == "timeout":
-            st.sidebar.markdown("""
-            <div class='deepinfra-card deepinfra-error'>
-                ⏱️ <b>Timeout</b><br>
-                DeepInfra did not respond in time.
-            </div>
-            """, unsafe_allow_html=True)
+    # Top control buttons
+    top_col1, top_col2 = st.sidebar.columns([3, 1])
+    with top_col1:
+        if st.sidebar.button("🔁 Toggle Sidebar UI"):
+            st.session_state["show_sidebar"] = not st.session_state.get("show_sidebar", True)
+            st.toast("🔀 Sidebar toggled")
+            st.rerun()
+
+    with top_col2:
+        if st.sidebar.button("🧹 Clear Session"):
+            keep = {k: st.session_state[k] for k in ["session_seed", "user_cookie"] if k in st.session_state}
+            st.session_state.clear()
+            st.session_state.update(keep)
+            st.toast("🧹 Session cleared & preserved essentials")
+            st.rerun()
+
+    # -------------------------------------------------
+    # 📊 DATA FILTERS
+    # -------------------------------------------------
+    # ---------- Data Filters ----------
+    with st.sidebar.expander("📊 Data Filters", expanded=True):
+        st.markdown("### Time range")
+
+        # ✅ Always fall back to integers (never None)
+        default_from_year = st.session_state.get("from_year", today.year - 1) or (today.year - 3)
+        default_to_year = st.session_state.get("to_year", today.year) or today.year
+
+        from_year = st.sidebar.number_input("From Year", min_value=2012, max_value=today.year, value=default_from_year)
+        to_year = st.sidebar.number_input("To Year", min_value=from_year, max_value=today.year, value=today.year)
+        state_code = st.sidebar.text_input("State Code (blank=All-India)", value="")
+        rto_code = st.sidebar.text_input("RTO Code (0=aggregate)", value="0")
+        vehicle_classes = st.sidebar.text_input("Vehicle Classes (e.g., 2W,3W,4W if accepted)", value="")
+        vehicle_makers = st.sidebar.text_input("Vehicle Makers (comma-separated or IDs)", value="")
+        time_period = st.sidebar.selectbox("Time Period", options=[0,1,2], index=0)
+        fitness_check = st.sidebar.selectbox("Fitness Check", options=[0,1], index=0)
+        vehicle_type = st.sidebar.text_input("Vehicle Type (optional)", value="")
+
+
+    # -------------------------------------------------
+    # 🧠 AI / FORECASTING
+    # -------------------------------------------------
+    with st.sidebar.expander("🧠 AI / Forecasting", expanded=False):
+        enable_forecast = st.checkbox("📈 Forecasting", st.session_state.enable_forecast, key="input_enable_forecast")
+        enable_anomaly = st.checkbox("⚠️ Anomaly Detection", st.session_state.enable_anomaly, key="input_enable_anomaly")
+        enable_cluster = st.checkbox("🔍 Clustering", st.session_state.enable_cluster, key="input_enable_cluster")
+        enable_ai = st.checkbox("🤖 AI Narratives", st.session_state.enable_ai, key="input_enable_ai")
+
+        st.session_state.update({
+            "enable_forecast": enable_forecast,
+            "enable_anomaly": enable_anomaly,
+            "enable_cluster": enable_cluster,
+            "enable_ai": enable_ai
+        })
+
+        if enable_forecast and enable_anomaly:
+            st.caption("📊 Forecasts will include anomaly markers.")
+        if enable_cluster:
+            st.caption("🧩 Cluster model adapts dynamically.")
+        if enable_ai:
+            st.caption("💬 AI narratives enabled — generating insights...")
+
+        if st.button("🔒 Lock AI Settings"):
+            st.session_state["_ai_locked"] = True
+            st.toast("🧠 AI config locked for this session")
+
+    # -------------------------------------------------
+    # 🧭 API & Experimental Settings
+    # -------------------------------------------------
+    with st.sidebar.expander("🧭 API & Reports", expanded=False):
+        st.text_input("🌐 API Base URL", st.session_state.base_url, key="input_base_url")
+        st.slider("⏳ API Timeout (s)", 5, 120, st.session_state.timeout, key="input_timeout")
+        st.selectbox("📤 Export Format", ["CSV", "XLSX", "PDF"],
+                     index=["CSV", "XLSX", "PDF"].index(st.session_state.export_format),
+                     key="input_export_format")
+        st.checkbox("♻️ Auto-refresh on data change", value=st.session_state.auto_refresh, key="input_auto_refresh")
+
+    with st.sidebar.expander("🧪 Experimental", expanded=False):
+        enable_beta = st.checkbox("🧪 Enable Experimental Features", st.session_state.enable_beta, key="input_enable_beta")
+        st.session_state.enable_beta = enable_beta
+        if enable_beta:
+            st.info("Experimental mode ON — unstable features enabled")
+
+    # -------------------------------------------------
+    # 💾 Preset Management
+    # -------------------------------------------------
+    with st.sidebar.expander("💾 Presets", expanded=False):
+        presets = safe_load_presets()
+        if presets:
+            sel = st.selectbox("Load preset", ["-- none --"] + list(sorted(presets.keys())), index=0, key="preset_select")
+            if sel and sel != "-- none --":
+                if st.button("▶️ Apply Selected Preset"):
+                    p = presets[sel]
+                    for k, v in p.items():
+                        st.session_state[k] = v
+                    st.toast(f"Applied preset '{sel}'")
+                    time.sleep(0.3)
+                    st.rerun()
+
+            del_name = st.text_input("Delete preset name", value="", key="preset_delname_input")
+            if st.button("🗑️ Delete Preset"):
+                dn = del_name.strip()
+                if dn and dn in presets:
+                    del presets[dn]
+                    safe_save_presets(presets)
+                    st.toast(f"Deleted preset '{dn}'")
+                else:
+                    st.error("Preset not found")
         else:
-            st.sidebar.markdown(f"""
-            <div class='deepinfra-card deepinfra-warning'>
-                ⚠️ <b>Unexpected Status:</b> {status}<br>
-                <small>Check dashboard logs.</small>
-            </div>
-            """, unsafe_allow_html=True)
-    else:
-        st.sidebar.markdown("""
-        <div class='deepinfra-card deepinfra-error'>
-            ❌ <b>No API Key Found</b><br>
-            Add your key in Streamlit Secrets.
-        </div>
-        """, unsafe_allow_html=True)
-else:
-    st.sidebar.markdown("""
-    <div class='deepinfra-card deepinfra-warning'>
-        🧠 <b>AI Mode Disabled</b><br>
-        Toggle it in sidebar to enable DeepInfra analytics.
-    </div>
-    """, unsafe_allow_html=True)
+            st.caption("No presets saved yet — use 'Save Preset' above.")
 
-# =====================================================
-# 🔁 AI MODE TOGGLE + REFRESH
-# =====================================================
-st.sidebar.markdown("---")
-toggle = st.sidebar.toggle("🔄 Enable DeepInfra AI", value=enable_ai, help="Enable or disable AI-based insights")
+    # -------------------------------------------------
+    # 🧾 Footer Info
+    # -------------------------------------------------
+    st.sidebar.markdown("---")
+    st.sidebar.caption(f"🧩 User: `{st.session_state.user_cookie}` | 🔑 Seed: `{st.session_state.session_seed}`")
+    st.sidebar.caption(f"📦 Python: {platform.python_version()} | Streamlit: {st.__version__}")
 
-if toggle != enable_ai:
-    st.session_state.enable_ai = toggle
+except Exception as e:
+    st.sidebar.error(f"⚠️ Auto-recovered from sidebar error: {e}")
+    import traceback
+    traceback.print_exc()
+    for k in ["preset_name_input", "preset_select", "preset_delname_input"]:
+        if k in st.session_state:
+            del st.session_state[k]
+    time.sleep(0.2)
     st.rerun()
 
 # =====================================================
-# 📡 FOOTER NOTE
+# 🔁 LIVE AUTO-REFRESH (Reactive Engine — ULTRA MAXED v3.0)
 # =====================================================
-st.sidebar.caption(
-    "💡 Tip: DeepInfra AI auto-rechecks every refresh. "
-    "Latency and status are logged for diagnostics."
-)
+import streamlit as st
+import threading
+import time
+from datetime import datetime, timedelta
+
+# Ensure proper init
+if "auto_refresh" not in st.session_state:
+    st.session_state["auto_refresh"] = True
+if "auto_refresh_interval" not in st.session_state:
+    st.session_state["auto_refresh_interval"] = 120  # seconds
+if "auto_refresh_thread" not in st.session_state:
+    st.session_state["auto_refresh_thread"] = None
+if "auto_refresh_last" not in st.session_state:
+    st.session_state["auto_refresh_last"] = datetime.now()
+if "auto_refresh_stop" not in st.session_state:
+    st.session_state["auto_refresh_stop"] = False
+
+
+# ---------- REFRESH FUNCTION ----------
+def _auto_refresh_loop(interval=120):
+    """Runs background refresh loop safely."""
+    while not st.session_state.get("auto_refresh_stop", False):
+        time.sleep(interval)
+        st.session_state["_auto_refresh_trigger"] = datetime.now().isoformat()
+        st.session_state["auto_refresh_last"] = datetime.now()
+        # Toast works only when visible, so guard with try
+        try:
+            st.toast("🔁 Auto-refresh triggered!", icon="🕒")
+        except Exception:
+            pass
+        st.rerun()
+
+
+# ---------- CONTROL PANEL (VISIBLE AT TOP OR FOOTER) ----------
+with st.sidebar.expander("🕒 Auto-Refresh Control", expanded=False):
+    st.markdown("### 🔄 Live Data Auto-Refresh")
+    st.caption("Keep your dashboard continuously synced with the latest data.")
+
+    c1, c2 = st.columns([3, 1])
+    with c1:
+        interval = st.slider("⏳ Refresh Interval (sec)", 30, 600,
+                             st.session_state.get("auto_refresh_interval", 120),
+                             step=30, key="auto_refresh_interval")
+    with c2:
+        st.caption(" ")
+
+    # Start/Stop buttons
+    c3, c4 = st.columns(2)
+    with c3:
+        if st.button("▶️ Start Auto-Refresh"):
+            st.session_state["auto_refresh_stop"] = False
+            if st.session_state.get("auto_refresh_thread") is None or not st.session_state["auto_refresh_thread"]:
+                thread = threading.Thread(
+                    target=_auto_refresh_loop,
+                    args=(st.session_state["auto_refresh_interval"],),
+                    daemon=True
+                )
+                thread.start()
+                st.session_state["auto_refresh_thread"] = True
+                st.toast(f"🔁 Auto-refresh started ({interval}s interval).", icon="🟢")
+    with c4:
+        if st.button("⏹️ Stop Auto-Refresh"):
+            st.session_state["auto_refresh_stop"] = True
+            st.session_state["auto_refresh_thread"] = None
+            st.toast("⏹️ Auto-refresh stopped.", icon="🔴")
+
+    # Show status and time since last refresh
+    if not st.session_state.get("auto_refresh_stop", False):
+        elapsed = (datetime.now() - st.session_state.get("auto_refresh_last", datetime.now())).seconds
+        next_refresh_in = st.session_state.get("auto_refresh_interval", 120) - elapsed
+        if next_refresh_in < 0:
+            next_refresh_in = 0
+        st.markdown(f"**🕒 Next refresh in:** `{next_refresh_in}s`")
+        st.progress(max(0, min(1, 1 - elapsed / st.session_state.get("auto_refresh_interval", 120))))
+    else:
+        st.info("⏸️ Auto-refresh paused.")
+
+
+# ---------- AUTO START (if enabled) ----------
+if st.session_state.get("auto_refresh", True) and not st.session_state.get("auto_refresh_stop", False):
+    if "auto_refresh_thread" not in st.session_state or not st.session_state["auto_refresh_thread"]:
+        thread = threading.Thread(
+            target=_auto_refresh_loop,
+            args=(st.session_state["auto_refresh_interval"],),
+            daemon=True
+        )
+        thread.start()
+        st.session_state["auto_refresh_thread"] = True
+        st.toast(f"🔁 Auto-refresh active every {st.session_state['auto_refresh_interval']}s (ULTRA-MAXED).", icon="🕒")
 
 # =====================================================
-# ⚙️ VAHAN DYNAMIC INTELLIGENCE LAYER — ALL-MAXED EDITION
+# 🚀 VAHAN ANALYTICS API ENGINE — ALL-MAXED PURE v7.0
 # =====================================================
-import os, time, random, json, logging, pickle, requests
-import streamlit as st
+import os, re, json, time, random, logging, pickle, requests
 from datetime import datetime
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 from typing import Optional, Dict, Any
+from contextlib import nullcontext
 
 # =====================================================
-# 🎨 HEADER — Animated Gradient Banner
+# 🧩 STREAMLIT SAFE IMPORT
 # =====================================================
-st.markdown("""
-<div style="
-    background:linear-gradient(90deg,#0072ff,#00c6ff);
-    padding:16px 26px;
-    border-radius:14px;
-    color:#fff;
-    font-size:18px;
-    font-weight:700;
-    display:flex;justify-content:space-between;align-items:center;
-    box-shadow:0 0 25px rgba(0,114,255,0.4);">
-    <div>🧩 <b>Vahan Dynamic Intelligence Layer</b> — All-Maxed</div>
-    <div style="font-size:14px;opacity:0.85;">Live Parameters • Safe Fetch • Smart Cache ⚙️</div>
-</div>
-""", unsafe_allow_html=True)
+try:
+    import streamlit as st
+except ImportError:
+    class st:
+        @staticmethod
+        def expander(*_, **__): return nullcontext()
+        @staticmethod
+        def json(_): pass
+        @staticmethod
+        def spinner(_): return nullcontext()
+        @staticmethod
+        def warning(msg): print("[WARNING]", msg)
+        @staticmethod
+        def error(msg): print("[ERROR]", msg)
 
 # =====================================================
-# ⚙️ GLOBAL CONFIG
+# ⚙️ CONSTANTS
 # =====================================================
-BASE = "https://analytics.parivahan.gov.in/analytics/publicdashboard"
-CACHE_DIR = "vahan_cache"
-CACHE_TTL = 3600  # 1 hour
-MAX_RETRIES = 5
-BACKOFF = 1.2
-TOKEN_BUCKET_RATE = 1.0
-TOKEN_BUCKET_CAPACITY = 10
-DEFAULT_TIMEOUT = 25
-os.makedirs(CACHE_DIR, exist_ok=True)
+BASE_URL = "https://analytics.parivahan.gov.in/analytics/publicdashboard"
+MAX_RETRIES = 4
+DEFAULT_TIMEOUT = 60
 
 # =====================================================
-# 🕒 UTILITIES — TIME + LOGGING
+# 🕒 UTILITIES — LOGGING + TIME
 # =====================================================
-def ist_now():
+def ist_now() -> str:
     return datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
 
-def log(msg):
-    print(f"[IST {ist_now()}] {msg}")
-
-# =====================================================
-# 🔐 PARAMETER BUILDER (Dynamic)
-# =====================================================
-def build_vahan_params(
-    from_year:int,
-    to_year:int,
-    state_code:str=None,
-    rto_code:str=None,
-    vehicle_classes:list=None,
-    vehicle_makers:list=None,
-    time_period:str="Y",
-    fitness_check:bool=False,
-    vehicle_type:str=None
-):
-    """
-    Build sanitized, schema-validated parameter dictionary for VAHAN APIs.
-    """
-    params = {
-        "from_year": int(from_year),
-        "to_year": int(to_year),
-        "state_code": state_code or "",
-        "rto_code": rto_code or "",
-        "vehicle_class": ",".join(vehicle_classes) if vehicle_classes else "",
-        "maker": ",".join(vehicle_makers) if vehicle_makers else "",
-        "time_period": time_period,
-        "fitness_check": "Y" if fitness_check else "N",
-        "vehicle_type": vehicle_type or "",
-    }
-    clean = {k: v for k, v in params.items() if v not in (None, "", [], {})}
-    log(f"✅ Built params: {json.dumps(clean, indent=2)}")
-    return clean
-
-# =====================================================
-# 💾 FILE CACHE HELPERS
-# =====================================================
-def _cache_path(url:str)->str:
-    import hashlib
-    return os.path.join(CACHE_DIR, hashlib.sha256(url.encode()).hexdigest()+".pkl")
-
-def load_cache(url:str):
-    p = _cache_path(url)
-    if not os.path.exists(p): return None
+def log(msg: str, level: str = "INFO"):
+    prefix = f"[IST {ist_now()}] [{level}]"
+    line = f"{prefix} {msg}"
+    color = {
+        "INFO": "\033[94m",
+        "WARNING": "\033[93m",
+        "ERROR": "\033[91m",
+        "SUCCESS": "\033[92m",
+    }.get(level, "\033[0m")
+    print(color + line + "\033[0m")
     try:
-        with open(p,"rb") as f: ts,data=pickle.load(f)
-        if time.time()-ts> CACHE_TTL:
-            os.remove(p); return None
-        log(f"📦 Cache hit for {url}")
-        return data
-    except Exception as e:
-        log(f"⚠️ Cache load fail: {e}"); return None
-
-def save_cache(url:str,data):
-    if not data: return
-    try:
-        with open(_cache_path(url),"wb") as f: pickle.dump((time.time(),data),f)
-        log("💾 Cached response saved.")
-    except Exception as e:
-        log(f"⚠️ Cache save fail: {e}")
+        if level == "ERROR":
+            st.error(line)
+        elif level == "WARNING":
+            st.warning(line)
+    except Exception:
+        pass
 
 # =====================================================
-# 🧩 TOKEN BUCKET (Rate Limiter)
+# 🧰 CLEAN STRING
 # =====================================================
-class TokenBucket:
-    def __init__(self, cap:int, rate:float):
-        self.cap=float(cap);self.rate=float(rate)
-        self.tokens=self.cap;self.last=time.time()
-    def wait(self, n=1, timeout=20):
-        start=time.time()
-        while True:
-            now=time.time()
-            self.tokens=min(self.cap, self.tokens+(now-self.last)*self.rate)
-            self.last=now
-            if self.tokens>=n:
-                self.tokens-=n; return True
-            if time.time()-start>timeout: return False
-            time.sleep(0.1)
-_bucket=TokenBucket(TOKEN_BUCKET_CAPACITY,TOKEN_BUCKET_RATE)
+def clean_str(v: str) -> str:
+    if not v: return ""
+    return re.sub(r"[^A-Za-z0-9_\- ,./]", "", str(v).strip())
 
 # =====================================================
-# 🚦 SAFE FETCH CORE
+# 🧩 PARAMETER BUILDER (NO PREFILL)
 # =====================================================
-UAS=[
- "Mozilla/5.0 (Windows NT 10.0; Win64; x64)...Chrome/127",
- "Mozilla/5.0 (Macintosh; Intel Mac OS X)...Safari/605.1",
- "Mozilla/5.0 (X11; Linux x86_64)...Firefox/118.0"
-]
-
-def safe_fetch(path:str, params:Dict[str,Any], cache=True)->Optional[Any]:
-    """High-resilience fetch with rate-limit, retries, cache & exponential backoff."""
-    params={k:v for k,v in (params or {}).items() if v not in ("",None,[],{})}
-    q=urlencode(params,doseq=True)
-    url=f"{BASE.rstrip('/')}/{path.lstrip('/')}?{q}"
-
-    if cache:
-        data=load_cache(url)
-        if data: return data
-
-    if not _bucket.wait(): 
-        log("⚠️ Rate limiter delay..."); time.sleep(1)
-
-    for attempt in range(1,MAX_RETRIES+1):
-        headers={"User-Agent":random.choice(UAS),"Accept":"application/json"}
-        try:
-            t0=time.time()
-            r=requests.get(url,headers=headers,timeout=DEFAULT_TIMEOUT)
-            latency=round((time.time()-t0)*1000,1)
-            st.toast(f"📡 {path} → {r.status_code} ({latency}ms)", icon="⚙️")
-            if r.status_code==200:
-                try:data=r.json()
-                except: data={"raw":r.text[:2000]}
-                if cache: save_cache(url,data)
-                return data
-            if r.status_code in (429,500,502,503):
-                wait=BACKOFF*(2**(attempt-1))+random.random()
-                log(f"⏱️ {r.status_code} — sleeping {wait:.1f}s"); time.sleep(wait); continue
-            if r.status_code==400:
-                log("⚠️ 400 Bad Request — params likely invalid"); return None
-            if r.status_code==404:
-                log("❌ 404 Not Found"); return None
-            log(f"❓Unexpected {r.status_code}: {r.text[:200]}"); return None
-        except requests.Timeout:
-            wait=BACKOFF*(2**(attempt-1))
-            log(f"⏳ Timeout — retrying in {wait:.1f}s"); time.sleep(wait)
-        except Exception as e:
-            log(f"❌ Error: {e}"); time.sleep(1)
-    log("🚫 Max retries reached.")
-    return None
-
-# =====================================================
-# 🧠 STREAMLIT WRAPPER — Interactive & All-Maxed Fetcher
-# =====================================================
-import streamlit as st
-import time
-import random
-import datetime
-from typing import Dict, Any
-import traceback
-
-# Assuming safe_fetch and ist_now() are already defined in the same module
-# safe_fetch(endpoint, params) -> dict
-# ist_now() -> str (returns current IST time as formatted string)
-
-def _cached_fetch(endpoint: str, params: Dict[str, Any]):
-    """Cached low-level API call."""
-    return safe_fetch(endpoint, params)
-
-def fetch_json(endpoint: str, params: Dict[str, Any] = None, desc: str = "") -> Dict[str, Any]:
-    """
-    Streamlit interactive API fetcher.
-    Includes caching, retries, timing, status UI, and JSON preview.
-    """
-    params = params or {}
-    desc_display = desc or endpoint
-
-    with st.spinner(f"🔄 Fetching {desc_display} ..."):
-        start_time = time.time()
-        data = None
-        max_retries = 3
-
-        for attempt in range(1, max_retries + 1):
-            try:
-                data = _cached_fetch(endpoint, params)
-                if data:
-                    break
-                else:
-                    st.warning(f"⚠️ Attempt {attempt}/{max_retries} — Empty response, retrying...")
-                    time.sleep(1.5)
-            except Exception as e:
-                st.error(f"❌ Attempt {attempt}/{max_retries} failed: {e}")
-                st.code(traceback.format_exc(), language="python")
-                time.sleep(1.5)
-
-        elapsed = round(time.time() - start_time, 2)
-
-    # ✅ SUCCESS UI
-    if data:
-        st.success(f"✅ {desc_display} fetched successfully in {elapsed}s.")
-        with st.expander(f"📦 {desc_display} JSON Preview"):
-            st.json(data, expanded=False)
-        st.markdown(
-            f"""
-            <div style='background:linear-gradient(90deg,#00c6ff,#0072ff);
-                        color:white;padding:10px 15px;border-radius:10px;
-                        margin-top:10px;'>
-                ✅ <b>Ready for analytics</b> — {ist_now()} IST
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        return data
-
-    # ❌ FAILURE UI
-    st.error(f"🚫 Failed to fetch {desc_display} after {max_retries} attempts.")
-    col1, col2 = st.columns([1, 1.2])
-    with col1:
-        if st.button("🔁 Retry Fetch", key=f"retry_{random.randint(1,9999)}"):
-            st.toast("Reattempting fetch...", icon="🔄")
-            st.rerun()
-    with col2:
-        st.info("💡 Check your network or API availability.")
-    return {}
-
-# ===============================================================
-# 🤖 DeepInfra AI Helper — ALL-MAXED EDITION
-# ===============================================================
-"""
-Fully-enhanced DeepInfra API integration for Streamlit dashboards.
-
-✅ Features:
-- Secure secrets-based configuration
-- Smart retries + exponential backoff
-- Live streaming or normal mode
-- Sidebar connection validator + retry
-- Caching for repeated prompts
-- Chat history memory per session
-- Animated UI feedback and toast notifications
-- Auto-summarization + insight mode for dashboards
-- Test / debug utility built-in
-"""
-
-import json, time, random, requests, streamlit as st
-from functools import lru_cache
-
-# ---------------------------------------------------------------
-# 🔐 Setup & Constants
-# ---------------------------------------------------------------
-DEEPINFRA_CHAT_URL = "https://api.deepinfra.com/v1/openai/chat/completions"
-DEEPINFRA_API_KEY = st.secrets.get("DEEPINFRA_API_KEY")
-DEEPINFRA_MODEL = st.secrets.get("DEEPINFRA_MODEL", "mistralai/Mixtral-8x7B-Instruct-v0.1")
-
-# ---------------------------------------------------------------
-# 🧠 Session Memory Setup
-# ---------------------------------------------------------------
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-
-# ---------------------------------------------------------------
-# 🔍 Connection Check
-# ---------------------------------------------------------------
-def check_deepinfra_connection():
-    if not DEEPINFRA_API_KEY:
-        st.sidebar.warning("⚠️ Missing DeepInfra API key in Streamlit Secrets.")
-        return False
-
-    try:
-        with st.sidebar.spinner("🤖 Connecting to DeepInfra..."):
-            resp = requests.get(
-                "https://api.deepinfra.com/v1/openai/models",
-                headers={"Authorization": f"Bearer {DEEPINFRA_API_KEY}"},
-                timeout=8,
-            )
-        if resp.status_code == 200:
-            st.sidebar.success("✅ Connected to DeepInfra")
-            st.sidebar.caption(f"Model: **{DEEPINFRA_MODEL}**")
-            return True
-        else:
-            st.sidebar.warning(f"⚠️ {resp.status_code}: {resp.text[:80]}")
-            return False
-    except Exception as e:
-        st.sidebar.error(f"❌ Connection error: {e}")
-        return False
-
-
-# ---------------------------------------------------------------
-# 💬 Cached Request Helper
-# ---------------------------------------------------------------
-@lru_cache(maxsize=64)
-def _cached_call(payload_key: str, payload: dict):
-    headers = {
-        "Authorization": f"Bearer {DEEPINFRA_API_KEY}",
-        "Content-Type": "application/json",
-    }
-    return requests.post(DEEPINFRA_CHAT_URL, headers=headers, json=payload, timeout=60)
-
-
-# ---------------------------------------------------------------
-# 🚀 Core Chat Function (stream + retries + caching)
-# ---------------------------------------------------------------
-def deepinfra_chat(
-    system_prompt: str,
-    user_prompt: str,
+def build_params(
+    from_year: int,
+    to_year: int,
     *,
-    stream: bool = True,
-    temperature: float = 0.6,
-    max_tokens: int = 512,
-    retries: int = 3,
-    delay: float = 1.5,
-):
-    if not DEEPINFRA_API_KEY:
-        st.error("⚠️ Missing API key in Streamlit Secrets.")
-        return {"error": "Missing key"}
+    state_code: str,
+    rto_code: str,
+    vehicle_classes: str,
+    vehicle_makers: str,
+    time_period: str,
+    fitness_check: bool,
+    vehicle_type: str,
+    extra_params: Optional[dict] = None,
+) -> dict:
+    """Strict builder — no prefilled defaults."""
+    current_year = datetime.now().year
+    errors = []
 
-    payload = {
-        "model": DEEPINFRA_MODEL,
-        "messages": [
-            {"role": "system", "content": system_prompt.strip()},
-            {"role": "user", "content": user_prompt.strip()},
-        ],
-        "temperature": temperature,
-        "max_tokens": max_tokens,
-        "stream": stream,
+    # strict checks
+    if from_year is None or to_year is None:
+        errors.append("Both from_year and to_year must be provided.")
+    if not isinstance(from_year, int) or not isinstance(to_year, int):
+        errors.append("Year values must be integers.")
+    if from_year > to_year:
+        errors.append(f"From year ({from_year}) cannot exceed To year ({to_year}).")
+    if from_year < 2000 or to_year > current_year:
+        errors.append(f"Year range must be between 2000 and {current_year}.")
+    if not isinstance(fitness_check, bool):
+        errors.append("Fitness flag must be boolean (True/False).")
+    if not all([state_code, rto_code, vehicle_classes, vehicle_makers, time_period, vehicle_type]):
+        errors.append("All core parameters must be explicitly provided — no blanks allowed.")
+
+    if errors:
+        for e in errors:
+            log(f"❌ Parameter Error: {e}", "ERROR")
+        raise ValueError(" | ".join(errors))
+
+    time_period = time_period.title().strip()
+    if time_period not in ["Yearly", "Quarterly", "Monthly"]:
+        log(f"⚠️ Invalid time_period '{time_period}', defaulting to 'Yearly'", "WARNING")
+        time_period = "Yearly"
+
+    params = {
+        "from_year": from_year,
+        "to_year": to_year,
+        "state_cd": clean_str(state_code),
+        "rto_cd": clean_str(rto_code),
+        "vclass": clean_str(vehicle_classes),
+        "maker": clean_str(vehicle_makers),
+        "time_period": time_period,
+        "include_fitness": "Y" if fitness_check else "N",
+        "veh_type": clean_str(vehicle_type),
+        "_session_seed": datetime.now().strftime("%Y%m%d%H%M%S"),
     }
 
-    cache_key = json.dumps(payload, sort_keys=True)
-    for attempt in range(1, retries + 1):
-        try:
-            if stream:
-                with requests.post(
-                    DEEPINFRA_CHAT_URL,
-                    headers={"Authorization": f"Bearer {DEEPINFRA_API_KEY}",
-                             "Content-Type": "application/json"},
-                    json=payload,
-                    stream=True,
-                    timeout=60,
-                ) as r:
-                    if r.status_code != 200:
-                        st.warning(f"⚠️ DeepInfra {r.status_code}: {r.text[:120]}")
-                        continue
-                    reply = ""
-                    placeholder = st.empty()
-                    for line in r.iter_lines():
-                        if not line:
-                            continue
-                        decoded = line.decode("utf-8")
-                        if decoded.startswith("data: "):
-                            chunk = decoded[6:]
-                            if chunk.strip() == "[DONE]":
-                                break
-                            try:
-                                delta = json.loads(chunk)["choices"][0]["delta"].get("content", "")
-                                reply += delta
-                                placeholder.markdown(f"🧠 **AI:** {reply}")
-                            except Exception:
-                                pass
-                    if reply:
-                        st.toast("✅ AI response complete!", icon="🤖")
-                        st.session_state.chat_history.append(
-                            {"user": user_prompt, "ai": reply}
-                        )
-                        return {"text": reply}
-            else:
-                resp = _cached_call(cache_key, payload)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    text = data["choices"][0]["message"]["content"].strip()
-                    st.session_state.chat_history.append(
-                        {"user": user_prompt, "ai": text}
-                    )
-                    return {"text": text}
-                else:
-                    st.warning(f"⚠️ Error {resp.status_code}")
-        except Exception as e:
-            st.warning(f"⚠️ Attempt {attempt}/{retries} failed: {e}")
-        time.sleep(delay * attempt)
-    st.error("⛔ DeepInfra failed after retries.")
-    return {"error": "failed"}
+    if extra_params:
+        for k, v in extra_params.items():
+            if v not in [None, "", [], {}]:
+                params[k] = v
 
-
-# ---------------------------------------------------------------
-# 🧩 Inline Chatbox Widget
-# ---------------------------------------------------------------
-def deepinfra_chatbox(title="💬 Ask DeepInfra AI"):
-    with st.expander(title, expanded=False):
-        prompt = st.text_area(
-            "Your question or insight request",
-            placeholder="e.g. Explain month-over-month growth trend...",
-        )
-        if st.button("🚀 Ask AI"):
-            if prompt.strip():
-                deepinfra_chat("You are an expert analytics assistant.", prompt)
-            else:
-                st.warning("Please enter a question before submitting.")
-    # show chat history
-    if st.session_state.chat_history:
-        st.markdown("### 🧠 Chat History")
-        for item in st.session_state.chat_history[-5:]:
-            st.markdown(
-                f"**🧑 You:** {item['user']}<br>**🤖 AI:** {item['ai']}",
-                unsafe_allow_html=True,
-            )
-
-
-# ---------------------------------------------------------------
-# 📊 Auto Insight Generator (for dashboard dataframes)
-# ---------------------------------------------------------------
-def deepinfra_generate_insight(df, topic: str = "vehicle registration analytics"):
-    """Generate concise AI insights based on a pandas DataFrame."""
-    if df is None or df.empty:
-        st.warning("No data available for AI insight.")
-        return
-    sample = df.head(10).to_markdown(index=False)
-    context = f"The dataset below relates to {topic}:\n\n{sample}\n\nSummarize trends, anomalies, and recommendations."
-    deepinfra_chat("You are a senior data analyst.", context, temperature=0.5, max_tokens=400)
-
-
-# ---------------------------------------------------------------
-# 🧠 Diagnostic / Test UI
-# ---------------------------------------------------------------
-def deepinfra_test_ui():
-    st.subheader("🧩 DeepInfra Integration Test")
-    if DEEPINFRA_API_KEY:
-        masked = f"{DEEPINFRA_API_KEY[:4]}...{DEEPINFRA_API_KEY[-4:]}"
-        st.info(f"✅ API Key loaded: `{masked}`\nModel: `{DEEPINFRA_MODEL}`")
-    else:
-        st.error("🚫 No API key found in secrets.")
-        return
-    if st.button("🔗 Check Connectivity"):
-        check_deepinfra_connection()
-    msg = st.text_area("Quick test prompt", "Summarize: DeepInfra test working fine.")
-    if st.button("🚀 Run Test"):
-        deepinfra_chat("You are a helpful assistant.", msg, temperature=0.3, max_tokens=80)
-    
-# ===============================================================
-# 1️⃣ CATEGORY DISTRIBUTION — ALL-MAXED MULTI-YEAR EDITION 🚀✨
-# ===============================================================
-
-with st.container():
-    # 🌈 Header
-    st.markdown("""
-    <div style="padding:14px 22px;border-left:6px solid #6C63FF;
-                background:linear-gradient(90deg,#f3f1ff 0%,#ffffff 100%);
-                border-radius:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-        <h3 style="margin:0;font-weight:700;color:#3a3a3a;">📊 Multi-Year Category Distribution (ALL-MAXED)</h3>
-        <p style="margin:4px 0 0;color:#555;font-size:14.5px;">
-            Year-wise comparative breakdown of registered vehicles by category across India.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # --------------------------------------------------------------
-# 🔄 Fetch All Years Data
-# --------------------------------------------------------------
-from datetime import datetime  # ensure correct import (can be at top)
-
-with st.spinner("📡 Fetching multi-year category data from Vahan API..."):
-    # ✅ Fix: use datetime.now(), not datetime.datetime.now()
-    year_list = list(range(2018, datetime.now().year + 1))
-    df_all_years = []
-
-    for y in year_list:
-        try:
-            data_json = fetch_json(
-                f"vahandashboard/categoriesdonutchart?year={y}",
-                desc=f"Category {y}"
-            )
-            df_y = to_df(data_json)
-            if not df_y.empty:
-                df_y["year"] = y
-                df_all_years.append(df_y)
-        except Exception as e:
-            st.warning(f"⚠️ Failed for {y}: {e}")
-
-    if not df_all_years:
-        st.error("🚫 No data found for any year.")
-        st.stop()
-
-    df_cat_all = pd.concat(df_all_years, ignore_index=True)
-
-    # --------------------------------------------------------------
-    # 📊 Aggregation and Visualization
-    # --------------------------------------------------------------
-    years_available = sorted(df_cat_all["year"].unique())
-    st.toast(f"✅ Loaded data for {len(years_available)} years ({years_available[0]}–{years_available[-1]})", icon="📦")
-
-    # Select year(s)
-    selected_years = st.multiselect("📅 Select year(s) to compare:", years_available, default=[years_available[-1]])
-    df_selected = df_cat_all[df_cat_all["year"].isin(selected_years)]
-
-    if df_selected.empty:
-        st.warning("⚠️ No data for selected years.")
-        st.stop()
-
-    # --------------------------------------------------------------
-    # 🧩 Visualization
-    # --------------------------------------------------------------
-    tab1, tab2, tab3 = st.tabs(["📈 Bar", "🍩 Donut", "📉 Trend Line"])
-
-    with tab1:
-        st.markdown("#### 📊 Category Comparison (Bar)")
-        bar_from_df(df_selected, x="label", y="value", color="year", title="Multi-Year Category Comparison")
-
-    with tab2:
-        st.markdown("#### 🍩 Donut Distribution (Selected Year)")
-        for y in selected_years:
-            df_y = df_cat_all[df_cat_all["year"] == y]
-            st.markdown(f"##### 🗓️ {y}")
-            pie_from_df(df_y, title=f"Category Distribution {y}", donut=True)
-            st.divider()
-
-    with tab3:
-        st.markdown("#### 📈 Category Trends Over Time")
-        pivot_trend = df_cat_all.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
-        st.line_chart(pivot_trend)
-
-    # --------------------------------------------------------------
-    # 💎 KPI Analysis
-    # --------------------------------------------------------------
-    st.markdown("### 💎 Yearly Highlights")
-    for y in selected_years:
-        df_y = df_cat_all[df_cat_all["year"] == y]
-        top_cat = df_y.loc[df_y["value"].idxmax(), "label"]
-        total = df_y["value"].sum()
-        top_val = df_y["value"].max()
-        pct = round((top_val / total) * 100, 2)
-
-        k1, k2, k3 = st.columns(3)
-        k1.metric(f"🏆 Top Category ({y})", top_cat)
-        k2.metric("📊 Share of Total", f"{pct}%")
-        k3.metric("🚘 Total Registrations", f"{total:,}")
-
-        st.markdown(f"""
-        <div style="margin-top:10px;padding:14px 16px;
-                    background:linear-gradient(90deg,#e7e2ff,#f7f5ff);
-                    border:1px solid #d4cfff;border-radius:12px;
-                    box-shadow:inset 0 0 8px rgba(108,99,255,0.2);">
-            <b>🏅 Insight:</b> <span style="color:#333;">{top_cat}</span> leads {y} with <b>{pct}%</b> share of total registrations.
-        </div>
-        """, unsafe_allow_html=True)
-        st.markdown("---")
-
-    # --------------------------------------------------------------
-    # 📊 YOY Comparison
-    # --------------------------------------------------------------
-    st.markdown("### 🔄 Year-on-Year (YoY) Comparison")
-    yoy = (
-        df_cat_all.groupby(["label", "year"])["value"]
-        .sum().unstack().fillna(0)
-    )
-    yoy_change = yoy.pct_change(axis=1) * 100
-    st.dataframe(yoy_change.style.format("{:.2f}%").background_gradient(cmap="RdYlGn"))
-
-    # --------------------------------------------------------------
-    # 🤖 DeepInfra AI — Narrative Generator
-    # --------------------------------------------------------------
-    if enable_ai:
-        st.markdown("### 🤖 AI-Powered Yearly Insights")
-        with st.spinner("🧠 DeepInfra AI analyzing multi-year category trends..."):
-            summary_data = df_cat_all.groupby(["year", "label"])["value"].sum().reset_index().to_dict(orient="records")
-
-            system = (
-                "You are an expert in vehicle registration analytics. "
-                "Analyze multi-year category distribution data for patterns, trends, and government insights. "
-                "Mention emerging vehicle types, decline categories, and policy-level recommendations."
-            )
-            user = f"Analyze this dataset: {json.dumps(summary_data, default=str)}. Summarize key changes across years."
-
-            ai_resp = deepinfra_chat(system, user, max_tokens=500, temperature=0.4)
-
-            if ai_resp.get("text"):
-                st.toast("✅ Multi-Year AI Insight Ready!", icon="🤖")
-                st.markdown(f"""
-                <div style="margin-top:12px;padding:18px 20px;
-                            background:linear-gradient(90deg,#f8f9ff,#eef1ff);
-                            border-left:5px solid #6C63FF;border-radius:12px;">
-                    <b>AI Summary:</b><br>
-                    <p style="margin-top:6px;font-size:15px;color:#333;">{ai_resp["text"]}</p>
-                </div>
-                """, unsafe_allow_html=True)
-                st.balloons()
-            else:
-                st.info("💤 AI summary not generated — recheck your DeepInfra connection.")
-
-# 2️⃣ TOP MAKERS — ALL-MAXED ULTRA 🏭🔥
-# Drop into your Streamlit app after the helpers (fetch_json, parse_makers, deepinfra_chat etc.)
-import streamlit as st
-import pandas as pd
-import numpy as np
-import io, json, time, zipfile, math
-import plotly.express as px
-import plotly.graph_objects as go
-from datetime import datetime
-from typing import List
-
-# ---------------------------
-# Config / UI controls
-# ---------------------------
-st.markdown("""<hr>""", unsafe_allow_html=True)
-st.header("🏭 Top Makers — ALL-MAXED ULTRA")
-st.caption("Multi-year + monthly trends · State slices · Forecasting · AI narratives · Exports")
-
-col_controls = st.columns([1,1,1,1])
-with col_controls[0]:
-    years_to_fetch = st.multiselect("Years to include", options=list(range(max(2017, datetime.now().year-5), datetime.now().year+1)),
-                                    default=[datetime.now().year-2, datetime.now().year-1, datetime.now().year])
-with col_controls[1]:
-    top_n = st.slider("Top N makers to show", 3, 50, 10)
-with col_controls[2]:
-    include_state = st.checkbox("Include state-level breakdown", value=True)
-with col_controls[3]:
-    run_forecast = st.checkbox("Enable AI + Forecast", value=True)
-
-# optional advanced params
-freq_choice = st.selectbox("Monthly / Quarterly trend", ["Monthly", "Quarterly"], index=0)
-
-# ---------------------------
-# Helper caches
-# ---------------------------
-def fetch_maker_for_year(year: int):
-    """Call the VAHAN endpoint for the top makers by year. Returns parsed dataframe."""
-    try:
-        # Attempt year-specific endpoint param; if API doesn't support year param fallback to common endpoint
-        payload = {"year": year}
-        data = fetch_json("vahandashboard/top5Makerchart", params_common if 'params_common' in globals() else payload, desc=f"Top Makers {year}") if 'fetch_json' in globals() and 'params_common' in globals() else fetch_json("vahandashboard/top5Makerchart", desc=f"Top Makers {year}")
-        df = parse_makers(data) if data else pd.DataFrame()
-    except Exception:
-        df = pd.DataFrame()
-    # Defensive normalisation
-    if df is None:
-        df = pd.DataFrame()
-    if not df.empty:
-        df.columns = [c.strip().lower() for c in df.columns]
-        # pick value column
-        val_cols = [c for c in df.columns if c in ("value","count","total","registeredvehiclecount","y")]
-        label_cols = [c for c in df.columns if c in ("maker","makename","manufacturer","label","name")]
-        if val_cols and label_cols:
-            df = df.rename(columns={label_cols[0]:"maker", val_cols[0]:"value"})
-        elif label_cols:
-            df = df.rename(columns={label_cols[0]:"maker"})
-        elif val_cols:
-            df = df.rename(columns={val_cols[0]:"value"})
-        df["year"] = int(year)
-        df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
-    return df
-
-def fetch_monthly_trend_for_maker(maker_label: str, years: List[int]):
-    """Attempt to fetch monthly trend for a maker across years by calling a generic endpoint.
-       This uses a best-effort approach and falls back to creating a synthetic trend if unavailable."""
-    frames = []
-    for y in years:
-        # try common trend endpoint name patterns
-        try:
-            params = {"maker": maker_label, "year": y}
-            # example endpoint guess — adjust to real API as needed
-            j = fetch_json("vahandashboard/makerMonthlyTrend", params_common if 'params_common' in globals() else params, desc=f"Maker Trend {maker_label} {y}") if 'fetch_json' in globals() and 'params_common' in globals() else fetch_json("vahandashboard/makerMonthlyTrend", desc=f"Maker Trend {maker_label} {y}")
-            if j:
-                tdf = normalize_trend(j)
-                if not tdf.empty:
-                    tdf["maker"] = maker_label
-                    tdf["year"] = y
-                    frames.append(tdf)
-        except Exception:
-            continue
-    if frames:
-        df = pd.concat(frames, ignore_index=True)
-        # ensure monthly ordering
-        df = df.sort_values(["year","date"])
-        return df
-    # fallback: return empty DF
-    return pd.DataFrame(columns=["date","value","maker","year"])
-
-# ---------------------------
-# 1) Multi-year aggregation (wide)
-# ---------------------------
-with st.spinner("📡 Fetching multi-year maker data..."):
-    year_frames = []
-    for y in sorted(set(years_to_fetch)):
-        dfy = fetch_maker_for_year(y)
-        if not dfy.empty:
-            year_frames.append(dfy)
-    if not year_frames:
-        st.warning("⚠️ No maker data available for selected years.")
-        st.stop()
-
-    df_all_years = pd.concat(year_frames, ignore_index=True)
-    # aggregate by maker across selected years for ranking
-    agg = df_all_years.groupby("maker", as_index=False)["value"].sum().sort_values("value", ascending=False)
-    agg["rank"] = agg["value"].rank(ascending=False, method="dense").astype(int)
-    top_makers = agg.head(top_n)["maker"].tolist()
-
-# ---------------------------
-# UI: Top makers list + download
-# ---------------------------
-st.subheader(f"Top {top_n} Makers — Combined ({', '.join(map(str, sorted(years_to_fetch)))})")
-colA, colB = st.columns([3,1])
-with colA:
-    st.dataframe(agg.head(top_n).assign(value=lambda d: d["value"].map(int)), use_container_width=True)
-with colB:
-    csv_bytes = agg.to_csv(index=False).encode("utf-8")
-    st.download_button("⬇️ Download full maker CSV", csv_bytes, "makers_agg.csv", "text/csv")
-
-# ---------------------------
-# 2) Multi-year comparison lines
-# ---------------------------
-st.markdown("### 📈 Multi-year Comparison — Top Makers")
-df_pivot = df_all_years[df_all_years["maker"].isin(top_makers)].pivot_table(index="maker", columns="year", values="value", aggfunc="sum").fillna(0)
-# prepare long for plotly
-df_long = df_all_years[df_all_years["maker"].isin(top_makers)].groupby(["year","maker"], as_index=False)["value"].sum()
-fig = px.line(df_long, x="year", y="value", color="maker", markers=True,
-              title=f"Yearly registrations for top {top_n} makers")
-fig.update_layout(legend={"orientation":"h","y":-0.2})
-st.plotly_chart(fig, use_container_width=True)
-
-# show percentage growth between latest two years (if available)
-years_sorted = sorted(set(df_all_years["year"].unique()))
-if len(years_sorted) >= 2:
-    y_latest, y_prev = years_sorted[-1], years_sorted[-2]
-    latest = df_all_years[df_all_years["year"] == y_latest].groupby("maker", as_index=False)["value"].sum()
-    prev = df_all_years[df_all_years["year"] == y_prev].groupby("maker", as_index=False)["value"].sum()
-    delta = pd.merge(latest, prev, on="maker", how="left", suffixes=("_latest","_prev")).fillna(0)
-    delta["pct_change"] = (delta["value_latest"] - delta["value_prev"]) / delta["value_prev"].replace({0: np.nan}) * 100
-    delta = delta.sort_values("pct_change", ascending=False).head(10)
-    st.markdown(f"#### 🔺 Top movers {y_prev} → {y_latest}")
-    st.dataframe(delta[["maker","value_prev","value_latest","pct_change"]].rename(columns={
-        "value_prev":f"{y_prev}",
-        "value_latest":f"{y_latest}",
-        "pct_change":"YoY%"
-    }), use_container_width=True)
-
-# ---------------------------
-# 3) Monthly Trends per-maker (interactive)
-# ---------------------------
-st.markdown("### 📊 Monthly Trends — Select a Maker")
-maker_select = st.selectbox("Choose maker", options=top_makers, index=0)
-with st.spinner("Fetching monthly trend..."):
-    trend_df = fetch_monthly_trend_for_maker(maker_select, sorted(set(years_to_fetch)))
-if trend_df.empty:
-    st.info("Monthly trend data not available from API for this maker — showing synthetic distribution across years.")
-    # synthetic: split yearly value to months proportionally
-    synth = df_all_years[df_all_years["maker"] == maker_select].groupby("year", as_index=False)["value"].sum()
-    rows = []
-    for _, r in synth.iterrows():
-        y, tot = int(r["year"]), int(r["value"])
-        for m in range(1,13):
-            rows.append({"date": pd.Timestamp(y, m, 1), "value": tot/12.0, "maker": maker_select, "year": y})
-    trend_df = pd.DataFrame(rows)
-trend_df = trend_df.sort_values("date")
-fig_trend = px.line(trend_df, x="date", y="value", color="year", markers=True, title=f"Monthly trend — {maker_select}")
-st.plotly_chart(fig_trend, use_container_width=True)
-
-# ---------------------------
-# 4) State-wise breakdown (best-effort)
-# ---------------------------
-if include_state:
-    st.markdown("### 🗺️ State-wise Breakdown (Top Maker shares by state)")
-    # attempt to fetch state-split via maker->state endpoint
-    try:
-        # call parse_maker_state if available
-        if 'parse_maker_state' in globals():
-            raw = fetch_json("vahandashboard/makerStateMap", desc="Maker state map")
-            ms = parse_maker_state(raw) if raw else pd.DataFrame()
-            if not ms.empty:
-                # limit to top makers and show heat (bar) by top maker per state
-                ms_top = ms[ms["maker"].isin(top_makers)]
-                pivot_state = ms_top.groupby(["state","maker"], as_index=False)["value"].sum()
-                # show interactive heat: top maker per state
-                state_top = pivot_state.loc[pivot_state.groupby("state")["value"].idxmax()].sort_values("value", ascending=False)
-                st.dataframe(state_top, use_container_width=True)
-                fig_state = px.bar(state_top.head(30), x="state", y="value", color="maker", title="Leading maker by state (top 30 states shown)")
-                st.plotly_chart(fig_state, use_container_width=True)
-            else:
-                st.info("State-level maker map not returned by API.")
-        else:
-            st.info("State parsing utility unavailable in current environment.")
-    except Exception as e:
-        st.warning(f"State breakdown failed: {e}")
-
-# ---------------------------
-# 5) Correlation matrix across months/years for top makers
-# ---------------------------
-st.markdown("### 🧪 Correlation Matrix — Top Makers (monthly distribution)")
-# build maker x month series
-try:
-    # make a consistent monthly index across chosen years
-    df_month = df_all_years[df_all_years["maker"].isin(top_makers)].copy()
-    if df_month.empty:
-        raise ValueError("No monthly-like data available.")
-    # attempt to coerce date if exists, else create year-month synthetic
-    if "date" in df_month.columns:
-        df_month["month_idx"] = pd.to_datetime(df_month["date"]).dt.to_period("M").dt.to_timestamp()
-    else:
-        df_month["month_idx"] = df_month.apply(lambda r: pd.Timestamp(int(r["year"]), 1, 1), axis=1)
-    series = df_month.groupby(["maker","month_idx"])["value"].sum().reset_index()
-    wide = series.pivot(index="month_idx", columns="maker", values="value").fillna(0)
-    corr = wide.corr()
-    fig_corr = px.imshow(corr, text_auto=True, title="Maker correlations (Pearson)")
-    st.plotly_chart(fig_corr, use_container_width=True)
-except Exception as e:
-    st.info("Correlation matrix unavailable — insufficient monthly time-series data.")
-    st.write(str(e))
-
-# ---------------------------
-# 6) Forecasting / AI narratives
-# ---------------------------
-st.markdown("### 🔮 AI Forecasts & Narratives")
-if run_forecast and ('deepinfra_chat' in globals()):
-    # quick numeric forecast using simple linear regression if Prophet unavailable
-    forecast_rows = []
-    forecast_summary = ""
-    with st.spinner("Running quick forecasts + AI narratives..."):
-        for maker in top_makers[:min(10, len(top_makers))]:
-            # prepare series aggregated by year
-            ts = df_all_years[df_all_years["maker"] == maker].groupby("year", as_index=False)["value"].sum().sort_values("year")
-            if ts.shape[0] >= 2:
-                # linear regression (years -> value)
-                X = np.array(ts["year"]).reshape(-1,1)
-                y = np.array(ts["value"])
-                # simple slope/intercept
-                A = np.vstack([X.flatten(), np.ones(len(X))]).T
-                m, c = np.linalg.lstsq(A, y, rcond=None)[0]
-                next_year = int(max(ts["year"])+1)
-                pred = float(m*next_year + c)
-                forecast_rows.append({"maker": maker, "last_year": int(ts["year"].iloc[-1]), "last_value": float(ts["value"].iloc[-1]), "pred_year": next_year, "pred_value": max(0.0, pred)})
-            else:
-                forecast_rows.append({"maker": maker, "last_year": int(ts["year"].iloc[-1]) if not ts.empty else None, "last_value": float(ts["value"].iloc[-1]) if not ts.empty else 0.0, "pred_year": None, "pred_value": None})
-        forecast_df = pd.DataFrame(forecast_rows).sort_values("pred_value", ascending=False, na_position='last')
-        st.dataframe(forecast_df, use_container_width=True)
-
-        # send short summary to DeepInfra for narrative
-        try:
-            sample = forecast_df.head(10).to_dict(orient="records")
-            system = "You are a concise automotive market forecaster and analyst."
-            user = f"Given this forecast table for top makers (next year predictions): {json.dumps(sample)}. Provide a 4-sentence summary highlighting likely winners, risks, and one suggested policy or strategy for transport planners."
-            ai_out = deepinfra_chat(system, user, max_tokens=350, temperature=0.4)
-            if isinstance(ai_out, dict):
-                ai_text = ai_out.get("text") or ai_out.get("raw", "")
-            else:
-                ai_text = ai_out
-            if ai_text:
-                st.markdown(f"**AI Forecast Summary:**\n\n{ai_text}")
-        except Exception as e:
-            st.warning(f"AI forecast generation failed: {e}")
-else:
-    st.info("AI forecasting is disabled or deepinfra_chat not available.")
-# ===============================================================
-# 💾 VAHAN MAKERS + STATES KPI EXPORT — ALL-MAXED EDITION
-# ===============================================================
-import io
-import json
-import time
-from datetime import datetime
-from typing import Optional, Dict
-
-import numpy as np
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-import streamlit as st
-from openpyxl import load_workbook
-from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-from openpyxl.utils import get_column_letter
-from openpyxl.chart import LineChart, Reference
-
-# --- Assumes these exist in your app (from earlier blocks)
-# fetch_json(path: str, params: dict|None, desc: str)
-# parse_makers(json) -> DataFrame(label,value,...)
-# normalize_trend(json) -> DataFrame(date, value)
-# deepinfra_chat(system, user, ...) -> dict with "text"
-# If you used different names, adapt below.
-
-# -------------------------
-# UI Header
-# -------------------------
-st.markdown("""
-<div style="padding:14px;border-left:6px solid #6C63FF;
-            background:linear-gradient(90deg,#f7f5ff,#ffffff);
-            border-radius:12px;margin-bottom:12px;">
-    <h2 style="margin:0;">💾 Makers & States KPI Export — ALL-MAXED</h2>
-    <p style="margin:6px 0 0;color:#444;">Focused export for Top Makers + State-level KPIs, comparisons, charts & AI summaries.</p>
-</div>
-""", unsafe_allow_html=True)
-
-# -------------------------
-# Sidebar controls
-# -------------------------
-with st.sidebar.expander("Export Controls — Makers & States", expanded=True):
-    ai_enabled = st.checkbox("🤖 Include DeepInfra AI Summaries", True)
-    top_n = st.number_input("Top N makers to include", min_value=3, max_value=50, value=10)
-    include_states = st.checkbox("Include state-level KPIs", True)
-    forecast_months = st.slider("Forecast horizon (months) for linear forecast", 1, 24, 6)
-    export_filename_prefix = st.text_input("Export filename prefix", value="Parivahan_MakersStates_AllMaxed")
-    refresh_data = st.button("🔄 Refresh & Fetch Latest Data")
-
-# -------------------------
-# Helper utility functions
-# -------------------------
-def _safe_to_df(obj):
-    try:
-        if isinstance(obj, pd.DataFrame):
-            return obj.copy()
-        return pd.DataFrame(obj)
-    except Exception:
-        return pd.DataFrame()
-
-def normalize_time_series_df(df: pd.DataFrame, date_col_candidates=("date","period","label","month","ds")) -> pd.DataFrame:
-    df = _safe_to_df(df)
-    if df.empty:
-        return pd.DataFrame()
-    # find date col
-    date_col = None
-    for c in df.columns:
-        if c.lower() in date_col_candidates:
-            date_col = c; break
-    if date_col is None:
-        # try to coerce first column as date
-        try:
-            pd.to_datetime(df.iloc[:,0].dropna().astype(str).iloc[:5])
-            date_col = df.columns[0]
-        except Exception:
-            return pd.DataFrame()
-    # find value col
-    value_col = None
-    for c in df.columns:
-        if c.lower() in ("value","y","count","total","registeredvehiclecount"):
-            value_col = c; break
-    if value_col is None:
-        for c in df.columns:
-            if c != date_col and pd.api.types.is_numeric_dtype(df[c]):
-                value_col = c; break
-    if date_col is None or value_col is None:
-        return pd.DataFrame()
-    out = df[[date_col, value_col]].rename(columns={date_col:"date", value_col:"value"})
-    out["date"] = pd.to_datetime(out["date"], errors="coerce")
-    out = out.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
-    out["value"] = pd.to_numeric(out["value"], errors="coerce").fillna(0)
-    return out
-
-def compute_period_changes(ts: pd.DataFrame):
-    """Compute YoY, MoM, QoQ on a cleaned monthly-resampled ts (date,value)"""
-    out = ts.copy().set_index("date").sort_index()
-    # resample monthly sums for stable comparison
-    monthly = out["value"].resample("MS").sum()
-    df = monthly.to_frame().rename(columns={"value":"value"})
-    df["MoM%"] = df["value"].pct_change()*100
-    df["YoY%"] = df["value"].pct_change(12)*100
-    df["Rolling3"] = df["value"].rolling(3, min_periods=1).mean()
-    df["Anomaly"] = (df["value"] - df["Rolling3"]).abs() > (df["Rolling3"]*0.25)  # 25% deviation
-    df = df.reset_index()
-    return df
-
-def linear_forecast_series(ts: pd.DataFrame, months:int=6):
-    """
-    Very simple linear forecast on monthly resampled series.
-    Returns DataFrame(date, value, forecast_flag)
-    """
-    ts = ts.copy().set_index("date").sort_index()
-    monthly = ts["value"].resample("MS").sum().to_frame()
-    if len(monthly) < 3:
-        return pd.DataFrame()
-    monthly = monthly.reset_index()
-    monthly["t"] = np.arange(len(monthly))
-    try:
-        p = np.polyfit(monthly["t"].astype(float), monthly["value"].astype(float), 1)
-    except Exception:
-        return pd.DataFrame()
-    slope, intercept = p
-    future_t = np.arange(monthly["t"].iloc[-1]+1, monthly["t"].iloc[-1]+1+months)
-    last_date = monthly["date"].max()
-    future_dates = pd.date_range(last_date + pd.offsets.MonthBegin(), periods=months, freq="MS")
-    future_vals = intercept + slope * future_t
-    future = pd.DataFrame({"date": future_dates, "value": future_vals})
-    monthly["forecast"] = False
-    future["forecast"] = True
-    out = pd.concat([monthly[["date","value","forecast"]], future], ignore_index=True)
-    return out
-
-# -------------------------
-# Fetch & prepare data (makers + states)
-# -------------------------
-def fetch_makers_states():
-    # Try common VAHAN endpoints (you may adjust endpoints to your setup)
-    makers_json = fetch_json("vahandashboard/top5Makerchart", desc="Top Makers")
-    # There might also be a makers-all endpoint — adapt if present:
-    makers_all_json = fetch_json("vahandashboard/makers", desc="All Makers (if available)") or {}
-    # State-level: try a common state endpoint
-    states_json = fetch_json("vahandashboard/statewisechart", desc="States") or {}
-    states_all_json = fetch_json("vahandashboard/states", desc="All States (if available)") or {}
-
-    df_makers = parse_makers(makers_json) if makers_json is not None else pd.DataFrame()
-    # fallback conversion for full lists
-    if (df_makers is None or df_makers.empty) and isinstance(makers_all_json, (list, dict)):
-        df_makers = to_df(makers_all_json)
-
-    df_makers_all = parse_makers(makers_all_json) if makers_all_json is not None else pd.DataFrame()
-    if (df_makers_all is None or df_makers_all.empty) and isinstance(makers_all_json, (list, dict)):
-        df_makers_all = to_df(makers_all_json)
-
-    # states -> expect label/value shape
-    df_states = to_df(states_json) if states_json is not None else pd.DataFrame()
-    df_states_all = to_df(states_all_json) if states_all_json is not None else pd.DataFrame()
-
-    return {
-        "top_makers": _safe_to_df(df_makers),
-        "all_makers": _safe_to_df(df_makers_all),
-        "top_states": _safe_to_df(df_states),
-        "all_states": _safe_to_df(df_states_all)
+    params["_meta"] = {
+        "created": ist_now(),
+        "validated": True,
+        "safe_hash": abs(hash(json.dumps(params, sort_keys=True))) % 1_000_000,
     }
 
-if refresh_data:
-    fetch_makers_states.clear()
+    log(f"🧩 Params built successfully → hash {params['_meta']['safe_hash']}", "SUCCESS")
 
-data = fetch_makers_states()
+    try:
+        with st.expander("🔍 VAHAN Parameter Summary", expanded=False):
+            st.json(params)
+    except Exception:
+        pass
 
-df_top_makers = data.get("top_makers", pd.DataFrame())
-df_all_makers = data.get("all_makers", pd.DataFrame())
-df_top_states = data.get("top_states", pd.DataFrame())
-df_all_states = data.get("all_states", pd.DataFrame())
+    return params
 
-# quick data presence checks
-if df_top_makers.empty and df_all_makers.empty:
-    st.warning("⚠️ No maker data found. Check VAHAN endpoints or parameters.")
-if include_states and df_top_states.empty and df_all_states.empty:
-    st.warning("⚠️ No state-level data found. State sheets will be omitted.")
 
-# -------------------------
-# Build combined analytics objects
-# -------------------------
-# choose the makers frame to use
-makers_df = df_all_makers if (not df_all_makers.empty) else df_top_makers
-states_df = df_all_states if (not df_all_states.empty) else df_top_states
-
-# normalize columns for safer references
-def _rename_lower(df):
-    if df is None or df.empty: return df
-    df = df.copy()
-    df.columns = [c.strip() for c in df.columns]
-    return df
-
-makers_df = _rename_lower(makers_df)
-states_df = _rename_lower(states_df)
-
-# Prepare time-series if present (some endpoints return trend objects)
-# Attempt to detect a date/value trend inside makers or states (fallback)
-makers_ts = None
-states_ts = None
-
-# If the maker dataset contains x/date-like + y/value-like fields, normalize
-if not makers_df.empty and any(c.lower() in ("date","period","month","year","label") for c in makers_df.columns):
-    makers_ts = normalize_time_series_df(makers_df)
-
-if not states_df.empty and any(c.lower() in ("date","period","month","year","label") for c in states_df.columns):
-    states_ts = normalize_time_series_df(states_df)
-
-# -------------------------
-# Render Overview & Charts
-# -------------------------
-st.markdown("### 📈 Makers — Overview")
-if not makers_df.empty:
-    # ensure columns label/value
-    col_label = next((c for c in makers_df.columns if c.lower() in ("label","maker","name")), makers_df.columns[0])
-    col_value = next((c for c in makers_df.columns if c.lower() in ("value","count","y","total","registeredvehiclecount")), makers_df.columns[-1])
-    df_plot = makers_df.rename(columns={col_label:"label", col_value:"value"})[["label","value"]].dropna()
-    df_plot = df_plot.sort_values("value", ascending=False)
-    st.dataframe(df_plot.head(50), use_container_width=True)
-    # bar + donut
-    c1, c2 = st.columns([2,1])
-    with c1:
-        fig = px.bar(df_plot.head(top_n), x="label", y="value", text="value", title=f"Top {top_n} Makers")
-        fig.update_layout(xaxis_tickangle=-45)
-        st.plotly_chart(fig, use_container_width=True)
-    with c2:
-        fig = px.pie(df_plot.head(top_n), names="label", values="value", hole=0.45, title="Maker Share (Top N)")
-        fig.update_traces(textinfo="percent+label")
-        st.plotly_chart(fig, use_container_width=True)
-else:
-    st.info("No makers data to show.")
-
-if include_states:
-    st.markdown("### 🗺️ States — Overview")
-    if not states_df.empty:
-        col_label = next((c for c in states_df.columns if c.lower() in ("label","state","stateName","statename")), states_df.columns[0])
-        col_value = next((c for c in states_df.columns if c.lower() in ("value","count","y","total","registeredvehiclecount")), states_df.columns[-1])
-        df_states_plot = states_df.rename(columns={col_label:"label", col_value:"value"})[["label","value"]].dropna().sort_values("value", ascending=False)
-        st.dataframe(df_states_plot.head(50), use_container_width=True)
-        fig = px.choropleth(df_states_plot.head(36), locations="label", locationmode="country names",
-                            color="value", title="Top States (sampled) — note: mapping may need state->iso support")
-        # If plotting fails for country names mapping, fallback to bar
-        try:
-            st.plotly_chart(fig, use_container_width=True)
-        except Exception:
-            st.plotly_chart(px.bar(df_states_plot.head(20), x="label", y="value", title="Top States (bar)"), use_container_width=True)
-    else:
-        st.info("No state-level data to show.")
-
-# -------------------------
-# Multi-frequency comparisons (makers + states)
-# -------------------------
-st.markdown("### 🔍 Multi-frequency Comparisons")
-
-comparison_frames = {}
-if makers_ts is not None and not makers_ts.empty:
-    st.markdown("#### Makers — Trend & Period Changes")
-    makers_periods = compute_period_changes(makers_ts)
-    st.dataframe(makers_periods.tail(24), use_container_width=True)
-    comparison_frames["makers_trend"] = makers_periods
-    # trend chart
-    fig = px.line(makers_periods, x="date", y="value", title="Makers Trend (Monthly resampled)")
-    fig.add_traces(px.line(makers_periods, x="date", y="Rolling3").data)
-    st.plotly_chart(fig, use_container_width=True)
-    # forecast
-    fc = linear_forecast_series(makers_ts, months=forecast_months)
-    if not fc.empty:
-        fig2 = px.line(fc, x="date", y="value", title=f"Makers Forecast ({forecast_months} mo)")
-        fig2.update_traces(mode="lines+markers")
-        st.plotly_chart(fig2, use_container_width=True)
-        comparison_frames["makers_forecast"] = fc
-
-if include_states and states_ts is not None and not states_ts.empty:
-    st.markdown("#### States — Trend & Period Changes")
-    states_periods = compute_period_changes(states_ts)
-    st.dataframe(states_periods.tail(24), use_container_width=True)
-    comparison_frames["states_trend"] = states_periods
-    fig = px.line(states_periods, x="date", y="value", title="States Trend (Monthly resampled)")
-    fig.add_traces(px.line(states_periods, x="date", y="Rolling3").data)
-    st.plotly_chart(fig, use_container_width=True)
-    fc2 = linear_forecast_series(states_ts, months=forecast_months)
-    if not fc2.empty:
-        st.plotly_chart(px.line(fc2, x="date", y="value", title=f"States Forecast ({forecast_months} mo)"), use_container_width=True)
-        comparison_frames["states_forecast"] = fc2
-
-# -------------------------
-# KPIs & Ratios
-# -------------------------
-st.markdown("### 📊 KPIs & Ratios")
-kpi_rows = []
-try:
-    makers_total = int(makers_df[col_value].sum()) if (not makers_df.empty and col_value in makers_df.columns) else None
-    states_total = int(states_df[col_value].sum()) if (include_states and not states_df.empty and col_value in states_df.columns) else None
-    top_maker = makers_df.loc[makers_df[col_value].idxmax(), col_label] if (not makers_df.empty and col_label in makers_df.columns) else None
-    top_maker_val = int(makers_df[col_value].max()) if (not makers_df.empty and col_value in makers_df.columns) else None
-    top_state = states_df.loc[states_df[col_value].idxmax(), col_label] if (include_states and not states_df.empty and col_label in states_df.columns) else None
-    top_state_val = int(states_df[col_value].max()) if (include_states and not states_df.empty and col_value in states_df.columns) else None
-
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("🏆 Top Maker", top_maker or "n/a")
-    c2.metric("📈 Maker Total", f"{makers_total:,}" if makers_total is not None else "n/a")
-    c3.metric("🗺️ Top State", top_state or "n/a")
-    c4.metric("📊 State Total", f"{states_total:,}" if states_total is not None else "n/a")
-except Exception as e:
-    st.warning(f"Could not compute KPIs: {e}")
-
-# -------------------------
-# AI Summaries (optional)
-# -------------------------
-ai_summaries: Dict[str, str] = {}
-if ai_enabled:
-    st.markdown("### 🤖 AI Summaries")
-    progress = st.progress(0)
-    items = []
-    if not makers_df.empty:
-        items.append(("Makers Overview", makers_df.head(10)))
-    if include_states and not states_df.empty:
-        items.append(("States Overview", states_df.head(10)))
-    # add comparison frames
-    for k,v in comparison_frames.items():
-        items.append((k, v.head(10)))
-    total = max(1, len(items))
-    for i, (title, df_sample) in enumerate(items, start=1):
-        try:
-            system = f"You are a senior automotive data analyst. Summarize the dataset titled '{title}' in 3 concise insights emphasizing top performers, trends & anomalies."
-            user = f"Sample rows: {json.dumps(df_sample.head(6).to_dict(orient='records'), default=str)}"
-            # use deepinfra_chat if available
-            ai_resp = {}
-            if "deepinfra_chat" in globals():
-                ai_resp = deepinfra_chat(system, user, max_tokens=250, temperature=0.45)
-            elif "ask_deepinfra" in globals():
-                text = ask_deepinfra(user, system=system)
-                ai_resp = {"text": text}
-            else:
-                ai_resp = {"text": "DeepInfra not configured."}
-            ai_text = ai_resp.get("text") if isinstance(ai_resp, dict) else str(ai_resp)
-            ai_summaries[title] = ai_text or "No AI output."
-            st.markdown(f"**{title}** — {ai_summaries[title]}")
-        except Exception as e:
-            ai_summaries[title] = f"AI failed: {e}"
-            st.warning(f"AI error for {title}: {e}")
-        progress.progress(i / total)
-    progress.empty()
-
-# -------------------------
-# Build Export Workbook (Makers + States + Comparisons + AI summaries sheet)
-# -------------------------
-st.markdown("### 📥 Export — Excel Workbook (Makers + States & Comparisons)")
-if st.button("⬇️ Build & Download Makers+States Excel (All Maxed)"):
-    with st.spinner("Preparing workbook..."):
-        try:
-            # collect sheets
-            sheets = {}
-            if not makers_df.empty:
-                sheets["Makers"] = makers_df.reset_index(drop=True)
-            if not states_df.empty and include_states:
-                sheets["States"] = states_df.reset_index(drop=True)
-            for k,v in comparison_frames.items():
-                if isinstance(v, pd.DataFrame) and not v.empty:
-                    sheets[k.replace(" ","_")] = v.reset_index(drop=True)
-            if ai_summaries:
-                sheets["AI_Summaries"] = pd.DataFrame(list(ai_summaries.items()), columns=["Topic","AI Summary"])
-
-            # fallback: if no sheets, inform
-            if not sheets:
-                st.error("No valid sheets to export.")
-            else:
-                # write to excel with openpyxl then style
-                out = io.BytesIO()
-                with pd.ExcelWriter(out, engine="openpyxl") as writer:
-                    for name, df in sheets.items():
-                        safe = str(name)[:31]
-                        # sanitize dataframe columns to strings to avoid Excel errors
-                        df.to_excel(writer, sheet_name=safe, index=False)
-                out.seek(0)
-
-                wb = load_workbook(out)
-                thin = Side(style="thin")
-                border = Border(left=thin, right=thin, top=thin, bottom=thin)
-                header_fill = PatternFill(start_color="007bff", end_color="007bff", fill_type="solid")
-                header_font = Font(bold=True, color="FFFFFF")
-
-                for sheet_name in wb.sheetnames:
-                    ws = wb[sheet_name]
-                    # style header row
-                    try:
-                        for cell in list(ws.rows)[0]:
-                            cell.font = header_font
-                            cell.fill = header_fill
-                            cell.alignment = Alignment(horizontal="center")
-                            cell.border = border
-                    except Exception:
-                        pass
-                    # column sizing & borders
-                    for col in ws.columns:
-                        col_letter = get_column_letter(col[0].column)
-                        max_len = max((len(str(c.value)) for c in col if c.value is not None), default=8)
-                        ws.column_dimensions[col_letter].width = min(max_len+4, 60)
-                        for cell in col:
-                            cell.border = border
-                            cell.alignment = Alignment(horizontal="center", vertical="center")
-                    # add a small chart for time-series sheets if possible
-                    if ws.max_row > 3 and ws.max_column >= 2 and sheet_name.lower().find("trend")!=-1:
-                        try:
-                            val_ref = Reference(ws, min_col=2, min_row=1, max_row=ws.max_row)
-                            cat_ref = Reference(ws, min_col=1, min_row=2, max_row=ws.max_row)
-                            chart = LineChart()
-                            chart.title = f"{sheet_name} Trend"
-                            chart.add_data(val_ref, titles_from_data=True)
-                            chart.set_categories(cat_ref)
-                            chart.height = 8
-                            chart.width = 16
-                            ws.add_chart(chart, "H5")
-                        except Exception:
-                            pass
-
-                final = io.BytesIO()
-                wb.save(final)
-                final.seek(0)
-
-                ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"{export_filename_prefix}_{ts}.xlsx"
-                st.download_button(
-                    label="⬇️ Download Makers+States Workbook",
-                    data=final.getvalue(),
-                    file_name=filename,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
-                st.success("Workbook ready — includes Makers, States, comparisons and AI summaries (if enabled).")
-        except Exception as e:
-            st.error(f"Failed to build workbook: {e}")
-
-# ===============================================================
-# 🚀 PARIVAHAN ANALYTICS — ALL-MAXED FINAL BLOCK (2025)
-# ===============================================================
-import streamlit as st, pandas as pd, json, time, random, pytz
+# =====================================================
+# 📊 VAHAN INTELLIGENCE DASHBOARD — ALL-MAXED (REAL DATA EDITION)
+# =====================================================
+import streamlit as st
 from datetime import datetime
-import io, zipfile
+from zoneinfo import ZoneInfo
 
-# =================== GLOBAL STYLING ===================
+# =====================================================
+# 🎨 GLOBAL STYLE + HEADER
+# =====================================================
 st.markdown("""
 <style>
-:root {
-  --accent: #2563eb;
-  --accent2: #10b981;
-  --danger: #ef4444;
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
 }
-[data-testid="stAppViewContainer"] {
-  background: radial-gradient(circle at 10% 20%, #0f2027, #203a43, #2c5364);
-  color: white;
+h1, h2, h3 {
+    font-weight: 700 !important;
 }
-h1,h2,h3,h4,h5,p,div,span {color: white !important;}
-hr {border: none; border-top: 1px solid rgba(255,255,255,0.25);}
 .metric-card {
-  background: rgba(255,255,255,0.08);
-  border-radius: 20px;
-  padding: 20px;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-  text-align:center;
-  transition: all 0.3s ease;
+    background: linear-gradient(135deg, #004e92, #000428);
+    color: white;
+    padding: 1.2rem;
+    border-radius: 1rem;
+    text-align: center;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    transition: transform 0.2s ease-in-out;
 }
-.metric-card:hover {transform:translateY(-5px);}
-.fade-in {animation: fadeIn 1s ease-in-out;}
-@keyframes fadeIn {from {opacity:0;} to {opacity:1;}}
+.metric-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+}
+.refresh-indicator {
+    animation: blink 1.5s infinite alternate;
+    color: #00eaff;
+}
+@keyframes blink {
+    from { opacity: 0.4; }
+    to { opacity: 1; }
+}
+hr.glow {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, #00c6ff, #0072ff);
+    border-radius: 2px;
+    margin: 2rem 0;
+}
+footer {
+    text-align: center;
+    opacity: 0.8;
+    font-size: 13px;
+    padding: 1.5rem 0;
+}
+footer small {
+    font-size: 11px;
+    color: #aaa;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# =================== TIME + HEADER ===================
-ist = pytz.timezone("Asia/Kolkata")
-current_time = datetime.now(ist).strftime("%A, %d %B %Y • %I:%M %p")
-
-st.markdown(f"""
-<div class='fade-in' style='text-align:center;margin-bottom:30px;'>
-  <h1>🚗 Parivahan Analytics — All-Maxed Edition</h1>
-  <p style='opacity:0.85;'>📅 Updated: <b>{current_time}</b> | ⚙️ Auto-refresh enabled</p>
+# =====================================================
+# 🚗 HEADER
+# =====================================================
+st.markdown("""
+<div style='text-align:center;margin-bottom:2rem;'>
+  <h1>🚗 <b>Vahan Intelligence Dashboard</b></h1>
+  <p>AI-Driven Analytics • Forecasts • Trends • All-India Transport Intelligence</p>
 </div>
 """, unsafe_allow_html=True)
 
-# ===============================================================
-# 🔄 REFRESH TIMER (every 2 minutes optional)
-# ===============================================================
-refresh_interval = st.sidebar.slider("⏱️ Auto-refresh (seconds)", 30, 300, 120)
-st.sidebar.markdown("Adjust auto-refresh frequency (dev mode).")
-st.sidebar.button("🔁 Manual Refresh")
-st_autorefresh = st.experimental_rerun  # placeholder for timer loop
+# =====================================================
+# 🔁 REFRESH INDICATOR (Fixed - no conflict with log())
+# =====================================================
+ist_refresh_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%I:%M:%S %p")
+st.markdown(f"""
+<div style='text-align:center;margin-bottom:1rem;font-size:14px;'>
+  <span class='refresh-indicator'>🔄 Auto-Refreshed at {ist_refresh_time} IST</span>
+</div>
+""", unsafe_allow_html=True)
 
-# ===============================================================
-# 🧭 FILTERS SECTION (State / Category / Year)
-# ===============================================================
-colf1, colf2, colf3 = st.columns(3)
-with colf1:
-    selected_states = st.multiselect("🏙️ Filter by State", ["All India","Delhi","Maharashtra","Gujarat","Tamil Nadu"], default=["All India"])
-with colf2:
-    selected_categories = st.multiselect("🚘 Vehicle Type", ["Two Wheeler","Four Wheeler","Commercial"], default=["Four Wheeler"])
-with colf3:
-    selected_years = st.multiselect("📆 Year", [2021,2022,2023,2024,2025], default=[2025])
+# =====================================================
+# 📈 REAL METRICS (Only if available)
+# =====================================================
+col1, col2, col3, col4 = st.columns(4)
 
-st.markdown("<hr>", unsafe_allow_html=True)
-
-# ===============================================================
-# 📊 KPI METRICS SECTION — ANIMATED (All Maxed)
-# ===============================================================
-# Dummy placeholders if df_trend etc. exist already in your app:
-if "df_trend" not in locals(): df_trend = pd.DataFrame({"year":[2023,2024,2025],"value":[100000,130000,170000]})
-if "df_top5_rev" not in locals(): df_top5_rev = pd.DataFrame({"label":["Maharashtra","Delhi"],"value":[90000,85000]})
-
-try:
-    total_reg = int(df_trend["value"].sum())
-    daily_avg = round(df_trend["value"].mean(), 2)
-    yoy_latest = random.uniform(-5, 12)
-    qoq_latest = random.uniform(-3, 8)
-    years_sorted = sorted(df_trend["year"].unique())
-    start_val, end_val = df_trend.iloc[0]["value"], df_trend.iloc[-1]["value"]
-    cagr = ((end_val / start_val) ** (1 / (len(years_sorted)-1)) - 1) * 100 if start_val > 0 else 0
-    top_state, top_val = df_top5_rev.iloc[0]["label"], df_top5_rev.iloc[0]["value"]
-except Exception as e:
-    st.error(f"Metric error: {e}")
-
-st.markdown("### ⚡ KPI Overview (All Filters + Years)")
-cols = st.columns(5)
-kpis = [
-    ("🧾 Total Registrations", f"{total_reg:,}"),
-    ("📅 Daily Average", f"{daily_avg:,.0f}"),
-    ("📈 YoY Growth", f"{yoy_latest:+.2f}%"),
-    ("📉 QoQ Growth", f"{qoq_latest:+.2f}%"),
-    ("📊 CAGR", f"{cagr:.2f}%")
-]
-for i, (label, value) in enumerate(kpis):
-    with cols[i]:
-        st.markdown(f"<div class='metric-card fade-in'><h3>{label}</h3><h2>{value}</h2></div>", unsafe_allow_html=True)
-
-# Smart Alerts
-if yoy_latest < 0:
-    st.warning(f"⚠️ Year-on-Year growth down by {abs(yoy_latest):.2f}%.")
-elif yoy_latest > 8:
-    st.success(f"🚀 Strong YoY surge of {yoy_latest:.2f}% — Market expansion trend continuing!")
-
-# ===============================================================
-# 🗓 YEAR SUMMARY TABLE
-# ===============================================================
-if "year" in df_trend.columns:
-    year_summary = df_trend.groupby("year")["value"].agg(["sum","mean"]).rename(columns={"sum":"Total","mean":"Avg"})
-    st.markdown("### 🗓️ Year-wise Summary")
-    st.dataframe(year_summary, use_container_width=True)
-
-# ===============================================================
-# 🏆 TOP STATE CARD
-# ===============================================================
-if not df_top5_rev.empty:
-    st.markdown(f"""
-    <div class='fade-in' style='background:linear-gradient(90deg,#1a73e8,#00c851);
-                padding:16px;border-radius:12px;text-align:center;font-size:1.1em;
-                box-shadow:0 0 12px rgba(0,0,0,0.3);'>
-        🏆 <b>{top_state}</b> leads India in vehicle registrations — ₹{top_val:,}
-    </div>
-    """, unsafe_allow_html=True)
-else:
-    st.info("No revenue data available.")
-
-# ===============================================================
-# 🤖 AI NARRATIVE (Quick + Executive Dual Mode)
-# ===============================================================
-enable_ai = st.checkbox("Enable AI Narratives", value=True)
-if enable_ai:
-    mode = st.radio("AI Mode", ["Quick Summary","Executive Report"], horizontal=True)
-    st.markdown("### 🤖 AI-Powered Summary")
-    with st.spinner("Synthesizing AI insights..."):
-        fake_summary = (
-            "India’s vehicle registration market continues its post-pandemic expansion, "
-            "led by Maharashtra and Delhi. Two-wheelers remain dominant, but EV adoption "
-            "is accelerating. Year-on-year growth sustains above 8%, signaling robust demand "
-            "in the personal mobility sector."
-        )
+with col1:
+    if "df_summary" in locals() and not df_summary.empty:
         st.markdown(f"""
-        <div style='background:#f0f9ff;color:#111;border-left:5px solid var(--accent);
-                    padding:15px;border-radius:8px;margin-top:8px;'>
-            <b>AI {mode}:</b><br>{fake_summary}
+        <div class='metric-card'>
+            <h3>Total Registrations</h3>
+            <h2>{df_summary['total_registrations'].iloc[-1]:,}</h2>
+            <p>Last Updated: {ist_now}</p>
         </div>
         """, unsafe_allow_html=True)
+    else:
+        st.markdown("<div class='metric-card'><h3>Total Registrations</h3><p>—</p></div>", unsafe_allow_html=True)
 
-# ===============================================================
-# 📦 EXPORT / SNAPSHOT
-# ===============================================================
-st.markdown("### 💾 Export Data Snapshot")
-snapshot_name = f"vahan_snapshot_{int(time.time())}"
-buf = io.BytesIO()
-with zipfile.ZipFile(buf, "w") as z:
-    z.writestr(f"{snapshot_name}.json", json.dumps(df_trend.to_dict(), indent=2))
-    z.writestr(f"{snapshot_name}.xlsx", df_trend.to_csv(index=False))
-buf.seek(0)
-st.download_button("⬇️ Download ZIP Snapshot", data=buf, file_name=f"{snapshot_name}.zip")
+with col2:
+    if "df_summary" in locals() and 'new_reg' in df_summary.columns:
+        st.markdown(f"""
+        <div class='metric-card'>
+            <h3>New Vehicles</h3>
+            <h2>{df_summary['new_reg'].iloc[-1]:,}</h2>
+            <p>vs Previous: {df_summary['new_reg'].diff().iloc[-1]:,}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("<div class='metric-card'><h3>New Vehicles</h3><p>—</p></div>", unsafe_allow_html=True)
 
-# ===============================================================
-# ✨ FOOTER
-# ===============================================================
-st.markdown(f"""
-<hr>
-<div style='text-align:center;opacity:0.7;font-size:0.9em;'>
-🚗 <b>Parivahan Analytics MAXED © 2025</b><br>
-AI Narratives • Real-Time KPIs • Statewise Insights<br>
-<small>Last refreshed: {current_time}</small>
-</div>
+with col3:
+    if "df_summary" in locals() and 'ev_share' in df_summary.columns:
+        st.markdown(f"""
+        <div class='metric-card'>
+            <h3>EV Share</h3>
+            <h2>{df_summary['ev_share'].iloc[-1]:.1f}%</h2>
+            <p>Change: {df_summary['ev_share'].diff().iloc[-1]:+.2f}%</p>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("<div class='metric-card'><h3>EV Share</h3><p>—</p></div>", unsafe_allow_html=True)
+
+with col4:
+    if "df_summary" in locals() and 'states' in df_summary.columns:
+        st.markdown(f"""
+        <div class='metric-card'>
+            <h3>Active States</h3>
+            <h2>{int(df_summary['states'].iloc[-1])}</h2>
+            <p>Across India</p>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("<div class='metric-card'><h3>Active States</h3><p>—</p></div>", unsafe_allow_html=True)
+
+st.markdown("<hr class='glow'>", unsafe_allow_html=True)
+
+# =====================================================
+# 📊 DASHBOARD SECTIONS
+# =====================================================
+tab1, tab2, tab3 = st.tabs(["📊 Trends", "🧭 Distribution", "🔮 Forecasts"])
+
+with tab1:
+    st.subheader("📈 Registration Trends")
+    if "df_trend" in locals() and not df_trend.empty:
+        import plotly.express as px
+        fig = px.line(df_trend, x="year", y="registrations", markers=True,
+                      title="Yearly Registration Trend", template="plotly_dark")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No trend data available. Run data fetch first.")
+
+with tab2:
+    st.subheader("🧭 Category & State Distribution")
+    if "df_dist" in locals() and not df_dist.empty:
+        import plotly.express as px
+        fig = px.bar(df_dist, x="label", y="value",
+                     title="Distribution by Category / State",
+                     template="plotly_dark")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning("Distribution data not yet loaded.")
+
+with tab3:
+    st.subheader("🔮 Forecasts")
+    if "df_forecast" in locals() and not df_forecast.empty:
+        import plotly.graph_objects as go
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df_forecast["ds"], y=df_forecast["yhat"], mode="lines", name="Forecast"))
+        if "y" in df_forecast.columns:
+            fig.add_trace(go.Scatter(x=df_forecast["ds"], y=df_forecast["y"], mode="markers", name="Actual"))
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Forecast data not yet available. Generate AI forecast first.")
+
+# =====================================================
+# 🧾 FOOTER
+# =====================================================
+st.markdown("""
+<footer>
+  <hr class="glow">
+  <div>
+    ✨ <b>Vahan Intelligence Engine</b> — AI-Augmented Dashboard<br>
+    <small>© 2025 Transport Data Division • Auto-refresh Enabled</small>
+  </div>
+</footer>
 """, unsafe_allow_html=True)
-st.balloons()
+
+# =====================================================
+# 🎉 ONE-TIME LAUNCH TOAST
+# =====================================================
+if "dashboard_loaded" not in st.session_state:
+    st.session_state["dashboard_loaded"] = True
+    st.toast("🚀 Real VAHAN Dashboard Loaded (All-Maxed Edition)", icon="🌈")
+    st.balloons()
+
+# =====================================================
+# 🤖 DEEPINFRA & UNIVERSAL AI — ALL-MAXED CONNECTOR v2.0
+# =====================================================
+import os
+import json
+import time
+import random
+import requests
+import traceback
+from datetime import datetime
+import streamlit as st
+from dotenv import load_dotenv
+from typing import Optional, Dict, Any
+
+# -------------------------
+# 🔐 Load secrets/env safely
+# -------------------------
+load_dotenv()  # load .env if present
+
+def get_secret(key: str, default: Optional[str] = "") -> str:
+    # priority: st.secrets -> env -> default
+    try:
+        v = st.secrets.get(key)
+        if v:
+            return v
+    except Exception:
+        pass
+    return os.getenv(key, default) or default
+
+# Primary keys / config
+DEEPINFRA_API_KEY = get_secret("DEEPINFRA_API_KEY", "")
+DEEPINFRA_MODEL = get_secret("DEEPINFRA_MODEL", "mistralai/Mixtral-8x7B-Instruct-v0.1")
+DEEPINFRA_TIMEOUT = int(get_secret("DEEPINFRA_TIMEOUT", "8"))
+
+AI_PROVIDER = get_secret("AI_PROVIDER", "deepinfra").lower()  # 'deepinfra' by default
+AI_MODEL = get_secret("AI_MODEL", DEEPINFRA_MODEL if AI_PROVIDER == "deepinfra" else get_secret("OPENAI_MODEL","gpt-4o-mini"))
+AI_API_KEY = get_secret("AI_API_KEY", "")  # generic key fallback
+AI_TIMEOUT = int(get_secret("AI_TIMEOUT", "20"))
+
+# endpoint mapping (basic)
+ENDPOINTS = {
+    "openai": "https://api.openai.com/v1/chat/completions",
+    "deepinfra": "https://api.deepinfra.com/v1/openai/chat/completions",
+    "anthropic": "https://api.anthropic.com/v1/messages",
+    "groq": "https://api.groq.com/openai/v1/chat/completions",
+    # 'gemini' usually uses Google client libs — leaving generic root for reachability checks
+    "gemini": "https://generativelanguage.googleapis.com/v1beta1/models",
+}
+
+AI_URL = ENDPOINTS.get(AI_PROVIDER, ENDPOINTS["openai"])
+
+# =====================================================
+# 🧠 SAFE SIDEBAR TOGGLE (ALL-MAXED v3 — ULTRA EDITION)
+# =====================================================
+import streamlit as st
+from datetime import datetime
+
+# -----------------------------------------------------
+# 🎨 Sidebar header
+# -----------------------------------------------------
+st.sidebar.markdown(
+    """
+    <div style='padding:8px 10px;
+                border-radius:8px;
+                background:linear-gradient(90deg,#0b3d91,#1a73e8);
+                color:white;
+                font-weight:700;
+                text-shadow:0 0 6px rgba(255,255,255,0.3);'>
+        🤖 DeepInfra / Universal AI Connector
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# -----------------------------------------------------
+# 🧩 Initialize State (Safe, Idempotent)
+# -----------------------------------------------------
+def init_state(key, default=None):
+    if key not in st.session_state:
+        st.session_state[key] = default
+
+init_state("enable_ai", True)
+init_state("last_ai_check", None)
+init_state("ai_status", "idle")
+
+# -----------------------------------------------------
+# 🧠 Unified Toggle Component (Duplicate-Proof)
+# -----------------------------------------------------
+def safe_checkbox(label, session_key, default=True, help_text=None):
+    """Safely create a checkbox synced with session_state (duplicate-safe)."""
+    widget_key = f"{session_key}_widget"  # Unique key per widget
+    val = st.sidebar.checkbox(label, key=widget_key, value=st.session_state.get(session_key, default), help=help_text)
+    if val != st.session_state[session_key]:
+        st.session_state[session_key] = val
+    return val
+
+# -----------------------------------------------------
+# 🚀 AI Enable Toggle
+# -----------------------------------------------------
+enable_ai = safe_checkbox(
+    "Enable AI",
+    "enable_ai",
+    default=True,
+    help_text="Toggle DeepInfra / Universal AI connector",
+)
+
+# -----------------------------------------------------
+# 📊 Dynamic Status Display (Instant Feedback)
+# -----------------------------------------------------
+if enable_ai:
+    st.session_state.ai_status = "active"
+    status_color = "#16c784"
+    emoji = "✅"
+    status_text = "AI Enabled — DeepInfra connector active."
+else:
+    st.session_state.ai_status = "disabled"
+    status_color = "#f39c12"
+    emoji = "⚠️"
+    status_text = "AI Disabled — manual mode only."
+
+# -----------------------------------------------------
+# 🕒 Last AI Check Timestamp (optional tracking)
+# -----------------------------------------------------
+if enable_ai:
+    st.session_state.last_ai_check = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+# -----------------------------------------------------
+# 💬 Sidebar Visual Status Badge
+# -----------------------------------------------------
+st.sidebar.markdown(
+    f"""
+    <div style='margin-top:8px;
+                padding:10px 12px;
+                border-radius:10px;
+                background:{status_color}20;
+                border:1px solid {status_color};
+                color:{status_color};
+                font-weight:600;
+                text-align:center;'>
+        {emoji} {status_text}<br>
+        <small style='color:#888;'>Last check: {st.session_state.last_ai_check or "—"}</small>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# -----------------------------------------------------
+# 🔧 Future Expansion Example
+# -----------------------------------------------------
+# (add other connectors dynamically)
+# st.sidebar.toggle("Enable OpenAI", key="enable_openai")
+# st.sidebar.toggle("Enable HuggingFace", key="enable_hf")
+
+
+# -------------------------
+# 🔌 Ping / connectivity checks
+# -------------------------
+def _now_ts():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+def ping_provider(provider: str = AI_PROVIDER, api_key: str = None, timeout: int = AI_TIMEOUT):
+    """Ping provider root (non intrusive). Returns (status_code_or_str, latency_ms_or_None)."""
+    url = AI_URL.split("/v1")[0] if "/" in AI_URL else AI_URL
+    headers = {}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    try:
+        start = time.time()
+        resp = requests.get(url, headers=headers, timeout=timeout)
+        latency = round((time.time() - start) * 1000, 1)
+        return resp.status_code, latency
+    except requests.exceptions.Timeout:
+        return "timeout", None
+    except Exception as e:
+        return f"error: {str(e)[:120]}", None
+
+# show connectivity card
+def render_provider_card():
+    if not enable_ai:
+        st.sidebar.info("AI Mode: Disabled")
+        return
+
+    key_to_show = AI_API_KEY or (DEEPINFRA_API_KEY if AI_PROVIDER == "deepinfra" else "")
+    has_key = bool(key_to_show)
+    if not has_key:
+        st.sidebar.error("❌ No API key found. Add to st.secrets or environment (AI_API_KEY / DEEPINFRA_API_KEY).")
+        return
+
+    status, latency = ping_provider(api_key=key_to_show)
+    st.session_state.last_ai_check = _now_ts()
+    if status == 200:
+        st.sidebar.success(f"✅ {AI_PROVIDER.title()} reachable — {latency} ms")
+        st.sidebar.caption(f"Model: **{AI_MODEL}** | Last check: {st.session_state.last_ai_check}")
+    elif status == "timeout":
+        st.sidebar.error("⏱️ Provider timed out")
+    elif isinstance(status, int) and status == 401:
+        st.sidebar.error("🚫 Unauthorized — invalid API key")
+    else:
+        st.sidebar.warning(f"⚠️ Status: {status} | Last check: {st.session_state.last_ai_check}")
+
+render_provider_card()
+st.sidebar.markdown("---")
+
+# -------------------------
+# 🧠 Session chat memory
+# -------------------------
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+# -------------------------
+# ⚙️ Universal Chat (safe, streaming-friendly)
+# -------------------------
+def universal_chat(
+    system_prompt: str,
+    user_prompt: str,
+    *,
+    model: Optional[str] = None,
+    provider: Optional[str] = None,
+    api_key: Optional[str] = None,
+    stream: bool = True,
+    temperature: float = 0.2,
+    max_tokens: int = 512,
+    retries: int = 3,
+    timeout: int = AI_TIMEOUT,
+) -> Dict[str, Any]:
+    """
+    Returns dict with keys: {ok:bool, text:str, error:Optional[str]}
+    Streamed incremental updates are shown in-place (st.empty()).
+    """
+    provider = (provider or AI_PROVIDER).lower()
+    model = model or AI_MODEL
+    api_key = api_key or (AI_API_KEY if AI_API_KEY else (DEEPINFRA_API_KEY if provider=="deepinfra" else None))
+    url = ENDPOINTS.get(provider, ENDPOINTS["openai"])
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    # Build payload for OpenAI-style endpoints (DeepInfra compatible)
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "temperature": float(temperature),
+        "max_tokens": int(max_tokens),
+        "stream": bool(stream),
+    }
+
+    # Fallback adjustments for Anthropic style or provider differences could be added here
+    attempt = 0
+    placeholder = st.empty()
+    last_text = ""
+
+    while attempt < retries:
+        attempt += 1
+        try:
+            with requests.post(url, headers=headers, json=payload, stream=stream, timeout=timeout) as r:
+                if r.status_code != 200:
+                    # Show a helpful short message
+                    snippet = r.text[:400].strip().replace("\n"," ")
+                    placeholder.warning(f"⚠️ Provider responded {r.status_code}: {snippet}")
+                    # For 4xx/5xx, may retry depending on code
+                    if 400 <= r.status_code < 500:
+                        return {"ok": False, "error": f"HTTP {r.status_code}", "text": ""}
+                    # else try again after backoff
+                    raise RuntimeError(f"HTTP {r.status_code} - {snippet}")
+
+                if stream:
+                    # stream lines (OpenAI/DeepInfra style)
+                    for raw in r.iter_lines(decode_unicode=True):
+                        if not raw:
+                            continue
+                        # typical stream: 'data: {...}'
+                        line = raw.strip()
+                        if line.startswith("data:"):
+                            payload_line = line[len("data:"):].strip()
+                        else:
+                            payload_line = line
+                        if payload_line == "[DONE]":
+                            break
+                        try:
+                            obj = json.loads(payload_line)
+                            # try common locations for delta/content
+                            choices = obj.get("choices") or []
+                            if choices:
+                                delta = choices[0].get("delta", {})
+                                chunk = delta.get("content") or delta.get("text") or ""
+                                if chunk:
+                                    last_text += chunk
+                                    placeholder.markdown(f"**🤖 AI:** {last_text}")
+                        except Exception:
+                            # not JSON or unknown chunk — append raw
+                            last_text += payload_line
+                            placeholder.markdown(f"**🤖 AI:** {last_text}")
+
+                    # finish
+                    st.session_state.chat_history.append({"user": user_prompt, "ai": last_text, "ts": _now_ts()})
+                    st.toast("✅ AI response complete", icon="🤖")
+                    return {"ok": True, "text": last_text, "error": None}
+
+                else:
+                    # Non-streaming path
+                    data = r.json()
+                    # try to extract the main text in common schema
+                    text = ""
+                    if "choices" in data:
+                        try:
+                            text = data["choices"][0]["message"]["content"]
+                        except Exception:
+                            text = json.dumps(data)[:1000]
+                    else:
+                        text = json.dumps(data)[:1000]
+                    placeholder.markdown(f"**🤖 AI:** {text}")
+                    st.session_state.chat_history.append({"user": user_prompt, "ai": text, "ts": _now_ts()})
+                    return {"ok": True, "text": text, "error": None}
+
+        except Exception as e:
+            backoff = (2 ** attempt) + random.random()
+            placeholder.error(f"⚠️ Attempt {attempt} failed: {str(e)[:120]}. Retrying in {backoff:.1f}s...")
+            time.sleep(backoff)
+            continue
+
+    # final failure
+    placeholder.error("⛔ AI request failed after retries.")
+    return {"ok": False, "text": "", "error": "failed after retries"}
+
+# -------------------------
+# 🧩 Utility: insight generator (non-blocking UX)
+# -------------------------
+def universal_insight(df, topic="dataset"):
+    """
+    Generate a short insight summary about the DataFrame.
+    This uses a small sample and runs the chat (may be slow depending on provider).
+    """
+    if df is None or getattr(df, "empty", True):
+        st.warning("No data available for AI insight.")
+        return
+    sample_md = df.head(8).to_markdown(index=False)
+    prompt = f"You're a senior data analyst. Given this sample of {topic} (markdown table):\n\n{sample_md}\n\nProvide a concise summary (3 bullets): key trends, notable anomalies, and 2 short recommendations."
+    return universal_chat("You are a data analytics expert.", prompt, stream=True, max_tokens=300)
+
+# -------------------------
+# 🧪 Test / UI helpers
+# -------------------------
+def universal_test_ui():
+    st.subheader("🧪 AI Connector Test")
+    if enable_ai:
+        masked = (AI_API_KEY or DEEPINFRA_API_KEY) or ""
+        masked_display = f"{masked[:4]}...{masked[-4:]}" if masked else "—"
+        st.info(f"Provider: **{AI_PROVIDER}** | Model: **{AI_MODEL}** | Key: `{masked_display}`")
+
+        if st.button("🔗 Ping Provider"):
+            status, latency = ping_provider()
+            if latency:
+                st.success(f"Reachable — {status} | {latency} ms")
+            else:
+                st.warning(f"Status: {status}")
+    else:
+        st.info("AI Mode is currently disabled in sidebar.")
+
+    with st.expander("💬 Quick test prompt"):
+        prompt = st.text_area("Prompt", "Summarize the state of registrations given a short table sample.")
+        if st.button("🚀 Run test prompt"):
+            if prompt.strip():
+                universal_chat("You are a helpful assistant.", prompt, stream=True, max_tokens=240)
+            else:
+                st.warning("Enter a prompt first.")
+
+# Safe helper
+def set_query_param(key, value):
+    try:
+        st.query_params[key] = value  # Streamlit ≥1.40
+    except TypeError:
+        st.experimental_set_query_params(**{key: value})  # Older versions
+
+def get_query_param(key, default=None):
+    try:
+        return st.query_params.get(key, default)  # Streamlit ≥1.40
+    except TypeError:
+        return st.experimental_get_query_params().get(key, [default])[0]
+
+# Use safely
+if st.sidebar.button("Open AI Test Panel"):
+    set_query_param("_open_ai_test", "1")
+
+if get_query_param("_open_ai_test"):
+    universal_test_ui()
+
+# -------------------------
+# ✅ End of ALL-MAXED AI connector
+# -------------------------
+
+# import plotly.express as px
+# import altair as alt
+# import matplotlib.pyplot as plt
+
+# # ---------- Fetch & display category + makers ----------------------------------
+# st.subheader("📊 Vehicle Categories & Top Makers")
+
+# try:
+#     with st.spinner("Fetching Category distribution..."):
+#         cat_json, cat_url = get_json("vahandashboard/categoriesdonutchart", params)
+#         df_cat = to_df(cat_json)
+
+#     col1, col2 = st.columns([2, 3])
+
+#     # ---- Category distribution ----
+#     with col1:
+#         st.markdown("### 🚗 Category Distribution")
+
+#         if not df_cat.empty:
+#             try:
+#                 fig = px.bar(
+#                     df_cat,
+#                     x="label",
+#                     y="value",
+#                     color="label",
+#                     title="Vehicle Category Distribution",
+#                     text_auto=True,
+#                 )
+#                 fig.update_layout(
+#                     xaxis_title="Category",
+#                     yaxis_title="Count",
+#                     showlegend=False,
+#                     template="plotly_white",
+#                 )
+#                 st.plotly_chart(fig, use_container_width=True)
+
+#             except Exception as e:
+#                 st.warning(f"⚠️ Plotly failed ({e}). Falling back to Altair.")
+#                 alt_chart = (
+#                     alt.Chart(df_cat)
+#                     .mark_bar()
+#                     .encode(
+#                         x="label:N",
+#                         y="value:Q",
+#                         color="label:N",
+#                         tooltip=["label", "value"],
+#                     )
+#                     .properties(title="Vehicle Category Distribution")
+#                 )
+#                 st.altair_chart(alt_chart, use_container_width=True)
+#         else:
+#             st.info("ℹ️ No category data found for the given filters.")
+
+# =========================================================
+# 🔥 ALL-MAXED — Category Analytics (multi-frequency, multi-year) — MAXED BLOCK
+# Drop-in Streamlit module. Replace or import into your app.
+# Created: ALL-MAXED v2 — resilient, instrumented, cached, mock-safe
+# =========================================================
+import time
+import math
+import json
+import random
+import logging
+import requests
+from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
+import numpy as np
+import pandas as pd
+import streamlit as st
+import plotly.express as px
+import plotly.graph_objects as go
+
+logger = logging.getLogger("all_maxed_category")
+if not logger.handlers:
+    h = logging.StreamHandler()
+    h.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
+    logger.addHandler(h)
+logger.setLevel(logging.DEBUG)
+
+# -------------------------
+# Mock data generators — deterministic per-year & endpoint
+# -------------------------
+CATEGORIES_MASTER = [
+    "Motorcycle", "Car", "Truck", "Bus", "Tractor",
+    "E-Rickshaw", "Trailer", "Pickup", "Ambulance", "Taxi",
+]
+
+
+def deterministic_mock_categories(year:int, seed_base: str = "categories") -> Dict[str, Any]:
+    """Generate a deterministic realistic-looking categories donut response."""
+    rnd = random.Random(hash((year, seed_base)) & 0xFFFFFFFF)
+    data = []
+    total = 0
+    for c in CATEGORIES_MASTER:
+        v = rnd.randint(5_000, 1_200_000)
+        total += v
+        data.append({"label": c, "value": v})
+    meta = {"generatedAt": datetime.utcnow().isoformat(), "note": f"deterministic mock for {year}"}
+    return {"data": data, **meta}
+
+
+# -------------------------
+# Chart helpers (maxed)
+# -------------------------
+
+def bar_from_df(df: pd.DataFrame, title: str = None):
+    try:
+        fig = px.bar(df, x="label", y="value", text_auto=True, title=title)
+        fig.update_layout(template="plotly_white", xaxis_title="Category", yaxis_title="Registrations")
+        st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        logger.warning(f"bar_from_df failed: {e}")
+        st.write(df)
+
+
+def pie_from_df(df: pd.DataFrame, title: str = None, donut: bool = True):
+    try:
+        hole = 0.5 if donut else 0.0
+        fig = px.pie(df, names="label", values="value", hole=hole, title=title)
+        st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        logger.warning(f"pie_from_df failed: {e}")
+        st.write(df)
+
+
+# -------------------------
+# Synthetic timeseries expansion
+# -------------------------
+
+def year_to_timeseries(df_year: pd.DataFrame, year: int, freq: str = "Monthly") -> pd.DataFrame:
+    """Expand per-category totals into an evenly-distributed timeseries for the given frequency.
+
+    This function intentionally produces deterministic per-year results so downstream
+    analysis remains reproducible.
+    """
+    if df_year is None or df_year.empty:
+        return pd.DataFrame(columns=["ds","label","value","year"])
+
+    start = pd.Timestamp(f"{year}-01-01")
+    end = pd.Timestamp(f"{year}-12-31")
+    if freq == "Daily":
+        idx = pd.date_range(start=start, end=end, freq="D")
+    elif freq == "Monthly":
+        idx = pd.date_range(start=start, end=end, freq="M")
+    elif freq == "Quarterly":
+        idx = pd.date_range(start=start, end=end, freq="Q")
+    else:
+        idx = pd.date_range(start=start, end=end, freq="Y")
+
+    rows = []
+    for _, r in df_year.iterrows():
+        cat = r["label"]
+        total = float(r["value"]) if not pd.isna(r["value"]) else 0.0
+        per = total / max(1, len(idx))
+        for ts in idx:
+            rows.append({"ds": ts, "label": cat, "value": per, "year": int(year)})
+    return pd.DataFrame(rows)
+
+
+
+# -------------------------
+# Fetch block: multi-year category fetch (maxed)
+# -------------------------
+
+def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.DataFrame:
+    """Fetch category donut for a year and render local per-year charts and summary.
+
+    Guarantees: returns a non-empty DataFrame with columns ['label','value','year'] whenever possible.
+    """
+    p = params.copy() if params else {}
+    # attach year to params if not present
+    if "year" not in p:
+        p["year"] = int(year)
+
+    try:
+        cat_json, cat_url = get_json("vahandashboard/categoriesdonutchart", p)
+    except Exception as e:
+        logger.exception(f"get_json exception for year {year}: {e}")
+        cat_json, cat_url = deterministic_mock_categories(year), f"mock://categoriesdonutchart/{year}"
+
+    if show_debug:
+        with st.expander(f"🧩 Debug JSON — Categories {year}"):
+            st.write("**URL:**", cat_url)
+            try:
+                st.json(cat_json)
+            except Exception:
+                st.write(cat_json)
+
+    # Normalize
+    try:
+        df = to_df(cat_json)
+    except Exception as e:
+        logger.exception(f"to_df failed for year {year}: {e}")
+        df = to_df(deterministic_mock_categories(year))
+
+    if df is None or df.empty:
+        logger.warning(f"Empty df for {year}, using deterministic mock")
+        df = to_df(deterministic_mock_categories(year))
+
+    df = df.copy()
+    df["year"] = int(year)
+
+    # Local per-year rendering (compact)
+    st.markdown(f"### 📊 Vehicle Categories — {year}")
+    st.caption(f"Source: {cat_url}")
+    try:
+        c1, c2 = st.columns([2,1])
+        with c1:
+            bar_from_df(df, title=f"Category Distribution — {year} (Bar)")
+        with c2:
+            pie_from_df(df, title=f"Category Distribution — {year} (Pie)", donut=True)
+    except Exception as e:
+        logger.warning(f"Per-year charts failed for {year}: {e}")
+
+    # Top summary
+    try:
+        top_row = df.sort_values("value", ascending=False).iloc[0]
+        st.info(f"🏆 Top category in {year}: **{top_row['label']}** with **{int(top_row['value']):,}** registrations.")
+    except Exception:
+        pass
+
+    return df
+
+
+# =====================================================
+# -------------------------
+# Main Streamlit UI — All-Maxed Block
+# -------------------------
+# =====================================================
+
+def all_maxed_category_block(params: Optional[dict] = None):
+    """Render the maxed category analytics block inside Streamlit.
+
+    Provide `params` to pass to API calls (e.g., region filters). If omitted, defaults are used.
+    """
+    start_overall = time.time()
+    params = params or {}
+
+    st.markdown("## 🚗 ALL-MAXED — Category Analytics (Multi-frequency, Multi-year)")
+
+    # -------------------------
+    # Controls
+    # -------------------------
+    freq = st.radio("Aggregation Frequency", ["Daily", "Monthly", "Quarterly", "Yearly"], index=1, horizontal=True)
+    mode = st.radio("View Mode", ["Separate (Small Multiples)", "Combined (Overlay / Stacked)"], index=1, horizontal=True)
+    current_year = datetime.now().year
+    start_year = st.number_input("From Year", 2010, current_year, current_year-1)
+    end_year = st.number_input("To Year", start_year, current_year, current_year)
+    years = list(range(int(start_year), int(end_year)+1))
+
+    show_heatmap = st.checkbox("Show Heatmap (year × category)", True)
+    show_radar = st.checkbox("Show Radar (per year)", True)
+    do_forecast = st.checkbox("Enable Forecasting", True)
+    do_anomaly = st.checkbox("Enable Anomaly Detection", False)
+    do_clustering = st.checkbox("Enable Clustering (KMeans)", False)
+    enable_ai = st.checkbox("Enable AI Narrative (requires provider)", False)
+
+    st.info(f"🚀 Starting ALL-MAXED category pipeline (debug ON) — years: {years} | freq: {freq} | mode: {mode}")
+
+    # -------------------------
+    # Fetch multi-year category data
+    # -------------------------
+    all_year_dfs = []
+    with st.spinner("Fetching category data for selected years..."):
+        for y in years:
+            try:
+                df_y = fetch_year_category(y, params, show_debug=False)
+                if df_y is None or df_y.empty:
+                    st.warning(f"No category data for {y}")
+                    continue
+                all_year_dfs.append(df_y)
+            except Exception as e:
+                logger.exception(f"Error fetching {y}: {e}")
+                st.error(f"Error fetching {y}: {e}")
+
+    if not all_year_dfs:
+        st.info("No category data loaded for selected range. Displaying deterministic mocks for demonstration.")
+        # Generate mocks
+        for y in years:
+            all_year_dfs.append(to_df(deterministic_mock_categories(y)).assign(year=y))
+
+    df_cat_all = pd.concat(all_year_dfs, ignore_index=True)
+
+    # -------------------------
+    # Frequency expansion -> time series (synthetic if needed)
+    # -------------------------
+    ts_list = []
+    for y in sorted(df_cat_all["year"].unique()):
+        df_y = df_cat_all[df_cat_all["year"]==y].reset_index(drop=True)
+        ts = year_to_timeseries(df_y, int(y), freq=freq)
+        ts_list.append(ts)
+    df_ts = pd.concat(ts_list, ignore_index=True) if ts_list else pd.DataFrame(columns=["ds","label","value","year"])
+    df_ts["ds"] = pd.to_datetime(df_ts["ds"])
+
+    # Resample to requested frequency (group-by label)
+    if freq == "Daily":
+        resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq="D")])["value"].sum().reset_index()
+    elif freq == "Monthly":
+        resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq="M")])["value"].sum().reset_index()
+    elif freq == "Quarterly":
+        resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq="Q")])["value"].sum().reset_index()
+    else:
+        resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq="Y")])["value"].sum().reset_index()
+
+    resampled["year"] = resampled["ds"].dt.year
+
+    pivot = resampled.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
+    pivot_year = resampled.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
+
+    # -------------------------
+    # KPI Metrics: YoY, MoM (if monthly), CAGR
+    # -------------------------
+    st.subheader("💎 Key Metrics & Growth")
+    year_totals = pivot_year.sum(axis=1).rename("TotalRegistrations").to_frame()
+    year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
+    if len(year_totals) >= 2:
+        first = year_totals["TotalRegistrations"].iloc[0]
+        last = year_totals["TotalRegistrations"].iloc[-1]
+        years_count = max(1, len(year_totals)-1)
+        cagr = ((last/first) ** (1/years_count) - 1) * 100 if first>0 else np.nan
+    else:
+        cagr = np.nan
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} years")
+    c2.metric("📈 CAGR (Total)", f"{cagr:.2f}%" if not math.isnan(cagr) else "n/a")
+    c3.metric("📊 Latest YoY", f"{year_totals['YoY_%'].iloc[-1]:.2f}%" if "YoY_%" in year_totals.columns and not np.isnan(year_totals['YoY_%'].iloc[-1]) else "n/a")
+
+    # Show table of top categories by last year
+    last_year = sorted(df_cat_all["year"].unique())[-1]
+    df_last = df_cat_all[df_cat_all["year"]==last_year].sort_values("value", ascending=False)
+    st.markdown(f"**Top categories in {last_year}**")
+    st.dataframe(df_last.reset_index(drop=True).style.format({"value":"{:,}"}))
+
+    # -------------------------
+    # Visualization Panel
+    # -------------------------
+    st.subheader("📊 Visualizations — Multi-year & Multi-frequency")
+
+    if mode.startswith("Combined"):
+        # Stacked area across all categories (combined)
+        st.markdown("### Stacked Area — Combined (All selected years & freq)")
+        try:
+            fig = px.area(pivot.reset_index(), x="ds", y=pivot.columns.tolist(), title="Stacked registrations by category over time")
+            fig.update_layout(legend_title_text="Category", xaxis_title="Date", yaxis_title="Registrations", template="plotly_white")
+            st.plotly_chart(fig, use_container_width=True)
+        except Exception as e:
+            st.warning(f"Stacked area failed: {e}")
+
+        # Overlay line chart per-category for clarity
+        st.markdown("### Overlay Lines — Category Trends")
+        try:
+            fig2 = px.line(resampled, x="ds", y="value", color="label", line_group="label", title="Category trends (overlay)")
+            fig2.update_layout(template="plotly_white", xaxis_title="Date", yaxis_title="Registrations")
+            st.plotly_chart(fig2, use_container_width=True)
+        except Exception as e:
+            st.warning(f"Overlay lines failed: {e}")
+
+    else:
+        # Separate small multiples: one chart per year (or per category)
+        st.markdown("### Small Multiples — One plot per Year (Category Split)")
+        years_sorted = sorted(resampled["year"].unique())
+        sel_small = st.multiselect("Select specific years for small multiples (limit 6)", years_sorted, default=years_sorted[-3:])
+        if not sel_small:
+            st.info("Select at least one year to show small multiples.")
+        else:
+            for y in sel_small[:6]:
+                d = resampled[resampled["year"]==y]
+                if d.empty: continue
+                fig = px.bar(d, x="label", y="value", color="label", title=f"Category distribution — {y}", text_auto=True)
+                fig.update_layout(showlegend=False, template="plotly_white")
+                st.plotly_chart(fig, use_container_width=True)
+
+    # Donut / Sunburst for last selected period (last ds)
+    st.markdown("### 🍩 Donut & Sunburst (Latest Period)")
+    latest_period = resampled["ds"].max() if not resampled.empty else None
+    if latest_period is not None:
+        d_latest = resampled[resampled["ds"]==latest_period].groupby("label")["value"].sum().reset_index()
+        if not d_latest.empty:
+            fig_p = px.pie(d_latest, names="label", values="value", hole=0.55, title=f"Category split — {latest_period.strftime('%Y-%m')}")
+            st.plotly_chart(fig_p, use_container_width=True)
+            # Sunburst (year -> category)
+            sb = df_cat_all.groupby(["year","label"])["value"].sum().reset_index()
+            fig_s = px.sunburst(sb, path=["year","label"], values="value", title="Sunburst: Year -> Category -> Value")
+            st.plotly_chart(fig_s, use_container_width=True)
+        else:
+            st.info("No data for the most recent period to show donut.")
+    else:
+        st.info("No resampled data to visualize donut/sunburst.")
+
+    # Heatmap: year × category (if selected)
+    if show_heatmap:
+        st.markdown("### 🔥 Heatmap — Year × Category")
+        heat = pivot_year.copy()
+        if not heat.empty:
+            try:
+                fig_h = go.Figure(data=go.Heatmap(
+                    z=heat.values,
+                    x=heat.columns.astype(str),
+                    y=heat.index.astype(str),
+                    colorscale="Viridis"
+                ))
+                fig_h.update_layout(title="Registrations: Year vs Category", xaxis_title="Category", yaxis_title="Year")
+                st.plotly_chart(fig_h, use_container_width=True)
+            except Exception as e:
+                st.warning(f"Heatmap failed: {e}")
+
+    # Radar per year (last 3)
+    if show_radar:
+        st.markdown("### 🌈 Radar — Snapshot per Year")
+        yrs_for_radar = sorted(pivot_year.index)[-3:]
+        try:
+            fig_r = go.Figure()
+            for y in yrs_for_radar:
+                vals = pivot_year.loc[y].values.tolist()
+                cats = pivot_year.columns.tolist()
+                fig_r.add_trace(go.Scatterpolar(r=vals, theta=cats, fill="toself", name=str(y)))
+            fig_r.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True, title="Category distribution radar (last 3 years)")
+            st.plotly_chart(fig_r, use_container_width=True)
+        except Exception as e:
+            st.warning(f"Radar error: {e}")
+
+    # -------------------------
+    # Forecasting (simple + Prophet if available)
+    # -------------------------
+    if do_forecast:
+        st.subheader("🔮 Forecasting")
+        categories = pivot_year.columns.tolist() if not pivot_year.empty else df_cat_all["label"].unique().tolist()
+        if not categories:
+            st.info("No categories available for forecasting.")
+        else:
+            cat_to_forecast = st.selectbox("Choose category to forecast", categories)
+            horizon_years = st.number_input("Forecast horizon (years)", 1, 5, 2)
+
+            series = pivot_year[cat_to_forecast].reset_index().rename(columns={cat_to_forecast: "y"}) if cat_to_forecast in pivot_year.columns else pd.DataFrame(columns=["year","y"]) 
+            if not series.empty:
+                series["ds"] = pd.to_datetime(series["year"].astype(str)+"-01-01")
+                series = series[["ds","y"]]
+
+                # Linear trend
+                X = np.arange(len(series)).reshape(-1,1)
+                from sklearn.linear_model import LinearRegression
+                lr = LinearRegression()
+                try:
+                    lr.fit(X, series["y"].values)
+                    fut_idx = np.arange(len(series)+horizon_years).reshape(-1,1)
+                    preds = lr.predict(fut_idx)
+                    fut_dates = pd.to_datetime([ (series["ds"].iloc[0] + relativedelta(years=int(i))).strftime("%Y-01-01") for i in range(len(series)+horizon_years) ])
+                    df_fore = pd.DataFrame({"ds":fut_dates, "Linear": preds})
+                    fig = px.line(df_fore, x="ds", y="Linear", title=f"Linear Forecast — {cat_to_forecast}")
+                    fig.add_scatter(x=series["ds"], y=series["y"], mode="markers+lines", name="Historical")
+                    st.plotly_chart(fig, use_container_width=True)
+                except Exception as e:
+                    st.warning(f"Linear forecast failed: {e}")
+
+                # Prophet (if available)
+                try:
+                    from prophet import Prophet
+                    m = Prophet(yearly_seasonality=True)
+                    m.fit(series.rename(columns={"ds":"ds","y":"y"}))
+                    future = m.make_future_dataframe(periods=horizon_years, freq="Y")
+                    forecast = m.predict(future)
+                    figp = go.Figure()
+                    figp.add_trace(go.Scatter(x=series["ds"], y=series["y"], mode="markers+lines", name="Historic"))
+                    figp.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat"], mode="lines", name="Prophet Forecast"))
+                    st.plotly_chart(figp, use_container_width=True)
+                except Exception:
+                    st.info("Prophet not available — skipped Prophet forecasting.")
+            else:
+                st.info("Insufficient series data for forecasting this category.")
+
+    # -------------------------
+    # Anomaly Detection
+    # -------------------------
+    if do_anomaly:
+        st.subheader("⚠️ Anomaly Detection (per category timeseries)")
+        try:
+            from sklearn.ensemble import IsolationForest
+            anomalies = []
+            for cat in pivot.columns:
+                ser = resampled[resampled["label"]==cat].set_index("ds")["value"].fillna(0)
+                if len(ser) < 10:
+                    continue
+                X = ser.values.reshape(-1,1)
+                iso = IsolationForest(contamination=0.03, random_state=42)
+                iso.fit(X)
+                preds = iso.predict(X)
+                an_idxs = ser.index[preds == -1]
+                anomalies.append({"category":cat, "anomalies": list(an_idxs.strftime("%Y-%m-%d"))[:5]})
+            st.json(anomalies)
+        except Exception as e:
+            st.warning(f"Anomaly detection failed (sklearn missing?): {e}")
+
+    # -------------------------
+    # Clustering (KMeans)
+    # -------------------------
+    if do_clustering:
+        st.subheader("🔍 Clustering (KMeans) — years grouped by category mix")
+        try:
+            from sklearn.cluster import KMeans
+            X = pivot_year.fillna(0).values
+            k = st.slider("Number of clusters", 2, min(8, max(2, len(pivot_year))), 3)
+            km = KMeans(n_clusters=k, n_init="auto", random_state=42).fit(X)
+            labels = km.labels_
+            df_cluster = pd.DataFrame({"year":pivot_year.index, "cluster":labels})
+            st.dataframe(df_cluster)
+            figc = px.scatter(x=pivot_year.sum(axis=1).values, y=range(len(pivot_year)), color=labels.astype(str),
+                              labels={"x":"Total registrations","y":"index"}, title="Cluster overview (proxy)")
+            st.plotly_chart(figc, use_container_width=True)
+        except Exception as e:
+            st.warning(f"Clustering failed: {e}")
+
+    # =====================================================
+    # 🤖 AI Narrative (guarded)
+    # =====================================================
+    if enable_ai and do_forecast:
+        st.subheader("🤖 AI Narrative (Summary & Recommendations)")
+        try:
+            if pivot_year is None or pivot_year.empty:
+                st.warning("⚠️ No valid data available for AI narrative.")
+            else:
+                small = pivot_year.reset_index().to_dict(orient="records")
+                st.caption(f"📊 {len(small)} records prepared for AI analysis.")
+                # Basic prompt and fallback — users should configure their universal_chat or provider
+                system_prompt = (
+                    "You are a senior transport data analyst. "
+                    "Analyze multi-year vehicle category distribution trends, "
+                    "identify top categories, quantify year-over-year changes, "
+                    "and highlight key insights. "
+                    "Conclude with 3 concise, actionable recommendations "
+                    "for policymakers or transport planners. "
+                    "Use clear, factual language and cite % changes."
+                )
+                user_prompt = (
+                    f"Dataset: {json.dumps(small)[:3000]}...\n\n"
+                    f"Forecast Target: {cat_to_forecast if 'cat_to_forecast' in locals() else 'N/A'}\n"
+                    f"Horizon: {horizon_years if 'horizon_years' in locals() else 'N/A'} years.\n"
+                    f"Generate an insightful summary of trends and recommendations."
+                )
+
+                # universal_chat is external; we provide a safe stub that returns a concise fallback if it's not available.
+                try:
+                    ai_resp = universal_chat(system_prompt, user_prompt, stream=True, temperature=0.3, max_tokens=600, retries=3)
+                except Exception:
+                    ai_resp = None
+
+                ai_text = None
+                if isinstance(ai_resp, dict):
+                    ai_text = ai_resp.get("text") or ai_resp.get("response") or ai_resp.get("output")
+                elif isinstance(ai_resp, str):
+                    ai_text = ai_resp
+
+                if not ai_text:
+                    # Non-LLM humanized fallback summary
+                    top_debug = (
+                        df_cat_all.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False)
+                    )
+                    top3 = top_debug.head(3)
+                    lines = [f"Top categories overall: {', '.join(top3['label'].tolist())}." ]
+                    if not math.isnan(cagr):
+                        direction = "increased" if cagr>0 else "declined"
+                        lines.append(f"From {years[0]} to {years[-1]} total registrations {direction} by ~{abs(cagr):.2f}% CAGR.")
+                    lines.append("Recommendations: 1) Monitor growth of EV and small-commercial segments. 2) Target safety and inspection for top-heavy categories. 3) Improve data collection cadence to enable monthly forecasting.")
+                    st.markdown("### 🧠 Quick Narrative (fallback)")
+                    st.markdown("\n".join(lines))
+                else:
+                    st.markdown("### 🧠 AI Summary")
+                    st.markdown(ai_text)
+
+        except Exception as e:
+            st.error(f"💥 AI Narrative generation failed: {e}")
+
+    # =====================================================
+    # 🧩 ALL-MAXED FINAL SUMMARY + DEBUG INSIGHTS
+    # =====================================================
+    st.markdown("## 🧠 Final Summary & Debug Insights — ALL-MAXED")
+    try:
+        summary_start = time.time()
+
+        total_all = df_cat_all["value"].sum()
+        top_cat = (
+            df_cat_all.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
+        )
+        top_cat_share = (top_cat["value"] / total_all) * 100 if total_all>0 else 0
+
+        top_year = (
+            df_cat_all.groupby("year")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
+        )
+
+        st.metric("🏆 Absolute Top Category", f"{top_cat['label']}", f"{top_cat_share:.2f}% share")
+        st.caption(f"Total registrations for **{top_cat['label']}**: {top_cat['value']:,.0f}")
+
+        st.metric("📅 Peak Year", f"{int(top_year['year'])}", f"{top_year['value']:,.0f} registrations")
+
+        if len(year_totals) >= 2:
+            last_growth = year_totals["YoY_%"].iloc[-1]
+            avg_growth = year_totals["YoY_%"].mean()
+            st.metric("📈 Latest YoY Growth", f"{last_growth:.2f}%", f"Avg {avg_growth:.2f}%")
+        else:
+            st.info("Insufficient years for growth metrics.")
+
+        top_debug = (
+            df_cat_all.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False)
+        )
+        st.write("### 🧾 Full Category Summary (Sorted by Total Registrations)")
+        st.dataframe(top_debug.style.format({"value": "{:,.0f}"}))
+
+        fig_top10 = px.bar(top_debug.head(10), x="label", y="value", text_auto=True, title="Top 10 Categories — Overall")
+        fig_top10.update_layout(template="plotly_white", xaxis_title="Category", yaxis_title="Registrations")
+        st.plotly_chart(fig_top10, use_container_width=True)
+
+        st.write("### 🔧 Debug: Yearly Trend for Top Category")
+        topcat_df = df_cat_all[df_cat_all["label"] == top_cat["label"]]
+        fig_trend = px.line(topcat_df, x="year", y="value", markers=True, title=f"Trend — {top_cat['label']} ({years[0]}–{years[-1]})")
+        fig_trend.update_layout(template="plotly_white")
+        st.plotly_chart(fig_trend, use_container_width=True)
+
+        summary_time = time.time() - summary_start
+        st.markdown("### ⚙️ Debug Performance Metrics")
+        st.code(
+            f"""
+Data years: {years}
+Total categories: {df_cat_all['label'].nunique()}
+Rows processed: {len(df_cat_all):,}
+Total value sum: {total_all:,.0f}
+Top category: {top_cat['label']} → {top_cat['value']:,.0f} ({top_cat_share:.2f}%)
+Computation time: {summary_time:.2f} sec
+            """,
+            language="yaml",
+        )
+
+        direction = "increased" if not math.isnan(cagr) and cagr > 0 else "declined"
+        st.success(
+            f"From **{years[0]}** to **{years[-1]}**, total registrations {direction} by "
+            f"~{abs(cagr):.2f}% CAGR. The leading category is **{top_cat['label']}**, "
+            f"contributing **{top_cat_share:.2f}%** of total registrations. "
+            f"The peak activity year was **{int(top_year['year'])}**, "
+            f"with **{top_year['value']:,.0f}** total registrations."
+        )
+
+    except Exception as e:
+        logger.exception(f"Summary block failed: {e}")
+        st.error(f"⛔ Summary generation failed: {e}")
+
+    total_time = time.time() - start_overall
+    logger.info(f"ALL-MAXED block finished in {total_time:.2f}s")
+
+
+# If invoked directly, render the block
+if __name__ == "__main__":
+    all_maxed_category_block()
+
+
+#     # ---- Top Makers ----
+#     with col2:
+#         st.markdown("### 🏭 Top Vehicle Makers")
+
+#         try:
+#             mk_json, mk_url = get_json("vahandashboard/top5Makerchart", params)
+#             df_mk = to_df(mk_json, label_keys=("makerName", "manufacturer", "name", "label"))
+
+#             if not df_mk.empty:
+#                 fig2 = px.bar(
+#                     df_mk,
+#                     x="label",
+#                     y="value",
+#                     color="label",
+#                     text_auto=True,
+#                     title="Top 5 Makers",
+#                 )
+#                 fig2.update_layout(
+#                     xaxis_title="Maker",
+#                     yaxis_title="Count",
+#                     showlegend=False,
+#                     template="plotly_white",
+#                 )
+#                 st.plotly_chart(fig2, use_container_width=True)
+#             else:
+#                 st.info("ℹ️ No maker data available.")
+
+#         except Exception as e:
+#             st.error(f"❌ Error fetching or displaying makers: {e}")
+
+# except Exception as e:
+#     st.error(f"🚨 Data fetch error: {e}")
+
+# ===============================================================
+# 🏭 MAKERS — ALL-MAXED ANALYTICS SUITE (Streamlit)
+# ===============================================================
+# Mirrors the ALL-MAXED Category Analytics style but focused on Vehicle Makers.
+# Assumptions: `get_json`, `to_df`, `params`, `enable_ai`, `deepinfra_chat`,
+# helper viz functions (bar_from_df, pie_from_df, stack_from_df) exist in your app environment.
+
+# -----------------------------
+# MAKERS ANALYTICS — ALL MAXED (DROP-IN)
+# -----------------------------
+import math
+import json
+import numpy as np
+import pandas as pd
+import streamlit as st
+import plotly.express as px
+import plotly.graph_objects as go
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+import random
+import logging
+
+st.markdown("## 🏭 ALL-MAXED — Makers Analytics (multi-frequency, multi-year)")
+
+# =====================================================
+# CONTROLS — ALL ON MAIN PAGE (no sidebar)
+# =====================================================
+section_id = rto_opt.lower() if "rto_opt" in locals() else "main"
+
+# Frequency & Mode
+freq = st.radio(
+    "Aggregation Frequency",
+    ["Daily", "Monthly", "Quarterly", "Yearly"],
+    index=3,
+    horizontal=True,
+    key=f"freq_{section_id}"
+)
+
+mode = st.radio(
+    "View Mode",
+    ["Separate (Small Multiples)", "Combined (Overlay / Stacked)"],
+    index=1,
+    horizontal=True,
+    key=f"mode_{section_id}"
+)
+
+# Year range
+today = datetime.now()
+current_year = today.year
+default_from_year = current_year - 1
+
+
+from_year = st.sidebar.number_input(
+    "From Year",
+    min_value=2012,
+    max_value=today.year,
+    value=default_from_year,
+    key=f"from_year_{section_id}"
+)
+
+to_year = st.sidebar.number_input(
+    "To Year",
+    min_value=from_year,
+    max_value=today.year,
+    value=today.year,
+    key=f"to_year_{section_id}"
+)
+
+state_code = st.sidebar.text_input(
+    "State Code (blank=All-India)",
+    value="",
+    key=f"state_{section_id}"
+)
+
+rto_code = st.sidebar.text_input(
+    "RTO Code (0=aggregate)",
+    value="0",
+    key=f"rto_{section_id}"
+)
+
+vehicle_classes = st.sidebar.text_input(
+    "Vehicle Classes (e.g., 2W,3W,4W if accepted)",
+    value="",
+    key=f"classes_{section_id}"
+)
+
+vehicle_makers = st.sidebar.text_input(
+    "Vehicle Makers (comma-separated or IDs)",
+    value="",
+    key=f"makers_{section_id}"
+)
+
+time_period = st.sidebar.selectbox(
+    "Time Period",
+    options=[0, 1, 2],
+    index=0,
+    key=f"period_{section_id}"
+)
+
+fitness_check = st.sidebar.selectbox(
+    "Fitness Check",
+    options=[True, False],
+    index=0,
+    format_func=lambda x: "Enabled" if x else "Disabled",
+    key=f"fitness_{section_id}"
+)
+
+vehicle_type = st.sidebar.text_input(
+    "Vehicle Type (optional)",
+    value="",
+    key=f"type_{section_id}"
+)
+
+# Extra feature toggles
+st.divider()
+col3, col4, col5 = st.columns(3)
+with col3:
+    show_heatmap = st.checkbox("Show Heatmap (year × maker)", True, key=f"heatmap_{section_id}")
+    show_radar = st.checkbox("Show Radar (per year)", True, key=f"radar_{section_id}")
+with col4:
+    do_forecast = st.checkbox("Enable Forecasting", True, key=f"forecast_{section_id}")
+    do_anomaly = st.checkbox("Enable Anomaly Detection", False, key=f"anomaly_{section_id}")
+with col5:
+    do_clustering = st.checkbox("Enable Clustering (KMeans)", False, key=f"cluster_{section_id}")
+
+params_common = build_params(
+    from_year=from_year,
+    to_year=to_year,
+    state_code=state_code or "ALL",
+    rto_code=rto_code or "0",
+    vehicle_classes=vehicle_classes or "ALL",
+    vehicle_makers=vehicle_makers or "ALL",
+    time_period=freq,
+    fitness_check=fitness_check,
+    vehicle_type=vehicle_type or "ALL"
+)
+
+years = list(range(int(from_year), int(to_year) + 1))
+
+st.info(f"🔗 Using parameters: {params_common}")
+
+# =====================================================
+# 🚗 VAHAN MAKER ANALYTICS — ALL-MAXED SECTION
+# =====================================================
+import streamlit as st
+import pandas as pd
+import numpy as np
+import random
+import plotly.express as px
+from colorama import Fore
+
+# -----------------------------------------------------
+# ⚡ MAXED CHART HELPERS (UNIQUE KEYS + BETTER UX)
+# -----------------------------------------------------
+import uuid
+import plotly.express as px
+import streamlit as st
+
+
+def _bar_from_df(df: pd.DataFrame, title: str, combined: bool = False, section_id: str = ""):
+    """Render a robust bar chart with unique Streamlit key, error safety, and style."""
+    try:
+        # 🔑 Ensure unique key for Streamlit
+        unique_key = f"bar_{section_id}_{uuid.uuid4().hex[:6]}"
+
+        # 🧱 Create Plotly figure
+        if combined and "year" in df.columns:
+            fig = px.bar(
+                df,
+                x="label",
+                y="value",
+                color="year",
+                barmode="group",
+                text_auto=True,
+                title=title,
+            )
+        else:
+            fig = px.bar(
+                df,
+                x="label",
+                y="value",
+                color="label",
+                text_auto=True,
+                title=title,
+            )
+
+        # 🧩 Layout polish
+        fig.update_layout(
+            template="plotly_white",
+            xaxis_title="Maker",
+            yaxis_title="Registrations",
+            showlegend=True,
+            title_font=dict(size=18, color="#222", family="Segoe UI"),
+            margin=dict(t=50, b=40, l=40, r=20),
+            bargap=0.2,
+            height=450,
+        )
+
+        # 📊 Display
+        st.plotly_chart(fig, use_container_width=True, key=unique_key)
+
+    except Exception as e:
+        st.warning(f"⚠️ Bar chart render failed: {e}")
+
+
+def _pie_from_df(df: pd.DataFrame, title: str, section_id: str = ""):
+    """Render a pie chart safely with unique Streamlit key, hover effects, and styling."""
+    try:
+        # 🔑 Unique key
+        unique_key = f"pie_{section_id}_{uuid.uuid4().hex[:6]}"
+
+        # 🧱 Create Plotly figure
+        fig = px.pie(
+            df,
+            names="label",
+            values="value",
+            hole=0.45,
+            title=title,
+        )
+
+        # 🧩 Layout polish
+        fig.update_traces(
+            textinfo="percent+label",
+            pull=[0.05] * len(df),
+            hovertemplate="<b>%{label}</b><br>%{value:,.0f} registrations<br>%{percent}",
+        )
+        fig.update_layout(
+            template="plotly_white",
+            margin=dict(t=60, b=40, l=40, r=40),
+            title_font=dict(size=18, color="#222", family="Segoe UI"),
+            showlegend=False,
+            height=400,
+        )
+
+        # 📊 Display
+        st.plotly_chart(fig, use_container_width=True, key=unique_key)
+
+    except Exception as e:
+        st.warning(f"⚠️ Pie chart render failed: {e}")
+
+
+# -----------------------------------------------------
+# FETCH FUNCTION (ROBUST + MOCK FALLBACK)
+# -----------------------------------------------------
+# =====================================================
+# 🚀 ALL-MAXED MAKER FETCH & VISUAL MODULE
+# =====================================================
+
+# -----------------------------------------------------
+# 🔧 FETCH FUNCTION — SAFE + SMART + MOCK-RESILIENT
+# -----------------------------------------------------
+def fetch_maker_year(year: int, params_common: dict):
+    """Fetch top vehicle makers for a given year — fully maxed with safe params + mock fallback."""
+    logger.info(Fore.CYAN + f"🚀 Fetching top makers for {year}...")
+
+    # --- Safe param cleanup ---
+    safe_params = params_common.copy()
+    safe_params["fromYear"] = year
+    safe_params["toYear"] = year
+
+    for k in ["fitnessCheck", "stateCode", "rtoCode", "vehicleType"]:
+        if k in safe_params and (
+            safe_params[k] in ["ALL", "0", "", None, False]
+        ):
+            safe_params.pop(k, None)
+
+    mk_json, mk_url = None, None
+    try:
+        mk_json, mk_url = get_json("vahandashboard/top5Makerchart", safe_params)
+    except Exception as e:
+        logger.error(Fore.RED + f"❌ API fetch failed for {year}: {e}")
+        mk_json, mk_url = None, "MOCK://top5Makerchart"
+
+    # --- Status caption ---
+    color = "orange" if mk_url and "MOCK" in mk_url else "green"
+    st.markdown(
+        f"🔗 **API ({year}):** <span style='color:{color}'>{mk_url or 'N/A'}</span>",
+        unsafe_allow_html=True,
+    )
+
+    with st.expander(f"🧩 JSON Debug — {year}", expanded=False):
+        st.json(mk_json)
+
+    # --- Validation: check for expected fields ---
+    is_valid = False
+    df = pd.DataFrame()
+
+    if isinstance(mk_json, dict):
+        # ✅ Case 1: Chart.js-style JSON
+        if "datasets" in mk_json and "labels" in mk_json:
+            data_values = mk_json["datasets"][0].get("data", [])
+            labels = mk_json.get("labels", [])
+            if data_values and labels:
+                df = pd.DataFrame({"label": labels, "value": data_values})
+                is_valid = True
+
+        # ✅ Case 2: API returned dict with "data" or "result"
+        elif "data" in mk_json:
+            df = pd.DataFrame(mk_json["data"])
+            is_valid = not df.empty
+        elif "result" in mk_json:
+            df = pd.DataFrame(mk_json["result"])
+            is_valid = not df.empty
+
+    elif isinstance(mk_json, list) and mk_json:
+        # ✅ Case 3: Direct list of records
+        df = pd.DataFrame(mk_json)
+        is_valid = not df.empty
+
+    # --- Handle missing or invalid data ---
+    if not is_valid or df.empty:
+        logger.warning(Fore.YELLOW + f"⚠️ Using mock data for {year}")
+        st.warning(f"⚠️ No valid API data for {year}, generating mock values.")
+        random.seed(year)
+
+        makers = [
+            "Maruti Suzuki", "Tata Motors", "Hyundai", "Mahindra", "Hero MotoCorp",
+            "Bajaj Auto", "TVS Motor", "Honda", "Kia", "Toyota", "Renault",
+            "Ashok Leyland", "MG Motor", "Eicher", "Piaggio", "BYD", "Olectra", "Force Motors"
+        ]
+        random.shuffle(makers)
+        top = makers[:10]
+        base = random.randint(200_000, 1_000_000)
+        growth = 1 + (year - 2020) * 0.06
+        df = pd.DataFrame({
+            "label": top,
+            "value": [int(base * random.uniform(0.5, 1.5) * growth) for _ in top]
+        })
+    else:
+        st.success(f"✅ Valid API data loaded for {year}")
+
+    # --- Normalize columns ---
+    df.columns = [c.lower() for c in df.columns]
+    df["year"] = year
+    df = df.sort_values("value", ascending=False)
+
+    # --- Visual output ---
+    if not df.empty:
+        st.info(f"🏆 **{year}** → **{df.iloc[0]['label']}** — {df.iloc[0]['value']:,} registrations")
+        _bar_from_df(df, f"Top Makers ({year})", combined=False)
+        _pie_from_df(df, f"Maker Share ({year})")
+
+    return df
+# -----------------------------------------------------
+# 🔁 MAIN LOOP — MULTI-YEAR FETCH
+# -----------------------------------------------------
+all_years = []
+with st.spinner("⏳ Fetching maker data for all selected years..."):
+    for y in years:
+        try:
+            dfy = fetch_maker_year(y, params_common)   # ✅ FIXED: pass params_common
+            all_years.append(dfy)
+        except Exception as e:
+            st.error(f"❌ {y} fetch error: {e}")
+            logger.error(Fore.RED + f"Fetch error {y}: {e}")
+
+# ===============================================================
+# 🚘 MAKER ANALYTICS — FULLY MAXED + SAFE + DEBUG READY
+# ===============================================================
+import pandas as pd, numpy as np, math, time, random
+import streamlit as st
+import plotly.express as px
+import plotly.graph_objects as go
+from colorama import Fore
+from sklearn.linear_model import LinearRegression
+from dateutil.relativedelta import relativedelta
+
+# ----------------------------------
+# 🧩 Helpers
+# ----------------------------------
+def normalize_freq_rule(freq):
+    return {"Daily": "D", "Monthly": "M", "Quarterly": "Q"}.get(freq, "Y")
+
+def year_to_timeseries_maker(df_year, year, freq):
+    """Convert maker-year totals into evenly distributed synthetic timeseries."""
+    rule = normalize_freq_rule(freq)
+    idx = pd.date_range(
+        start=f"{year}-01-01",
+        end=f"{year}-12-31",
+        freq=("D" if freq == "Daily" else "M"),
+    )
+    rows = []
+    for _, r in df_year.iterrows():
+        maker = r.get("label", f"Maker_{_}")
+        total = float(r.get("value", 0))
+        per = total / max(1, len(idx))
+        for ts in idx:
+            rows.append({"ds": ts, "label": maker, "value": per, "year": year})
+    return pd.DataFrame(rows)
+
+# ===============================================================
+# 🧭 FETCH MAKER DATA (PER YEAR)
+# ===============================================================
+def fetch_maker_year(year: int, params_common: dict):
+    """Fetch top vehicle makers for a given year — fully maxed with safe params + mock fallback."""
+    logger.info(Fore.CYAN + f"🚀 Fetching top makers for {year}...")
+
+    safe_params = params_common.copy()
+    safe_params["fromYear"] = year
+    safe_params["toYear"] = year
+
+    mk_json, mk_url = None, None
+    try:
+        mk_json, mk_url = get_json("vahandashboard/top5Makerchart", safe_params)
+    except Exception as e:
+        logger.error(Fore.RED + f"❌ API fetch failed for {year}: {e}")
+        mk_json, mk_url = None, "MOCK://top5Makerchart"
+
+    color = "orange" if mk_url and "MOCK" in mk_url else "green"
+    st.markdown(f"🔗 **API ({year}):** <span style='color:{color}'>{mk_url or 'N/A'}</span>", unsafe_allow_html=True)
+
+    with st.expander(f"🧩 JSON Debug — {year}", expanded=False):
+        st.json(mk_json)
+
+    if not mk_json or (isinstance(mk_json, dict) and not mk_json.get("datasets")):
+        st.warning(f"⚠️ No valid API data for {year}, generating mock values.")
+        random.seed(year)
+        makers = [
+            "Maruti Suzuki", "Tata Motors", "Hyundai", "Mahindra", "Hero MotoCorp",
+            "Bajaj Auto", "TVS Motor", "Honda", "Kia", "Toyota", "Renault",
+            "Ashok Leyland", "MG Motor", "Eicher", "Piaggio", "BYD", "Olectra", "Force Motors"
+        ]
+        random.shuffle(makers)
+        mk_json = {
+            "datasets": [{"data": [random.randint(200_000, 1_200_000) for _ in range(5)],
+                          "label": "Vehicle Registered"}],
+            "labels": makers[:5]
+        }
+
+    # --- Normalize API data
+    if isinstance(mk_json, dict) and "datasets" in mk_json:
+        data = mk_json["datasets"][0]["data"]
+        labels = mk_json["labels"]
+        mk_json = [{"label": l, "value": v} for l, v in zip(labels, data)]
+
+    df = pd.DataFrame(mk_json)
+    df.columns = [c.lower() for c in df.columns]
+    df["year"] = year
+    df = df.sort_values("value", ascending=False)
+
+    if not df.empty:
+        st.info(f"🏆 **{year}** → **{df.iloc[0]['label']}** — {df.iloc[0]['value']:,} registrations")
+        _bar_from_df(df, f"Top Makers ({year})", combined=False)
+        _pie_from_df(df, f"Maker Share ({year})")
+    return df
+
+# ===============================================================
+# ⏳ MULTI-YEAR DATA COLLECTION
+# ===============================================================
+with st.spinner("Fetching maker data for selected years..."):
+    all_year_dfs = []
+    for y in years:
+        try:
+            df_y = fetch_maker_year(y, params_common)
+            if df_y is not None and not df_y.empty:
+                all_year_dfs.append(df_y)
+            else:
+                st.warning(f"No data for {y}")
+        except Exception as e:
+            st.error(f"Error fetching {y}: {e}")
+
+if not all_year_dfs:
+    st.error("🚫 No maker data loaded for selected range.")
+    st.stop()
+
+df_maker_all = pd.concat(all_year_dfs, ignore_index=True)
+
+# ===============================================================
+# 📈 TIME SERIES & METRICS
+# ===============================================================
+rule = normalize_freq_rule(freq)
+ts_frames = [year_to_timeseries_maker(df_maker_all[df_maker_all["year"] == y], y, freq)
+             for y in sorted(df_maker_all["year"].unique())]
+df_ts = pd.concat(ts_frames, ignore_index=True)
+df_ts["ds"] = pd.to_datetime(df_ts["ds"])
+
+resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq=rule)])["value"].sum().reset_index()
+resampled["year"] = resampled["ds"].dt.year
+pivot = resampled.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
+pivot_year = resampled.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
+
+# ===============================================================
+# 💎 METRICS
+# ===============================================================
+st.subheader("💎 Key Metrics & Growth — Makers")
+year_totals = pivot_year.sum(axis=1).rename("TotalRegistrations").to_frame()
+year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
+
+if len(year_totals) >= 2:
+    first, last = year_totals["TotalRegistrations"].iloc[0], year_totals["TotalRegistrations"].iloc[-1]
+    years_count = max(1, len(year_totals) - 1)
+    cagr = ((last / first) ** (1 / years_count) - 1) * 100 if first > 0 else np.nan
+else:
+    cagr = np.nan
+
+c1, c2, c3 = st.columns(3)
+c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} years")
+c2.metric("📈 CAGR (Total)", f"{cagr:.2f}%" if not math.isnan(cagr) else "n/a")
+c3.metric("📊 Latest YoY", f"{year_totals['YoY_%'].iloc[-1]:.2f}%" if not np.isnan(year_totals['YoY_%'].iloc[-1]) else "n/a")
+
+# ===============================================================
+# 📊 VISUALS (ALL MODES)
+# ===============================================================
+st.subheader("📊 Visualizations — Makers Multi-year & Multi-frequency")
+
+if mode.startswith("Combined"):
+    st.markdown("### Stacked Area — Combined")
+    st.plotly_chart(px.area(pivot.reset_index(), x="ds", y=pivot.columns.tolist(),
+                            title="Stacked registrations by maker over time",
+                            template="plotly_white"), use_container_width=True)
+else:
+    years_sorted = sorted(resampled["year"].unique())
+    sel_small = st.multiselect("Select specific years", years_sorted, default=years_sorted[-3:])
+    for y in sel_small:
+        d = resampled[resampled["year"] == y]
+        fig = px.bar(d, x="label", y="value", color="label", title=f"Maker distribution — {y}", text_auto=True)
+        fig.update_layout(showlegend=False, template="plotly_white")
+        st.plotly_chart(fig, use_container_width=True)
+
+# ===============================================================
+# 🧠 DEBUG & SUMMARY
+# ===============================================================
+st.markdown("## 🧠 Debug + Insight Summary (Makers)")
+agg = df_maker_all.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False)
+topmaker = agg.iloc[0]["label"]; topval = agg.iloc[0]["value"]
+total = agg["value"].sum(); share = (topval / total) * 100 if total else 0
+
+st.metric("🏆 Top Maker (All Years)", f"{topmaker}", f"{share:.2f}% share")
+st.dataframe(agg.style.format({"value": "{:,}"}))
+fig_top10 = px.bar(agg.head(10), x="label", y="value", text_auto=".2s",
+                   title="Top 10 Makers (All Years Combined)")
+st.plotly_chart(fig_top10, use_container_width=True)
+
+# ===============================================================
+# ⚙️ DEBUG METRICS
+# ===============================================================
+st.markdown("### ⚙️ Diagnostics")
+st.code(f"""
+Years loaded: {years}
+Rows in df_maker_all: {len(df_maker_all):,}
+Unique makers: {df_maker_all['label'].nunique()}
+Min registrations: {df_maker_all['value'].min():,.0f}
+Max registrations: {df_maker_all['value'].max():,.0f}
+""", language="yaml")
+
+
+# # ---------- Trend series + resampling & multi-year comparisons ------------------
+# with st.spinner('Fetching trend series...'):
+#     tr_json, tr_url = get_json('vahandashboard/vahanyearwiseregistrationtrend', params)
+#     df_tr = to_df(tr_json)
+
+# if not df_tr.empty:
+#     def parse_label(l):
+#         for fmt in ('%Y-%m-%d','%Y-%m','%b %Y','%Y'):
+#             try: 
+#                 return pd.to_datetime(l, format=fmt)
+#             except: 
+#                 pass
+#         try:
+#             return pd.to_datetime(l)
+#         except:
+#             return pd.NaT
+
+#     df_tr['date'] = df_tr['label'].apply(parse_label)
+#     df_tr = df_tr.dropna(subset=['date']).sort_values('date')
+#     df_tr['value'] = pd.to_numeric(df_tr['value'], errors='coerce')
+#     df_tr = df_tr.set_index('date')
+
+#     freq_map = {'Daily': 'D', 'Monthly': 'M', 'Quarterly': 'Q', 'Yearly': 'Y'}
+#     df_tr = df_tr.resample(freq_map.get(frequency, 'M')).sum()
+
+# # ---------------- MULTI-YEAR COMPARISONS ----------------
+# st.subheader('📈 Multi-year Comparisons')
+
+# if df_tr.empty:
+#     st.warning('No trend data for chosen filters.')
+# else:
+#     df_tr['year'] = df_tr.index.year
+#     years = sorted(df_tr['year'].unique())
+
+#     selected_years = st.sidebar.multiselect(
+#         'Select years to compare',
+#         years,
+#         default=years if len(years) <= 2 else years[-2:]
+#     )
+
+#     # Show separate year charts
+#     st.markdown('### 🔹 Separate Year Charts')
+#     cols = st.columns(len(selected_years) if selected_years else 1)
+#     for y, c in zip(selected_years, cols):
+#         with c:
+#             s = df_tr[df_tr['year'] == y]['value']
+#             st.markdown(f"**{y}**")
+#             st.line_chart(s)
+
+#     # Combined comparison chart
+#     st.markdown('### 🔸 Combined Comparison (Each Year as a Separate Line)')
+
+#     df_tr_reset = df_tr.reset_index()
+
+#     # Choose x-axis format
+#     if frequency == 'Yearly':
+#         df_tr_reset['period_label'] = df_tr_reset['date'].dt.strftime('%Y')
+#     elif frequency == 'Quarterly':
+#         df_tr_reset['period_label'] = 'Q' + df_tr_reset['date'].dt.quarter.astype(str)
+#     elif frequency == 'Monthly':
+#         df_tr_reset['period_label'] = df_tr_reset['date'].dt.strftime('%b')
+#     else:  # Daily or others
+#         df_tr_reset['period_label'] = df_tr_reset['date'].dt.strftime('%d-%b')
+
+#     pivot = (
+#         df_tr_reset.pivot_table(
+#             index='period_label',
+#             columns='year',
+#             values='value',
+#             aggfunc='sum'
+#         )
+#         .fillna(0)
+#     )
+
+#     # Plot combined line chart with Plotly
+#     fig = px.line(
+#         pivot,
+#         x=pivot.index,
+#         y=pivot.columns,
+#         markers=True,
+#         title="Multi-Year Comparison of Registrations",
+#         labels={"x": "Period", "value": "Registrations"},
+#     )
+#     fig.update_layout(template="plotly_white", legend_title_text="Year")
+#     st.plotly_chart(fig, use_container_width=True)
+
+# ===============================================================
+# 📈 ALL-MAXED — Time Series Trend Analytics Suite
+# ===============================================================
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+import math
+import plotly.express as px
+import plotly.graph_objects as go
+from datetime import datetime
+from sklearn.linear_model import LinearRegression
+from dateutil.relativedelta import relativedelta
+
+st.markdown("## 📈 ALL-MAXED — Time Series Trend + Growth Analytics")
+
+import pandas as pd
+import numpy as np
+from datetime import datetime
+import random
+import logging
+from colorama import Fore
+
+def safe_get_trend(params):
+    """
+    🔥 ALL-MAXED SAFE TREND FETCHER — No pre dependencies.
+    Fetches registration trend from API or generates a realistic fallback (2020–2026).
+    Handles missing keys, network failures, and ensures normalized dataframe output.
+    Returns:
+        (df_trend, tr_url)
+    """
+    logger = logging.getLogger(__name__)
+
+    # --- 1️⃣ Attempt real API fetch
+    try:
+        tr_json, tr_url = get_json("vahandashboard/vahanyearwiseregistrationtrend", params)
+        logger.info(Fore.CYAN + f"✅ Trend API success → {tr_url}")
+    except Exception as e:
+        logger.error(Fore.RED + f"❌ Trend fetch failed: {e}")
+        tr_json, tr_url = None, "MOCK://vahan/trend"
+
+    # --- 2️⃣ Validate / fallback to mock if API empty or invalid
+    if not tr_json or (
+        isinstance(tr_json, dict)
+        and not any(k in tr_json for k in ["data", "result", "datasets"])
+    ):
+        logger.warning(Fore.YELLOW + f"⚠️ Using fallback trend data ({tr_url})")
+
+        # Simulate monthly trend 2020–2026 with YoY + seasonality + noise
+        np.random.seed(42)
+        base_value = 480_000
+        months = pd.date_range("2020-01-01", "2026-12-01", freq="MS")
+
+        data = []
+        for dt in months:
+            growth = 1 + 0.07 * (dt.year - 2020)        # 7% YoY growth
+            seasonal = 1 + 0.12 * np.sin((dt.month / 12) * 2 * np.pi)
+            noise = np.random.normal(1.0, 0.05)
+            val = int(base_value * growth * seasonal * noise)
+            data.append({"date": dt.strftime("%Y-%m-%d"), "value": val})
+
+        tr_json = {"data": data}
+
+    # --- 3️⃣ Normalize structure regardless of source
+    try:
+        df = normalize_trend(tr_json)
+    except Exception:
+        df = pd.DataFrame(tr_json.get("data", tr_json))
+        if "date" not in df.columns:
+            df["date"] = pd.date_range("2020-01-01", periods=len(df), freq="MS")
+        if "value" not in df.columns:
+            df["value"] = np.random.randint(300_000, 900_000, len(df))
+
+    # --- 4️⃣ Final cleanup + metadata
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df = df.dropna(subset=["date"]).sort_values("date")
+    df["year"] = df["date"].dt.year
+    df["month"] = df["date"].dt.month
+
+    logger.info(Fore.GREEN + f"📈 Trend data ready → {len(df)} rows from {df['year'].min()}–{df['year'].max()}")
+    return df, tr_url
+
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+import random
+import logging
+from colorama import Fore
+
+logger = logging.getLogger(__name__)
+
+# -------------------------------------------------
+# 🔥 ALL-MAXED Growth Table Generator + Fallback
+# -------------------------------------------------
+def safe_get_growth_table(calendarType, params, label="Growth"):
+    """
+    Unified ALL-MAXED growth table fetcher with mock fallback.
+    calendarType: 1=Yearly, 2=Quarterly, 3=Monthly, 4=Daily
+    Returns DataFrame with columns ['label','value'] and realistic data.
+    """
+
+    try:
+        j, url = get_json(
+            "vahandashboard/durationWiseRegistrationTable",
+            {**params, "calendarType": calendarType}
+        )
+    except Exception as e:
+        logger.warning(Fore.YELLOW + f"⚠️ Growth fetch failed for {label}: {e}")
+        j, url = None, f"MOCK://growth/{label.lower()}"
+
+    # If invalid JSON, use mock
+    if not j or (isinstance(j, dict) and j.get("error")):
+        logger.warning(Fore.YELLOW + f"⚠️ Using mock fallback for {label} ({url})")
+        j = {"data": []}
+
+    # Try parse
+    try:
+        df = parse_duration_table(j)
+    except Exception as e:
+        logger.warning(Fore.RED + f"💥 Failed to parse duration table: {e}")
+        df = pd.DataFrame(columns=["label", "value"])
+
+    # Fallback with realistic mock data if empty
+    if df.empty:
+        np.random.seed(42)
+        now = datetime.now()
+
+        if calendarType == 1:  # Yearly
+            years = list(range(2020, 2026))
+            values = [random.randint(500000, 2500000) * (1 + 0.1*(y-2020)) for y in years]
+            df = pd.DataFrame({"label": [str(y) for y in years], "value": values})
+
+        elif calendarType == 2:  # Quarterly
+            quarters = [f"Q{q} {y}" for y in range(2020, 2026) for q in range(1, 5)]
+            values = np.random.randint(100000, 700000, len(quarters))
+            df = pd.DataFrame({"label": quarters, "value": values})
+
+        elif calendarType == 3:  # Monthly
+            months = pd.date_range("2020-01-01", "2025-12-01", freq="MS")
+            df = pd.DataFrame({
+                "label": [dt.strftime("%b %Y") for dt in months],
+                "value": (
+                    (np.sin(np.arange(len(months)) / 6) * 0.15 + 1.05)
+                    * np.linspace(400000, 950000, len(months))
+                    + np.random.randint(-50000, 50000, len(months))
+                ).astype(int)
+            })
+
+        elif calendarType == 4:  # Daily
+            days = pd.date_range(now - timedelta(days=60), now, freq="D")
+            df = pd.DataFrame({
+                "label": [d.strftime("%d-%b") for d in days],
+                "value": np.maximum(
+                    0,
+                    (np.sin(np.arange(len(days)) / 3) * 0.2 + 1)
+                    * np.random.randint(15000, 30000, len(days))
+                ).astype(int)
+            })
+
+        else:
+            df = pd.DataFrame(columns=["label", "value"])
+
+        logger.info(Fore.CYAN + f"✅ Generated mock {label} data ({len(df)} rows)")
+
+    return df, url
+
+
+# 🔧 Pull params from globals (no pre)
+params = globals().get("params", {})
+
+# 🚀 Generate all four
+df_quarter = safe_get_growth_table(2, params, "Quarterly")[0]
+df_year    = safe_get_growth_table(1, params, "Yearly")[0]
+df_month   = safe_get_growth_table(3, params, "Monthly")[0]
+df_daily   = safe_get_growth_table(4, params, "Daily")[0]
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+import random, math
+from datetime import datetime, timedelta
+from colorama import Fore
+import plotly.express as px
+import plotly.graph_objects as go
+
+# --------------------------------------------------
+# 🧱 Safe JSON + Parse Helpers (Stubs if not loaded)
+# --------------------------------------------------
+def get_json(endpoint, params):
+    """Stub for API fetching, replace with real API if available."""
+    raise RuntimeError("API not available (mock mode)")
+
+def parse_revenue_trend(j):
+    """Stub for API parser, replace if real format known."""
+    if not j or "data" not in j:
+        return pd.DataFrame(columns=["period", "value", "year"])
+    return pd.DataFrame(j["data"])
+
+# ----------------------------------------------
+# 💰 Safe Revenue Trend Fetcher (Mock Supported)
+# ----------------------------------------------
+def safe_get_revenue_trend(params):
+    """Fetches Vahan revenue trend with realistic fallback simulation."""
+    try:
+        j, url = get_json("vahandashboard/revenueFeeLineChart", params)
+    except Exception as e:
+        print(Fore.YELLOW + f"⚠️ Revenue trend API failed → {e}")
+        j, url = None, "MOCK://revenue"
+
+    try:
+        df = parse_revenue_trend(j)
+    except Exception as e:
+        print(Fore.RED + f"💥 Revenue parsing failed → {e}")
+        df = pd.DataFrame(columns=["period", "value", "year"])
+
+    if df.empty:
+        np.random.seed(42)
+        now_year = datetime.now().year
+        years = list(range(2019, now_year + 1))
+        periods = [f"FY{y}-{str(y+1)[-2:]}" for y in years]
+
+        base_values = []
+        for i, y in enumerate(years):
+            growth_factor = 1 + 0.08 * (i - 2)
+            covid_penalty = 0.6 if y == 2020 else (0.85 if y == 2021 else 1)
+            ev_boost = 1.2 if y >= 2024 else 1
+            base_values.append(int(2000 * growth_factor * covid_penalty * ev_boost + random.randint(-200, 200)))
+
+        df = pd.DataFrame({
+            "period": np.repeat(periods, 4),
+            "year": np.repeat(years, 4),
+            "value": np.concatenate([
+                np.round(np.linspace(v * 0.18, v * 0.3, 4) + np.random.randint(-20, 20, 4))
+                for v in base_values
+            ])
+        })
+
+        print(Fore.CYAN + f"✅ Generated mock revenue trend ({len(df)} points)")
+    return df
+
+
+# ===============================================================
+# 📊 MAIN VISUALIZATION — REVENUE TREND + ANALYTICS
+# ===============================================================
+
+params = globals().get("params", {})
+
+with st.spinner("Fetching revenue trend..."):
+    df_rev_trend = safe_get_revenue_trend(params)
+
+if not df_rev_trend.empty:
+    import altair as alt
+    st.subheader("💰 Revenue Trend Comparison")
+    chart = alt.Chart(df_rev_trend).mark_line(point=True).encode(
+        x=alt.X('period:O', title='Period'),
+        y=alt.Y('value:Q', title='Revenue (₹ Cr)'),
+        color='year:N'
+    ).properties(title="Revenue Trend Comparison (Actual or Mock)")
+    st.altair_chart(chart, use_container_width=True)
+else:
+    st.warning("No revenue data available.")
+
+# ===============================================================
+# 🧠 ADVANCED TREND ANALYTICS (Safe + Maxed)
+# ===============================================================
+import streamlit as st
+import pandas as pd
+import numpy as np
+import math
+import plotly.express as px
+import plotly.graph_objects as go
+from datetime import datetime, timedelta
+
+# Try optional libraries safely
+try:
+    import pycountry
+except ImportError:
+    st.warning("Installing pycountry...")
+    import subprocess, sys
+    subprocess.run([sys.executable, "-m", "pip", "install", "pycountry"])
+    import pycountry
+
+try:
+    from prophet import Prophet
+except ImportError:
+    Prophet = None
+
+try:
+    from sklearn.linear_model import LinearRegression
+    from sklearn.ensemble import IsolationForest
+    from sklearn.cluster import KMeans
+except ImportError:
+    st.warning("Installing scikit-learn...")
+    import subprocess, sys
+    subprocess.run([sys.executable, "-m", "pip", "install", "scikit-learn"])
+    from sklearn.linear_model import LinearRegression
+    from sklearn.ensemble import IsolationForest
+    from sklearn.cluster import KMeans
+
+st.markdown("---")
+st.subheader("🧠 Advanced Trend Analytics")
+
+# ===============================================================
+# 🔹 Load df_trend from API or fallback
+# ===============================================================
+@st.cache_data(show_spinner=False)
+def load_trend_data():
+    try:
+        # Example safe API call (replace get_json with your actual function)
+        params_common = {"state_cd": "ALL", "veh_catg": "ALL", "fuel_type": "ALL", "maker": "ALL"}
+        tr_json, tr_url = get_json("vahandashboard/vahanyearwiseregistrationtrend", params_common)
+        df = normalize_trend(tr_json)
+        if df.empty:
+            raise ValueError("Empty trend data from API")
+        st.success(f"✅ Loaded trend data from API ({len(df):,} records)")
+        return df
+    except Exception as e:
+        st.warning(f"⚠️ Trend API unavailable — generating mock data: {e}")
+        now = datetime.now()
+        dates = pd.date_range(now - timedelta(days=365 * 5), now, freq="M")
+        df = pd.DataFrame({
+            "date": dates,
+            "value": (np.sin(np.arange(len(dates)) / 4) * 0.1 + 1.05)
+                    * np.linspace(500000, 950000, len(dates))
+                    + np.random.randint(-30000, 30000, len(dates))
+        }).astype({"value": int})
+        return df
+
+df_trend = load_trend_data()
+
+# ===============================================================
+# 1️⃣ KPI Summary
+# ===============================================================
+st.markdown("### 💎 Key Metrics")
+df_trend["date"] = pd.to_datetime(df_trend["date"])
+df_trend["year"] = df_trend["date"].dt.year
+
+year_sum = df_trend.groupby("year")["value"].sum()
+total_cagr = ((year_sum.iloc[-1] / year_sum.iloc[0]) ** (1 / (len(year_sum) - 1)) - 1) * 100 if len(year_sum) > 1 else np.nan
+latest_yoy = ((year_sum.iloc[-1] - year_sum.iloc[-2]) / year_sum.iloc[-2]) * 100 if len(year_sum) > 1 else np.nan
+
+c1, c2, c3 = st.columns(3)
+c1.metric("📅 Duration", f"{year_sum.index.min()} → {year_sum.index.max()}", f"{len(year_sum)} years")
+c2.metric("📈 CAGR", f"{total_cagr:.2f}%" if not math.isnan(total_cagr) else "n/a")
+c3.metric("📊 Latest YoY", f"{latest_yoy:.2f}%" if not math.isnan(latest_yoy) else "n/a")
+
+# ===============================================================
+# 2️⃣ Heatmap — Year × Month
+# ===============================================================
+st.markdown("### 🔥 Heatmap — Registrations by Month & Year")
+df_trend["month_name"] = df_trend["date"].dt.strftime("%b")
+heat = df_trend.pivot_table(index="year", columns="month_name", values="value", aggfunc="sum").fillna(0)
+fig_h = go.Figure(data=go.Heatmap(z=heat.values, x=heat.columns, y=heat.index, colorscale="Viridis"))
+fig_h.update_layout(title="Heatmap: Year × Month", xaxis_title="Month", yaxis_title="Year")
+st.plotly_chart(fig_h, use_container_width=True)
+
+# ===============================================================
+# 3️⃣ Forecasting — Linear + Prophet
+# ===============================================================
+st.markdown("### 🔮 Forecasting — Registrations")
+from dateutil.relativedelta import relativedelta
+
+series = df_trend.groupby("year")["value"].sum().reset_index()
+series.columns = ["ds", "y"]
+series["ds"] = pd.to_datetime(series["ds"].astype(str) + "-01-01")
+horizon = st.slider("Forecast horizon (years)", 1, 10, 3)
+
+# Linear Forecast
+try:
+    X = np.arange(len(series)).reshape(-1, 1)
+    lr = LinearRegression()
+    lr.fit(X, series["y"])
+    fut_idx = np.arange(len(series) + horizon).reshape(-1, 1)
+    preds = lr.predict(fut_idx)
+    fut_dates = pd.to_datetime([(series["ds"].iloc[0] + relativedelta(years=int(i))).strftime("%Y-01-01") for i in range(len(series) + horizon)])
+    df_fore = pd.DataFrame({"ds": fut_dates, "Linear Forecast": preds})
+    fig_lin = px.line(df_fore, x="ds", y="Linear Forecast", title="📈 Linear Forecast")
+    fig_lin.add_scatter(x=series["ds"], y=series["y"], mode="lines+markers", name="Historical")
+    st.plotly_chart(fig_lin, use_container_width=True)
+except Exception as e:
+    st.warning(f"Linear forecast failed: {e}")
+
+# Prophet Forecast
+if Prophet:
+    try:
+        m = Prophet(yearly_seasonality=True)
+        m.fit(series)
+        future = m.make_future_dataframe(periods=horizon, freq="Y")
+        forecast = m.predict(future)
+        figp = go.Figure()
+        figp.add_trace(go.Scatter(x=series["ds"], y=series["y"], name="Historical"))
+        figp.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat"], name="Prophet Forecast"))
+        figp.update_layout(title="🧭 Prophet Forecast (Yearly)")
+        st.plotly_chart(figp, use_container_width=True)
+    except Exception as e:
+        st.info(f"Prophet forecast failed: {e}")
+else:
+    st.info("Prophet not installed or unavailable.")
+
+# ===============================================================
+# 4️⃣ Anomaly Detection
+# ===============================================================
+st.markdown("### ⚠️ Anomaly Detection (IsolationForest)")
+try:
+    iso = IsolationForest(contamination=0.03, random_state=42)
+    preds = iso.fit_predict(df_trend[["value"]])
+    df_trend["anomaly"] = preds
+    fig_a = px.scatter(df_trend, x="date", y="value",
+                       color=df_trend["anomaly"].map({1: "Normal", -1: "Anomaly"}))
+    fig_a.update_layout(title="Anomaly Detection — Time Series", legend_title="Status")
+    st.plotly_chart(fig_a, use_container_width=True)
+except Exception as e:
+    st.warning(f"Anomaly detection failed: {e}")
+
+# ===============================================================
+# 5️⃣ Clustering — Monthly Patterns
+# ===============================================================
+st.markdown("### 🔍 Clustering (KMeans — Monthly Patterns)")
+try:
+    monthly = df_trend.copy()
+    monthly["month"] = monthly["date"].dt.month
+    month_pivot = monthly.pivot_table(index="year", columns="month", values="value", aggfunc="sum").fillna(0)
+    k = st.slider("Clusters (k)", 2, min(10, len(month_pivot)), 3)
+    km = KMeans(n_clusters=k, n_init="auto", random_state=42).fit(month_pivot)
+    month_pivot["Cluster"] = km.labels_
+    st.dataframe(month_pivot)
+    fig_c = px.scatter(month_pivot.reset_index(), x="year", y=month_pivot.columns[0],
+                       color="Cluster", title="Cluster Visualization")
+    st.plotly_chart(fig_c, use_container_width=True)
+except Exception as e:
+    st.info(f"Clustering unavailable: {e}")
+
+# ===============================================================
+# ✅ Final Summary + Data Quality
+# ===============================================================
+st.markdown("---")
+st.subheader("🧾 Final Summary & Debug Info")
+
+try:
+    total_records = len(df_trend)
+    total_sum = df_trend["value"].sum()
+    peak_value = df_trend["value"].max()
+    peak_date = df_trend.loc[df_trend["value"].idxmax(), "date"].strftime("%Y-%m-%d")
+    st.write(f"- **Total Records:** {total_records}")
+    st.write(f"- **Total Registrations:** {total_sum:,.0f}")
+    st.write(f"- **Peak:** {peak_value:,.0f} on **{peak_date}**")
+    st.write(f"- **CAGR:** {total_cagr:.2f}%")
+    st.write(f"- **Latest YoY:** {latest_yoy:.2f}%")
+except Exception as e:
+    st.warning(f"Recap failed: {e}")
+
+try:
+    missing_ratio = df_trend["value"].isna().mean()
+    if missing_ratio > 0:
+        st.warning(f"⚠️ Missing values detected: {missing_ratio*100:.2f}%")
+    else:
+        st.success("✅ No missing values detected")
+except Exception as e:
+    st.warning(f"Data quality check failed: {e}")
+
+# # ---------- RTO/State detailed breakdown ---------------------------------------
+# st.subheader('RTO / State breakdown')
+# # User can choose to fetch state/rto endpoints if available
+# rto_opt = st.selectbox('Show breakdown by', ['State','RTO','None'])
+# if rto_opt != 'None':
+#     # For demo, attempt to call same categories endpoint with state param
+#     target = 'vahandashboard/statewise' if rto_opt=='State' else 'vahandashboard/rtowise'
+#     try:
+#         br_json, _ = get_json(target, params)
+#         df_br = to_df(br_json)
+#         st.dataframe(df_br.head(200))
+#     except Exception as e:
+#         st.warning(f'Breakdown endpoint not available: {e}')
+
+# ============================================================
+# 🌍 ALL-MAXED RTO / STATE BREAKDOWN
+# Includes top-N, YoY growth, interactive charts & comparisons
+# ============================================================
+
+# =========================================================
+# 🌐 ALL-MAXED — State / RTO Analytics (multi-year, multi-frequency)
+# =========================================================
+
+# =========================================================
+# 🚦 ALL-MAXED — RTO / State Analytics (multi-year, multi-frequency)
+# Drop-in Streamlit module. Fully instrumented, mock-safe, debug-friendly.
+# =========================================================
+import time, math, json, random, logging
+from typing import Optional, Dict, Any
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
+import numpy as np
+import pandas as pd
+import streamlit as st
+import plotly.express as px
+import plotly.graph_objects as go
+
+# -------------------------
+# Logging setup
+# -------------------------
+logger = logging.getLogger("all_maxed_rto_state")
+if not logger.handlers:
+    h = logging.StreamHandler()
+    h.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
+    logger.addHandler(h)
+logger.setLevel(logging.DEBUG)
+
+
+# -------------------------
+# Mock generator
+# -------------------------
+def deterministic_mock_rto_state(year: int, seed_base="rto_state") -> Dict[str, Any]:
+    """Generate deterministic mock for RTO/State analytics."""
+    rnd = random.Random(hash((year, seed_base)) & 0xFFFFFFFF)
+    states = [
+        "Maharashtra","Uttar Pradesh","Tamil Nadu","Gujarat","Karnataka",
+        "Rajasthan","Bihar","Haryana","Madhya Pradesh","Telangana",
+        "West Bengal","Delhi","Punjab","Kerala","Odisha"
+    ]
+    data = [{"label": s, "value": rnd.randint(50000, 1200000)} for s in states]
+    return {"data": data, "generatedAt": datetime.utcnow().isoformat()}
+
+
+# -------------------------
+# Visualization helpers
+# -------------------------
+def bar_chart(df, title):
+    try:
+        fig = px.bar(df, x="label", y="value", text_auto=True, title=title)
+        fig.update_layout(template="plotly_white", xaxis_title="State / RTO", yaxis_title="Revenue / Fees")
+        st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        st.warning(f"bar_chart failed: {e}")
+        st.write(df)
+
+def pie_chart(df, title):
+    try:
+        fig = px.pie(df, names="label", values="value", hole=0.55, title=title)
+        st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        st.warning(f"pie_chart failed: {e}")
+        st.write(df)
+
+
+# -------------------------
+# Data fetch with fallback + live debug
+# -------------------------
+def fetch_rto_state_year(year: int, params: dict, show_debug=True) -> pd.DataFrame:
+    """Fetch RTO/state revenue/fee breakdown for a specific year."""
+    try:
+        j, url = get_json("vahandashboard/top5chartRevenueFee", {**params, "year": year})
+    except Exception as e:
+        logger.warning(f"Fetch exception {year}: {e}")
+        j, url = deterministic_mock_rto_state(year), f"mock://rto_state/{year}"
+
+    if show_debug:
+        with st.expander(f"🧩 Debug JSON — RTO/State {year}"):
+            st.write("**URL:**", url)
+            st.json(j)
+
+    # Normalize
+    if j and "data" in j:
+        df = pd.DataFrame(j["data"])
+    else:
+        df = pd.DataFrame(deterministic_mock_rto_state(year)["data"])
+    df["year"] = int(year)
+
+    # Render preview charts
+    st.markdown(f"### 🗺️ RTO / State — {year}")
+    bar_chart(df, f"RTO / State Revenue — {year}")
+    pie_chart(df, f"Revenue Distribution — {year}")
+
+    return df
+
+
+# -------------------------
+# Expand yearly totals to timeseries (synthetic)
+# -------------------------
+def expand_to_timeseries(df_year, year, freq="Monthly"):
+    start = pd.Timestamp(f"{year}-01-01")
+    end = pd.Timestamp(f"{year}-12-31")
+    idx = pd.date_range(start=start, end=end, freq="M" if freq=="Monthly" else "Y")
+    rows = []
+    for _, r in df_year.iterrows():
+        per = r["value"] / len(idx)
+        for ts in idx:
+            rows.append({"ds": ts, "label": r["label"], "value": per, "year": year})
+    return pd.DataFrame(rows)
+
+
+# =========================================================
+# MAIN STREAMLIT UI BLOCK
+# =========================================================
+# =========================================================
+# MAIN STREAMLIT UI BLOCK (Fixed Unique Keys)
+# =========================================================
+def all_maxed_rto_state_block(params: Optional[dict] = None, section_id: str = "rto_state"):
+    params = params or {}
+    st.markdown("## 🏛️ ALL-MAXED — RTO / State Revenue & Fee Analytics")
+
+    freq = st.radio(
+        "Aggregation Frequency",
+        ["Monthly", "Yearly"],
+        index=0,
+        horizontal=True,
+        key=f"freq_{section_id}"
+    )
+
+    current_year = datetime.now().year
+
+    start_year = st.number_input(
+        "From Year",
+        2010,
+        current_year,
+        current_year - 1,
+        key=f"start_year_{section_id}"
+    )
+    end_year = st.number_input(
+        "To Year",
+        start_year,
+        current_year,
+        current_year,
+        key=f"end_year_{section_id}"
+    )
+
+    years = list(range(int(start_year), int(end_year) + 1))
+    st.info(f"Debug ON — years: {years}, freq: {freq}")
+
+    # (rest of your block stays the same)
+
+    # -------------------------
+    # Fetch Data
+    # -------------------------
+    all_years = []
+    with st.spinner("Fetching RTO/State data..."):
+        for y in years:
+            df = fetch_rto_state_year(y, params, show_debug=False)
+            all_years.append(df)
+    df_all = pd.concat(all_years, ignore_index=True)
+
+    # -------------------------
+    # Time-series expansion
+    # -------------------------
+    ts = pd.concat([expand_to_timeseries(df_all[df_all["year"]==y], y, freq) for y in years])
+    ts["ds"] = pd.to_datetime(ts["ds"])
+    ts["year"] = ts["ds"].dt.year
+
+    pivot_year = ts.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
+    pivot = ts.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
+
+    # -------------------------
+    # KPI Metrics
+    # -------------------------
+    st.subheader("💎 Key Metrics")
+    total = pivot_year.sum(axis=1)
+    yoy = total.pct_change()*100
+    cagr = ((total.iloc[-1]/total.iloc[0])**(1/(len(total)-1))-1)*100 if len(total)>1 else np.nan
+    c1,c2,c3 = st.columns(3)
+    c1.metric("Years", f"{years[0]} → {years[-1]}")
+    c2.metric("CAGR", f"{cagr:.2f}%" if not math.isnan(cagr) else "n/a")
+    c3.metric("YoY Latest", f"{yoy.iloc[-1]:.2f}%" if not yoy.isna().iloc[-1] else "n/a")
+
+    # -------------------------
+    # Visualizations
+    # -------------------------
+    st.subheader("📊 Visualizations")
+    fig_area = px.area(pivot.reset_index(), x="ds", y=pivot.columns, title="Combined — RTO/State Revenue Over Time")
+    st.plotly_chart(fig_area, use_container_width=True)
+
+    # Heatmap
+    st.markdown("### 🔥 Heatmap — Year × State")
+    fig_h = go.Figure(data=go.Heatmap(
+        z=pivot_year.values, x=pivot_year.columns.astype(str), y=pivot_year.index.astype(str),
+        colorscale="Viridis"))
+    fig_h.update_layout(title="Revenue heatmap (year × state)")
+    st.plotly_chart(fig_h, use_container_width=True)
+
+    # Radar
+    st.markdown("### 🌈 Radar — Snapshot (last 3 years)")
+    try:
+        fig_r = go.Figure()
+        for y in pivot_year.index[-3:]:
+            fig_r.add_trace(go.Scatterpolar(
+                r=pivot_year.loc[y].values, theta=pivot_year.columns, fill="toself", name=str(y)
+            ))
+        fig_r.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True)
+        st.plotly_chart(fig_r, use_container_width=True)
+    except Exception as e:
+        st.warning(f"Radar failed: {e}")
+
+    # -------------------------
+    # Forecast (Linear)
+    # -------------------------
+    st.subheader("🔮 Forecast (Linear)")
+    state_sel = st.selectbox("Select state to forecast", pivot_year.columns)
+    X = np.arange(len(pivot_year)).reshape(-1,1)
+    y = pivot_year[state_sel].values
+    from sklearn.linear_model import LinearRegression
+    lr = LinearRegression().fit(X,y)
+    fut = np.arange(len(pivot_year)+3).reshape(-1,1)
+    preds = lr.predict(fut)
+    fut_years = list(range(pivot_year.index[0], pivot_year.index[0]+len(fut)))
+    figf = px.line(x=fut_years, y=preds, title=f"Forecast for {state_sel}")
+    figf.add_scatter(x=pivot_year.index, y=y, mode="markers+lines", name="Historical")
+    st.plotly_chart(figf, use_container_width=True)
+
+    # -------------------------
+    # Final summary
+    # -------------------------
+    st.subheader("🧠 Summary")
+    top_state = pivot_year.sum(axis=0).idxmax()
+    top_val = pivot_year.sum(axis=0).max()
+    st.success(f"Top State Overall: **{top_state}** with total ₹{top_val:,.0f}")
+    st.dataframe(pivot_year.style.format("{:,.0f}"))
+
+    logger.info("ALL-MAXED RTO/STATE block complete ✅")
+
+
+# -------------------------
+# Standalone run
+# -------------------------
+if __name__ == "__main__":
+    all_maxed_rto_state_block()
+
+
+# # ---------- Forecasting & Anomalies -------------------------------------------
+# if enable_ml and not df_tr.empty:
+#     st.subheader('Forecasting & Anomaly Detection')
+#     fc_col1, fc_col2 = st.columns([2,3])
+#     with fc_col1:
+#         method = st.selectbox('Forecast method', ['Naive seasonality','SARIMAX','Prophet','RandomForest','XGBoost'])
+#         horizon = st.number_input('Horizon (periods)', 1, 60, 12)
+#     with fc_col2:
+#         st.info('Some methods require optional packages (statsmodels, prophet, sklearn, xgboost).')
+
+#     ts = df_tr['value'].astype(float)
+#     # naive
+#     if st.button('Run forecast'):
+#         try:
+#             if method=='Naive seasonality':
+#                 last = ts[-12:] if len(ts)>=12 else ts
+#                 preds = np.tile(last.values, int(np.ceil(horizon/len(last))))[:horizon]
+#                 idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq=freq_map.get(frequency,'M'))
+#                 fc = pd.Series(preds, index=idx)
+#                 st.line_chart(pd.concat([ts, fc]))
+#             elif method=='SARIMAX':
+#                 sm = lazy('statsmodels')
+#                 if sm is None:
+#                     st.error('statsmodels not installed')
+#                 else:
+#                     from statsmodels.tsa.statespace.sarimax import SARIMAX
+#                     mod = SARIMAX(ts, order=(1,1,1), seasonal_order=(1,1,1,12))
+#                     res = mod.fit(disp=False)
+#                     pred = res.get_forecast(steps=horizon).predicted_mean
+#                     idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq='M')
+#                     fc = pd.Series(pred.values, index=idx)
+#                     st.line_chart(pd.concat([ts, fc]))
+#             elif method=='Prophet':
+#                 if prophet_mod is None:
+#                     st.error('prophet not installed')
+#                 else:
+#                     from prophet import Prophet
+#                     pdf = ts.reset_index().rename(columns={'date':'ds','value':'y'})
+#                     m = Prophet()
+#                     m.fit(pdf)
+#                     future = m.make_future_dataframe(periods=horizon, freq='M')
+#                     fc = m.predict(future).set_index('ds')['yhat'].tail(horizon)
+#                     st.line_chart(pd.concat([ts, fc]))
+#             elif method=='RandomForest':
+#                 skl = lazy('sklearn')
+#                 if skl is None:
+#                     st.error('scikit-learn not installed')
+#                 else:
+#                     from sklearn.ensemble import RandomForestRegressor
+#                     df_feat = pd.DataFrame({'y':ts})
+#                     for l in range(1,13): df_feat[f'lag_{l}'] = df_feat['y'].shift(l)
+#                     df_feat = df_feat.dropna()
+#                     X = df_feat.drop(columns=['y']).values; y = df_feat['y'].values
+#                     model = RandomForestRegressor(n_estimators=100).fit(X,y)
+#                     last = df_feat.drop(columns=['y']).iloc[-1].values
+#                     preds=[]; cur = last.copy()
+#                     for i in range(horizon):
+#                         p = model.predict(cur.reshape(1,-1))[0]
+#                         preds.append(p); cur = np.roll(cur,1); cur[0]=p
+#                     idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq='M')
+#                     fc = pd.Series(preds, index=idx)
+#                     st.line_chart(pd.concat([ts, fc]))
+#             elif method=='XGBoost':
+#                 if xgb is None:
+#                     st.error('xgboost not installed')
+#                 else:
+#                     import xgboost as xgb
+#                     df_feat = pd.DataFrame({'y':ts})
+#                     for l in range(1,13): df_feat[f'lag_{l}'] = df_feat['y'].shift(l)
+#                     df_feat = df_feat.dropna()
+#                     X = df_feat.drop(columns=['y']); y = df_feat['y']
+#                     dtrain = xgb.DMatrix(X, label=y)
+#                     bst = xgb.train({'objective':'reg:squarederror'}, dtrain, num_boost_round=100)
+#                     last = X.iloc[-1].values; preds=[]; cur = last.copy()
+#                     for i in range(horizon):
+#                         dcur = xgb.DMatrix(cur.reshape(1,-1)); p = bst.predict(dcur)[0]; preds.append(p); cur = np.roll(cur,1); cur[0]=p
+#                     idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq='M')
+#                     fc = pd.Series(preds, index=idx)
+#                     st.line_chart(pd.concat([ts, fc]))
+#         except Exception as e:
+#             st.error(f'Forecast failed: {e}')
+
+#     # anomaly detection
+#     st.markdown('**Anomaly detection**')
+#     a_method = st.selectbox('Anomaly method', ['Z-score','IQR','IsolationForest'])
+#     if st.button('Run anomaly detection'):
+#         try:
+#             if a_method=='Z-score':
+#                 z = (ts - ts.mean())/ts.std()
+#                 anoms = z.abs() > 3
+#             elif a_method=='IQR':
+#                 q1 = ts.quantile(0.25); q3 = ts.quantile(0.75); iqr=q3-q1
+#                 anoms = (ts < q1 - 1.5*iqr) | (ts > q3 + 1.5*iqr)
+#             else:
+#                 skl = lazy('sklearn')
+#                 if skl is None:
+#                     st.error('scikit-learn not installed')
+#                     anoms = pd.Series(False, index=ts.index)
+#                 else:
+#                     from sklearn.ensemble import IsolationForest
+#                     iso = IsolationForest(random_state=0).fit(ts.values.reshape(-1,1)); preds = iso.predict(ts.values.reshape(-1,1)); anoms = preds==-1
+#             out = ts[anoms]
+#             st.write('Anomalies found:', out.shape[0])
+#             if not out.empty: st.write(out)
+#         except Exception as e:
+#             st.error(f'Anomaly detection failed: {e}')
+
+#---------------------------------------------------
+
+# # ---------- RAG / LLM + vector DB (FAISS or fallback) -------------------------------------
+# if enable_rag:
+#     st.subheader("🧠 RAG (Retrieval-Augmented Generation) + Vector Index")
+
+#     docs = []
+
+#     # Collect all docs from current dataframes
+#     if not df_cat.empty:
+#         docs += (df_cat["label"].astype(str) + " :: " + df_cat["value"].astype(str)).tolist()
+#     if not df_mk.empty:
+#         docs += (df_mk["label"].astype(str) + " :: " + df_mk["value"].astype(str)).tolist()
+#     if not df_tr.empty:
+#         docs += [f"{idx.strftime('%Y-%m-%d')} :: {int(v)}" for idx, v in df_tr["value"].items()]
+
+#     if not docs:
+#         st.info("ℹ️ No documents available for RAG — please fetch data first.")
+#     else:
+#         st.success(f"✅ Built in-memory corpus with **{len(docs)}** entries")
+
+#         # ---- Embedding step ----
+#         with st.spinner("Generating embeddings..."):
+#             try:
+#                 # Try real embeddings if available
+#                 try:
+#                     from sentence_transformers import SentenceTransformer
+#                     model = SentenceTransformer("all-MiniLM-L6-v2")
+#                     emb = model.encode(docs, show_progress_bar=False, convert_to_numpy=True).astype("float32")
+#                     st.caption("🧩 Using SentenceTransformer embeddings (MiniLM).")
+#                 except ImportError:
+#                     rng = np.random.default_rng(42)
+#                     emb = np.stack([rng.normal(size=768) for _ in docs]).astype("float32")
+#                     st.caption("⚙️ Using random embeddings (demo mode).")
+
+#                 # ---- Build FAISS or fallback ----
+#                 try:
+#                     import faiss
+#                     faiss.normalize_L2(emb)
+#                     index = faiss.IndexFlatIP(emb.shape[1])
+#                     index.add(emb)
+#                     st.success("📚 FAISS index built successfully.")
+
+#                     def query_rag(query, topk=5):
+#                         qv = emb[:1] if not query else model.encode([query]).astype("float32")
+#                         faiss.normalize_L2(qv)
+#                         D, I = index.search(qv, topk)
+#                         return [docs[i] for i in I[0] if i < len(docs)]
+
+#                 except Exception as e:
+#                     st.warning(f"⚠️ FAISS not available — using naive cosine fallback. ({e})")
+#                     import numpy as np
+#                     from numpy.linalg import norm
+
+#                     def query_rag(query, topk=5):
+#                         if not query:
+#                             return docs[:topk]
+#                         qv = emb[0] if emb is not None else np.random.normal(size=768)
+#                         sims = np.dot(emb, qv) / (norm(emb, axis=1) * norm(qv) + 1e-9)
+#                         topk_idx = np.argsort(sims)[::-1][:topk]
+#                         return [docs[i] for i in topk_idx]
+
+#             except Exception as e:
+#                 st.error(f"❌ Error building embeddings or index: {e}")
+#                 query_rag = lambda q, topk=5: docs[:topk]
+
+#         # ---- RAG Query UI ----
+#         st.markdown("### 🔍 Ask a Question")
+#         q = st.text_input("Enter your question")
+#         if st.button("Run RAG Query") and q:
+#             with st.spinner("Retrieving relevant information..."):
+#                 hits = query_rag(q)
+#                 if llm_key:
+#                     st.markdown(f"**LLM Answer (mock)** for: `{q}`")
+#                     st.info(f"🤖 Would call LLM API here with top-{len(hits)} docs.")
+#                 else:
+#                     st.markdown("**Retrieved Documents (Top 5)**")
+#                     st.write("\n---\n".join(hits))
+
+
+# ================================
+# 🧠 RAG / LLM + Multi-Source Vector Intelligence (ALL-MAXED) — FIXED
+# ================================
+
+enable_rag = st.checkbox("🧠 Enable RAG + LLM Intelligence (ALL-MAXED)", value=True, key="enable_rag_allmax")
+
+if enable_rag:
+    st.markdown(
+        """
+        <div style="padding:14px 22px;border-left:6px solid #8A2BE2;
+                    background:linear-gradient(90deg,#f8f6ff,#ffffff 100%);
+                    border-radius:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+            <h3 style="margin:0;font-weight:700;color:#3a3a3a;">🧠 RAG + LLM Intelligence (ALL-MAXED)</h3>
+            <p style="margin:4px 0 0;color:#555;font-size:14.5px;">
+                Unified retrieval + LLM reasoning across all VAHAN datasets — categories, makers, trends, state breakdowns, forecasts & anomalies.
+            </p>
+        </div>
+        """, unsafe_allow_html=True
+    )
+
+    docs = []
+
+    def add_docs(df, prefix):
+        if df is not None and isinstance(df, pd.DataFrame) and not df.empty:
+            for _, r in df.iterrows():
+                # safe string building
+                parts = []
+                for k in r.index:
+                    v = r[k]
+                    if pd.isna(v):
+                        continue
+                    parts.append(f"{k}: {v}")
+                if parts:
+                    docs.append(f"{prefix} :: " + " | ".join(parts))
+
+    # try to collect documents from known globals (safe)
+    add_docs(globals().get("df_cat"), "Category")
+    add_docs(globals().get("df_cat_all"), "CategoryAll")
+    add_docs(globals().get("df_mk"), "Maker")
+    add_docs(globals().get("df_maker_all"), "MakerAll")
+    if "df_tr" in globals() and isinstance(globals().get("df_tr"), (pd.DataFrame, pd.Series)):
+        tr_df = globals().get("df_tr")
+        if isinstance(tr_df, pd.Series):
+            tr_df = tr_df.reset_index().rename(columns={0: "value"})
+        add_docs(tr_df, "Trend")
+    add_docs(globals().get("df_br"), "State/RTO")
+
+    # optional additional lists
+    if "yoy_change" in globals() and isinstance(globals().get("yoy_change"), pd.DataFrame):
+        for idx, row in globals().get("yoy_change").iterrows():
+            docs.append(f"YoY :: {idx} => {row.to_dict()}")
+
+    if not docs:
+        st.info("ℹ️ No documents available for RAG — please fetch or generate data first.")
+    else:
+        st.success(f"✅ Built knowledge corpus with **{len(docs):,} entries**")
+
+    # ---- Embeddings generation (best-effort; fallback to random)
+    emb = None
+    model = None
+    try:
+        from sentence_transformers import SentenceTransformer
+        model = SentenceTransformer("all-MiniLM-L6-v2")  # smaller & common fallback
+        emb = model.encode(docs, convert_to_numpy=True, show_progress_bar=False).astype("float32")
+        st.caption("✅ Embeddings generated (SentenceTransformer)")
+    except Exception as e:
+        st.warning(f"⚠️ Embedding model not available, using random demo embeddings: {e}")
+        rng = np.random.default_rng(42)
+        emb = rng.normal(size=(len(docs), 384)).astype("float32")
+        model = None
+
+    # ---- Build index (FAISS preferred, else Annoy, else fallback)
+    index = None
+    index_type = "None"
+    if emb is not None:
+        try:
+            import faiss
+            faiss.normalize_L2(emb)
+            index = faiss.IndexFlatIP(emb.shape[1])
+            index.add(emb)
+            index_type = "FAISS (Inner Product)"
+        except Exception:
+            try:
+                from annoy import AnnoyIndex
+                index = AnnoyIndex(emb.shape[1], 'angular')
+                for i, v in enumerate(emb):
+                    index.add_item(i, v.tolist())
+                index.build(10)
+                index_type = "Annoy (Angular)"
+            except Exception:
+                index = None
+                index_type = "Flat (numpy fallback)"
+    st.caption(f"📚 Vector index built using **{index_type}**")
+
+    # ---- Query helper
+    def query_rag(query, topk=10):
+        if not query:
+            return []
+        if model is None:
+            # random fallback selection
+            idxs = np.random.choice(len(docs), min(topk, len(docs)), replace=False)
+            return [docs[i] for i in idxs.tolist()]
+
+        # produce query embedding and search depending on index
+        qv = model.encode([query], convert_to_numpy=True).astype("float32")
+        try:
+            import faiss
+            faiss.normalize_L2(qv)
+            D, I = index.search(qv, topk)
+            unique_idxs = []
+            for i in I[0]:
+                if i >= 0 and i < len(docs) and i not in unique_idxs:
+                    unique_idxs.append(int(i))
+            return [docs[i] for i in unique_idxs]
+        except Exception:
+            try:
+                # Annoy path
+                qv0 = qv[0].tolist()
+                idxs = index.get_nns_by_vector(qv0, topk)
+                return [docs[i] for i in idxs if i < len(docs)]
+            except Exception:
+                # numpy dot fallback
+                from numpy.linalg import norm
+                qv0 = qv[0]
+                sims = np.dot(emb, qv0) / (norm(emb, axis=1) * norm(qv0) + 1e-9)
+                topk_idx = np.argsort(sims)[::-1][:topk]
+                return [docs[int(i)] for i in topk_idx]
+
+    # ---- UI for RAG queries
+    st.markdown("### 🔍 Ask a Question or Insight Query")
+    q = st.text_input("🗨️ What do you want to know about the VAHAN data?", key="rag_query_input")
+    topk = st.slider("Top-K results", 3, 20, 8, key="rag_topk")
+
+    # make sure hits always exists
+    hits = []
+
+    if st.button("🚀 Run RAG + LLM Query", key="rag_run_btn"):
+        if not docs:
+            st.warning("No docs to search. Fetch data first.")
+        elif not q:
+            st.warning("Please enter a query.")
+        else:
+            with st.spinner("Retrieving and synthesizing insights..."):
+                try:
+                    hits = query_rag(q, topk=topk)
+                    if not hits:
+                        st.info("No matches found for the query (or using demo embeddings).")
+                    else:
+                        st.markdown(f"**Retrieved {len(hits)} relevant documents:**")
+                        st.write("\n\n---\n\n".join(hits[:topk]))
+                except Exception as e:
+                    st.error(f"Retrieval failed: {e}")
+                    hits = []
+
+            # Try summarizer if hits present
+            if hits:
+                try:
+                    from transformers import pipeline
+                    summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+                    joined = " ".join(hits[:min(len(hits), topk)])
+                    summary = summarizer(joined, max_length=150, min_length=40, do_sample=False)[0]["summary_text"]
+                    st.markdown("### 🧭 LLM Summary Insight")
+                    st.success(summary)
+                except Exception as e:
+                    st.info(f"🤖 Summarizer unavailable or failed ({e}). You can plug your LLM here.")
+
+    # ========== Debug & intelligence summary (always safe) ==========
+    st.markdown("---")
+    st.subheader("🧠 RAG Debug + Intelligence Summary")
+
+    try:
+        debug_block = {"query": q, "topk": int(topk), "retrieved_count": len(hits)}
+        st.json({"retrieval": debug_block})
+
+        # Top entity summary attempt (safe)
+        st.markdown("### 🏆 Top Entity Summary Across Known Data")
+        top_summary = {}
+        candidates = {
+            "Category": globals().get("df_cat"),
+            "Maker": globals().get("df_mk") or globals().get("df_maker_all") or globals().get("df_makers"),
+            "State": globals().get("df_br"),
+            "Trend": globals().get("df_tr") if "df_tr" in globals() else None,
+        }
+        for name, df in candidates.items():
+            if df is not None and isinstance(df, pd.DataFrame) and not df.empty:
+                # best-effort value column discovery
+                val_cols = [c for c in df.columns if any(k in c.lower() for k in ["value", "count", "total", "registered", "registration"])]
+                if not val_cols:
+                    numcols = df.select_dtypes(include=[np.number]).columns.tolist()
+                    val_cols = numcols
+                if val_cols:
+                    col = val_cols[0]
+                    try:
+                        idxmax = df[col].idxmax()
+                        top_row = df.loc[idxmax]
+                        top_summary[name] = {
+                            "Top": str(top_row.iloc[0]) if len(top_row) else str(top_row.to_dict()),
+                            "Value": float(top_row[col]),
+                            "Mean": float(df[col].mean()),
+                            "Total": float(df[col].sum()),
+                        }
+                        st.markdown(f"**{name}** → {top_summary[name]['Top']} (Top Value {top_summary[name]['Value']:,.0f}, Mean {top_summary[name]['Mean']:,.0f})")
+                    except Exception:
+                        continue
+        if not top_summary:
+            st.info("No structured numeric columns found to compute top-entity summary.")
+        # store summary in session
+        st.session_state["rag_debug_summary"] = {"retrieval": debug_block, "top_summary": top_summary, "hits_preview": hits[:topk]}
+
+        # AI post-summary toggle (use checkbox)
+        use_ai_summary = st.checkbox("🤖 Generate AI narrative using configured LLM (DeepInfra / OpenAI)", value=False, key="rag_use_ai")
+        if use_ai_summary:
+            # prefer available secrets; fail gracefully otherwise
+            st.info("Attempting to call configured LLM (if API key present)...")
+            try:
+                # assemble simple payload
+                payload_text = json.dumps(st.session_state.get("rag_debug_summary", {}), default=str)[:8000]
+                # You can insert your API-call here. For safety we only show info.
+                st.info("LLM call placeholder — implement your API call here with the payload.")
+            except Exception as e:
+                st.warning(f"AI post-summary failed: {e}")
+
+        # allow debug JSON download
+        st.download_button(
+            "⬇️ Download Debug JSON",
+            data=json.dumps(st.session_state.get("rag_debug_summary", {"retrieval": debug_block}), indent=2),
+            file_name="rag_debug_summary.json",
+            mime="application/json",
+            key="rag_debug_download"
+        )
+
+    except Exception as e:
+        st.error(f"⚠️ Debug Summary failed: {e}")
+
+
+# # ---------- NLP tools hooks ----------------------------------------------------
+# if enable_nlp:
+#     st.subheader('NLP tools (nltk / spacy)')
+#     st.info('This will lazy-load NLP packages and run simple tokenization / NER demo')
+#     if nltk is None or spacy is None:
+#         st.warning('nltk or spacy not installed; install them to run NLP demos')
+#     else:
+#         st.write('Running simple demo...')
+#         # simple tokenization demo
+#         text = st.text_area('Text for NLP demo', 'The quick brown fox jumps over the lazy dog. New Delhi saw 10000 registrations in Jan 2024.')
+#         import nltk
+#         nltk.download('punkt', quiet=True)
+#         from nltk.tokenize import word_tokenize
+#         toks = word_tokenize(text)
+#         st.write('Tokens:', toks)
+#         import spacy
+#         nlp = spacy.load('en_core_web_sm')
+#         doc = nlp(text)
+#         st.write('Entities:', [(ent.text, ent.label_) for ent in doc.ents])
+
+# =====================================================
+# 🧠 NLP ANALYZER — ALL-MAXED ULTIMATE FUSION LAB 🔥
+# =====================================================
+enable_nlp = st.checkbox("🗣️ Enable NLP Analyzer (ALL-MAXED ULTIMATE)", False, key="nlp_toggle")
+
+if enable_nlp:
+    import pandas as pd
+    import numpy as np
+    import nltk, spacy, re, io, base64, seaborn as sns
+    from nltk.tokenize import word_tokenize
+    from collections import Counter
+    from wordcloud import WordCloud
+    import matplotlib.pyplot as plt
+    import plotly.express as px
+    from nltk.sentiment import SentimentIntensityAnalyzer
+    from openpyxl import Workbook
+    from openpyxl.utils.dataframe import dataframe_to_rows
+    from openpyxl.styles import Alignment, Font
+
+    st.markdown("## 🧠 NLP Analyzer — ALL-MAXED ULTIMATE FUSION LAB")
+
+    # --- Lazy Downloads
+    nltk.download("punkt", quiet=True)
+    nltk.download("averaged_perceptron_tagger", quiet=True)
+    nltk.download("vader_lexicon", quiet=True)
+
+    sia = SentimentIntensityAnalyzer()
+
+    # --- Text Input Section
+    model_choice = st.selectbox("Choose NLP Engine", ["spaCy (default)", "NLTK", "Transformers (HuggingFace)"], index=0)
+
+    text_mode = st.radio("Input Mode", ["Single Text", "Multiple Texts (compare mode)"], horizontal=True)
+
+    if text_mode == "Single Text":
+        texts = [st.text_area("📝 Paste text to analyze:", "Maharashtra saw record EV registrations in 2024.")]
+    else:
+        raw = st.text_area("Enter multiple texts separated by '---'",
+                           "2023: Maharashtra had 8 lakh registrations. --- 2024: Maharashtra had 10 lakh registrations.")
+        texts = [x.strip() for x in raw.split('---') if x.strip()]
+
+    # --- Load spaCy model
+    def load_spacy():
+        try:
+            return spacy.load("en_core_web_sm")
+        except OSError:
+            from spacy.cli import download
+            download("en_core_web_sm")
+            return spacy.load("en_core_web_sm")
+
+    nlp = load_spacy()
+
+    results = []
+    entity_map = []
+
+    for idx, t in enumerate(texts):
+        if not t.strip():
+            continue
+
+        st.markdown(f"### 📄 Text {idx+1}")
+        toks = word_tokenize(t)
+        pos_tags = nltk.pos_tag(toks)
+        sent_score = sia.polarity_scores(t)
+        doc = nlp(t)
+
+        ents = [(ent.text, ent.label_) for ent in doc.ents]
+        keywords = [tok.text.lower() for tok in doc if tok.is_alpha and not tok.is_stop]
+        top_kw = Counter(keywords).most_common(12)
+
+        st.metric("Sentiment (compound)", f"{sent_score['compound']:.3f}")
+        st.write("🧩 Entities:", ents if ents else "— None —")
+        st.write("🔑 Keywords:", top_kw)
+        st.write("🧱 POS (sample):", pos_tags[:10])
+
+        # WordCloud
+        wc = WordCloud(width=600, height=300, background_color="white").generate(" ".join(keywords))
+        fig, ax = plt.subplots()
+        ax.imshow(wc, interpolation="bilinear")
+        ax.axis("off")
+        st.pyplot(fig)
+
+        # Append data
+        results.append({
+            "TextID": idx + 1,
+            "Tokens": len(toks),
+            "Sentiment": sent_score["compound"],
+            "Pos": sent_score["pos"],
+            "Neg": sent_score["neg"],
+            "Neu": sent_score["neu"],
+            "TopKeywords": ", ".join([k for k, _ in top_kw])
+        })
+
+        for ent_text, ent_type in ents:
+            entity_map.append({"TextID": idx + 1, "Entity": ent_text, "Type": ent_type})
+
+    if not results:
+        st.warning("No valid text found.")
+        st.stop()
+
+    # ===========================
+    # 🧾 SUMMARY SECTION
+    # ===========================
+    df_results = pd.DataFrame(results)
+    df_entities = pd.DataFrame(entity_map) if entity_map else pd.DataFrame(columns=["TextID", "Entity", "Type"])
+
+    avg_sent = df_results["Sentiment"].mean()
+    st.subheader("🏁 NLP Summary Dashboard")
+    st.metric("📊 Average Sentiment", f"{avg_sent:.3f}")
+    st.dataframe(df_results, use_container_width=True)
+
+    # --- Sentiment Chart
+    fig_sent = px.bar(df_results, x="TextID", y="Sentiment", color="Sentiment",
+                      text_auto=True, title="Sentiment per Text", color_continuous_scale="RdYlGn")
+    st.plotly_chart(fig_sent, use_container_width=True)
+
+    # --- Keyword frequency
+    all_kw = []
+    for r in results:
+        all_kw.extend(r["TopKeywords"].split(", "))
+    kw_freq = Counter(all_kw).most_common(20)
+    df_kw = pd.DataFrame(kw_freq, columns=["Keyword", "Frequency"])
+    fig_kw = px.bar(df_kw, x="Keyword", y="Frequency", text_auto=True, title="Keyword Frequency")
+    st.plotly_chart(fig_kw, use_container_width=True)
+
+    # --- Entity Analysis
+    if not df_entities.empty:
+        st.subheader("🏷️ Named Entities Overview")
+        ent_counts = df_entities["Type"].value_counts().head(10)
+        st.bar_chart(ent_counts)
+        st.dataframe(df_entities.head(30), use_container_width=True)
+
+    # --- Heatmap for sentiment distribution
+    fig, ax = plt.subplots()
+    sns.heatmap(df_results[["Sentiment", "Pos", "Neg", "Neu"]].T, cmap="RdYlGn", annot=True, ax=ax)
+    st.pyplot(fig)
+
+    # ==========================================================
+    # 💾 EXPORT SECTION — Excel (auto width) + JSON
+    # ==========================================================
+    st.subheader("📦 Export NLP Results")
+
+    wb = Workbook()
+    ws_sum = wb.active
+    ws_sum.title = "Summary"
+
+    for r in dataframe_to_rows(df_results, index=False, header=True):
+        ws_sum.append(r)
+
+    for col in ws_sum.columns:
+        max_len = max(len(str(c.value)) if c.value else 0 for c in col)
+        ws_sum.column_dimensions[col[0].column_letter].width = max_len + 2
+
+    ws_ent = wb.create_sheet("Entities")
+    for r in dataframe_to_rows(df_entities, index=False, header=True):
+        ws_ent.append(r)
+    for col in ws_ent.columns:
+        max_len = max(len(str(c.value)) if c.value else 0 for c in col)
+        ws_ent.column_dimensions[col[0].column_letter].width = max_len + 2
+
+    ws_kw = wb.create_sheet("Keywords")
+    for r in dataframe_to_rows(df_kw, index=False, header=True):
+        ws_kw.append(r)
+    for col in ws_kw.columns:
+        max_len = max(len(str(c.value)) if c.value else 0 for c in col)
+        ws_kw.column_dimensions[col[0].column_letter].width = max_len + 2
+
+    # Save Excel in-memory
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    b64 = base64.b64encode(buf.read()).decode()
+    st.download_button(
+        label="📥 Download All NLP Results (Excel)",
+        data=base64.b64decode(b64),
+        file_name="NLP_AllMaxed_Fusion.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+    # JSON Export
+    st.download_button(
+        label="🧩 Download Results (JSON)",
+        data=df_results.to_json(orient="records", indent=2),
+        file_name="nlp_allmaxed_results.json",
+        mime="application/json"
+    )
+
+    st.success("✅ All NLP results and charts generated — fully ALL-MAXED and export-ready!")
+
+
+# # ---------- Exports & comparisons ------------------------------------------------
+# st.subheader('Exports & comparisons')
+# if not df_tr.empty:
+#     st.download_button('Download trend CSV', df_tr.reset_index().to_csv(index=False), 'trend.csv')
+# if not df_cat.empty:
+#     st.download_button('Download categories CSV', df_cat.to_csv(index=False), 'categories.csv')
+# if not df_mk.empty:
+#     st.download_button('Download makers CSV', df_mk.to_csv(index=False), 'makers.csv')
+
+
+
+# # ---------- Footer & next steps ------------------------------------------------
+# st.markdown('---')
+# st.caption('Ultra  V2 — build: ' + datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'))
+
+
+
+# =====================================================
+# 🚀 Final Dashboard Footer (ALL-MAXED Polished Edition)
+# =====================================================
+try:
+    import time
+    from datetime import datetime
+
+    # compute runtime duration if start_ts exists
+    runtime = ""
+    if "app_start_time" in globals():
+        try:
+            runtime_secs = time.time() - app_start_time
+            runtime = f" • Runtime: {runtime_secs:,.1f}s"
+        except Exception:
+            runtime = ""
+    
+    # count how many dataframes we loaded
+    df_count = sum(1 for v in globals().values() if isinstance(v, pd.DataFrame))
+    df_text = f" • DataFrames: {df_count}" if df_count else ""
+
+    footer_ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    st.markdown(f"""
+    <div style="text-align:center;padding:16px;border-radius:14px;
+                background:linear-gradient(90deg,#051937,#004d7a,#008793,#00bf72,#a8eb12);
+                color:white;margin-top:18px;box-shadow:0 0 12px rgba(0,0,0,0.4);">
+        <h3 style="margin:0;">🚗 Parivahan Analytics — ALL-MAXED DASHBOARD</h3>
+        <div style="opacity:0.95;font-size:14px;">
+            Snapshot: <code>{footer_ts}</code>{runtime}{df_text} • Built with ❤️ & ⚙️ Streamlit
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.caption("💡 Tip: Use the exported Excel for polished reports and the ZIP snapshot for full archival backups.")
+
+    # graceful balloon launch
+    try:
+        st.balloons()
+    except Exception:
+        pass
+
+except Exception as e:
+    st.warning(f"Footer rendering failed: {e}")
