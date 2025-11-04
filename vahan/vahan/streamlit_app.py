@@ -2042,6 +2042,7 @@ def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.
 # Main Streamlit UI — All-Maxed Block
 # -------------------------
 # =====================================================
+import numpy as np
 
 def all_maxed_category_block(params: Optional[dict] = None):
     """Render the maxed category analytics block inside Streamlit.
@@ -3221,9 +3222,20 @@ Computation time: {summary_time:.2f} sec
     total_time = time.time() - start_overall
     logger.info(f"ALL-MAXED block finished in {total_time:.2f}s")
 
-# If invoked directly, render the block
+# -----------------------------------------------------
+# 🧩 Safe Entry Point — Streamlit-only Execution Guard
+# -----------------------------------------------------
 if __name__ == "__main__":
-    all_maxed_category_block()
+    import streamlit as st
+
+    st.markdown("# 🚗 ALL-MAXED CATEGORY ANALYTICS")
+
+    try:
+        all_maxed_category_block()
+    except Exception as e:
+        import traceback
+        st.error(f"💥 Error while rendering All-Maxed block: {e}")
+        st.code(traceback.format_exc(), language="python")
 
 
 #     # ---- Top Makers ----
