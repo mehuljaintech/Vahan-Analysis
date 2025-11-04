@@ -3390,39 +3390,72 @@ years = list(range(int(from_year), int(to_year) + 1))
 st.info(f"🔗 Using parameters: {params_common}")
 
 # =====================================================
-# 🚗 VAHAN MAKER ANALYTICS — ALL-MAXED SECTION
+# 🚗 VAHAN MAKER ANALYTICS — ALL-MAXED VISUAL ENGINE
 # =====================================================
 import streamlit as st
 import pandas as pd
 import numpy as np
-import random
 import plotly.express as px
-from colorama import Fore
-
-# -----------------------------------------------------
-# ⚡ MAXED CHART HELPERS (UNIQUE KEYS + BETTER UX)
-# -----------------------------------------------------
+import plotly.graph_objects as go
 import uuid
-import plotly.express as px
-import streamlit as st
+import math
+from datetime import datetime
+
+# -----------------------------------------------------
+# ⚡ GLOBAL VISUAL THEME
+# -----------------------------------------------------
+MAXED_COLORS = px.colors.qualitative.Safe + px.colors.qualitative.Plotly
+TITLE_FONT = dict(size=20, color="#111", family="Segoe UI Semibold")
+LABEL_FONT = dict(size=13, color="#333", family="Segoe UI")
+HOVER_TMPL = "<b>%{label}</b><br>%{y:,.0f} registrations<br>Year: %{x}"
+
+# -----------------------------------------------------
+# 🔹 UNIVERSAL SAFE WRAPPER
+# -----------------------------------------------------
+def _safe_df(df: pd.DataFrame, required: list[str]) -> pd.DataFrame:
+    if df is None or df.empty:
+        st.warning("⚠️ Empty dataframe provided to chart renderer.")
+        return pd.DataFrame(columns=required)
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        st.warning(f"⚠️ Missing columns for chart: {missing}")
+        for c in missing:
+            df[c] = np.nan
+    return df
 
 
-def _bar_from_df(df: pd.DataFrame, title: str, combined: bool = False, section_id: str = ""):
-    """Render a robust bar chart with unique Streamlit key, error safety, and style."""
+# -----------------------------------------------------
+# 🟦 MAXED BAR CHART (COMBINED / STACKED / NORMALIZED)
+# -----------------------------------------------------
+def bar_maxed(
+    df: pd.DataFrame,
+    title: str,
+    combined: bool = False,
+    stacked: bool = False,
+    normalized: bool = False,
+    section_id: str = "",
+    color_field: str = "year",
+):
+    """Render a polished bar chart with advanced legend, hover, and adaptive layout."""
     try:
-        # 🔑 Ensure unique key for Streamlit
-        unique_key = f"bar_{section_id}_{uuid.uuid4().hex[:6]}"
+        df = _safe_df(df, ["label", "value"])
+        unique_key = f"barmaxed_{section_id}_{uuid.uuid4().hex[:6]}"
 
-        # 🧱 Create Plotly figure
-        if combined and "year" in df.columns:
+        if df.empty:
+            st.info("ℹ️ No data to render.")
+            return
+
+        if combined and color_field in df.columns:
+            mode = "stack" if stacked else "group"
             fig = px.bar(
                 df,
                 x="label",
                 y="value",
-                color="year",
-                barmode="group",
+                color=color_field,
+                barmode=mode,
                 text_auto=True,
                 title=title,
+                color_discrete_sequence=MAXED_COLORS,
             )
         else:
             fig = px.bar(
@@ -3432,61 +3465,167 @@ def _bar_from_df(df: pd.DataFrame, title: str, combined: bool = False, section_i
                 color="label",
                 text_auto=True,
                 title=title,
+                color_discrete_sequence=MAXED_COLORS,
             )
 
-        # 🧩 Layout polish
+        # --- Normalization (percentage)
+        if normalized:
+            fig.for_each_trace(
+                lambda t: t.update(y=t.y / np.sum(t.y) * 100 if np.sum(t.y) > 0 else t.y)
+            )
+            fig.update_yaxes(title_text="Share (%)")
+
+        # --- Layout polish
         fig.update_layout(
             template="plotly_white",
-            xaxis_title="Maker",
+            title_font=TITLE_FONT,
+            legend_title_text="",
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.25,
+                xanchor="center",
+                x=0.5,
+                bgcolor="rgba(250,250,250,0.9)",
+                bordercolor="rgba(0,0,0,0.1)",
+                borderwidth=1,
+            ),
+            xaxis_title="Category / Maker",
             yaxis_title="Registrations",
-            showlegend=True,
-            title_font=dict(size=18, color="#222", family="Segoe UI"),
-            margin=dict(t=50, b=40, l=40, r=20),
-            bargap=0.2,
-            height=450,
+            margin=dict(t=60, b=80, l=40, r=30),
+            bargap=0.15,
+            height=480,
         )
 
-        # 📊 Display
+        # --- Enhanced hover
+        fig.update_traces(
+            hovertemplate="<b>%{x}</b><br>Registrations: %{y:,.0f}<extra></extra>",
+            textfont=LABEL_FONT,
+        )
+
         st.plotly_chart(fig, use_container_width=True, key=unique_key)
 
     except Exception as e:
-        st.warning(f"⚠️ Bar chart render failed: {e}")
+        st.warning(f"⚠️ MAXED Bar chart failed: {e}")
 
 
-def _pie_from_df(df: pd.DataFrame, title: str, section_id: str = ""):
-    """Render a pie chart safely with unique Streamlit key, hover effects, and styling."""
+# -----------------------------------------------------
+# 🟣 MAXED PIE / DONUT CHART (3D FEEL + CENTER LABEL)
+# -----------------------------------------------------
+def pie_maxed(
+    df: pd.DataFrame,
+    title: str,
+    section_id: str = "",
+    donut: bool = True,
+    legend: bool = True,
+):
+    """Render a fully-styled donut/pie chart with hover & label polish."""
     try:
-        # 🔑 Unique key
-        unique_key = f"pie_{section_id}_{uuid.uuid4().hex[:6]}"
+        df = _safe_df(df, ["label", "value"])
+        unique_key = f"piemaxed_{section_id}_{uuid.uuid4().hex[:6]}"
 
-        # 🧱 Create Plotly figure
+        if df.empty or df["value"].sum() <= 0:
+            st.info("ℹ️ No valid data for pie chart.")
+            return
+
         fig = px.pie(
             df,
             names="label",
             values="value",
-            hole=0.45,
+            hole=0.45 if donut else 0,
             title=title,
+            color_discrete_sequence=MAXED_COLORS,
         )
 
-        # 🧩 Layout polish
         fig.update_traces(
             textinfo="percent+label",
-            pull=[0.05] * len(df),
             hovertemplate="<b>%{label}</b><br>%{value:,.0f} registrations<br>%{percent}",
-        )
-        fig.update_layout(
-            template="plotly_white",
-            margin=dict(t=60, b=40, l=40, r=40),
-            title_font=dict(size=18, color="#222", family="Segoe UI"),
-            showlegend=False,
-            height=400,
+            pull=[0.05] * len(df),
         )
 
-        # 📊 Display
+        # Center label for donut
+        if donut:
+            total = df["value"].sum()
+            fig.add_annotation(
+                text=f"<b>{total:,.0f}</b><br><span style='font-size:12px;color:#666'>Total</span>",
+                showarrow=False,
+                font=dict(size=14),
+                x=0.5,
+                y=0.5,
+            )
+
+        fig.update_layout(
+            template="plotly_white",
+            title_font=TITLE_FONT,
+            margin=dict(t=60, b=40, l=40, r=40),
+            showlegend=legend,
+            height=420,
+            legend_title_text="",
+        )
+
         st.plotly_chart(fig, use_container_width=True, key=unique_key)
 
     except Exception as e:
-        st.warning(f"⚠️ Pie chart render failed: {e}")
+        st.warning(f"⚠️ MAXED Pie chart failed: {e}")
+
+
+# -----------------------------------------------------
+# 🟨 MAXED LINE / TREND CHART
+# -----------------------------------------------------
+def line_maxed(
+    df: pd.DataFrame,
+    x_field: str = "year",
+    y_field: str = "value",
+    color_field: str = "label",
+    title: str = "",
+    section_id: str = "",
+    smooth: bool = False,
+):
+    """Render a smooth trend line chart with multi-series overlay."""
+    try:
+        df = _safe_df(df, [x_field, y_field, color_field])
+        unique_key = f"linemaxed_{section_id}_{uuid.uuid4().hex[:6]}"
+
+        if df.empty:
+            st.info("ℹ️ No data to render trend.")
+            return
+
+        fig = px.line(
+            df,
+            x=x_field,
+            y=y_field,
+            color=color_field,
+            markers=True,
+            title=title,
+            color_discrete_sequence=MAXED_COLORS,
+        )
+
+        if smooth:
+            # Basic moving average smoothing for visual
+            df_sorted = df.sort_values(x_field)
+            fig.data = []
+            for lbl in df[color_field].unique():
+                sub = df_sorted[df_sorted[color_field] == lbl]
+                sub["smoothed"] = sub[y_field].rolling(3, min_periods=1).mean()
+                fig.add_trace(go.Scatter(
+                    x=sub[x_field], y=sub["smoothed"],
+                    name=lbl, mode="lines+markers"
+                ))
+
+        fig.update_layout(
+            template="plotly_white",
+            title_font=TITLE_FONT,
+            xaxis_title=x_field.capitalize(),
+            yaxis_title=y_field.capitalize(),
+            legend=dict(orientation="h", y=-0.3, x=0.5, xanchor="center"),
+            margin=dict(t=60, b=60, l=40, r=30),
+            height=460,
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key=unique_key)
+
+    except Exception as e:
+        st.warning(f"⚠️ MAXED Line chart failed: {e}")
 
 
 # -----------------------------------------------------
@@ -3743,11 +3882,8 @@ if len(year_totals) >= 2:
 else:
     cagr = np.nan
 
-c1, c2, c3 = st.columns(3)
+c1= st.columns(1)
 c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} years")
-c2.metric("📈 CAGR (Total)", f"{cagr:.2f}%" if not math.isnan(cagr) else "n/a")
-c3.metric("📊 Latest YoY", f"{year_totals['YoY_%'].iloc[-1]:.2f}%" if not np.isnan(year_totals['YoY_%'].iloc[-1]) else "n/a")
-
 # ===============================================================
 # 📊 VISUALS (ALL MODES)
 # ===============================================================
@@ -4185,7 +4321,6 @@ st.subheader("🧠 Advanced Trend Analytics")
 # ===============================================================
 # 🔹 Load df_trend from API or fallback
 # ===============================================================
-@st.cache_data(show_spinner=False)
 def load_trend_data():
     try:
         # Example safe API call (replace get_json with your actual function)
@@ -4221,10 +4356,8 @@ year_sum = df_trend.groupby("year")["value"].sum()
 total_cagr = ((year_sum.iloc[-1] / year_sum.iloc[0]) ** (1 / (len(year_sum) - 1)) - 1) * 100 if len(year_sum) > 1 else np.nan
 latest_yoy = ((year_sum.iloc[-1] - year_sum.iloc[-2]) / year_sum.iloc[-2]) * 100 if len(year_sum) > 1 else np.nan
 
-c1, c2, c3 = st.columns(3)
+c1= st.columns(1)
 c1.metric("📅 Duration", f"{year_sum.index.min()} → {year_sum.index.max()}", f"{len(year_sum)} years")
-c2.metric("📈 CAGR", f"{total_cagr:.2f}%" if not math.isnan(total_cagr) else "n/a")
-c3.metric("📊 Latest YoY", f"{latest_yoy:.2f}%" if not math.isnan(latest_yoy) else "n/a")
 
 # ===============================================================
 # 2️⃣ Heatmap — Year × Month
@@ -4326,8 +4459,6 @@ try:
     st.write(f"- **Total Records:** {total_records}")
     st.write(f"- **Total Registrations:** {total_sum:,.0f}")
     st.write(f"- **Peak:** {peak_value:,.0f} on **{peak_date}**")
-    st.write(f"- **CAGR:** {total_cagr:.2f}%")
-    st.write(f"- **Latest YoY:** {latest_yoy:.2f}%")
 except Exception as e:
     st.warning(f"Recap failed: {e}")
 
