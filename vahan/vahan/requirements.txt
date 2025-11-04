@@ -1,13 +1,13 @@
 # ===== Core web / UI
-streamlit>=1.24.0
-streamlit-extras>=0.0.1
+streamlit
+streamlit-extras
 streamlit-option-menu
 streamlit-aggrid
 streamlit-lottie
 
 # ===== Data & I/O
-pandas>=1.5
-numpy>=1.23
+pandas
+numpy
 python-dateutil
 openpyxl
 xlrd
@@ -51,7 +51,7 @@ prophet            # note: often requires system deps OR conda install
 xgboost
 lightgbm
 catboost
-tensorflow>=2.12    # choose appropriate version for your GPU/CPU
+tensorflow    # choose appropriate version for your GPU/CPU
 torch                # pin in conda/docker depending on CUDA
 transformers
 huggingface-hub
