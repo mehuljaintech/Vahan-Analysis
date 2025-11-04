@@ -2470,659 +2470,659 @@ else:
     st.markdown("---")
     st.success("✅ ALL-MAXED visuals rendered. Use controls above to show/hide charts and export data.")
 
-# -------------------------
-# 🔮 All-Maxed Forecasting & Analytics
-# -------------------------
-if do_forecast:
-    st.header("🔮 All-Maxed Forecasting & Predictive Intelligence")
-
-    categories = pivot_year.columns.tolist() if not pivot_year.empty else df_cat_all["label"].unique().tolist()
-    if not categories:
-        st.info("No categories available for forecasting.")
-    else:
-        cat = st.selectbox("📊 Choose category", categories)
-        horizon_years = st.slider("Forecast horizon (years)", 1, 5, 2)
-        horizon_months = horizon_years * 12
-
-        # Prepare series
-        df = pivot_year[[cat]].reset_index().rename(columns={cat: "y", "year": "ds"})
-        df["ds"] = pd.to_datetime(df["ds"].astype(str) + "-01-01")
-
-        # --- Basic stats
-        st.subheader("📈 Data Profile")
-        stats = df["y"].describe()
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Mean", f"{stats['mean']:,.0f}")
-        col2.metric("Median", f"{df['y'].median():,.0f}")
-        col3.metric("Std Dev", f"{stats['std']:,.0f}")
-
-        # ===============================
-        # LINEAR REGRESSION
-        # ===============================
-        from sklearn.linear_model import LinearRegression
-        X = np.arange(len(df)).reshape(-1, 1)
-        y = df["y"].values
-        lr = LinearRegression().fit(X, y)
-        future_X = np.arange(len(df) + horizon_years).reshape(-1, 1)
-        lr_pred = lr.predict(future_X)
-        lr_dates = pd.date_range(df["ds"].iloc[0], periods=len(future_X), freq="YS")
-        df_lr = pd.DataFrame({"ds": lr_dates, "Forecast": lr_pred, "Model": "Linear"})
-
-        # ===============================
-        # PROPHET (Yearly)
-        # ===============================
+    # -------------------------
+    # 🔮 All-Maxed Forecasting & Analytics
+    # -------------------------
+    if do_forecast:
+        st.header("🔮 All-Maxed Forecasting & Predictive Intelligence")
+    
+        categories = pivot_year.columns.tolist() if not pivot_year.empty else df_cat_all["label"].unique().tolist()
+        if not categories:
+            st.info("No categories available for forecasting.")
+        else:
+            cat = st.selectbox("📊 Choose category", categories)
+            horizon_years = st.slider("Forecast horizon (years)", 1, 5, 2)
+            horizon_months = horizon_years * 12
+    
+            # Prepare series
+            df = pivot_year[[cat]].reset_index().rename(columns={cat: "y", "year": "ds"})
+            df["ds"] = pd.to_datetime(df["ds"].astype(str) + "-01-01")
+    
+            # --- Basic stats
+            st.subheader("📈 Data Profile")
+            stats = df["y"].describe()
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Mean", f"{stats['mean']:,.0f}")
+            col2.metric("Median", f"{df['y'].median():,.0f}")
+            col3.metric("Std Dev", f"{stats['std']:,.0f}")
+    
+            # ===============================
+            # LINEAR REGRESSION
+            # ===============================
+            from sklearn.linear_model import LinearRegression
+            X = np.arange(len(df)).reshape(-1, 1)
+            y = df["y"].values
+            lr = LinearRegression().fit(X, y)
+            future_X = np.arange(len(df) + horizon_years).reshape(-1, 1)
+            lr_pred = lr.predict(future_X)
+            lr_dates = pd.date_range(df["ds"].iloc[0], periods=len(future_X), freq="YS")
+            df_lr = pd.DataFrame({"ds": lr_dates, "Forecast": lr_pred, "Model": "Linear"})
+    
+            # ===============================
+            # PROPHET (Yearly)
+            # ===============================
+            try:
+                from prophet import Prophet
+                m = Prophet(yearly_seasonality=True)
+                m.fit(df)
+                fut = m.make_future_dataframe(periods=horizon_years, freq="Y")
+                fc = m.predict(fut)
+                df_prophet_y = fc[["ds", "yhat"]].rename(columns={"yhat": "Forecast"})
+                df_prophet_y["Model"] = "Prophet (Yearly)"
+            except Exception:
+                df_prophet_y = pd.DataFrame()
+    
+            # ===============================
+            # PROPHET (Monthly)
+            # ===============================
+            try:
+                df_m = df.copy().resample("M", on="ds").mean(numeric_only=True).dropna().reset_index()
+                m2 = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
+                m2.fit(df_m.rename(columns={"ds": "ds", "y": "y"}))
+                fut_m = m2.make_future_dataframe(periods=horizon_months, freq="M")
+                fc_m = m2.predict(fut_m)
+                df_prophet_m = fc_m[["ds", "yhat"]].rename(columns={"yhat": "Forecast"})
+                df_prophet_m["Model"] = "Prophet (Monthly)"
+            except Exception:
+                df_prophet_m = pd.DataFrame()
+    
+            # ===============================
+            # ARIMA
+            # ===============================
+            try:
+                from statsmodels.tsa.arima.model import ARIMA
+                model = ARIMA(df["y"], order=(1, 1, 1))
+                fit = model.fit()
+                fc = fit.forecast(steps=horizon_years)
+                df_arima = pd.DataFrame({
+                    "ds": pd.date_range(df["ds"].iloc[-1], periods=horizon_years + 1, freq="Y")[1:],
+                    "Forecast": fc,
+                    "Model": "ARIMA"
+                })
+            except Exception:
+                df_arima = pd.DataFrame()
+    
+            # Merge
+            forecast_all = pd.concat([df_lr, df_prophet_y, df_prophet_m, df_arima], ignore_index=True)
+    
+            # ===============================
+            # VISUALS
+            # ===============================
+            fig = px.line(forecast_all, x="ds", y="Forecast", color="Model",
+                          title=f"Forecast Comparison — {cat}",
+                          template="plotly_white")
+            fig.add_scatter(x=df["ds"], y=df["y"], mode="markers+lines",
+                            name="Actual", line=dict(width=3, color="black"))
+            fig.update_layout(legend_title="Model", xaxis_title="Date",
+                              yaxis_title="Registrations", hovermode="x unified")
+            st.plotly_chart(fig, use_container_width=True)
+    
+            # ===============================
+            # METRICS
+            # ===============================
+            from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+            y_pred = lr.predict(X)
+            rmse = np.sqrt(mean_squared_error(y, y_pred))
+            mae = mean_absolute_error(y, y_pred)
+            r2 = r2_score(y, y_pred)
+            mape = np.mean(np.abs((y - y_pred) / y)) * 100
+            st.write(f"**Linear Model Metrics:** RMSE {rmse:,.0f}, MAE {mae:,.0f}, R² {r2:.3f}, MAPE {mape:.2f}%")
+    
+            # ===============================
+            # RESIDUALS
+            # ===============================
+            resid = y - y_pred
+            fig_res = px.scatter(x=df["ds"], y=resid, title="Residuals Over Time")
+            fig_res.add_hline(y=0, line_dash="dot")
+            st.plotly_chart(fig_res, use_container_width=True)
+    
+            # ===============================
+            # CONFUSION + ROC (directional)
+            # ===============================
+            try:
+                dirs = np.sign(np.diff(y))
+                pred_dirs = np.sign(np.diff(y_pred))
+                from sklearn.metrics import confusion_matrix, roc_curve, auc
+                cm = confusion_matrix(dirs > 0, pred_dirs > 0)
+                fig_cm = px.imshow(cm, text_auto=True, color_continuous_scale="Blues",
+                                   title="Directional Accuracy Confusion Matrix")
+                st.plotly_chart(fig_cm, use_container_width=True)
+                fpr, tpr, _ = roc_curve(dirs > 0, pred_dirs)
+                roc_auc = auc(fpr, tpr)
+                fig_roc = px.area(x=fpr, y=tpr, title=f"ROC Curve — AUC {roc_auc:.3f}")
+                st.plotly_chart(fig_roc, use_container_width=True)
+            except Exception:
+                st.info("Directional metrics unavailable.")
+    
+            # ===============================
+            # GROWTH
+            # ===============================
+            last, nxt = df["y"].iloc[-1], df_lr["Forecast"].iloc[-1]
+            growth = ((nxt - last) / last) * 100
+            st.metric("Projected Growth", f"{growth:.2f} %", f"Next {horizon_years} years")
+    
+            # ===============================
+            # CORRELATION HEATMAP (optional)
+            # ===============================
+            st.subheader("📊 Correlation Between Categories")
+            try:
+                corr = pivot_year.corr()
+                fig_corr = px.imshow(corr, text_auto=True, color_continuous_scale="Viridis")
+                st.plotly_chart(fig_corr, use_container_width=True)
+            except Exception:
+                st.info("Correlation heatmap unavailable.")
+    
+        # -------------------------
+    # ⚠️ ALL-MAXED Anomaly Detection (multi-algo, visual, exportable)
+    # -------------------------
+    if do_anomaly:
+        st.subheader("⚠️ ALL-MAXED Anomaly Detection — Multi-Algorithm")
+    
+        # --- UI controls ---
+        algs = {
+            "IsolationForest": "isolation",
+            "LocalOutlierFactor": "lof",
+            "Z-score (pointwise)": "zscore",
+            "MAD (robust)": "mad",
+            "Seasonal Residual (decompose)": "seasonal"
+        }
+        chosen = st.multiselect("Choose detectors to run", list(algs.keys()), default=list(algs.keys()))
+        contamination = st.slider("Contamination / expected anomaly fraction (for model-based)", 0.001, 0.2, 0.03, step=0.001)
+        zscore_thresh = st.slider("Z-score threshold (abs)", 1.5, 5.0, 3.0, step=0.1)
+        mad_thresh = st.slider("MAD multiplier (robust)", 2.0, 6.0, 3.5, step=0.1)
+        use_seasonal = "Seasonal Residual (decompose)" in chosen
+        category_choice = st.multiselect("Select categories to analyze (blank = all)", sorted(resampled["label"].unique().tolist()), default=[])
+        run_btn = st.button("🔎 Run Anomaly Detection (ALL-MAXED)")
+    
+        # --- helpers ---
+        from datetime import datetime as _dt
+        import math
+        import pandas as _pd
+        import numpy as _np
+    
+        def _mad_based_outlier(points, thresh=3.5):
+            """Return boolean mask of outliers using Median Absolute Deviation"""
+            if len(points) == 0:
+                return _np.array([], dtype=bool)
+            med = _np.median(points)
+            diff = _np.abs(points - med)
+            mad = _np.median(diff)
+            if mad == 0:
+                # fallback to std
+                return _np.abs(points - med) > (thresh * (_np.std(points) + 1e-9))
+            mod_z_score = 0.6745 * diff / mad
+            return mod_z_score > thresh
+    
+        # Try optional imports; graceful fallback
         try:
-            from prophet import Prophet
-            m = Prophet(yearly_seasonality=True)
-            m.fit(df)
-            fut = m.make_future_dataframe(periods=horizon_years, freq="Y")
-            fc = m.predict(fut)
-            df_prophet_y = fc[["ds", "yhat"]].rename(columns={"yhat": "Forecast"})
-            df_prophet_y["Model"] = "Prophet (Yearly)"
+            from sklearn.ensemble import IsolationForest
         except Exception:
-            df_prophet_y = pd.DataFrame()
-
-        # ===============================
-        # PROPHET (Monthly)
-        # ===============================
+            IsolationForest = None
         try:
-            df_m = df.copy().resample("M", on="ds").mean(numeric_only=True).dropna().reset_index()
-            m2 = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
-            m2.fit(df_m.rename(columns={"ds": "ds", "y": "y"}))
-            fut_m = m2.make_future_dataframe(periods=horizon_months, freq="M")
-            fc_m = m2.predict(fut_m)
-            df_prophet_m = fc_m[["ds", "yhat"]].rename(columns={"yhat": "Forecast"})
-            df_prophet_m["Model"] = "Prophet (Monthly)"
+            from sklearn.neighbors import LocalOutlierFactor
         except Exception:
-            df_prophet_m = pd.DataFrame()
-
-        # ===============================
-        # ARIMA
-        # ===============================
+            LocalOutlierFactor = None
         try:
-            from statsmodels.tsa.arima.model import ARIMA
-            model = ARIMA(df["y"], order=(1, 1, 1))
-            fit = model.fit()
-            fc = fit.forecast(steps=horizon_years)
-            df_arima = pd.DataFrame({
-                "ds": pd.date_range(df["ds"].iloc[-1], periods=horizon_years + 1, freq="Y")[1:],
-                "Forecast": fc,
-                "Model": "ARIMA"
-            })
+            from scipy.stats import zscore
         except Exception:
-            df_arima = pd.DataFrame()
-
-        # Merge
-        forecast_all = pd.concat([df_lr, df_prophet_y, df_prophet_m, df_arima], ignore_index=True)
-
-        # ===============================
-        # VISUALS
-        # ===============================
-        fig = px.line(forecast_all, x="ds", y="Forecast", color="Model",
-                      title=f"Forecast Comparison — {cat}",
-                      template="plotly_white")
-        fig.add_scatter(x=df["ds"], y=df["y"], mode="markers+lines",
-                        name="Actual", line=dict(width=3, color="black"))
-        fig.update_layout(legend_title="Model", xaxis_title="Date",
-                          yaxis_title="Registrations", hovermode="x unified")
-        st.plotly_chart(fig, use_container_width=True)
-
-        # ===============================
-        # METRICS
-        # ===============================
-        from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-        y_pred = lr.predict(X)
-        rmse = np.sqrt(mean_squared_error(y, y_pred))
-        mae = mean_absolute_error(y, y_pred)
-        r2 = r2_score(y, y_pred)
-        mape = np.mean(np.abs((y - y_pred) / y)) * 100
-        st.write(f"**Linear Model Metrics:** RMSE {rmse:,.0f}, MAE {mae:,.0f}, R² {r2:.3f}, MAPE {mape:.2f}%")
-
-        # ===============================
-        # RESIDUALS
-        # ===============================
-        resid = y - y_pred
-        fig_res = px.scatter(x=df["ds"], y=resid, title="Residuals Over Time")
-        fig_res.add_hline(y=0, line_dash="dot")
-        st.plotly_chart(fig_res, use_container_width=True)
-
-        # ===============================
-        # CONFUSION + ROC (directional)
-        # ===============================
+            zscore = None
         try:
-            dirs = np.sign(np.diff(y))
-            pred_dirs = np.sign(np.diff(y_pred))
-            from sklearn.metrics import confusion_matrix, roc_curve, auc
-            cm = confusion_matrix(dirs > 0, pred_dirs > 0)
-            fig_cm = px.imshow(cm, text_auto=True, color_continuous_scale="Blues",
-                               title="Directional Accuracy Confusion Matrix")
-            st.plotly_chart(fig_cm, use_container_width=True)
-            fpr, tpr, _ = roc_curve(dirs > 0, pred_dirs)
-            roc_auc = auc(fpr, tpr)
-            fig_roc = px.area(x=fpr, y=tpr, title=f"ROC Curve — AUC {roc_auc:.3f}")
-            st.plotly_chart(fig_roc, use_container_width=True)
+            from statsmodels.tsa.seasonal import seasonal_decompose
         except Exception:
-            st.info("Directional metrics unavailable.")
-
-        # ===============================
-        # GROWTH
-        # ===============================
-        last, nxt = df["y"].iloc[-1], df_lr["Forecast"].iloc[-1]
-        growth = ((nxt - last) / last) * 100
-        st.metric("Projected Growth", f"{growth:.2f} %", f"Next {horizon_years} years")
-
-        # ===============================
-        # CORRELATION HEATMAP (optional)
-        # ===============================
-        st.subheader("📊 Correlation Between Categories")
-        try:
-            corr = pivot_year.corr()
-            fig_corr = px.imshow(corr, text_auto=True, color_continuous_scale="Viridis")
-            st.plotly_chart(fig_corr, use_container_width=True)
-        except Exception:
-            st.info("Correlation heatmap unavailable.")
+            seasonal_decompose = None
+    
+        # --- prepare categories list ---
+        all_categories = sorted(resampled["label"].unique().tolist())
+        if category_choice:
+            cats_to_run = category_choice
+        else:
+            cats_to_run = all_categories
+    
+        # Guard
+        if run_btn:
+            st.info(f"Running {len(chosen)} detectors over {len(cats_to_run)} categories (contamination={contamination})...")
+            overall_anomalies = []  # list of dicts
+            progress_bar = st.progress(0)
+            total = len(cats_to_run)
+            idx = 0
+    
+            for cat in cats_to_run:
+                idx += 1
+                progress_bar.progress(idx / total)
+                # series for category
+                ser_df = resampled[resampled["label"] == cat].sort_values("ds").reset_index(drop=True)
+                if ser_df.empty or ser_df["value"].isna().all():
+                    continue
+    
+                ser = ser_df["value"].fillna(0).astype(float).values
+                dates = pd.to_datetime(ser_df["ds"]).values
+    
+                # results collector per timestamp
+                results_mask = _np.zeros(len(ser), dtype=int)  # counts how many detectors flagged
+                details = { "category": cat, "n_points": len(ser), "detectors": {} }
+    
+                # 1) IsolationForest
+                if "IsolationForest" in chosen and IsolationForest is not None and len(ser) >= 6:
+                    try:
+                        iso = IsolationForest(contamination=contamination, random_state=RANDOM_SEED)
+                        iso_preds = iso.fit_predict(ser.reshape(-1,1))  # -1 outlier, 1 inlier
+                        iso_mask = iso_preds == -1
+                        results_mask += iso_mask.astype(int)
+                        details["detectors"]["IsolationForest"] = int(iso_mask.sum())
+                    except Exception as e:
+                        details["detectors"]["IsolationForest_error"] = str(e)
+    
+                # 2) LocalOutlierFactor (unsupervised, non-probabilistic)
+                if "LocalOutlierFactor" in chosen and LocalOutlierFactor is not None and len(ser) >= 6:
+                    try:
+                        lof = LocalOutlierFactor(n_neighbors=min(20, max(2, len(ser)-1)), contamination=contamination)
+                        lof_preds = lof.fit_predict(ser.reshape(-1,1))  # -1 outlier
+                        lof_mask = lof_preds == -1
+                        results_mask += lof_mask.astype(int)
+                        details["detectors"]["LocalOutlierFactor"] = int(lof_mask.sum())
+                    except Exception as e:
+                        details["detectors"]["LocalOutlierFactor_error"] = str(e)
+    
+                # 3) Z-score
+                if "Z-score (pointwise)" in chosen and zscore is not None:
+                    try:
+                        zs = zscore(ser, nan_policy="omit")
+                        zs_mask = _np.abs(zs) > zscore_thresh
+                        results_mask += zs_mask.astype(int)
+                        details["detectors"]["Z-score"] = int(zs_mask.sum())
+                    except Exception as e:
+                        details["detectors"]["Zscore_error"] = str(e)
+    
+                # 4) MAD
+                if "MAD (robust)" in chosen:
+                    try:
+                        mad_mask = _mad_based_outlier(ser, thresh=mad_thresh)
+                        results_mask += mad_mask.astype(int)
+                        details["detectors"]["MAD"] = int(mad_mask.sum())
+                    except Exception as e:
+                        details["detectors"]["MAD_error"] = str(e)
+    
+                # 5) Seasonal residuals (decompose)
+                if "Seasonal Residual (decompose)" in chosen and seasonal_decompose is not None:
+                    try:
+                        # build a freq-aware series if dates are regular; fallback to monthly if possible
+                        s_idx = pd.to_datetime(ser_df["ds"])
+                        tmp = pd.Series(ser, index=s_idx)
+                        # choose period based on median spacing
+                        if len(tmp) >= 12:
+                            # attempt monthly seasonality if monthly index
+                            period = 12 if tmp.index.inferred_freq and ("M" in tmp.index.inferred_freq or "MS" in tmp.index.inferred_freq) else max(2, int(len(tmp)/4))
+                        else:
+                            period = max(2, int(len(tmp)/2))
+                        dec = seasonal_decompose(tmp, period=period, model="additive", extrapolate_trend="freq")
+                        resid = dec.resid.fillna(0).values
+                        # flag large residuals > 3*std or > 3*mad
+                        resid_mask = _np.abs(resid) > (3 * (_np.nanstd(resid) + 1e-9))
+                        results_mask += resid_mask.astype(int)
+                        details["detectors"]["SeasonalResiduals"] = int(resid_mask.sum())
+                    except Exception as e:
+                        details["detectors"]["Seasonal_error"] = str(e)
+    
+                # final selection: any detector flagged
+                any_mask = results_mask > 0
+                n_anom = int(any_mask.sum())
+                details["n_anomalies"] = n_anom
+                details["anomaly_pct"] = float(n_anom / max(1, len(ser))) * 100.0
+    
+                # collect anomaly rows
+                for i, flagged in enumerate(any_mask):
+                    if flagged:
+                        overall_anomalies.append({
+                            "category": cat,
+                            "ds": str(pd.to_datetime(dates[i])),
+                            "value": float(ser[i]),
+                            "detector_score": int(results_mask[i]),
+                            "detector_details": details["detectors"]
+                        })
+    
+            progress_bar.progress(1.0)
+            st.success(f"Anomaly detection finished. Found {len(overall_anomalies)} anomaly points across {len(cats_to_run)} categories.")
+    
+            # --- summary table per category ---
+            if overall_anomalies:
+                df_anom = pd.DataFrame(overall_anomalies)
+                # aggregate summary
+                summary = df_anom.groupby("category").agg(
+                    anomalies_count=("ds", "count"),
+                    avg_detector_score=("detector_score", "mean")
+                ).reset_index().sort_values("anomalies_count", ascending=False)
+    
+                st.markdown("### 🧾 Anomaly Summary (per category)")
+                st.dataframe(summary)
+    
+                # show top categories with example anomalies
+                top_examples = df_anom.groupby("category").agg(sample_dates=("ds", lambda x: ", ".join(list(x.astype(str)[:5]))),
+                                                              sample_values=("value", lambda x: ", ".join([f"{v:,.0f}" for v in list(x[:5])]))
+                                                             ).reset_index().sort_values("category")
+                st.markdown("### 🔎 Example anomaly timestamps and values")
+                st.dataframe(top_examples)
+    
+                # Allow choosing one category to inspect visually
+                inspect_cat = st.selectbox("Inspect anomalies for category", top_examples["category"].tolist())
+                inspect_rows = df_anom[df_anom["category"] == inspect_cat]
+                ser_df = resampled[resampled["label"] == inspect_cat].sort_values("ds").reset_index(drop=True)
+                ser_df["ds"] = pd.to_datetime(ser_df["ds"])
+                ser_df["is_anom"] = ser_df["ds"].astype(str).isin(inspect_rows["ds"].astype(str).tolist())
+    
+                # Plot time series with anomalies highlighted
+                import plotly.graph_objects as go
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=ser_df["ds"], y=ser_df["value"], mode="lines+markers", name="Value",
+                                         hovertemplate="%{x}<br>%{y:,.0f}"))
+                # anomalies
+                anom_rows = ser_df[ser_df["is_anom"]]
+                if not anom_rows.empty:
+                    fig.add_trace(go.Scatter(x=anom_rows["ds"], y=anom_rows["value"], mode="markers", name="Anomaly",
+                                             marker=dict(color="red", size=10, symbol="x"),
+                                             hovertemplate="ANOMALY: %{x}<br>%{y:,.0f}"))
+                fig.update_layout(title=f"Time series with anomalies — {inspect_cat}",
+                                  xaxis_title="Date", yaxis_title="Value", template="plotly_white", hovermode="x unified")
+                st.plotly_chart(fig, use_container_width=True)
+    
+                # Residuals panel if seasonal was run
+                if seasonal_decompose is not None and "Seasonal Residual (decompose)" in chosen:
+                    try:
+                        tmp = pd.Series(ser_df["value"].values, index=ser_df["ds"])
+                        dec = seasonal_decompose(tmp, period=max(2, min(12, int(len(tmp)/2))), model="additive", extrapolate_trend="freq")
+                        resid = dec.resid.fillna(0)
+                        fig2 = go.Figure()
+                        fig2.add_trace(go.Scatter(x=resid.index, y=resid.values, mode="lines+markers", name="Residuals"))
+                        fig2.add_hline(y=0, line_dash="dash", line_color="gray")
+                        st.plotly_chart(fig2, use_container_width=True)
+                    except Exception:
+                        pass
+    
+                # Download buttons
+                st.download_button("⬇️ Download anomalies CSV", df_anom.to_csv(index=False).encode("utf-8"), "anomalies_allmaxed.csv", "text/csv")
+                st.download_button("⬇️ Download anomalies JSON", df_anom.to_json(orient="records", indent=2).encode("utf-8"), "anomalies_allmaxed.json", "application/json")
+    
+            else:
+                st.info("No anomalies detected with current settings.")
+    
+        # --- End run_btn block ---
 
     # -------------------------
-# ⚠️ ALL-MAXED Anomaly Detection (multi-algo, visual, exportable)
-# -------------------------
-if do_anomaly:
-    st.subheader("⚠️ ALL-MAXED Anomaly Detection — Multi-Algorithm")
-
-    # --- UI controls ---
-    algs = {
-        "IsolationForest": "isolation",
-        "LocalOutlierFactor": "lof",
-        "Z-score (pointwise)": "zscore",
-        "MAD (robust)": "mad",
-        "Seasonal Residual (decompose)": "seasonal"
-    }
-    chosen = st.multiselect("Choose detectors to run", list(algs.keys()), default=list(algs.keys()))
-    contamination = st.slider("Contamination / expected anomaly fraction (for model-based)", 0.001, 0.2, 0.03, step=0.001)
-    zscore_thresh = st.slider("Z-score threshold (abs)", 1.5, 5.0, 3.0, step=0.1)
-    mad_thresh = st.slider("MAD multiplier (robust)", 2.0, 6.0, 3.5, step=0.1)
-    use_seasonal = "Seasonal Residual (decompose)" in chosen
-    category_choice = st.multiselect("Select categories to analyze (blank = all)", sorted(resampled["label"].unique().tolist()), default=[])
-    run_btn = st.button("🔎 Run Anomaly Detection (ALL-MAXED)")
-
-    # --- helpers ---
-    from datetime import datetime as _dt
-    import math
-    import pandas as _pd
-    import numpy as _np
-
-    def _mad_based_outlier(points, thresh=3.5):
-        """Return boolean mask of outliers using Median Absolute Deviation"""
-        if len(points) == 0:
-            return _np.array([], dtype=bool)
-        med = _np.median(points)
-        diff = _np.abs(points - med)
-        mad = _np.median(diff)
-        if mad == 0:
-            # fallback to std
-            return _np.abs(points - med) > (thresh * (_np.std(points) + 1e-9))
-        mod_z_score = 0.6745 * diff / mad
-        return mod_z_score > thresh
-
-    # Try optional imports; graceful fallback
-    try:
-        from sklearn.ensemble import IsolationForest
-    except Exception:
-        IsolationForest = None
-    try:
-        from sklearn.neighbors import LocalOutlierFactor
-    except Exception:
-        LocalOutlierFactor = None
-    try:
-        from scipy.stats import zscore
-    except Exception:
-        zscore = None
-    try:
-        from statsmodels.tsa.seasonal import seasonal_decompose
-    except Exception:
-        seasonal_decompose = None
-
-    # --- prepare categories list ---
-    all_categories = sorted(resampled["label"].unique().tolist())
-    if category_choice:
-        cats_to_run = category_choice
-    else:
-        cats_to_run = all_categories
-
-    # Guard
-    if run_btn:
-        st.info(f"Running {len(chosen)} detectors over {len(cats_to_run)} categories (contamination={contamination})...")
-        overall_anomalies = []  # list of dicts
-        progress_bar = st.progress(0)
-        total = len(cats_to_run)
-        idx = 0
-
-        for cat in cats_to_run:
-            idx += 1
-            progress_bar.progress(idx / total)
-            # series for category
-            ser_df = resampled[resampled["label"] == cat].sort_values("ds").reset_index(drop=True)
-            if ser_df.empty or ser_df["value"].isna().all():
-                continue
-
-            ser = ser_df["value"].fillna(0).astype(float).values
-            dates = pd.to_datetime(ser_df["ds"]).values
-
-            # results collector per timestamp
-            results_mask = _np.zeros(len(ser), dtype=int)  # counts how many detectors flagged
-            details = { "category": cat, "n_points": len(ser), "detectors": {} }
-
-            # 1) IsolationForest
-            if "IsolationForest" in chosen and IsolationForest is not None and len(ser) >= 6:
-                try:
-                    iso = IsolationForest(contamination=contamination, random_state=RANDOM_SEED)
-                    iso_preds = iso.fit_predict(ser.reshape(-1,1))  # -1 outlier, 1 inlier
-                    iso_mask = iso_preds == -1
-                    results_mask += iso_mask.astype(int)
-                    details["detectors"]["IsolationForest"] = int(iso_mask.sum())
-                except Exception as e:
-                    details["detectors"]["IsolationForest_error"] = str(e)
-
-            # 2) LocalOutlierFactor (unsupervised, non-probabilistic)
-            if "LocalOutlierFactor" in chosen and LocalOutlierFactor is not None and len(ser) >= 6:
-                try:
-                    lof = LocalOutlierFactor(n_neighbors=min(20, max(2, len(ser)-1)), contamination=contamination)
-                    lof_preds = lof.fit_predict(ser.reshape(-1,1))  # -1 outlier
-                    lof_mask = lof_preds == -1
-                    results_mask += lof_mask.astype(int)
-                    details["detectors"]["LocalOutlierFactor"] = int(lof_mask.sum())
-                except Exception as e:
-                    details["detectors"]["LocalOutlierFactor_error"] = str(e)
-
-            # 3) Z-score
-            if "Z-score (pointwise)" in chosen and zscore is not None:
-                try:
-                    zs = zscore(ser, nan_policy="omit")
-                    zs_mask = _np.abs(zs) > zscore_thresh
-                    results_mask += zs_mask.astype(int)
-                    details["detectors"]["Z-score"] = int(zs_mask.sum())
-                except Exception as e:
-                    details["detectors"]["Zscore_error"] = str(e)
-
-            # 4) MAD
-            if "MAD (robust)" in chosen:
-                try:
-                    mad_mask = _mad_based_outlier(ser, thresh=mad_thresh)
-                    results_mask += mad_mask.astype(int)
-                    details["detectors"]["MAD"] = int(mad_mask.sum())
-                except Exception as e:
-                    details["detectors"]["MAD_error"] = str(e)
-
-            # 5) Seasonal residuals (decompose)
-            if "Seasonal Residual (decompose)" in chosen and seasonal_decompose is not None:
-                try:
-                    # build a freq-aware series if dates are regular; fallback to monthly if possible
-                    s_idx = pd.to_datetime(ser_df["ds"])
-                    tmp = pd.Series(ser, index=s_idx)
-                    # choose period based on median spacing
-                    if len(tmp) >= 12:
-                        # attempt monthly seasonality if monthly index
-                        period = 12 if tmp.index.inferred_freq and ("M" in tmp.index.inferred_freq or "MS" in tmp.index.inferred_freq) else max(2, int(len(tmp)/4))
-                    else:
-                        period = max(2, int(len(tmp)/2))
-                    dec = seasonal_decompose(tmp, period=period, model="additive", extrapolate_trend="freq")
-                    resid = dec.resid.fillna(0).values
-                    # flag large residuals > 3*std or > 3*mad
-                    resid_mask = _np.abs(resid) > (3 * (_np.nanstd(resid) + 1e-9))
-                    results_mask += resid_mask.astype(int)
-                    details["detectors"]["SeasonalResiduals"] = int(resid_mask.sum())
-                except Exception as e:
-                    details["detectors"]["Seasonal_error"] = str(e)
-
-            # final selection: any detector flagged
-            any_mask = results_mask > 0
-            n_anom = int(any_mask.sum())
-            details["n_anomalies"] = n_anom
-            details["anomaly_pct"] = float(n_anom / max(1, len(ser))) * 100.0
-
-            # collect anomaly rows
-            for i, flagged in enumerate(any_mask):
-                if flagged:
-                    overall_anomalies.append({
-                        "category": cat,
-                        "ds": str(pd.to_datetime(dates[i])),
-                        "value": float(ser[i]),
-                        "detector_score": int(results_mask[i]),
-                        "detector_details": details["detectors"]
-                    })
-
-        progress_bar.progress(1.0)
-        st.success(f"Anomaly detection finished. Found {len(overall_anomalies)} anomaly points across {len(cats_to_run)} categories.")
-
-        # --- summary table per category ---
-        if overall_anomalies:
-            df_anom = pd.DataFrame(overall_anomalies)
-            # aggregate summary
-            summary = df_anom.groupby("category").agg(
-                anomalies_count=("ds", "count"),
-                avg_detector_score=("detector_score", "mean")
-            ).reset_index().sort_values("anomalies_count", ascending=False)
-
-            st.markdown("### 🧾 Anomaly Summary (per category)")
-            st.dataframe(summary)
-
-            # show top categories with example anomalies
-            top_examples = df_anom.groupby("category").agg(sample_dates=("ds", lambda x: ", ".join(list(x.astype(str)[:5]))),
-                                                          sample_values=("value", lambda x: ", ".join([f"{v:,.0f}" for v in list(x[:5])]))
-                                                         ).reset_index().sort_values("category")
-            st.markdown("### 🔎 Example anomaly timestamps and values")
-            st.dataframe(top_examples)
-
-            # Allow choosing one category to inspect visually
-            inspect_cat = st.selectbox("Inspect anomalies for category", top_examples["category"].tolist())
-            inspect_rows = df_anom[df_anom["category"] == inspect_cat]
-            ser_df = resampled[resampled["label"] == inspect_cat].sort_values("ds").reset_index(drop=True)
-            ser_df["ds"] = pd.to_datetime(ser_df["ds"])
-            ser_df["is_anom"] = ser_df["ds"].astype(str).isin(inspect_rows["ds"].astype(str).tolist())
-
-            # Plot time series with anomalies highlighted
-            import plotly.graph_objects as go
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=ser_df["ds"], y=ser_df["value"], mode="lines+markers", name="Value",
-                                     hovertemplate="%{x}<br>%{y:,.0f}"))
-            # anomalies
-            anom_rows = ser_df[ser_df["is_anom"]]
-            if not anom_rows.empty:
-                fig.add_trace(go.Scatter(x=anom_rows["ds"], y=anom_rows["value"], mode="markers", name="Anomaly",
-                                         marker=dict(color="red", size=10, symbol="x"),
-                                         hovertemplate="ANOMALY: %{x}<br>%{y:,.0f}"))
-            fig.update_layout(title=f"Time series with anomalies — {inspect_cat}",
-                              xaxis_title="Date", yaxis_title="Value", template="plotly_white", hovermode="x unified")
-            st.plotly_chart(fig, use_container_width=True)
-
-            # Residuals panel if seasonal was run
-            if seasonal_decompose is not None and "Seasonal Residual (decompose)" in chosen:
-                try:
-                    tmp = pd.Series(ser_df["value"].values, index=ser_df["ds"])
-                    dec = seasonal_decompose(tmp, period=max(2, min(12, int(len(tmp)/2))), model="additive", extrapolate_trend="freq")
-                    resid = dec.resid.fillna(0)
-                    fig2 = go.Figure()
-                    fig2.add_trace(go.Scatter(x=resid.index, y=resid.values, mode="lines+markers", name="Residuals"))
-                    fig2.add_hline(y=0, line_dash="dash", line_color="gray")
-                    st.plotly_chart(fig2, use_container_width=True)
-                except Exception:
-                    pass
-
-            # Download buttons
-            st.download_button("⬇️ Download anomalies CSV", df_anom.to_csv(index=False).encode("utf-8"), "anomalies_allmaxed.csv", "text/csv")
-            st.download_button("⬇️ Download anomalies JSON", df_anom.to_json(orient="records", indent=2).encode("utf-8"), "anomalies_allmaxed.json", "application/json")
-
-        else:
-            st.info("No anomalies detected with current settings.")
-
-    # --- End run_btn block ---
-
-# -------------------------
-# 🔍 ALL-MAXED Clustering
-# -------------------------
-if do_clustering:
-    st.subheader("🔍 ALL-MAXED Clustering — Multi-Algorithm with Visual Analytics")
-
-    try:
-        import numpy as np
-        import pandas as pd
-        import plotly.express as px
-        import plotly.graph_objects as go
-        from sklearn.preprocessing import StandardScaler, MinMaxScaler
-        from sklearn.cluster import KMeans, MiniBatchKMeans, AgglomerativeClustering, DBSCAN
-        from sklearn.metrics import silhouette_score
-        from sklearn.decomposition import PCA
-
+    # 🔍 ALL-MAXED Clustering
+    # -------------------------
+    if do_clustering:
+        st.subheader("🔍 ALL-MAXED Clustering — Multi-Algorithm with Visual Analytics")
+    
         try:
-            import umap
-            HAS_UMAP = True
-        except Exception:
-            HAS_UMAP = False
-
-        # --- UI controls ---
-        algo_choice = st.selectbox(
-            "Choose clustering algorithm",
-            ["KMeans", "MiniBatchKMeans", "Agglomerative", "DBSCAN"]
-        )
-        n_clusters = st.slider("Number of clusters (KMeans/Agglomerative)", 2, min(10, len(pivot_year)), 3)
-        scale_method = st.radio("Scaling method", ["StandardScaler", "MinMaxScaler", "None"], horizontal=True)
-        show_3d = st.toggle("Show 3D PCA/UMAP projection", value=False)
-        use_umap = HAS_UMAP and st.toggle("Use UMAP for projection (if available)", value=False)
-        random_state = 42
-        run_cluster = st.button("🚀 Run Clustering (ALL-MAXED)")
-
-        if run_cluster:
-            st.info(f"Running {algo_choice} clustering on {pivot_year.shape[0]} samples × {pivot_year.shape[1]} features...")
-
-            X = pivot_year.fillna(0).values
-            # --- Scaling ---
-            if scale_method == "StandardScaler":
-                X_scaled = StandardScaler().fit_transform(X)
-            elif scale_method == "MinMaxScaler":
-                X_scaled = MinMaxScaler().fit_transform(X)
-            else:
-                X_scaled = X.copy()
-
-            # --- Fit clustering model ---
-            if algo_choice == "KMeans":
-                model = KMeans(n_clusters=n_clusters, n_init="auto", random_state=random_state)
-                labels = model.fit_predict(X_scaled)
-            elif algo_choice == "MiniBatchKMeans":
-                model = MiniBatchKMeans(n_clusters=n_clusters, random_state=random_state)
-                labels = model.fit_predict(X_scaled)
-            elif algo_choice == "Agglomerative":
-                model = AgglomerativeClustering(n_clusters=n_clusters)
-                labels = model.fit_predict(X_scaled)
-            elif algo_choice == "DBSCAN":
-                eps = st.slider("DBSCAN eps (radius)", 0.1, 5.0, 1.0, step=0.1)
-                min_samples = st.slider("DBSCAN min_samples", 2, 20, 5)
-                model = DBSCAN(eps=eps, min_samples=min_samples)
-                labels = model.fit_predict(X_scaled)
-
-            # --- Prepare DataFrame ---
-            df_cluster = pd.DataFrame({
-                "year": pivot_year.index,
-                "cluster": labels.astype(int)
-            })
-            df_cluster["cluster_label"] = df_cluster["cluster"].apply(lambda x: f"Cluster {x}" if x >= 0 else "Noise")
-            st.success(f"✅ Clustering done — {df_cluster['cluster'].nunique()} clusters found.")
-
-            # --- Cluster summary ---
-            cluster_sizes = df_cluster["cluster"].value_counts().rename_axis("cluster").reset_index(name="count")
-            st.markdown("### 📊 Cluster Size Summary")
-            st.dataframe(cluster_sizes)
-
-            # --- Optional silhouette score ---
-            if len(set(labels)) > 1 and algo_choice != "DBSCAN":
-                try:
-                    sil = silhouette_score(X_scaled, labels)
-                    st.metric("Silhouette Score", f"{sil:.3f}")
-                except Exception:
-                    st.caption("Silhouette score unavailable for current configuration.")
-
-            # --- Cluster means per category ---
-            df_means = pivot_year.copy()
-            df_means["cluster"] = labels
-            cluster_means = df_means.groupby("cluster").mean(numeric_only=True)
-            st.markdown("### 🧠 Cluster Means (per category variable)")
-            st.dataframe(cluster_means.style.background_gradient(cmap="Blues"))
-
-            # --- 2D / 3D projection ---
-            reducer = PCA(n_components=3 if show_3d else 2, random_state=random_state)
-            proj = reducer.fit_transform(X_scaled)
-
-            if use_umap and HAS_UMAP:
-                reducer = umap.UMAP(random_state=random_state, n_neighbors=10, min_dist=0.3)
-                proj = reducer.fit_transform(X_scaled)
-
-            df_proj = pd.DataFrame(proj, columns=["x", "y"] + (["z"] if show_3d else []))
-            df_proj["cluster"] = labels
-            df_proj["year"] = pivot_year.index
-
-            if show_3d:
-                fig = px.scatter_3d(
-                    df_proj, x="x", y="y", z="z", color=df_proj["cluster"].astype(str),
-                    hover_data=["year"], title="3D Cluster Visualization (PCA/UMAP Projection)"
-                )
-            else:
-                fig = px.scatter(
-                    df_proj, x="x", y="y", color=df_proj["cluster"].astype(str),
-                    hover_data=["year"], title="2D Cluster Visualization (PCA/UMAP Projection)"
-                )
-            fig.update_traces(marker=dict(size=8, line=dict(width=0.5, color="DarkSlateGrey")))
-            fig.update_layout(template="plotly_white", legend_title="Cluster")
-            st.plotly_chart(fig, use_container_width=True)
-
-            # --- Radar plot (mean per cluster per top features) ---
-            st.markdown("### 🕸️ Radar Chart (cluster feature profiles)")
+            import numpy as np
+            import pandas as pd
+            import plotly.express as px
+            import plotly.graph_objects as go
+            from sklearn.preprocessing import StandardScaler, MinMaxScaler
+            from sklearn.cluster import KMeans, MiniBatchKMeans, AgglomerativeClustering, DBSCAN
+            from sklearn.metrics import silhouette_score
+            from sklearn.decomposition import PCA
+    
             try:
-                import plotly.express as px
-                n_features = min(6, pivot_year.shape[1])
-                top_feats = pivot_year.sum().nlargest(n_features).index.tolist()
-                radar_df = cluster_means[top_feats].reset_index()
-                radar_melt = radar_df.melt(id_vars="cluster", var_name="feature", value_name="value")
-                fig_radar = px.line_polar(
-                    radar_melt, r="value", theta="feature", color=radar_melt["cluster"].astype(str),
-                    line_close=True, markers=True, title="Cluster Profiles (Top Features)"
-                )
-                fig_radar.update_traces(fill='toself', opacity=0.6)
-                st.plotly_chart(fig_radar, use_container_width=True)
-            except Exception as e:
-                st.warning(f"Radar chart failed: {e}")
-
-    except Exception as e:
-        st.warning(f"ALL-MAXED clustering failed: {e}")
-
-# =====================================================
-# 🤖 AI Narrative (ALL-MAXED Analytics + Forecast Insight)
-# =====================================================
-if enable_ai and do_forecast:
-    st.subheader("🤖 AI Narrative — Advanced Multi-Year Insight Engine")
-
-    try:
-        import numpy as np, json, math
-        import pandas as pd
-        from io import StringIO
-        import plotly.express as px
-        from sklearn.preprocessing import MinMaxScaler
-
-        if pivot_year is None or pivot_year.empty:
-            st.warning("⚠️ No valid data available for AI narrative.")
-        else:
-            # --- Data prep ---
-            df_flat = pivot_year.reset_index().melt(id_vars="year", var_name="category", value_name="registrations")
-            df_flat["registrations"] = pd.to_numeric(df_flat["registrations"], errors="coerce").fillna(0)
-            total_reg = df_flat.groupby("year")["registrations"].sum().reset_index()
-            small = df_flat.to_dict(orient="records")
-            st.caption(f"📊 {len(small)} records ready for AI analysis.")
-
-            # --- Core stats ---
-            years = sorted(pivot_year.index)
-            cagr = None
-            if len(years) >= 2:
-                first, last = years[0], years[-1]
-                v0 = total_reg.loc[total_reg["year"] == first, "registrations"].values[0]
-                v1 = total_reg.loc[total_reg["year"] == last, "registrations"].values[0]
-                if v0 > 0:
-                    cagr = ((v1 / v0) ** (1 / (len(years) - 1)) - 1) * 100
-
-            top_overall = (
-                df_flat.groupby("category")["registrations"].sum().sort_values(ascending=False).head(5)
-            )
-            st.metric("📈 CAGR (overall)", f"{cagr:.2f}%" if cagr else "N/A")
-            st.metric("🏆 Top Category", top_overall.index[0] if len(top_overall) else "N/A")
-
-            # --- Correlation matrix (numeric only) ---
-            corr = pivot_year.corr(numeric_only=True)
-            if not corr.empty:
-                fig_corr = px.imshow(
-                    corr, text_auto=".2f", aspect="auto", color_continuous_scale="RdBu_r",
-                    title="🔗 Correlation between Categories (registrations)"
-                )
-                st.plotly_chart(fig_corr, use_container_width=True)
-
-            # --- AI Analysis ---
-            system_prompt = (
-                "You are a senior transport data scientist. "
-                "Analyze multi-year vehicle category trends, year-over-year growth, CAGR, and category correlations. "
-                "Identify top-growing and declining segments, anomalies, and forecast implications. "
-                "Provide a concise, actionable summary and 5 recommendations for policymakers or planners. "
-                "Include quantified % changes, insights on volatility, and relevant sustainability context."
-            )
-
-            user_prompt = (
-                f"Dataset (partial preview): {json.dumps(small)[:4000]}...\n\n"
-                f"Years: {years}\n"
-                f"Top overall: {top_overall.to_dict()}\n"
-                f"CAGR: {cagr:.2f if cagr else 0}%\n"
-                f"Forecast Target: {cat_to_forecast if 'cat_to_forecast' in locals() else 'N/A'}\n"
-                f"Horizon: {horizon_years if 'horizon_years' in locals() else 'N/A'} years.\n"
-                "Generate an advanced summary and 5 bullet-point recommendations with real insight."
-            )
-
-            # --- Try universal_chat or fallback ---
-            ai_text = None
-            try:
-                ai_resp = universal_chat(
-                    system_prompt, user_prompt,
-                    stream=True, temperature=0.3, max_tokens=800, retries=3
-                )
-                if isinstance(ai_resp, dict):
-                    ai_text = ai_resp.get("text") or ai_resp.get("response") or ai_resp.get("output")
-                elif isinstance(ai_resp, str):
-                    ai_text = ai_resp
+                import umap
+                HAS_UMAP = True
             except Exception:
-                ai_text = None
-
-            # --- Fallback (no AI available) ---
-            if not ai_text:
-                st.markdown("### 🧠 Quick Narrative (Fallback Mode)")
-                lines = []
-                lines.append(f"Top categories overall: **{', '.join(top_overall.index.tolist())}**.")
-                if cagr:
-                    direction = "increased" if cagr > 0 else "declined"
-                    lines.append(f"From {years[0]} to {years[-1]}, total registrations {direction} by **{abs(cagr):.2f}% CAGR**.")
-                top_growth = (
-                    df_flat.groupby("category")["registrations"].agg(["first","last"])
-                    .assign(growth=lambda d: ((d["last"]/d["first"])-1)*100)
-                    .sort_values("growth", ascending=False)
-                )
-                g_up = top_growth.head(3)
-                g_down = top_growth.tail(3)
-                lines.append(f"Top growth: {', '.join([f'{i} (+{g_up.loc[i,'growth']:.1f}%)' for i in g_up.index])}.")
-                lines.append(f"Declining: {', '.join([f'{i} ({g_down.loc[i,'growth']:.1f}%)' for i in g_down.index])}.")
-                lines.append("**Recommendations:**")
-                lines.append("1️⃣ Prioritize infrastructure for fast-growing EV and commercial segments.")
-                lines.append("2️⃣ Introduce scrappage incentives for older declining categories.")
-                lines.append("3️⃣ Enhance data cadence to monthly for granular policy feedback.")
-                lines.append("4️⃣ Monitor high-volatility categories for demand shocks.")
-                lines.append("5️⃣ Integrate forecasting outputs into policy dashboards.")
-                st.markdown("\n\n".join(lines))
-            else:
-                st.markdown("### 🧠 AI Summary & Recommendations")
-                st.markdown(ai_text)
-
-            # --- Optional: AI-generated chart summary ---
-            st.markdown("### 📊 AI-Assisted Insight Chart (category growth)")
-            df_growth = (
-                df_flat.groupby("category")["registrations"].agg(["first","last"])
-                .assign(GrowthPct=lambda d: ((d["last"]/d["first"])-1)*100)
-                .reset_index().sort_values("GrowthPct", ascending=False)
+                HAS_UMAP = False
+    
+            # --- UI controls ---
+            algo_choice = st.selectbox(
+                "Choose clustering algorithm",
+                ["KMeans", "MiniBatchKMeans", "Agglomerative", "DBSCAN"]
             )
-            fig_growth = px.bar(df_growth, x="category", y="GrowthPct",
-                                color="GrowthPct", text_auto=".1f",
-                                title="Growth % by Category (First vs Last Year)")
-            st.plotly_chart(fig_growth, use_container_width=True)
+            n_clusters = st.slider("Number of clusters (KMeans/Agglomerative)", 2, min(10, len(pivot_year)), 3)
+            scale_method = st.radio("Scaling method", ["StandardScaler", "MinMaxScaler", "None"], horizontal=True)
+            show_3d = st.toggle("Show 3D PCA/UMAP projection", value=False)
+            use_umap = HAS_UMAP and st.toggle("Use UMAP for projection (if available)", value=False)
+            random_state = 42
+            run_cluster = st.button("🚀 Run Clustering (ALL-MAXED)")
+    
+            if run_cluster:
+                st.info(f"Running {algo_choice} clustering on {pivot_year.shape[0]} samples × {pivot_year.shape[1]} features...")
+    
+                X = pivot_year.fillna(0).values
+                # --- Scaling ---
+                if scale_method == "StandardScaler":
+                    X_scaled = StandardScaler().fit_transform(X)
+                elif scale_method == "MinMaxScaler":
+                    X_scaled = MinMaxScaler().fit_transform(X)
+                else:
+                    X_scaled = X.copy()
+    
+                # --- Fit clustering model ---
+                if algo_choice == "KMeans":
+                    model = KMeans(n_clusters=n_clusters, n_init="auto", random_state=random_state)
+                    labels = model.fit_predict(X_scaled)
+                elif algo_choice == "MiniBatchKMeans":
+                    model = MiniBatchKMeans(n_clusters=n_clusters, random_state=random_state)
+                    labels = model.fit_predict(X_scaled)
+                elif algo_choice == "Agglomerative":
+                    model = AgglomerativeClustering(n_clusters=n_clusters)
+                    labels = model.fit_predict(X_scaled)
+                elif algo_choice == "DBSCAN":
+                    eps = st.slider("DBSCAN eps (radius)", 0.1, 5.0, 1.0, step=0.1)
+                    min_samples = st.slider("DBSCAN min_samples", 2, 20, 5)
+                    model = DBSCAN(eps=eps, min_samples=min_samples)
+                    labels = model.fit_predict(X_scaled)
+    
+                # --- Prepare DataFrame ---
+                df_cluster = pd.DataFrame({
+                    "year": pivot_year.index,
+                    "cluster": labels.astype(int)
+                })
+                df_cluster["cluster_label"] = df_cluster["cluster"].apply(lambda x: f"Cluster {x}" if x >= 0 else "Noise")
+                st.success(f"✅ Clustering done — {df_cluster['cluster'].nunique()} clusters found.")
+    
+                # --- Cluster summary ---
+                cluster_sizes = df_cluster["cluster"].value_counts().rename_axis("cluster").reset_index(name="count")
+                st.markdown("### 📊 Cluster Size Summary")
+                st.dataframe(cluster_sizes)
+    
+                # --- Optional silhouette score ---
+                if len(set(labels)) > 1 and algo_choice != "DBSCAN":
+                    try:
+                        sil = silhouette_score(X_scaled, labels)
+                        st.metric("Silhouette Score", f"{sil:.3f}")
+                    except Exception:
+                        st.caption("Silhouette score unavailable for current configuration.")
+    
+                # --- Cluster means per category ---
+                df_means = pivot_year.copy()
+                df_means["cluster"] = labels
+                cluster_means = df_means.groupby("cluster").mean(numeric_only=True)
+                st.markdown("### 🧠 Cluster Means (per category variable)")
+                st.dataframe(cluster_means.style.background_gradient(cmap="Blues"))
+    
+                # --- 2D / 3D projection ---
+                reducer = PCA(n_components=3 if show_3d else 2, random_state=random_state)
+                proj = reducer.fit_transform(X_scaled)
+    
+                if use_umap and HAS_UMAP:
+                    reducer = umap.UMAP(random_state=random_state, n_neighbors=10, min_dist=0.3)
+                    proj = reducer.fit_transform(X_scaled)
+    
+                df_proj = pd.DataFrame(proj, columns=["x", "y"] + (["z"] if show_3d else []))
+                df_proj["cluster"] = labels
+                df_proj["year"] = pivot_year.index
+    
+                if show_3d:
+                    fig = px.scatter_3d(
+                        df_proj, x="x", y="y", z="z", color=df_proj["cluster"].astype(str),
+                        hover_data=["year"], title="3D Cluster Visualization (PCA/UMAP Projection)"
+                    )
+                else:
+                    fig = px.scatter(
+                        df_proj, x="x", y="y", color=df_proj["cluster"].astype(str),
+                        hover_data=["year"], title="2D Cluster Visualization (PCA/UMAP Projection)"
+                    )
+                fig.update_traces(marker=dict(size=8, line=dict(width=0.5, color="DarkSlateGrey")))
+                fig.update_layout(template="plotly_white", legend_title="Cluster")
+                st.plotly_chart(fig, use_container_width=True)
+    
+                # --- Radar plot (mean per cluster per top features) ---
+                st.markdown("### 🕸️ Radar Chart (cluster feature profiles)")
+                try:
+                    import plotly.express as px
+                    n_features = min(6, pivot_year.shape[1])
+                    top_feats = pivot_year.sum().nlargest(n_features).index.tolist()
+                    radar_df = cluster_means[top_feats].reset_index()
+                    radar_melt = radar_df.melt(id_vars="cluster", var_name="feature", value_name="value")
+                    fig_radar = px.line_polar(
+                        radar_melt, r="value", theta="feature", color=radar_melt["cluster"].astype(str),
+                        line_close=True, markers=True, title="Cluster Profiles (Top Features)"
+                    )
+                    fig_radar.update_traces(fill='toself', opacity=0.6)
+                    st.plotly_chart(fig_radar, use_container_width=True)
+                except Exception as e:
+                    st.warning(f"Radar chart failed: {e}")
+    
+        except Exception as e:
+            st.warning(f"ALL-MAXED clustering failed: {e}")
 
-            # --- Radar of volatility ---
-            st.markdown("### 🌪️ Volatility Radar (standard deviation per category)")
-            vol = df_flat.groupby("category")["registrations"].std().reset_index(name="std_dev")
-            fig_vol = px.line_polar(vol, r="std_dev", theta="category",
-                                    line_close=True, title="Volatility across Categories")
-            fig_vol.update_traces(fill='toself', opacity=0.6)
-            st.plotly_chart(fig_vol, use_container_width=True)
-
-    except Exception as e:
-        st.error(f"💥 AI Narrative (ALL-MAXED) failed: {e}")
+    # =====================================================
+    # 🤖 AI Narrative (ALL-MAXED Analytics + Forecast Insight)
+    # =====================================================
+    if enable_ai and do_forecast:
+        st.subheader("🤖 AI Narrative — Advanced Multi-Year Insight Engine")
+    
+        try:
+            import numpy as np, json, math
+            import pandas as pd
+            from io import StringIO
+            import plotly.express as px
+            from sklearn.preprocessing import MinMaxScaler
+    
+            if pivot_year is None or pivot_year.empty:
+                st.warning("⚠️ No valid data available for AI narrative.")
+            else:
+                # --- Data prep ---
+                df_flat = pivot_year.reset_index().melt(id_vars="year", var_name="category", value_name="registrations")
+                df_flat["registrations"] = pd.to_numeric(df_flat["registrations"], errors="coerce").fillna(0)
+                total_reg = df_flat.groupby("year")["registrations"].sum().reset_index()
+                small = df_flat.to_dict(orient="records")
+                st.caption(f"📊 {len(small)} records ready for AI analysis.")
+    
+                # --- Core stats ---
+                years = sorted(pivot_year.index)
+                cagr = None
+                if len(years) >= 2:
+                    first, last = years[0], years[-1]
+                    v0 = total_reg.loc[total_reg["year"] == first, "registrations"].values[0]
+                    v1 = total_reg.loc[total_reg["year"] == last, "registrations"].values[0]
+                    if v0 > 0:
+                        cagr = ((v1 / v0) ** (1 / (len(years) - 1)) - 1) * 100
+    
+                top_overall = (
+                    df_flat.groupby("category")["registrations"].sum().sort_values(ascending=False).head(5)
+                )
+                st.metric("📈 CAGR (overall)", f"{cagr:.2f}%" if cagr else "N/A")
+                st.metric("🏆 Top Category", top_overall.index[0] if len(top_overall) else "N/A")
+    
+                # --- Correlation matrix (numeric only) ---
+                corr = pivot_year.corr(numeric_only=True)
+                if not corr.empty:
+                    fig_corr = px.imshow(
+                        corr, text_auto=".2f", aspect="auto", color_continuous_scale="RdBu_r",
+                        title="🔗 Correlation between Categories (registrations)"
+                    )
+                    st.plotly_chart(fig_corr, use_container_width=True)
+    
+                # --- AI Analysis ---
+                system_prompt = (
+                    "You are a senior transport data scientist. "
+                    "Analyze multi-year vehicle category trends, year-over-year growth, CAGR, and category correlations. "
+                    "Identify top-growing and declining segments, anomalies, and forecast implications. "
+                    "Provide a concise, actionable summary and 5 recommendations for policymakers or planners. "
+                    "Include quantified % changes, insights on volatility, and relevant sustainability context."
+                )
+    
+                user_prompt = (
+                    f"Dataset (partial preview): {json.dumps(small)[:4000]}...\n\n"
+                    f"Years: {years}\n"
+                    f"Top overall: {top_overall.to_dict()}\n"
+                    f"CAGR: {cagr:.2f if cagr else 0}%\n"
+                    f"Forecast Target: {cat_to_forecast if 'cat_to_forecast' in locals() else 'N/A'}\n"
+                    f"Horizon: {horizon_years if 'horizon_years' in locals() else 'N/A'} years.\n"
+                    "Generate an advanced summary and 5 bullet-point recommendations with real insight."
+                )
+    
+                # --- Try universal_chat or fallback ---
+                ai_text = None
+                try:
+                    ai_resp = universal_chat(
+                        system_prompt, user_prompt,
+                        stream=True, temperature=0.3, max_tokens=800, retries=3
+                    )
+                    if isinstance(ai_resp, dict):
+                        ai_text = ai_resp.get("text") or ai_resp.get("response") or ai_resp.get("output")
+                    elif isinstance(ai_resp, str):
+                        ai_text = ai_resp
+                except Exception:
+                    ai_text = None
+    
+                # --- Fallback (no AI available) ---
+                if not ai_text:
+                    st.markdown("### 🧠 Quick Narrative (Fallback Mode)")
+                    lines = []
+                    lines.append(f"Top categories overall: **{', '.join(top_overall.index.tolist())}**.")
+                    if cagr:
+                        direction = "increased" if cagr > 0 else "declined"
+                        lines.append(f"From {years[0]} to {years[-1]}, total registrations {direction} by **{abs(cagr):.2f}% CAGR**.")
+                    top_growth = (
+                        df_flat.groupby("category")["registrations"].agg(["first","last"])
+                        .assign(growth=lambda d: ((d["last"]/d["first"])-1)*100)
+                        .sort_values("growth", ascending=False)
+                    )
+                    g_up = top_growth.head(3)
+                    g_down = top_growth.tail(3)
+                    lines.append(f"Top growth: {', '.join([f'{i} (+{g_up.loc[i,'growth']:.1f}%)' for i in g_up.index])}.")
+                    lines.append(f"Declining: {', '.join([f'{i} ({g_down.loc[i,'growth']:.1f}%)' for i in g_down.index])}.")
+                    lines.append("**Recommendations:**")
+                    lines.append("1️⃣ Prioritize infrastructure for fast-growing EV and commercial segments.")
+                    lines.append("2️⃣ Introduce scrappage incentives for older declining categories.")
+                    lines.append("3️⃣ Enhance data cadence to monthly for granular policy feedback.")
+                    lines.append("4️⃣ Monitor high-volatility categories for demand shocks.")
+                    lines.append("5️⃣ Integrate forecasting outputs into policy dashboards.")
+                    st.markdown("\n\n".join(lines))
+                else:
+                    st.markdown("### 🧠 AI Summary & Recommendations")
+                    st.markdown(ai_text)
+    
+                # --- Optional: AI-generated chart summary ---
+                st.markdown("### 📊 AI-Assisted Insight Chart (category growth)")
+                df_growth = (
+                    df_flat.groupby("category")["registrations"].agg(["first","last"])
+                    .assign(GrowthPct=lambda d: ((d["last"]/d["first"])-1)*100)
+                    .reset_index().sort_values("GrowthPct", ascending=False)
+                )
+                fig_growth = px.bar(df_growth, x="category", y="GrowthPct",
+                                    color="GrowthPct", text_auto=".1f",
+                                    title="Growth % by Category (First vs Last Year)")
+                st.plotly_chart(fig_growth, use_container_width=True)
+    
+                # --- Radar of volatility ---
+                st.markdown("### 🌪️ Volatility Radar (standard deviation per category)")
+                vol = df_flat.groupby("category")["registrations"].std().reset_index(name="std_dev")
+                fig_vol = px.line_polar(vol, r="std_dev", theta="category",
+                                        line_close=True, title="Volatility across Categories")
+                fig_vol.update_traces(fill='toself', opacity=0.6)
+                st.plotly_chart(fig_vol, use_container_width=True)
+    
+        except Exception as e:
+            st.error(f"💥 AI Narrative (ALL-MAXED) failed: {e}")
 
     # =====================================================
     # 🧩 ALL-MAXED FINAL SUMMARY — SEPARATE PER-CATEGORY (NO GLOBAL SUM)
