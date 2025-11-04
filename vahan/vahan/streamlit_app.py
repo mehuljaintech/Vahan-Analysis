@@ -1533,7 +1533,6 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-import numpy as np
 
 logger = logging.getLogger("all_maxed_category")
 if not logger.handlers:
@@ -1556,7 +1555,6 @@ import plotly.express as px
 from datetime import datetime
 from typing import Dict, Any
 from plotly.colors import qualitative
-import numpy as np
 
 # -----------------------------------------------------
 # 🎯 Master Category Reference
@@ -2043,9 +2041,14 @@ def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.
 # Main Streamlit UI — All-Maxed Block
 # -------------------------
 # =====================================================
-import numpy as np
-
 def all_maxed_category_block(params: Optional[dict] = None):
+    import numpy as np
+    import pandas as pd
+    import plotly.express as px
+    import plotly.graph_objects as go
+    import time, math, json
+    from dateutil.relativedelta import relativedelta
+    import streamlit as st
     """Render the maxed category analytics block inside Streamlit.
 
     Provide `params` to pass to API calls (e.g., region filters). If omitted, defaults are used.
