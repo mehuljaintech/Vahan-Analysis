@@ -98,54 +98,28 @@ from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress
 
-# =====================================================
-# 🖥️ Universal Console + Color Setup (ALL-MAXED SAFE)
-# =====================================================
-import sys
-import platform
-from rich.console import Console
+import os, sys
 
-# Try to import colorama safely (available by default on most platforms)
+# ---- Safe Colorama initialization ----
 try:
-    from colorama import Fore, Style, init as colorama_init
-except ImportError:
-    # graceful fallback if colorama not installed
-    class DummyColor:
-        RESET = ""
-        def __getattr__(self, name): return ""
-    Fore = Style = DummyColor()
-    def colorama_init(*a, **kw): pass
-
-# -----------------------------
-# 🌍 GLOBAL LOGGER SAFE INIT
-# -----------------------------
-try:
-    # Initialize colorama only for Windows TTY (interactive console)
-    if platform.system() == "Windows" and sys.stdout.isatty():
-        colorama_init(autoreset=True)
+    # On Streamlit Cloud or restricted environments, disable colorama wrapping
+    if "STREAMLIT_SERVER" in os.environ or "streamlit" in sys.modules:
+        # Avoid recursion by forcing no wrap
+        import colorama
+        colorama.deinit()  # reset any existing wrapping
+        sys.stdout = sys.__stdout__
+        sys.stderr = sys.__stderr__
+        colorama.init(strip=True, convert=False, autoreset=True)
     else:
-        # Fallback dummy color class (no escape codes)
-        class DummyColor:
-            RESET = ""
-            def __getattr__(self, name): return ""
-        Fore = Style = DummyColor()
-
-    # ✅ Initialize rich Console (auto-handles non-interactive envs like Streamlit)
-    console = Console(force_terminal=False, soft_wrap=True)
-    console.log("[bold green]✅ Console initialized successfully[/bold green]")
+        # Normal local mode
+        import colorama
+        colorama.init(autoreset=True)
 
 except Exception as e:
-    # 🔸 Fallback dummy console (prevents crash in Streamlit / Cloud)
-    print("⚠️ Console init failed:", e)
-
-    class DummyConsole:
-        def log(self, *args, **kwargs):
-            print(*args)
-        def print(self, *args, **kwargs):
-            print(*args)
-
-    console = DummyConsole()
-
+    # Disable colorama completely if it fails
+    sys.stdout = sys.__stdout__
+    sys.stderr = sys.__stderr__
+    print("⚠️ Console color initialization disabled:", e)
 # ---------- Local VAHAN Package (ALL IMPORTS) ----------
 from vahan.api import *
 from vahan.parsing import *
