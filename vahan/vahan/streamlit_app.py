@@ -101,31 +101,49 @@ from rich.progress import Progress
 # =====================================================
 # 🖥️ Universal Console + Color Setup (ALL-MAXED SAFE)
 # =====================================================
-import sys, platform
-from colorama import Fore, Style, init as colorama_init
+import sys
+import platform
 from rich.console import Console
 
+# Try to import colorama safely (available by default on most platforms)
 try:
-    # Initialize colorama only on Windows local terminals
+    from colorama import Fore, Style, init as colorama_init
+except ImportError:
+    # graceful fallback if colorama not installed
+    class DummyColor:
+        RESET = ""
+        def __getattr__(self, name): return ""
+    Fore = Style = DummyColor()
+    def colorama_init(*a, **kw): pass
+
+# -----------------------------
+# 🌍 GLOBAL LOGGER SAFE INIT
+# -----------------------------
+try:
+    # Initialize colorama only for Windows TTY (interactive console)
     if platform.system() == "Windows" and sys.stdout.isatty():
         colorama_init(autoreset=True)
     else:
-        # Stub for non-Windows or non-interactive envs (e.g. Streamlit Cloud)
+        # Fallback dummy color class (no escape codes)
         class DummyColor:
             RESET = ""
             def __getattr__(self, name): return ""
         Fore = Style = DummyColor()
-    
-    # ✅ Rich console (auto-handles non-TTY safely)
+
+    # ✅ Initialize rich Console (auto-handles non-interactive envs like Streamlit)
     console = Console(force_terminal=False, soft_wrap=True)
     console.log("[bold green]✅ Console initialized successfully[/bold green]")
 
 except Exception as e:
-    # Fallback — avoid total crash
+    # 🔸 Fallback dummy console (prevents crash in Streamlit / Cloud)
     print("⚠️ Console init failed:", e)
+
     class DummyConsole:
-        def log(self, *a, **kw): print(*a)
-        def print(self, *a, **kw): print(*a)
+        def log(self, *args, **kwargs):
+            print(*args)
+        def print(self, *args, **kwargs):
+            print(*args)
+
     console = DummyConsole()
 
 # ---------- Local VAHAN Package (ALL IMPORTS) ----------
