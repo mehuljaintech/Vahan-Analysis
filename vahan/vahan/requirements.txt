@@ -1,11 +1,11 @@
-# ===== Core web / UI
+# ===== Core web / UI =====
 streamlit
 streamlit-extras
 streamlit-option-menu
 streamlit-aggrid
 streamlit-lottie
 
-# ===== Data & I/O
+# ===== Data & I/O =====
 pandas
 numpy
 python-dateutil
@@ -15,7 +15,7 @@ xlsxwriter
 pyarrow
 fastparquet
 
-# ===== Visualization (all maxed)
+# ===== Visualization (ALL MAXED) =====
 plotly
 altair
 matplotlib
@@ -24,8 +24,13 @@ bokeh
 folium
 pydeck
 wordcloud
+vega
+dash
+holoviews
+panel
+plotnine
 
-# ===== HTTP / scraping / async
+# ===== HTTP / Scraping / Async =====
 requests
 urllib3
 aiohttp
@@ -36,37 +41,49 @@ tqdm
 tenacity
 ratelimit
 python-dotenv
+fake-useragent
 
-# ===== Logging / CLI / utils
+# ===== Logging / CLI / Utils =====
 loguru
 rich
 colorama
 pyfiglet
+typer
+click
+fire
 
-# ===== ML / Stats / Forecasting
+# ===== ML / Stats / Forecasting =====
 scikit-learn
 scipy
 statsmodels
-prophet            # note: often requires system deps OR conda install
+prophet
 xgboost
 lightgbm
 catboost
-tensorflow    # choose appropriate version for your GPU/CPU
-torch                # pin in conda/docker depending on CUDA
+tensorflow
+torch
 transformers
 huggingface-hub
 sentence-transformers
 deep-translator
 pydantic
+numpy-financial
+mlxtend
+optuna
+imbalanced-learn
+mlflow
+gradio
 
-# ===== Time series / anomaly / Auto-TS
+# ===== Time Series / Anomaly / Auto-TS =====
 pyod
 tsfresh
 darts
 sktime
 pmdarima
+neuralprophet
+ruptures
 
-# ===== Databases & storage
+# ===== Databases & Storage =====
 sqlite-utils
 sqlalchemy
 pymysql
@@ -74,63 +91,115 @@ duckdb
 pandas-gbq
 gspread
 google-auth
+psycopg2-binary
+redis
+tinydb
 
-# ===== Profiling & advanced analytics
+# ===== Profiling / Auto Analytics / EDA =====
 ydata-profiling
 sweetviz
 dtale
 autoviz
+pandas-profiling
+lux-api
+skimpy
+dataprep
+explorer
 
-# ===== PDF/Export
+# ===== PDF / Excel / Export =====
 reportlab
 fpdf
 pdfkit
 tabulate
+weasyprint
+openpyxl
+xlsxwriter
+pyexcel
+camelot-py
+pdfplumber
 
-# ===== System / utils
+# ===== System / Utils =====
 psutil
 platformdirs
 pathlib
 retrying
 timezonefinder
 tzdata
+schedule
+asyncio
+joblib
 
-# ===== Optional AI / Cloud integrations
+# ===== AI / Cloud / API Integrations =====
 openai
 deepinfra
 anthropic
 groq
 ollama
+replicate
+huggingface-hub
+cohere
+vertexai
+langchain
+langchain-core
+langchain-community
+chromadb
+faiss-cpu
+sentencepiece
+tiktoken
 
-# ===== Geo / mapping (optional)
+# ===== Geo / Mapping =====
 geopandas
 shapely
 geopy
 leafmap
 fiona
 rtree
+contextily
+keplergl
 
-# ===== Optional web / cloud
+# ===== Web / Cloud Frameworks =====
 fastapi
 uvicorn
 gunicorn
 flask
 requests-cache
 cachetools
+starlette
+jinja2
 
-# ===== Notebook / dev
+# ===== Notebook / Dev / Lint =====
 ipython
 jupyterlab
 black
 isort
+notebook
+nbformat
+nbconvert
 
-# ===== Security / perf
+# ===== Security / Performance =====
 cryptography
 pyjwt
 orjson
 brotli
 uvloop
+bcrypt
+argon2-cffi
 
-# ===== Optional heavy (install with conda for reliability)
-# faiss-cpu          # prefer conda-forge/pip wheel; many platforms need CPU/GPU variant
-# sentencepiece      # required by some HF models
+# ===== Optional / Heavy / Experimental =====
+pytorch-lightning
+transformers[sentencepiece]
+keras
+onnx
+onnxruntime
+fastai
+stable-baselines3
+opencv-python
+mediapipe
+timm
+torchvision
+torchaudio
+pytorch-forecasting
+pytorch-tabnet
+ultralytics
+deepspeed
+bitsandbytes
