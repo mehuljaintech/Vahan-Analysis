@@ -3220,6 +3220,7 @@ Computation time: {summary_time:.2f} sec
     total_time = time.time() - start_overall
     logger.info(f"ALL-MAXED block finished in {total_time:.2f}s")
 
+# If invoked directly, render the block
 if __name__ == "__main__":
     all_maxed_category_block()
 
