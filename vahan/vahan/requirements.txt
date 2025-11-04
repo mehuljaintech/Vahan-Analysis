@@ -1,151 +1,137 @@
-# ======================================================
-# 🚀 PARIVAHAN ANALYTICS 2025 — MAXED+ CLOUD EDITION
-# ======================================================
+# ==========================================================
+# 🚗 Parivahan Intelligence Dashboard — ALL-MAXED Requirements
+# Full-stack: Streamlit + Data + AI + Forecast + Viz + Cloud
+# ==========================================================
 
-# ===============================
-# 🚀 CORE FRAMEWORK
-# ===============================
+# --- Core Web/UI ---
 streamlit
+streamlit-extras
+streamlit-option-menu
+streamlit-aggrid
+streamlit-lottie
+
+# --- Data Manipulation & Processing ---
 pandas
 numpy
-requests
 python-dateutil
-python-dotenv
-urllib3
-tqdm
+openpyxl
+xlrd
+xlsxwriter
+pyarrow
+fastparquet
 
-# ===============================
-# 🎨 VISUALIZATION / DASHBOARD
-# ===============================
+# --- Visualization (All Maxed) ---
 plotly
 altair
 matplotlib
 seaborn
-vega-datasets
+bokeh
 folium
 pydeck
-streamlit-echarts
-streamlit-aggrid
-streamlit-lottie
-streamlit-extras
+wordcloud
 
-# ===============================
-# 📊 EXCEL / EXPORT / REPORTING
-# ===============================
-openpyxl
-xlsxwriter
-odfpy
-reportlab
-pypandoc
-fpdf2
-python-docx
-python-pptx
-pdfplumber
-PyPDF2
-
-# ===============================
-# 🤖 MACHINE LEARNING / ANALYTICS
-# ===============================
-scikit-learn
-prophet
-statsmodels
-xgboost
-scipy
-catboost
-lightgbm
-mlxtend
-
-# ===============================
-# 💡 AI / LLM INTEGRATION
-# ===============================
-openai
-tiktoken
-deepinfra
-httpx
-tenacity
-transformers
-torch
-accelerate
-sentencepiece
-huggingface-hub
-
-# ===============================
-# 🧠 DATA PROCESSING / TRANSFORMATION
-# ===============================
-pyarrow
-fastparquet
-numexpr
-tabulate
-dask
-polars
-dataclasses-json
-
-# ===============================
-# ⚙️ UTILITIES / PERFORMANCE / LOGGING
-# ===============================
-cachetools
-pyyaml
-python-json-logger
-loguru
-colorama
-rich
-psutil
-aiofiles
-
-# ===============================
-# ☁️ STREAMLIT CLOUD / DEPLOYMENT
-# ===============================
-validators
-watchdog
-gunicorn
-uvicorn
-fastapi
-flask
-werkzeug
-jinja2
-
-# ===============================
-# 🕸️ NETWORKING / SCRAPING (LIGHT)
-# ===============================
-fake-useragent
-requests-toolbelt
+# --- API, HTTP & Parsing ---
+requests
+urllib3
 aiohttp
+httpx
 beautifulsoup4
 lxml
-html5lib
+tqdm
+tenacity
+ratelimit
+python-dotenv
 
-# ===============================
-# 🧩 DATABASE CONNECTORS
-# ===============================
+# --- Logging, Debugging & Config ---
+loguru
+rich
+colorama
+pyfiglet
+
+# --- AI, ML, DL, Forecasting ---
+scikit-learn
+scipy
+statsmodels
+prophet
+xgboost
+lightgbm
+catboost
+tensorflow
+torch
+transformers
+huggingface-hub
+sentence-transformers
+deep-translator
+pydantic
+
+# --- Anomaly Detection & Time Series ---
+pyod
+tsfresh
+darts
+sktime
+pmdarima
+
+# --- Database & Storage ---
+sqlite-utils
 sqlalchemy
 pymysql
-psycopg2-binary
-sqlite-utils
 duckdb
-redis
-pymongo
+pandas-gbq
+gspread
+google-auth
 
-# ===============================
-# 🔐 SECURITY / AUTH / CRYPTO
-# ===============================
+# --- Advanced Visual Analytics / KPI ---
+ydata-profiling
+sweetviz
+dtale
+autoviz
+pandas-profiling
+
+# --- PDF / Excel / Export Tools ---
+reportlab
+fpdf
+xlsxwriter
+pdfkit
+tabulate
+
+# --- System, Logging & Utils ---
+psutil
+platformdirs
+pathlib
+retrying
+timezonefinder
+tzdata
+
+# --- Forecasting & AI API Integrations (Optional) ---
+openai
+deepinfra
+anthropic
+groq
+ollama
+
+# --- Geo/Mapping (Optional for RTO/State Maps) ---
+geopandas
+shapely
+geopy
+leafmap
+
+# --- Optional Web/Cloud Integrations ---
+fastapi
+uvicorn
+gunicorn
+flask
+requests-cache
+cachetools
+
+# --- Optional Notebook/Dev Tools ---
+ipython
+jupyterlab
+black
+isort
+
+# --- Security & Performance ---
 cryptography
 pyjwt
-bcrypt
-
-# ===============================
-# 🌐 OPTIONAL — CLOUD & API CLIENTS
-# ===============================
-boto3
-google-cloud-storage
-azure-storage-blob
-dropbox
-gspread
-oauthlib
-
-# ===============================
-# 🎯 BONUS — ENHANCEMENTS / AI AGENTS
-# ===============================
-langchain
-langchain-community
-chromadb
-faiss-cpu
+orjson
+brotli
+uvloop
