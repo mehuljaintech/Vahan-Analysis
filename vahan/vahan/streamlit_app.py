@@ -98,9 +98,35 @@ from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress
 
-# Initialize pretty output
-colorama_init(autoreset=True)
-console = Console()
+# =====================================================
+# 🖥️ Universal Console + Color Setup (ALL-MAXED SAFE)
+# =====================================================
+import sys, platform
+from colorama import Fore, Style, init as colorama_init
+from rich.console import Console
+
+try:
+    # Initialize colorama only on Windows local terminals
+    if platform.system() == "Windows" and sys.stdout.isatty():
+        colorama_init(autoreset=True)
+    else:
+        # Stub for non-Windows or non-interactive envs (e.g. Streamlit Cloud)
+        class DummyColor:
+            RESET = ""
+            def __getattr__(self, name): return ""
+        Fore = Style = DummyColor()
+    
+    # ✅ Rich console (auto-handles non-TTY safely)
+    console = Console(force_terminal=False, soft_wrap=True)
+    console.log("[bold green]✅ Console initialized successfully[/bold green]")
+
+except Exception as e:
+    # Fallback — avoid total crash
+    print("⚠️ Console init failed:", e)
+    class DummyConsole:
+        def log(self, *a, **kw): print(*a)
+        def print(self, *a, **kw): print(*a)
+    console = DummyConsole()
 
 # ---------- Local VAHAN Package (ALL IMPORTS) ----------
 from vahan.api import *
