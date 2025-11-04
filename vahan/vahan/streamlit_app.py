@@ -2121,7 +2121,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
     pivot = resampled.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
     pivot_year = resampled.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
 
-        # -------------------------
+    # -------------------------
     # KPI Metrics: YoY, MoM (if monthly), CAGR, Category Shares
     # -------------------------
     st.subheader("💎 Key Metrics & Growth (All-Maxed)")
@@ -3219,6 +3219,9 @@ Computation time: {summary_time:.2f} sec
 
     total_time = time.time() - start_overall
     logger.info(f"ALL-MAXED block finished in {total_time:.2f}s")
+
+if __name__ == "__main__":
+    all_maxed_category_block()
 
 
 #     # ---- Top Makers ----
