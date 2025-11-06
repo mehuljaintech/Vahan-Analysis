@@ -5006,137 +5006,149 @@ else:
 #                     st.write("\n---\n".join(hits))
 
 
-# -------------------
-# 🧠 RAG Debug + Intelligence Summary (ALL-MAXED - SAFE VERSION)
-# -------------------
-st.markdown("---")
-st.subheader("🧠 RAG Debug + Intelligence Summary")
+# -------------------------
+# 🧠 RAG + LLM Intelligence (ALL-MAXED Unified Block)
+# -------------------------
+st.markdown("## 🧠 RAG + LLM Intelligence (ALL-MAXED)")
+st.info("Unified retrieval + LLM reasoning across all VAHAN datasets — categories, makers, trends, state breakdowns, forecasts & anomalies.")
 
-try:
-    # make sure base variables exist
-    q = globals().get("q", "")
-    hits = globals().get("hits", [])
-    topk = int(globals().get("topk", 8))
-    docs = globals().get("docs", [])
-    emb = globals().get("emb", None)
-    index_type = globals().get("index_type", "Unknown")
+# --- core setup
+q = globals().get("q", "")
+hits = globals().get("hits", [])
+docs = globals().get("docs", [])
+emb = globals().get("emb", None)
+index_type = globals().get("index_type", "Unknown")
+topk = int(globals().get("topk", 8))
 
-    debug_block = {
-        "query": str(q),
-        "topk": int(topk),
-        "retrieved_count": len(hits) if isinstance(hits, list) else 0,
-    }
-    st.json({"retrieval": debug_block})
+# ---- 1️⃣ Query Type Identification
+def classify_query(query):
+    ql = query.lower().strip()
+    if any(x in ql for x in ["trend", "growth", "forecast", "time", "year"]):
+        return "📈 Trend / Forecast"
+    elif any(x in ql for x in ["state", "region", "area"]):
+        return "🗺️ State / Regional"
+    elif any(x in ql for x in ["maker", "brand", "company"]):
+        return "🏭 Maker / OEM"
+    elif any(x in ql for x in ["category", "type", "segment"]):
+        return "🚗 Category / Segment"
+    elif any(x in ql for x in ["total", "summary", "distribution"]):
+        return "📊 General Summary"
+    elif not ql:
+        return "💬 Idle / No Query"
+    else:
+        return "🔍 General Insight / Unknown"
 
-    # ---- helper to find first non-empty df safely
-    def first_nonempty(*names):
-        for n in names:
-            df = globals().get(n)
-            if isinstance(df, pd.DataFrame) and not df.empty:
-                return df, n
-        return None, None
+query_type = classify_query(q)
+st.markdown(f"### 🔎 Query Type: {query_type}")
 
-    # ---- candidates
-    candidates = {
-    "Category": (
-        globals().get("df_cat")
-        if (globals().get("df_cat") is not None and isinstance(globals().get("df_cat"), pd.DataFrame) and not globals().get("df_cat").empty)
-        else globals().get("df_cat_all")
-    ),
-    "Maker": (
-        globals().get("df_mk")
-        if (globals().get("df_mk") is not None and isinstance(globals().get("df_mk"), pd.DataFrame) and not globals().get("df_mk").empty)
-        else (
-            globals().get("df_maker_all")
-            if (globals().get("df_maker_all") is not None and isinstance(globals().get("df_maker_all"), pd.DataFrame) and not globals().get("df_maker_all").empty)
-            else globals().get("df_makers")
-        )
-    ),
-    "State": (
-        globals().get("df_br")
-        if (globals().get("df_br") is not None and isinstance(globals().get("df_br"), pd.DataFrame) and not globals().get("df_br").empty)
-        else None
-    ),
-    "Trend": (
-        globals().get("df_tr")
-        if ("df_tr" in globals() and isinstance(globals().get("df_tr"), pd.DataFrame) and not globals().get("df_tr").empty)
-        else None
-    ),
+# ---- 2️⃣ Retrieval Debug Summary
+debug_block = {
+    "query": str(q),
+    "query_type": query_type,
+    "topk": topk,
+    "retrieved_count": len(hits) if isinstance(hits, list) else 0,
+    "docs_count": len(docs),
+    "index_type": index_type,
+    "emb_shape": getattr(emb, "shape", None),
+}
+st.json({"retrieval": debug_block})
+
+# ---- 3️⃣ Dataset summaries
+def valid_df(name):
+    df = globals().get(name)
+    if isinstance(df, pd.DataFrame) and not df.empty:
+        return df
+    return None
+
+candidates = {
+    "Category": valid_df("df_cat") or valid_df("df_cat_all"),
+    "Maker": valid_df("df_mk") or valid_df("df_maker_all") or valid_df("df_makers"),
+    "State": valid_df("df_br"),
+    "Trend": valid_df("df_tr"),
 }
 
+st.markdown("### 🏆 Top Entity Summary Across Known Data")
 
-    st.markdown("### 🏆 Top Entity Summary Across Known Data")
+top_summary = {}
+for name, df in candidates.items():
+    if df is not None:
+        st.caption(f"✅ {name} data found ({len(df):,} rows)")
+        val_cols = [c for c in df.columns if any(k in c.lower() for k in ["value", "count", "total", "registered", "registration"])]
+        if not val_cols:
+            val_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        if not val_cols:
+            st.warning(f"No numeric columns found for {name} dataset.")
+            continue
 
-    top_summary = {}
-    for name, (df, found_as) in candidates.items():
-        if df is not None:
-            st.caption(f"✅ {name} data found ({found_as}, {len(df):,} rows)")
-            val_cols = [c for c in df.columns if any(k in c.lower() for k in
-                        ["value", "count", "total", "registered", "registration"])]
-            if not val_cols:
-                val_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-            if not val_cols:
-                continue
-            col = val_cols[0]
-            try:
-                idxmax = df[col].idxmax()
-                top_row = df.loc[idxmax]
-                top_summary[name] = {
-                    "Top": str(top_row.iloc[0]) if len(top_row) else str(top_row.to_dict()),
-                    "Value": float(top_row[col]),
-                    "Mean": float(df[col].mean()),
-                    "Total": float(df[col].sum()),
-                }
-                st.markdown(
-                    f"**{name} → {top_summary[name]['Top']}**  \n"
-                    f"Top Value {top_summary[name]['Value']:,.0f}  | "
-                    f"Mean {top_summary[name]['Mean']:,.0f}  | "
-                    f"Total {top_summary[name]['Total']:,.0f}"
-                )
+        col = val_cols[0]
+        try:
+            idxmax = df[col].idxmax()
+            top_row = df.loc[idxmax]
+            label_col = df.columns[0]
+            top_summary[name] = {
+                "Top": str(top_row[label_col]),
+                "Value": float(top_row[col]),
+                "Mean": float(df[col].mean()),
+                "Total": float(df[col].sum()),
+            }
 
-                # ----- simple maxed visualization
-                st.markdown(f"#### 📊 {name} Distribution ({col})")
-                top_plot = df.nlargest(10, col)
-                st.bar_chart(top_plot.set_index(top_plot.columns[0])[col])
-            except Exception as e2:
-                st.warning(f"{name} summary failed: {e2}")
-        else:
-            st.caption(f"⚪ {name} data missing or empty")
+            st.markdown(
+                f"**{name} → {top_summary[name]['Top']}**  \n"
+                f"Top Value {top_summary[name]['Value']:,.0f}  | "
+                f"Mean {top_summary[name]['Mean']:,.0f}  | "
+                f"Total {top_summary[name]['Total']:,.0f}"
+            )
 
-    if not top_summary:
-        st.info("No structured numeric columns found to compute top-entity summary.")
+            # ----- visualizations
+            st.markdown(f"#### 📊 {name} Distribution ({col})")
+            top_plot = df.nlargest(10, col)
+            st.bar_chart(top_plot.set_index(label_col)[col])
 
-    # ---- store session summary
-    st.session_state["rag_debug_summary"] = {
-        "retrieval": debug_block,
-        "top_summary": top_summary,
-        "hits_preview": hits[:topk] if isinstance(hits, list) else [],
-        "docs_count": len(docs),
-        "index_type": index_type,
-        "emb_shape": getattr(emb, "shape", None),
-    }
+            if name == "Trend" and "year" in df.columns[0].lower():
+                st.line_chart(df.set_index(df.columns[0])[col])
 
-    # ---- optional AI synthesis
-    use_ai_summary = st.checkbox(
-        "🤖 Generate AI narrative using configured LLM (placeholder)",
-        value=False,
-        key="rag_use_ai_allmax"
-    )
-    if use_ai_summary:
-        st.info("LLM call placeholder — integrate your summarization or chat API here.")
-        payload_text = json.dumps(st.session_state["rag_debug_summary"], default=str)[:8000]
-        st.text_area("Prepared payload (first 8 k chars)", value=payload_text, height=160)
+        except Exception as e2:
+            st.warning(f"{name} summary failed: {e2}")
+    else:
+        st.caption(f"⚪ {name} data missing or empty")
 
-    st.download_button(
-        "⬇️ Download Debug JSON",
-        data=json.dumps(st.session_state["rag_debug_summary"], indent=2),
-        file_name="rag_debug_summary.json",
-        mime="application/json",
-        key="rag_debug_download_allmax"
-    )
+if not top_summary:
+    st.info("No structured numeric columns found to compute top-entity summary.")
 
-except Exception as e:
-    st.error(f"⚠️ Debug Summary failed: {e}")
+# ---- 4️⃣ Store full debug data
+st.session_state["allmax_debug"] = {
+    "retrieval": debug_block,
+    "top_summary": top_summary,
+    "hits_preview": hits[:topk] if isinstance(hits, list) else [],
+}
+
+# ---- 5️⃣ LLM Chat / Reasoning Interface (placeholder)
+st.markdown("### 💬 LLM Reasoning Chat (ALL-MAXED)")
+rag_input = st.text_input("Ask a question about VAHAN data:", q, key="rag_chat_query_allmax")
+if st.button("🔮 Generate ALL-MAXED Insight", key="rag_chat_btn_allmax"):
+    with st.spinner("LLM reasoning in progress... (demo placeholder)"):
+        # Placeholder: you’d replace this with your LLM endpoint call
+        st.success(f"🤖 *Simulated ALL-MAXED response for query:* **{rag_input}**")
+        st.write("*(Connect your OpenAI / Ollama / local model for real reasoning output.)*")
+
+# ---- 6️⃣ Export and Narrative toggle
+use_ai_summary = st.checkbox(
+    "🤖 Generate LLM narrative summary (demo)",
+    value=False,
+    key="rag_use_ai_allmax"
+)
+if use_ai_summary:
+    st.info("LLM call placeholder — connect your summarization or chat API here.")
+    payload_text = json.dumps(st.session_state["allmax_debug"], default=str)[:8000]
+    st.text_area("Prepared payload (first 8 k chars)", value=payload_text, height=180)
+
+st.download_button(
+    "⬇️ Download Full ALL-MAXED Debug JSON",
+    data=json.dumps(st.session_state["allmax_debug"], indent=2),
+    file_name="allmax_debug_summary.json",
+    mime="application/json",
+    key="rag_debug_download_allmax"
+)
 
 # # ---------- NLP tools hooks ----------------------------------------------------
 # if enable_nlp:
