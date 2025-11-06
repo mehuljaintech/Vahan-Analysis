@@ -4112,6 +4112,10 @@ if __name__ == "__main__":
 # 🚀 MAXED-OUT DASHBOARD TEMPLATE — STREAMLIT + PLOTLY
 # ======================================================
 
+# =========================
+# ALL-MAXED Maker Controls + Setup
+# =========================
+
 import time
 import math
 import json
@@ -4131,12 +4135,51 @@ import plotly.graph_objects as go
 # -------------------------
 # Logging Setup
 # -------------------------
-logger = logging.getLogger("all_maxed_category")
+logger = logging.getLogger("all_maxed_maker")
 if not logger.handlers:
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
     logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
+
+# -------------------------
+# Controls
+# -------------------------
+freq = st.radio(
+    "Aggregation Frequency",
+    ["Daily", "Monthly", "Quarterly", "Yearly"],
+    index=1,
+    horizontal=True,
+    key="freq_radio",
+)
+
+mode = st.radio(
+    "View Mode",
+    ["Separate (Small Multiples)", "Combined (Overlay / Stacked)"],
+    index=1,
+    horizontal=True,
+    key="mode_radio",
+)
+
+current_year = datetime.now().year
+start_year = st.number_input(
+    "From Year", 2010, current_year, current_year-1, key="start_year"
+)
+end_year = st.number_input(
+    "To Year", start_year, current_year, current_year, key="end_year"
+)
+
+years = list(range(int(start_year), int(end_year)+1))
+
+show_heatmap = st.checkbox("Show Heatmap (year × maker)", True, key="heatmap_chk")
+show_radar = st.checkbox("Show Radar (per year)", True, key="radar_chk")
+do_forecast = st.checkbox("Enable Forecasting", True, key="forecast_chk")
+do_anomaly = st.checkbox("Enable Anomaly Detection", False, key="anomaly_chk")
+do_clustering = st.checkbox("Enable Clustering (KMeans)", False, key="clustering_chk")
+enable_ai = st.checkbox("Enable AI Narrative (requires provider)", False, key="ai_chk")
+
+st.info(f"🚀 Starting ALL-MAXED Maker pipeline — years: {years} | freq: {freq} | mode: {mode}")
+
 
 # =====================================================
 # 🚀 ALL-MAXED MAKERS ANALYTICS CORE v1.0
@@ -4460,6 +4503,7 @@ from typing import Dict
 # -----------------------------
 # Fallback deterministic mock
 # -----------------------------
+
 def maker_mock_top5(year: int) -> Dict:
     """Return deterministic mock Top 5 Makers data."""
     return {
@@ -4468,7 +4512,6 @@ def maker_mock_top5(year: int) -> Dict:
             for i in range(1, 6)
         ]
     }
-
 
 #-----------------------------
 #MAXED Maker fetch + render
@@ -4594,34 +4637,8 @@ import numpy as np
 from datetime import datetime
 
 def all_maxed_maker_block(params: Optional[dict] = None):
-    """Render the MAXED multi-year Maker analytics block inside Streamlit."""
-    import time, logging
-    logger = logging.getLogger("maker_block")
+    """Render the MAXED multi-year Maker analytics block inside Streamlit."""x
     
-    start_overall = time.time()
-    params = params or {}
-
-    st.markdown("## 🏗️ ALL-MAXED — Maker Analytics (Multi-frequency, Multi-year)")
-
-    # -------------------------
-    # Controls
-    # -------------------------
-    freq = st.radio("Aggregation Frequency", ["Daily", "Monthly", "Quarterly", "Yearly"], index=1, horizontal=True)
-    mode = st.radio("View Mode", ["Separate (Small Multiples)", "Combined (Overlay / Stacked)"], index=1, horizontal=True)
-    current_year = datetime.now().year
-    start_year = st.number_input("From Year", 2010, current_year, current_year-1)
-    end_year = st.number_input("To Year", start_year, current_year, current_year)
-    years = list(range(int(start_year), int(end_year)+1))
-
-    show_heatmap = st.checkbox("Show Heatmap (year × maker)", True)
-    show_radar = st.checkbox("Show Radar (per year)", True)
-    do_forecast = st.checkbox("Enable Forecasting", True)
-    do_anomaly = st.checkbox("Enable Anomaly Detection", False)
-    do_clustering = st.checkbox("Enable Clustering (KMeans)", False)
-    enable_ai = st.checkbox("Enable AI Narrative (requires provider)", False)
-
-    st.info(f"🚀 Starting ALL-MAXED Maker pipeline — years: {years} | freq: {freq} | mode: {mode}")
-
     # -------------------------
     # Fetch multi-year maker data (All-Maxed)
     # -------------------------
