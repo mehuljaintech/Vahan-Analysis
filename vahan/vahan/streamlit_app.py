@@ -4642,7 +4642,7 @@ year_sum = df_trend.groupby("year")["value"].sum()
 total_cagr = ((year_sum.iloc[-1] / year_sum.iloc[0]) ** (1 / (len(year_sum) - 1)) - 1) * 100 if len(year_sum) > 1 else np.nan
 latest_yoy = ((year_sum.iloc[-1] - year_sum.iloc[-2]) / year_sum.iloc[-2]) * 100 if len(year_sum) > 1 else np.nan
 
-c1= st.columns(1)
+c1, = st.columns(1)
 c1.metric("📅 Duration", f"{year_sum.index.min()} → {year_sum.index.max()}", f"{len(year_sum)} years")
 
 # ===============================================================
