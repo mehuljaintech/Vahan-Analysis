@@ -4077,18 +4077,27 @@ def fetch_rto_state_year(year: int, params: dict, show_debug=True) -> pd.DataFra
     return df
 
 
-# -------------------------
-# Expand yearly totals to timeseries (synthetic)
-# -------------------------
 def expand_to_timeseries(df_year, year, freq="Monthly"):
+    # Return empty DataFrame if input is empty
+    if df_year.empty:
+        return pd.DataFrame(columns=["ds", "label", "value", "year"])
+    
+    # Ensure 'value' column exists
+    if "value" not in df_year.columns:
+        df_year["value"] = 0
+    
     start = pd.Timestamp(f"{year}-01-01")
     end = pd.Timestamp(f"{year}-12-31")
     idx = pd.date_range(start=start, end=end, freq="M" if freq=="Monthly" else "Y")
+    
     rows = []
     for _, r in df_year.iterrows():
-        per = r["value"] / len(idx)
+        val = r.get("value", 0)  # safe fallback
+        label = r.get("label", "N/A")
+        per = val / len(idx) if len(idx) > 0 else 0
         for ts in idx:
-            rows.append({"ds": ts, "label": r["label"], "value": per, "year": year})
+            rows.append({"ds": ts, "label": label, "value": per, "year": year})
+    
     return pd.DataFrame(rows)
 
 
