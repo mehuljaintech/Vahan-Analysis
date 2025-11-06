@@ -150,3 +150,62 @@ langchain
 langchain-community
 chromadb
 faiss-cpu
+
+# --- Core essentials
+streamlit
+pandas
+numpy
+
+# --- NLP libraries
+nltk
+spacy
+wordcloud
+textblob
+gensim
+
+# --- Plotting & Visualization
+matplotlib
+plotly
+seaborn
+
+# --- Machine Learning / Embeddings
+scikit-learn
+sentence-transformers
+torch
+
+# --- Export & Excel support
+openpyxl
+xlsxwriter
+odfpy
+
+# --- JSON / File utilities
+pandas
+pyyaml
+
+# --- Optional: Hugging Face Transformers (for advanced LLM summaries)
+transformers
+accelerate
+tokenizers
+
+# --- Optional: RAG / Embedding Indexing
+faiss-cpu
+chromadb
+
+# --- Image tools (for your visualizations)
+Pillow
+
+# --- Debug / Performance utils
+tqdm
+rich
+
+# --- Web / API utils (if you're doing LLM calls or summaries)
+requests
+httpx
+
+# --- Compatibility helpers
+typing-extensions
+
+langchain
+openai
+tiktoken
+
