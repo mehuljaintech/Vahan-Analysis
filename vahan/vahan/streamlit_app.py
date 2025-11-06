@@ -5038,11 +5038,32 @@ try:
 
     # ---- candidates
     candidates = {
-        "Category": first_nonempty("df_cat", "df_cat_all"),
-        "Maker": first_nonempty("df_mk", "df_maker_all", "df_makers"),
-        "State": first_nonempty("df_br", "df_br_all"),
-        "Trend": first_nonempty("df_tr", "df_tr_all"),
-    }
+    "Category": (
+        globals().get("df_cat")
+        if (globals().get("df_cat") is not None and isinstance(globals().get("df_cat"), pd.DataFrame) and not globals().get("df_cat").empty)
+        else globals().get("df_cat_all")
+    ),
+    "Maker": (
+        globals().get("df_mk")
+        if (globals().get("df_mk") is not None and isinstance(globals().get("df_mk"), pd.DataFrame) and not globals().get("df_mk").empty)
+        else (
+            globals().get("df_maker_all")
+            if (globals().get("df_maker_all") is not None and isinstance(globals().get("df_maker_all"), pd.DataFrame) and not globals().get("df_maker_all").empty)
+            else globals().get("df_makers")
+        )
+    ),
+    "State": (
+        globals().get("df_br")
+        if (globals().get("df_br") is not None and isinstance(globals().get("df_br"), pd.DataFrame) and not globals().get("df_br").empty)
+        else None
+    ),
+    "Trend": (
+        globals().get("df_tr")
+        if ("df_tr" in globals() and isinstance(globals().get("df_tr"), pd.DataFrame) and not globals().get("df_tr").empty)
+        else None
+    ),
+}
+
 
     st.markdown("### 🏆 Top Entity Summary Across Known Data")
 
