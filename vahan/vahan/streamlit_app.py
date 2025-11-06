@@ -4099,6 +4099,10 @@ def expand_to_timeseries(df_year, year, freq="Monthly"):
 # MAIN STREAMLIT UI BLOCK (Fixed Unique Keys)
 # =========================================================
 def all_maxed_rto_state_block(params: Optional[dict] = None, section_id: str = "rto_state"):
+    import pandas as pd, numpy as np, plotly.express as px, plotly.graph_objects as go, math
+    from datetime import datetime
+    from sklearn.linear_model import LinearRegression
+
     params = params or {}
     st.markdown("## 🏛️ ALL-MAXED — RTO / State Revenue & Fee Analytics")
 
@@ -4112,25 +4116,10 @@ def all_maxed_rto_state_block(params: Optional[dict] = None, section_id: str = "
 
     current_year = datetime.now().year
 
-    start_year = st.number_input(
-        "From Year",
-        2010,
-        current_year,
-        current_year - 1,
-        key=f"start_year_{section_id}"
-    )
-    end_year = st.number_input(
-        "To Year",
-        start_year,
-        current_year,
-        current_year,
-        key=f"end_year_{section_id}"
-    )
-
+    start_year = st.number_input("From Year", 2010, current_year, current_year - 1, key=f"start_year_{section_id}")
+    end_year = st.number_input("To Year", start_year, current_year, current_year, key=f"end_year_{section_id}")
     years = list(range(int(start_year), int(end_year) + 1))
     st.info(f"Debug ON — years: {years}, freq: {freq}")
-
-    # (rest of your block stays the same)
 
     # -------------------------
     # Fetch Data
@@ -4139,16 +4128,34 @@ def all_maxed_rto_state_block(params: Optional[dict] = None, section_id: str = "
     with st.spinner("Fetching RTO/State data..."):
         for y in years:
             df = fetch_rto_state_year(y, params, show_debug=False)
-            all_years.append(df)
+            if not df.empty:
+                all_years.append(df)
+            else:
+                st.warning(f"No data for year {y}, skipping...")
+
+    if not all_years:
+        st.error("No data available for the selected years.")
+        return
+
     df_all = pd.concat(all_years, ignore_index=True)
 
     # -------------------------
     # Time-series expansion
     # -------------------------
-    ts = pd.concat([expand_to_timeseries(df_all[df_all["year"]==y], y, freq) for y in years])
-    ts["ds"] = pd.to_datetime(ts["ds"])
-    ts["year"] = ts["ds"].dt.year
+    ts_list = []
+    for y in years:
+        df_y = df_all[df_all["year"] == y]
+        if not df_y.empty:
+            ts_list.append(expand_to_timeseries(df_y, y, freq))
+    if ts_list:
+        ts = pd.concat(ts_list, ignore_index=True)
+        ts["ds"] = pd.to_datetime(ts["ds"])
+        ts["year"] = ts["ds"].dt.year
+    else:
+        st.error("Time-series expansion failed: no valid data.")
+        return
 
+    # Pivot tables
     pivot_year = ts.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
     pivot = ts.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
 
@@ -4156,69 +4163,76 @@ def all_maxed_rto_state_block(params: Optional[dict] = None, section_id: str = "
     # KPI Metrics
     # -------------------------
     st.subheader("💎 Key Metrics")
-    total = pivot_year.sum(axis=1)
-    yoy = total.pct_change()*100
-    cagr = ((total.iloc[-1]/total.iloc[0])**(1/(len(total)-1))-1)*100 if len(total)>1 else np.nan
-    c1,c2,c3 = st.columns(3)
-    c1.metric("Years", f"{years[0]} → {years[-1]}")
-    c2.metric("CAGR", f"{cagr:.2f}%" if not math.isnan(cagr) else "n/a")
-    c3.metric("YoY Latest", f"{yoy.iloc[-1]:.2f}%" if not yoy.isna().iloc[-1] else "n/a")
+    if pivot_year.empty:
+        st.warning("No yearly data available for KPIs.")
+    else:
+        total = pivot_year.sum(axis=1)
+        yoy = total.pct_change() * 100
+        cagr = ((total.iloc[-1]/total.iloc[0])**(1/(len(total)-1))-1)*100 if len(total) > 1 else np.nan
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Years", f"{years[0]} → {years[-1]}")
+        c2.metric("CAGR", f"{cagr:.2f}%" if not math.isnan(cagr) else "n/a")
+        c3.metric("YoY Latest", f"{yoy.iloc[-1]:.2f}%" if not yoy.isna().iloc[-1] else "n/a")
 
     # -------------------------
     # Visualizations
     # -------------------------
     st.subheader("📊 Visualizations")
-    fig_area = px.area(pivot.reset_index(), x="ds", y=pivot.columns, title="Combined — RTO/State Revenue Over Time")
-    st.plotly_chart(fig_area, use_container_width=True)
+    if not pivot.empty:
+        fig_area = px.area(pivot.reset_index(), x="ds", y=pivot.columns, title="Combined — RTO/State Revenue Over Time")
+        st.plotly_chart(fig_area, use_container_width=True)
 
     # Heatmap
     st.markdown("### 🔥 Heatmap — Year × State")
-    fig_h = go.Figure(data=go.Heatmap(
-        z=pivot_year.values, x=pivot_year.columns.astype(str), y=pivot_year.index.astype(str),
-        colorscale="Viridis"))
-    fig_h.update_layout(title="Revenue heatmap (year × state)")
-    st.plotly_chart(fig_h, use_container_width=True)
+    if not pivot_year.empty:
+        fig_h = go.Figure(data=go.Heatmap(
+            z=pivot_year.values, x=pivot_year.columns.astype(str), y=pivot_year.index.astype(str),
+            colorscale="Viridis"
+        ))
+        fig_h.update_layout(title="Revenue heatmap (year × state)")
+        st.plotly_chart(fig_h, use_container_width=True)
 
     # Radar
     st.markdown("### 🌈 Radar — Snapshot (last 3 years)")
-    try:
-        fig_r = go.Figure()
-        for y in pivot_year.index[-3:]:
-            fig_r.add_trace(go.Scatterpolar(
-                r=pivot_year.loc[y].values, theta=pivot_year.columns, fill="toself", name=str(y)
-            ))
-        fig_r.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True)
-        st.plotly_chart(fig_r, use_container_width=True)
-    except Exception as e:
-        st.warning(f"Radar failed: {e}")
+    if not pivot_year.empty:
+        try:
+            fig_r = go.Figure()
+            for y in pivot_year.index[-3:]:
+                fig_r.add_trace(go.Scatterpolar(
+                    r=pivot_year.loc[y].values, theta=pivot_year.columns, fill="toself", name=str(y)
+                ))
+            fig_r.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True)
+            st.plotly_chart(fig_r, use_container_width=True)
+        except Exception as e:
+            st.warning(f"Radar failed: {e}")
 
     # -------------------------
     # Forecast (Linear)
     # -------------------------
-    st.subheader("🔮 Forecast (Linear)")
-    state_sel = st.selectbox("Select state to forecast", pivot_year.columns)
-    X = np.arange(len(pivot_year)).reshape(-1,1)
-    y = pivot_year[state_sel].values
-    from sklearn.linear_model import LinearRegression
-    lr = LinearRegression().fit(X,y)
-    fut = np.arange(len(pivot_year)+3).reshape(-1,1)
-    preds = lr.predict(fut)
-    fut_years = list(range(pivot_year.index[0], pivot_year.index[0]+len(fut)))
-    figf = px.line(x=fut_years, y=preds, title=f"Forecast for {state_sel}")
-    figf.add_scatter(x=pivot_year.index, y=y, mode="markers+lines", name="Historical")
-    st.plotly_chart(figf, use_container_width=True)
+    if not pivot_year.empty:
+        st.subheader("🔮 Forecast (Linear)")
+        state_sel = st.selectbox("Select state to forecast", pivot_year.columns)
+        X = np.arange(len(pivot_year)).reshape(-1,1)
+        y = pivot_year[state_sel].values
+        lr = LinearRegression().fit(X,y)
+        fut = np.arange(len(pivot_year)+3).reshape(-1,1)
+        preds = lr.predict(fut)
+        fut_years = list(range(pivot_year.index[0], pivot_year.index[0]+len(fut)))
+        figf = px.line(x=fut_years, y=preds, title=f"Forecast for {state_sel}")
+        figf.add_scatter(x=pivot_year.index, y=y, mode="markers+lines", name="Historical")
+        st.plotly_chart(figf, use_container_width=True)
 
     # -------------------------
     # Final summary
     # -------------------------
     st.subheader("🧠 Summary")
-    top_state = pivot_year.sum(axis=0).idxmax()
-    top_val = pivot_year.sum(axis=0).max()
-    st.success(f"Top State Overall: **{top_state}** with total ₹{top_val:,.0f}")
-    st.dataframe(pivot_year.style.format("{:,.0f}"))
+    if not pivot_year.empty:
+        top_state = pivot_year.sum(axis=0).idxmax()
+        top_val = pivot_year.sum(axis=0).max()
+        st.success(f"Top State Overall: **{top_state}** with total ₹{top_val:,.0f}")
+        st.dataframe(pivot_year.style.format("{:,.0f}"))
 
     logger.info("ALL-MAXED RTO/STATE block complete ✅")
-
 
 # -------------------------
 # Standalone run
