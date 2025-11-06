@@ -5010,294 +5010,102 @@ else:
 # 🧠 RAG / LLM + Multi-Source Vector Intelligence (ALL-MAXED) — FIXED
 # ================================
 
-# -------------------------
-# 🧠 RAG + LLM Intelligence (ALL-MAXED)
-# -------------------------
-enable_rag = st.checkbox(
-    "🧠 Enable RAG + LLM Intelligence (ALL-MAXED)",
-    value=True,
-    key="enable_rag_allmax"
-)
+# -------------------
+# Debug & intelligence summary (safe, all-maxed)
+# -------------------
+st.markdown("---")
+st.subheader("🧠 RAG Debug + Intelligence Summary")
 
-if enable_rag:
-    st.markdown(
-        """
-        <div style="padding:14px 22px;border-left:6px solid #8A2BE2;
-                    background:linear-gradient(90deg,#f8f6ff,#ffffff 100%);
-                    border-radius:12px;margin-bottom:16px;">
-            <h3 style="margin:0;font-weight:700;color:#222;">🧠 RAG + LLM Intelligence (ALL-MAXED)</h3>
-            <p style="margin:6px 0 0;color:#444;font-size:14px;">
-                Unified retrieval + LLM reasoning across all VAHAN datasets — categories, makers, trends, state breakdowns, forecasts & anomalies.
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
+try:
+    debug_block = {"query": q, "topk": int(topk), "retrieved_count": len(hits)}
+    st.json({"retrieval": debug_block})
+
+    # ---- helper to find first non-empty df
+    def first_nonempty(*names):
+        for n in names:
+            df = globals().get(n)
+            if isinstance(df, pd.DataFrame) and not df.empty:
+                return df, n
+        return None, None
+
+    # ---- candidates
+    candidates = {
+        "Category": first_nonempty("df_cat", "df_cat_all"),
+        "Maker": first_nonempty("df_mk", "df_maker_all", "df_makers"),
+        "State": first_nonempty("df_br", "df_br_all"),
+        "Trend": first_nonempty("df_tr", "df_tr_all"),
+    }
+
+    st.markdown("### 🏆 Top Entity Summary Across Known Data")
+
+    top_summary = {}
+    for name, (df, found_as) in candidates.items():
+        if df is not None:
+            st.caption(f"✅ {name} data found ({found_as}, {len(df):,} rows)")
+            val_cols = [c for c in df.columns if any(k in c.lower() for k in
+                        ["value", "count", "total", "registered", "registration"])]
+            if not val_cols:
+                val_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+            if not val_cols:
+                continue
+            col = val_cols[0]
+            try:
+                idxmax = df[col].idxmax()
+                top_row = df.loc[idxmax]
+                top_summary[name] = {
+                    "Top": str(top_row.iloc[0]) if len(top_row) else str(top_row.to_dict()),
+                    "Value": float(top_row[col]),
+                    "Mean": float(df[col].mean()),
+                    "Total": float(df[col].sum()),
+                }
+                st.markdown(
+                    f"**{name} → {top_summary[name]['Top']}**  \n"
+                    f"Top Value {top_summary[name]['Value']:,.0f}  | Mean {top_summary[name]['Mean']:,.0f}  | Total {top_summary[name]['Total']:,.0f}"
+                )
+
+                # ----- simple maxed visualization
+                st.markdown(f"#### 📊 {name} Distribution ({col})")
+                top_plot = df.nlargest(10, col)
+                st.bar_chart(top_plot.set_index(top_plot.columns[0])[col])
+            except Exception as e2:
+                st.warning(f"{name} summary failed: {e2}")
+        else:
+            st.caption(f"⚪ {name} data missing or empty")
+
+    if not top_summary:
+        st.info("No structured numeric columns found to compute top-entity summary.")
+
+    # ---- store session summary
+    st.session_state["rag_debug_summary"] = {
+        "retrieval": debug_block,
+        "top_summary": top_summary,
+        "hits_preview": hits[:topk],
+        "docs_count": len(docs),
+        "index_type": index_type,
+        "emb_shape": emb.shape if emb is not None else None,
+    }
+
+    # ---- optional LLM synthesis placeholder
+    use_ai_summary = st.checkbox(
+        "🤖 Generate AI narrative using configured LLM (placeholder)",
+        value=False,
+        key="rag_use_ai_allmax"
+    )
+    if use_ai_summary:
+        st.info("LLM call placeholder — integrate your summarization or chat API here.")
+        payload_text = json.dumps(st.session_state["rag_debug_summary"], default=str)[:8000]
+        st.text_area("Prepared payload (first 8 k chars)", value=payload_text, height=160)
+
+    st.download_button(
+        "⬇️ Download Debug JSON",
+        data=json.dumps(st.session_state["rag_debug_summary"], indent=2),
+        file_name="rag_debug_summary.json",
+        mime="application/json",
+        key="rag_debug_download_allmax"
     )
 
-    # -------------------
-    # Build docs corpus (safe, best-effort)
-    # -------------------
-    docs = []
-
-    def add_docs(df, prefix):
-        if df is None:
-            return
-        if isinstance(df, pd.Series):
-            df = df.reset_index().rename(columns={0: "value"})
-        if not isinstance(df, pd.DataFrame) or df.empty:
-            return
-        for _, r in df.iterrows():
-            parts = []
-            for k in r.index:
-                v = r[k]
-                if pd.isna(v):
-                    continue
-                parts.append(f"{k}: {v}")
-            if parts:
-                docs.append(f"{prefix} :: " + " | ".join(parts))
-
-    # Collect from likely global dataframes
-    add_docs(globals().get("df_cat"), "Category")
-    add_docs(globals().get("df_cat_all"), "CategoryAll")
-    add_docs(globals().get("df_mk"), "Maker")
-    add_docs(globals().get("df_maker_all"), "MakerAll")
-    if "df_tr" in globals():
-        tr_df = globals().get("df_tr")
-        add_docs(tr_df, "Trend")
-    add_docs(globals().get("df_br"), "State/RTO")
-
-    # Extra structured items (if present)
-    if "yoy_change" in globals() and isinstance(globals().get("yoy_change"), pd.DataFrame):
-        for idx, row in globals().get("yoy_change").iterrows():
-            docs.append(f"YoY :: {idx} => {row.to_dict()}")
-
-    if not docs:
-        st.info("ℹ️ No documents available for RAG — please fetch or generate data first.")
-    else:
-        st.success(f"✅ Built knowledge corpus with **{len(docs):,} entries**")
-
-    # -------------------
-    # Embeddings (best-effort)
-    # -------------------
-    emb = None
-    sbert_model = None
-    EMB_DIM = 384  # used for random fallback
-
-    try:
-        from sentence_transformers import SentenceTransformer
-
-        # small/light model
-        sbert_model = SentenceTransformer("all-MiniLM-L6-v2")
-        emb = sbert_model.encode(docs, convert_to_numpy=True, show_progress_bar=False).astype("float32")
-        st.caption("✅ Embeddings generated (sentence-transformers: all-MiniLM-L6-v2)")
-    except Exception as e:
-        st.warning(f"⚠️ Embedding model not available, using demo random embeddings: {e}")
-        rng = np.random.default_rng(42)
-        emb = rng.normal(size=(len(docs), EMB_DIM)).astype("float32")
-        sbert_model = None
-
-    # -------------------
-    # Build vector index (FAISS -> Annoy -> numpy fallback)
-    # -------------------
-    index = None
-    index_type = "None"
-    try:
-        import faiss
-
-        # faiss expects dimension int
-        dim = emb.shape[1]
-        # normalize vectors for inner product search
-        try:
-            faiss.normalize_L2(emb)
-        except Exception:
-            # some builds might not have normalize_L2 - fall back to manual normalization
-            emb = emb / (np.linalg.norm(emb, axis=1, keepdims=True) + 1e-9)
-
-        index = faiss.IndexFlatIP(dim)
-        index.add(emb)
-        index_type = "FAISS (Inner Product)"
-    except Exception:
-        try:
-            from annoy import AnnoyIndex
-
-            dim = emb.shape[1]
-            index = AnnoyIndex(dim, "angular")
-            for i, v in enumerate(emb):
-                index.add_item(i, v.tolist())
-            index.build(10)
-            index_type = "Annoy (Angular)"
-        except Exception:
-            index = None
-            index_type = "Flat (numpy fallback)"
-
-    st.caption(f"📚 Vector index built using **{index_type}**")
-
-    # -------------------
-    # Retrieval helper
-    # -------------------
-    def query_rag(query, topk=10):
-        if not query:
-            return []
-        # Model absent -> random fallback selection
-        if sbert_model is None:
-            idxs = np.random.choice(len(docs), min(topk, len(docs)), replace=False)
-            return [docs[i] for i in idxs.tolist()]
-
-        # Produce query embedding
-        qv = sbert_model.encode([query], convert_to_numpy=True).astype("float32")
-
-        # Try FAISS
-        if index_type.startswith("FAISS"):
-            try:
-                faiss.normalize_L2(qv)
-            except Exception:
-                qv = qv / (np.linalg.norm(qv, axis=1, keepdims=True) + 1e-9)
-            D, I = index.search(qv, min(topk, len(docs)))
-            unique_idxs = []
-            for i in I[0]:
-                if i >= 0 and i < len(docs) and i not in unique_idxs:
-                    unique_idxs.append(int(i))
-            return [docs[i] for i in unique_idxs]
-
-        # Try Annoy
-        if index_type.startswith("Annoy"):
-            try:
-                qv0 = qv[0].tolist()
-                idxs = index.get_nns_by_vector(qv0, topk)
-                return [docs[i] for i in idxs if i < len(docs)]
-            except Exception:
-                pass
-
-        # Numpy dot fallback (cosine-like via normalized dot)
-        from numpy.linalg import norm
-
-        qv0 = qv[0]
-        emb_norm = emb / (norm(emb, axis=1, keepdims=True) + 1e-9)
-        qnorm = qv0 / (norm(qv0) + 1e-9)
-        sims = np.dot(emb_norm, qnorm)
-        topk_idx = np.argsort(sims)[::-1][:min(topk, len(docs))]
-        return [docs[int(i)] for i in topk_idx]
-
-    # -------------------
-    # UI for queries
-    # -------------------
-    st.markdown("### 🔍 Ask a Question or Insight Query")
-    q = st.text_input("🗨️ What do you want to know about the VAHAN data?", key="rag_query_input_allmax")
-    topk = st.slider("Top-K results", 3, 20, 8, key="rag_topk_allmax")
-
-    hits = []
-
-    if st.button("🚀 Run RAG + LLM Query", key="rag_run_btn_allmax"):
-        if not docs:
-            st.warning("No docs to search. Fetch data first.")
-        elif not q:
-            st.warning("Please enter a query.")
-        else:
-            with st.spinner("Retrieving and synthesizing insights..."):
-                try:
-                    hits = query_rag(q, topk=topk)
-                    if not hits:
-                        st.info("No matches found for the query (or using demo embeddings).")
-                    else:
-                        st.markdown(f"**Retrieved {len(hits)} relevant documents (preview):**")
-                        for h in hits[:topk]:
-                            st.write("- " + (h if len(h) < 400 else h[:400] + "…"))
-                except Exception as e:
-                    st.error(f"Retrieval failed: {e}")
-                    hits = []
-
-            # Summarization — best-effort: transformers if available, otherwise skip (to avoid heavy downloads)
-            if hits:
-                summarization_done = False
-                try:
-                    from transformers import pipeline
-
-                    # small summarizer if available; this may still be heavy on first load
-                    summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
-                    joined = " ".join(hits[:min(len(hits), topk)])
-                    summary = summarizer(joined, max_length=150, min_length=40, do_sample=False)[0]["summary_text"]
-                    st.markdown("### 🧭 LLM Summary Insight")
-                    st.success(summary)
-                    summarization_done = True
-                except Exception as e:
-                    st.info(f"🤖 Summarizer unavailable (skipping heavy model): {e}")
-                    summarization_done = False
-
-                if not summarization_done:
-                    st.info("No summarizer available — you can plug your own LLM API here to synthesize the retrieved docs.")
-
-    # -------------------
-    # Debug & intelligence summary (safe)
-    # -------------------
-    st.markdown("---")
-    st.subheader("🧠 RAG Debug + Intelligence Summary")
-
-    try:
-        debug_block = {"query": q, "topk": int(topk), "retrieved_count": len(hits)}
-        st.json({"retrieval": debug_block})
-
-        # Top entity summary attempt (safe)
-        st.markdown("### 🏆 Top Entity Summary Across Known Data")
-        top_summary = {}
-        candidates = {
-            "Category": globals().get("df_cat"),
-            "Maker": globals().get("df_mk") or globals().get("df_maker_all") or globals().get("df_makers"),
-            "State": globals().get("df_br"),
-            "Trend": globals().get("df_tr") if "df_tr" in globals() else None,
-        }
-        for name, df in candidates.items():
-            if df is not None and isinstance(df, pd.DataFrame) and not df.empty:
-                # best-effort numeric column selection
-                val_cols = [c for c in df.columns if any(k in c.lower() for k in ["value", "count", "total", "registered", "registration"])]
-                if not val_cols:
-                    numcols = df.select_dtypes(include=[np.number]).columns.tolist()
-                    val_cols = numcols
-                if val_cols:
-                    col = val_cols[0]
-                    try:
-                        idxmax = df[col].idxmax()
-                        top_row = df.loc[idxmax]
-                        top_summary[name] = {
-                            "Top": str(top_row.iloc[0]) if len(top_row) else str(top_row.to_dict()),
-                            "Value": float(top_row[col]),
-                            "Mean": float(df[col].mean()),
-                            "Total": float(df[col].sum()),
-                        }
-                        st.markdown(f"**{name}** → {top_summary[name]['Top']} (Top Value {top_summary[name]['Value']:,.0f}, Mean {top_summary[name]['Mean']:,.0f})")
-                    except Exception:
-                        continue
-
-        if not top_summary:
-            st.info("No structured numeric columns found to compute top-entity summary.")
-
-        # store preview in session
-        st.session_state["rag_debug_summary"] = {
-            "retrieval": debug_block,
-            "top_summary": top_summary,
-            "hits_preview": hits[:topk],
-            "docs_count": len(docs),
-            "index_type": index_type,
-            "emb_shape": emb.shape if emb is not None else None,
-        }
-
-        use_ai_summary = st.checkbox("🤖 Generate AI narrative using configured LLM (placeholder)", value=False, key="rag_use_ai_allmax")
-        if use_ai_summary:
-            st.info("LLM call placeholder — implement your API call here. Current environment: summarizer/model may be unavailable.")
-            # Example: prepare payload (string-limited)
-            payload_text = json.dumps(st.session_state.get("rag_debug_summary", {}), default=str)[:8000]
-            st.text_area("Prepared payload preview (first 8k chars)", value=payload_text, height=160)
-
-        st.download_button(
-            "⬇️ Download Debug JSON",
-            data=json.dumps(st.session_state.get("rag_debug_summary", {"retrieval": debug_block}), indent=2),
-            file_name="rag_debug_summary.json",
-            mime="application/json",
-            key="rag_debug_download_allmax"
-        )
-
-    except Exception as e:
-        st.error(f"⚠️ Debug Summary failed: {e}")
-
+except Exception as e:
+    st.error(f"⚠️ Debug Summary failed: {e}")
 
 # # ---------- NLP tools hooks ----------------------------------------------------
 # if enable_nlp:
