@@ -4794,111 +4794,137 @@ if "prophet_mod" not in locals():
     except Exception:
         prophet_mod = None
 
-if enable_ml and not df_tr.empty:
-    st.subheader('Forecasting & Anomaly Detection')
+# ---------- Forecasting & Anomaly Detection (ALLL-MAXED) ----------
+if 'enable_ml' in locals() and enable_ml and 'df_tr' in locals() and not df_tr.empty:
+    st.subheader("📊 Forecasting & Anomaly Detection — ALLL-MAXED")
+
     fc_col1, fc_col2 = st.columns([2,3])
     with fc_col1:
-        method = st.selectbox('Forecast method', ['Naive seasonality','SARIMAX','Prophet','RandomForest','XGBoost'])
-        horizon = st.number_input('Horizon (periods)', 1, 60, 12)
+        method = st.selectbox(
+            "Forecast method",
+            ["Naive seasonality", "SARIMAX", "Prophet", "RandomForest", "XGBoost"],
+            key="forecast_method_maxed"
+        )
+        horizon = st.number_input("Forecast horizon (periods)", 1, 60, 12, key="forecast_horizon_maxed")
     with fc_col2:
-        st.info('Some methods require optional packages (statsmodels, prophet, sklearn, xgboost).')
+        st.info("Auto-shows all visuals & stats. Methods run only if their packages are available.")
 
-    ts = df_tr['value'].astype(float)
-    # naive
-    if st.button('Run forecast'):
-        try:
-            if method=='Naive seasonality':
-                last = ts[-12:] if len(ts)>=12 else ts
-                preds = np.tile(last.values, int(np.ceil(horizon/len(last))))[:horizon]
-                idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq=freq_map.get(frequency,'M'))
-                fc = pd.Series(preds, index=idx)
-                st.line_chart(pd.concat([ts, fc]))
-            elif method=='SARIMAX':
-                sm = lazy('statsmodels')
-                if sm is None:
-                    st.error('statsmodels not installed')
-                else:
-                    from statsmodels.tsa.statespace.sarimax import SARIMAX
-                    mod = SARIMAX(ts, order=(1,1,1), seasonal_order=(1,1,1,12))
-                    res = mod.fit(disp=False)
-                    pred = res.get_forecast(steps=horizon).predicted_mean
-                    idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq='M')
-                    fc = pd.Series(pred.values, index=idx)
-                    st.line_chart(pd.concat([ts, fc]))
-            elif method=='Prophet':
-                if prophet_mod is None:
-                    st.error('prophet not installed')
-                else:
-                    from prophet import Prophet
-                    pdf = ts.reset_index().rename(columns={'date':'ds','value':'y'})
-                    m = Prophet()
-                    m.fit(pdf)
-                    future = m.make_future_dataframe(periods=horizon, freq='M')
-                    fc = m.predict(future).set_index('ds')['yhat'].tail(horizon)
-                    st.line_chart(pd.concat([ts, fc]))
-            elif method=='RandomForest':
-                skl = lazy('sklearn')
-                if skl is None:
-                    st.error('scikit-learn not installed')
-                else:
-                    from sklearn.ensemble import RandomForestRegressor
-                    df_feat = pd.DataFrame({'y':ts})
-                    for l in range(1,13): df_feat[f'lag_{l}'] = df_feat['y'].shift(l)
-                    df_feat = df_feat.dropna()
-                    X = df_feat.drop(columns=['y']).values; y = df_feat['y'].values
-                    model = RandomForestRegressor(n_estimators=100).fit(X,y)
-                    last = df_feat.drop(columns=['y']).iloc[-1].values
-                    preds=[]; cur = last.copy()
-                    for i in range(horizon):
-                        p = model.predict(cur.reshape(1,-1))[0]
-                        preds.append(p); cur = np.roll(cur,1); cur[0]=p
-                    idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq='M')
-                    fc = pd.Series(preds, index=idx)
-                    st.line_chart(pd.concat([ts, fc]))
-            elif method=='XGBoost':
-                if xgb is None:
-                    st.error('xgboost not installed')
-                else:
-                    import xgboost as xgb
-                    df_feat = pd.DataFrame({'y':ts})
-                    for l in range(1,13): df_feat[f'lag_{l}'] = df_feat['y'].shift(l)
-                    df_feat = df_feat.dropna()
-                    X = df_feat.drop(columns=['y']); y = df_feat['y']
-                    dtrain = xgb.DMatrix(X, label=y)
-                    bst = xgb.train({'objective':'reg:squarederror'}, dtrain, num_boost_round=100)
-                    last = X.iloc[-1].values; preds=[]; cur = last.copy()
-                    for i in range(horizon):
-                        dcur = xgb.DMatrix(cur.reshape(1,-1)); p = bst.predict(dcur)[0]; preds.append(p); cur = np.roll(cur,1); cur[0]=p
-                    idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq='M')
-                    fc = pd.Series(preds, index=idx)
-                    st.line_chart(pd.concat([ts, fc]))
-        except Exception as e:
-            st.error(f'Forecast failed: {e}')
+    ts = df_tr["value"].astype(float)
+    freq = freq_map.get(frequency, "M")
 
-    # anomaly detection
-    st.markdown('**Anomaly detection**')
-    a_method = st.selectbox('Anomaly method', ['Z-score','IQR','IsolationForest'])
-    if st.button('Run anomaly detection'):
-        try:
-            if a_method=='Z-score':
-                z = (ts - ts.mean())/ts.std()
-                anoms = z.abs() > 3
-            elif a_method=='IQR':
-                q1 = ts.quantile(0.25); q3 = ts.quantile(0.75); iqr=q3-q1
-                anoms = (ts < q1 - 1.5*iqr) | (ts > q3 + 1.5*iqr)
-            else:
-                skl = lazy('sklearn')
-                if skl is None:
-                    st.error('scikit-learn not installed')
-                    anoms = pd.Series(False, index=ts.index)
-                else:
-                    from sklearn.ensemble import IsolationForest
-                    iso = IsolationForest(random_state=0).fit(ts.values.reshape(-1,1)); preds = iso.predict(ts.values.reshape(-1,1)); anoms = preds==-1
-            out = ts[anoms]
-            st.write('Anomalies found:', out.shape[0])
-            if not out.empty: st.write(out)
-        except Exception as e:
-            st.error(f'Anomaly detection failed: {e}')
+    # ---- FORECAST ----
+    if st.button("Run Forecast (ALLL-MAXED)", key="run_forecast_allmaxed"):
+        st.markdown("### 🔮 Forecast Results")
+        fc = None
+        idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq=freq)
+
+        # Forecast logic
+        if method == "Naive seasonality":
+            last = ts[-12:] if len(ts) >= 12 else ts
+            preds = np.tile(last.values, int(np.ceil(horizon / len(last))))[:horizon]
+            fc = pd.Series(preds, index=idx)
+
+        elif method == "SARIMAX" and lazy("statsmodels") is not None:
+            from statsmodels.tsa.statespace.sarimax import SARIMAX
+            model = SARIMAX(ts, order=(1,1,1), seasonal_order=(1,1,1,12))
+            res = model.fit(disp=False)
+            fc = pd.Series(res.get_forecast(steps=horizon).predicted_mean, index=idx)
+
+        elif method == "Prophet" and lazy("prophet") is not None:
+            from prophet import Prophet
+            pdf = ts.reset_index().rename(columns={"date": "ds", "value": "y"})
+            m = Prophet()
+            m.fit(pdf)
+            future = m.make_future_dataframe(periods=horizon, freq="M")
+            fc = m.predict(future).set_index("ds")["yhat"].tail(horizon)
+
+        elif method == "RandomForest" and lazy("sklearn") is not None:
+            from sklearn.ensemble import RandomForestRegressor
+            df_feat = pd.DataFrame({"y": ts})
+            for l in range(1,13):
+                df_feat[f"lag_{l}"] = df_feat["y"].shift(l)
+            df_feat = df_feat.dropna()
+            X = df_feat.drop(columns=["y"]).values
+            y = df_feat["y"].values
+            model = RandomForestRegressor(n_estimators=200, random_state=42).fit(X, y)
+            last = df_feat.drop(columns=["y"]).iloc[-1].values
+            preds, cur = [], last.copy()
+            for _ in range(horizon):
+                p = model.predict(cur.reshape(1,-1))[0]
+                preds.append(p)
+                cur = np.roll(cur, 1)
+                cur[0] = p
+            fc = pd.Series(preds, index=idx)
+
+        elif method == "XGBoost" and lazy("xgboost") is not None:
+            import xgboost as xgb
+            df_feat = pd.DataFrame({"y": ts})
+            for l in range(1,13):
+                df_feat[f"lag_{l}"] = df_feat["y"].shift(l)
+            df_feat = df_feat.dropna()
+            X = df_feat.drop(columns=["y"])
+            y = df_feat["y"]
+            dtrain = xgb.DMatrix(X, label=y)
+            bst = xgb.train({"objective": "reg:squarederror"}, dtrain, num_boost_round=200)
+            last = X.iloc[-1].values
+            preds, cur = [], last.copy()
+            for _ in range(horizon):
+                dcur = xgb.DMatrix(cur.reshape(1,-1))
+                p = bst.predict(dcur)[0]
+                preds.append(p)
+                cur = np.roll(cur,1)
+                cur[0] = p
+            fc = pd.Series(preds, index=idx)
+
+        # If forecast exists, visualize everything
+        if fc is not None and not fc.empty:
+            combined = pd.concat([ts, fc])
+            st.line_chart(combined)
+            st.metric("Forecast Mean", round(fc.mean(), 2))
+            st.metric("Forecast Std", round(fc.std(), 2))
+            st.metric("Forecast Start", str(fc.index[0].date()))
+            st.metric("Forecast End", str(fc.index[-1].date()))
+            with st.expander("📈 Forecast Data Summary"):
+                st.dataframe(fc.describe().to_frame("Forecast Summary"))
+        else:
+            st.warning("⚠️ Forecast not generated — check dependencies or data size.")
+
+    # ---- ANOMALY DETECTION ----
+    st.markdown("### ⚠️ Anomaly Detection")
+    a_method = st.selectbox(
+        "Anomaly method",
+        ["Z-score", "IQR", "IsolationForest"],
+        key="anom_method_allmaxed"
+    )
+
+    if st.button("Run Anomaly Detection (ALLL-MAXED)", key="run_anom_allmaxed"):
+        if a_method == "Z-score":
+            z = (ts - ts.mean()) / ts.std()
+            anoms = z.abs() > 3
+        elif a_method == "IQR":
+            q1, q3 = ts.quantile(0.25), ts.quantile(0.75)
+            iqr = q3 - q1
+            anoms = (ts < q1 - 1.5*iqr) | (ts > q3 + 1.5*iqr)
+        elif a_method == "IsolationForest" and lazy("sklearn") is not None:
+            from sklearn.ensemble import IsolationForest
+            iso = IsolationForest(random_state=0).fit(ts.values.reshape(-1,1))
+            preds = iso.predict(ts.values.reshape(-1,1))
+            anoms = preds == -1
+        else:
+            anoms = pd.Series(False, index=ts.index)
+
+        out = ts[anoms]
+        st.metric("Anomalies Detected", out.shape[0])
+        st.line_chart(ts)
+        if not out.empty:
+            st.scatter_chart(out)
+            with st.expander("🔍 Anomaly Data"):
+                st.dataframe(out)
+        else:
+            st.info("✅ No anomalies detected.")
+
+else:
+    st.info("ℹ️ Forecasting disabled — enable ML and load data to run ALLL-MAXED mode.")
 
 # ---------------------------------------------------
 
