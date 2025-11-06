@@ -4519,6 +4519,23 @@ def maker_mock_top5(year: int) -> Dict:
 # -----------------------------------------------------
 # 🔧 FETCH FUNCTION — SAFE + SMART + MOCK-RESILIENT
 # -----------------------------------------------------
+
+params_common = build_params(
+    from_year=from_year,
+    to_year=to_year,
+    state_code=state_code or "ALL",
+    rto_code=rto_code or "0",
+    vehicle_classes=vehicle_classes or "ALL",
+    vehicle_makers=vehicle_makers or "ALL",
+    time_period=freq,
+    fitness_check=fitness_check,
+    vehicle_type=vehicle_type or "ALL"
+)
+
+years = list(range(int(from_year), int(to_year) + 1))
+
+st.info(f"🔗 Using parameters: {params_common}")
+
 def fetch_maker_top5(year: int, params_common: dict):
     """Fetch top vehicle makers for a given year — fully maxed with safe params + mock fallback."""
     logger.info(Fore.CYAN + f"🚀 Fetching top makers for {year}...")
