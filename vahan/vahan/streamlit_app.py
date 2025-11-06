@@ -3901,65 +3901,141 @@ pivot = resampled.pivot_table(index="ds", columns="label", values="value", aggfu
 pivot_year = resampled.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
 
 # ===============================================================
-# 💎 METRICS
+# 💎 KPI METRICS — Makers
 # ===============================================================
-st.subheader("💎 Key Metrics & Growth — Makers")
+st.subheader("💎 Key Metrics & Growth (Makers)")
+
+if pivot_year.empty:
+    st.warning("⚠️ No yearly data found for KPI computation.")
+    st.stop()
+
+# --- Compute totals and YoY
 year_totals = pivot_year.sum(axis=1).rename("TotalRegistrations").to_frame()
 year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
+year_totals["TotalRegistrations"] = year_totals["TotalRegistrations"].fillna(0).astype(int)
+year_totals["YoY_%"] = year_totals["YoY_%"].replace([np.inf, -np.inf], np.nan).fillna(0)
 
+# --- CAGR
 if len(year_totals) >= 2:
-    first, last = year_totals["TotalRegistrations"].iloc[0], year_totals["TotalRegistrations"].iloc[-1]
+    first = float(year_totals["TotalRegistrations"].iloc[0])
+    last = float(year_totals["TotalRegistrations"].iloc[-1])
     years_count = max(1, len(year_totals) - 1)
-    cagr = ((last / first) ** (1 / years_count) - 1) * 100 if first > 0 else np.nan
+    cagr = ((last / first) ** (1 / years_count) - 1) * 100 if first > 0 else 0.0
 else:
-    cagr = np.nan
+    cagr = 0.0
 
+# --- MoM (if monthly)
+if freq == "Monthly":
+    resampled["month_period"] = resampled["year"].astype(str) + "-" + resampled["month"].astype(str)
+    month_totals = resampled.groupby("month_period")["value"].sum().reset_index()
+    month_totals["MoM_%"] = month_totals["value"].pct_change() * 100
+    latest_mom = f"{month_totals['MoM_%'].iloc[-1]:.2f}%" if len(month_totals) > 1 and not np.isnan(month_totals["MoM_%"].iloc[-1]) else "n/a"
+else:
+    latest_mom = "n/a"
+
+# --- Category (Maker) shares
+latest_year = int(year_totals.index.max())
+latest_total = int(year_totals.loc[latest_year, "TotalRegistrations"])
+cat_share = (pivot_year.loc[latest_year] / pivot_year.loc[latest_year].sum() * 100).sort_values(ascending=False).round(1)
+
+# ----------------------------------------------------
+# DISPLAY KPIs
+# ----------------------------------------------------
 c1, = st.columns(1)
-c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} years")
-# ===============================================================
-# 📊 VISUALS (ALL MODES)
-# ===============================================================
-st.subheader("📊 Visualizations — Makers Multi-year & Multi-frequency")
+c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
 
-if mode.startswith("Combined"):
-    st.markdown("### Stacked Area — Combined")
-    st.plotly_chart(px.area(pivot.reset_index(), x="ds", y=pivot.columns.tolist(),
-                            title="Stacked registrations by maker over time",
-                            template="plotly_white"), use_container_width=True)
-else:
-    years_sorted = sorted(resampled["year"].unique())
-    sel_small = st.multiselect("Select specific years", years_sorted, default=years_sorted[-3:])
-    for y in sel_small:
-        d = resampled[resampled["year"] == y]
-        fig = px.bar(d, x="label", y="value", color="label", title=f"Maker distribution — {y}", text_auto=True)
-        fig.update_layout(showlegend=False, template="plotly_white")
-        st.plotly_chart(fig, use_container_width=True)
+st.markdown("#### 📘 Maker Share (Latest Year)")
+st.dataframe(
+    pd.DataFrame({
+        "Maker": cat_share.index,
+        "Share_%": cat_share.values,
+        "Volume": pivot_year.loc[latest_year].astype(int).values
+    }).sort_values("Share_%", ascending=False),
+    use_container_width=True
+)
 
-# ===============================================================
-# 🧠 DEBUG & SUMMARY
-# ===============================================================
-st.markdown("## 🧠 Debug + Insight Summary (Makers)")
-agg = df_maker_all.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False)
-topmaker = agg.iloc[0]["label"]; topval = agg.iloc[0]["value"]
-total = agg["value"].sum(); share = (topval / total) * 100 if total else 0
+with st.expander("🔍 Yearly Totals & Growth"):
+    st.dataframe(year_totals.style.format({"TotalRegistrations": "{:,}", "YoY_%": "{:.2f}"}))
 
-st.metric("🏆 Top Maker (All Years)", f"{topmaker}", f"{share:.2f}% share")
-st.dataframe(agg.style.format({"value": "{:,}"}))
-fig_top10 = px.bar(agg.head(10), x="label", y="value", text_auto=".2s",
-                   title="Top 10 Makers (All Years Combined)")
+# ----------------------------------------------------
+# DEEP INSIGHTS + TRENDS
+# ----------------------------------------------------
+total_all = df_maker_all["value"].sum()
+n_cats = df_maker_all["label"].nunique()
+n_years = df_maker_all["year"].nunique()
+
+# --- Top Maker
+top_cat_row = df_maker_all.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
+top_cat = {"label": str(top_cat_row["label"]), "value": float(top_cat_row["value"])}
+top_cat_share = (top_cat["value"] / total_all) * 100 if total_all > 0 else 0
+
+# --- Top Year
+top_year_row = df_maker_all.groupby("year")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
+top_year = {"year": int(top_year_row["year"]), "value": float(top_year_row["value"])}
+
+st.metric("🏆 Absolute Top Maker", top_cat["label"], f"{top_cat_share:.2f}% share")
+st.metric("📅 Peak Year", f"{top_year['year']}", f"{top_year['value']:,.0f} registrations")
+
+# --- Plot: Top 10 Makers
+st.write("### 🧾 Top 10 Makers — Overall")
+top_debug = df_maker_all.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False)
+fig_top10 = px.bar(top_debug.head(10), x="label", y="value", text_auto=True,
+                   color="value", color_continuous_scale="Blues", title="Top 10 Makers (All Years)")
+fig_top10.update_layout(template="plotly_white", margin=dict(t=50, b=40))
 st.plotly_chart(fig_top10, use_container_width=True)
 
-# ===============================================================
-# ⚙️ DEBUG METRICS
-# ===============================================================
-st.markdown("### ⚙️ Diagnostics")
+# ----------------------------------------------------
+# ADVANCED DEBUG METRICS
+# ----------------------------------------------------
+volatility = df_maker_all.groupby("year")["value"].sum().pct_change().std() * 100 if len(df_maker_all["year"].unique()) > 2 else 0
+dominance_ratio = (top_cat["value"] / total_all) * n_cats if total_all > 0 else 0
+direction = "increased" if cagr > 0 else "declined"
+
+summary_time = time.time() - summary_start
+st.markdown("### ⚙️ Debug Performance Metrics")
 st.code(f"""
-Years loaded: {years}
-Rows in df_maker_all: {len(df_maker_all):,}
-Unique makers: {df_maker_all['label'].nunique()}
-Min registrations: {df_maker_all['value'].min():,.0f}
-Max registrations: {df_maker_all['value'].max():,.0f}
+Years analyzed: {years}
+Makers: {n_cats}
+Rows processed: {len(df_maker_all):,}
+Total registrations: {total_all:,.0f}
+Top maker: {top_cat['label']} → {top_cat['value']:,.0f} ({top_cat_share:.2f}%)
+Peak year: {int(top_year['year'])} → {top_year['value']:,.0f}
+Dominance ratio: {dominance_ratio:.2f}
+Runtime: {summary_time:.2f}s
 """, language="yaml")
+
+# ----------------------------------------------------
+# 8️⃣ SMART SUMMARY — Makers
+# ----------------------------------------------------
+# Ensure top_cat is a single dict
+if isinstance(top_cat, list):
+    top_mk = top_mk[0] if top_mk else {"label": "N/A", "value": 0}
+
+# Safe years and top_year check
+years_valid = years is not None and len(years) > 0
+top_year_valid = top_year is not None and "year" in top_year and "value" in top_year
+
+if top_mk and years_valid and top_year_valid:
+    st.success(
+        f"From **{years[0]}** to **{years[-1]}**, total registrations {direction}. "
+        f"**{top_mk.get('label', 'N/A')}** leads with **{top_mk_share:.2f}%** share. "
+        f"Peak year: **{top_year['year']}** with **{top_year['value']:,.0f}** registrations."
+    )
+    logger.info(f"✅ Makers summary completed in {summary_time:.2f}s")
+else:
+    st.error("⛔ Makers summary failed: Missing or invalid data.")
+    logger.warning("⚠️ Makers summary skipped due to incomplete data.")
+
+# ----------------------------------------------------
+# 9️⃣ CATCH GLOBAL ERRORS
+# ----------------------------------------------------
+try:
+    # Place the full Makers KPI & visualization block above here
+    pass
+except Exception as e:
+    logger.exception(f"Makers summary failed: {e}")
+    st.error(f"⛔ Makers summary failed: {e}")
+
 
 # # ---------- RTO/State detailed breakdown ---------------------------------------
 # st.subheader('RTO / State breakdown')
@@ -4266,17 +4342,135 @@ def all_maxed_rto_state_block(params: Optional[dict] = None, section_id: str = "
         figf.add_scatter(x=pivot_year.index, y=y, mode="markers+lines", name="Historical")
         st.plotly_chart(figf, use_container_width=True)
 
-    # -------------------------
-    # Final summary
-    # -------------------------
-    st.subheader("🧠 Summary")
-    if not pivot_year.empty:
-        top_state = pivot_year.sum(axis=0).idxmax()
-        top_val = pivot_year.sum(axis=0).max()
-        st.success(f"Top State Overall: **{top_state}** with total ₹{top_val:,.0f}")
-        st.dataframe(pivot_year.style.format("{:,.0f}"))
+    # ===============================================================
+# 💎 KPI METRICS — State
+# ===============================================================
+st.subheader("💎 Key Metrics & Growth (States)")
 
-    logger.info("ALL-MAXED RTO/STATE block complete ✅")
+try:
+    if pivot_state_year.empty:
+        st.warning("⚠️ No yearly data found for KPI computation.")
+        st.stop()
+
+    # --- Compute totals and YoY
+    year_totals = pivot_state_year.sum(axis=1).rename("TotalRegistrations").to_frame()
+    year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
+    year_totals["TotalRegistrations"] = year_totals["TotalRegistrations"].fillna(0).astype(int)
+    year_totals["YoY_%"] = year_totals["YoY_%"].replace([np.inf, -np.inf], np.nan).fillna(0)
+
+    # --- CAGR
+    if len(year_totals) >= 2:
+        first = float(year_totals["TotalRegistrations"].iloc[0])
+        last = float(year_totals["TotalRegistrations"].iloc[-1])
+        years_count = max(1, len(year_totals) - 1)
+        cagr = ((last / first) ** (1 / years_count) - 1) * 100 if first > 0 else 0.0
+    else:
+        cagr = 0.0
+
+    # --- MoM (if monthly)
+    if freq == "Monthly":
+        resampled_state["month_period"] = resampled_state["year"].astype(str) + "-" + resampled_state["month"].astype(str)
+        month_totals = resampled_state.groupby("month_period")["value"].sum().reset_index()
+        month_totals["MoM_%"] = month_totals["value"].pct_change() * 100
+        latest_mom = f"{month_totals['MoM_%'].iloc[-1]:.2f}%" if len(month_totals) > 1 and not np.isnan(month_totals["MoM_%"].iloc[-1]) else "n/a"
+    else:
+        latest_mom = "n/a"
+
+    # --- Category (State) shares
+    latest_year = int(year_totals.index.max())
+    latest_total = int(year_totals.loc[latest_year, "TotalRegistrations"])
+    state_share = (pivot_state_year.loc[latest_year] / pivot_state_year.loc[latest_year].sum() * 100).sort_values(ascending=False).round(1)
+
+    # ----------------------------------------------------
+    # DISPLAY KPIs
+    # ----------------------------------------------------
+    c1, = st.columns(1)
+    c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
+
+    st.markdown("#### 📘 State Share (Latest Year)")
+    st.dataframe(
+        pd.DataFrame({
+            "State": state_share.index,
+            "Share_%": state_share.values,
+            "Volume": pivot_state_year.loc[latest_year].astype(int).values
+        }).sort_values("Share_%", ascending=False),
+        use_container_width=True
+    )
+
+    with st.expander("🔍 Yearly Totals & Growth"):
+        st.dataframe(year_totals.style.format({"TotalRegistrations": "{:,}", "YoY_%": "{:.2f}"}))
+
+    # ----------------------------------------------------
+    # DEEP INSIGHTS + TRENDS
+    # ----------------------------------------------------
+    total_all = df_state_all["value"].sum()
+    n_states = df_state_all["label"].nunique()
+    n_years = df_state_all["year"].nunique()
+
+    # --- Top State
+    top_state_row = df_state_all.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
+    top_state = {"label": str(top_state_row["label"]), "value": float(top_state_row["value"])}
+    top_state_share = (top_state["value"] / total_all) * 100 if total_all > 0 else 0
+
+    # --- Top Year
+    top_year_row = df_state_all.groupby("year")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
+    top_year = {"year": int(top_year_row["year"]), "value": float(top_year_row["value"])}
+
+    st.metric("🏆 Absolute Top State", top_state["label"], f"{top_state_share:.2f}% share")
+    st.metric("📅 Peak Year", f"{top_year['year']}", f"{top_year['value']:,.0f} registrations")
+
+    # --- Plot: Top 10 States
+    st.write("### 🧾 Top 10 States — Overall")
+    top_debug = df_state_all.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False)
+    fig_top10 = px.bar(top_debug.head(10), x="label", y="value", text_auto=True,
+                       color="value", color_continuous_scale="Blues", title="Top 10 States (All Years)")
+    fig_top10.update_layout(template="plotly_white", margin=dict(t=50, b=40))
+    st.plotly_chart(fig_top10, use_container_width=True)
+
+    # ----------------------------------------------------
+    # ADVANCED DEBUG METRICS
+    # ----------------------------------------------------
+    volatility = df_state_all.groupby("year")["value"].sum().pct_change().std() * 100 if len(df_state_all["year"].unique()) > 2 else 0
+    dominance_ratio = (top_state["value"] / total_all) * n_states if total_all > 0 else 0
+    direction = "increased" if cagr > 0 else "declined"
+
+    summary_time = time.time() - summary_start
+    st.markdown("### ⚙️ Debug Performance Metrics")
+    st.code(f"""
+Years analyzed: {years}
+States: {n_states}
+Rows processed: {len(df_state_all):,}
+Total registrations: {total_all:,.0f}
+Top state: {top_state['label']} → {top_state['value']:,.0f} ({top_state_share:.2f}%)
+Peak year: {int(top_year['year'])} → {top_year['value']:,.0f}
+Dominance ratio: {dominance_ratio:.2f}
+Runtime: {summary_time:.2f}s
+""", language="yaml")
+
+        # ----------------------------------------------------
+        # 8️⃣ SMART SUMMARY — States
+        # ----------------------------------------------------
+        if isinstance(top_state, list):
+            top_state = top_state[0] if top_state else {"label": "N/A", "value": 0}
+    
+        years_valid = years is not None and len(years) > 0
+        top_year_valid = top_year is not None and "year" in top_year and "value" in top_year
+    
+        if top_state and years_valid and top_year_valid:
+            st.success(
+                f"From **{years[0]}** to **{years[-1]}**, total registrations {direction}. "
+                f"**{top_state.get('label', 'N/A')}** leads with **{top_state_share:.2f}%** share. "
+                f"Peak year: **{top_year['year']}** with **{top_year['value']:,.0f}** registrations."
+            )
+            logger.info(f"✅ State summary completed in {summary_time:.2f}s")
+        else:
+            st.error("⛔ State summary failed: Missing or invalid data.")
+            logger.warning("⚠️ State summary skipped due to incomplete data.")
+    
+    except Exception as e:
+        logger.exception(f"State summary failed: {e}")
+        st.error(f"⛔ State summary failed: {e}")
+
 
 # -------------------------
 # Standalone run
