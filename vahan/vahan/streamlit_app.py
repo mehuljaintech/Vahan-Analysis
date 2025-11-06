@@ -2051,21 +2051,79 @@ def all_maxed_category_block(params: Optional[dict] = None):
     st.markdown("## 🚗 ALL-MAXED — Category Analytics (Multi-frequency, Multi-year)")
 
     # -------------------------
-    # Controls
-    # -------------------------
-    freq = st.radio("Aggregation Frequency", ["Daily", "Monthly", "Quarterly", "Yearly"], index=1, horizontal=True)
-    mode = st.radio("View Mode", ["Separate (Small Multiples)", "Combined (Overlay / Stacked)"], index=1, horizontal=True)
-    current_year = datetime.now().year
-    start_year = st.number_input("From Year", 2010, current_year, current_year-1)
-    end_year = st.number_input("To Year", start_year, current_year, current_year)
-    years = list(range(int(start_year), int(end_year)+1))
+# Controls — All Maxed (with unique keys)
+# -------------------------
+freq = st.radio(
+    "Aggregation Frequency",
+    ["Daily", "Monthly", "Quarterly", "Yearly"],
+    index=1,
+    horizontal=True,
+    key="allmaxed_freq_radio"
+)
 
-    show_heatmap = st.checkbox("Show Heatmap (year × category)", True)
-    show_radar = st.checkbox("Show Radar (per year)", True)
-    do_forecast = st.checkbox("Enable Forecasting", True)
-    do_anomaly = st.checkbox("Enable Anomaly Detection", False)
-    do_clustering = st.checkbox("Enable Clustering (KMeans)", False)
-    enable_ai = st.checkbox("Enable AI Narrative (requires provider)", False)
+mode = st.radio(
+    "View Mode",
+    ["Separate (Small Multiples)", "Combined (Overlay / Stacked)"],
+    index=1,
+    horizontal=True,
+    key="allmaxed_mode_radio"
+)
+
+current_year = datetime.now().year
+
+start_year = st.number_input(
+    "From Year",
+    min_value=2010,
+    max_value=current_year,
+    value=current_year-1,
+    key="allmaxed_start_year"
+)
+
+end_year = st.number_input(
+    "To Year",
+    min_value=start_year,
+    max_value=current_year,
+    value=current_year,
+    key="allmaxed_end_year"
+)
+
+years = list(range(int(start_year), int(end_year)+1))
+
+show_heatmap = st.checkbox(
+    "Show Heatmap (year × category)",
+    value=True,
+    key="allmaxed_show_heatmap"
+)
+
+show_radar = st.checkbox(
+    "Show Radar (per year)",
+    value=True,
+    key="allmaxed_show_radar"
+)
+
+do_forecast = st.checkbox(
+    "Enable Forecasting",
+    value=True,
+    key="allmaxed_do_forecast"
+)
+
+do_anomaly = st.checkbox(
+    "Enable Anomaly Detection",
+    value=False,
+    key="allmaxed_do_anomaly"
+)
+
+do_clustering = st.checkbox(
+    "Enable Clustering (KMeans)",
+    value=False,
+    key="allmaxed_do_clustering"
+)
+
+enable_ai = st.checkbox(
+    "Enable AI Narrative (requires provider)",
+    value=False,
+    key="allmaxed_enable_ai"
+)
 
     st.info(f"🚀 Starting ALL-MAXED category pipeline (debug ON) — years: {years} | freq: {freq} | mode: {mode}")
 
