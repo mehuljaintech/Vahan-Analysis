@@ -4844,7 +4844,7 @@ if enable_ml and not df_tr.empty:
         except Exception as e:
             st.error(f'Anomaly detection failed: {e}')
 
----------------------------------------------------
+# ---------------------------------------------------
 
 # # ---------- RAG / LLM + vector DB (FAISS or fallback) -------------------------------------
 # if enable_rag:
