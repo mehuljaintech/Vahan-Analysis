@@ -4245,7 +4245,7 @@ with col4:
 with col5:
     do_clustering = st.checkbox("Enable Clustering (KMeans)", False, key=f"cluster_{section_id}")
 
-
+years = list(range(int(from_year), int(to_year) + 1))
 
 # =====================================================
 # 🚀 ALL-MAXED MAKERS ANALYTICS CORE v1.0
