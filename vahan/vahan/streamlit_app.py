@@ -3427,7 +3427,7 @@ def _safe_df(df: pd.DataFrame, required: list[str]) -> pd.DataFrame:
 # -----------------------------------------------------
 # 🟦 MAXED BAR CHART (COMBINED / STACKED / NORMALIZED)
 # -----------------------------------------------------
-def bar_from_df(
+def _bar_from_df(
     df: pd.DataFrame,
     title: str,
     combined: bool = False,
@@ -3512,7 +3512,7 @@ def bar_from_df(
 # -----------------------------------------------------
 # 🟣 MAXED PIE / DONUT CHART (3D FEEL + CENTER LABEL)
 # -----------------------------------------------------
-def pie_from_df(
+def _pie_from_df(
     df: pd.DataFrame,
     title: str,
     section_id: str = "",
@@ -3572,7 +3572,7 @@ def pie_from_df(
 # -----------------------------------------------------
 # 🟨 MAXED LINE / TREND CHART
 # -----------------------------------------------------
-def line_from_df(
+def _line_from_df(
     df: pd.DataFrame,
     x_field: str = "year",
     y_field: str = "value",
@@ -3929,6 +3929,270 @@ Min registrations: {df_maker_all['value'].min():,.0f}
 Max registrations: {df_maker_all['value'].max():,.0f}
 """, language="yaml")
 
+# # ---------- RTO/State detailed breakdown ---------------------------------------
+# st.subheader('RTO / State breakdown')
+# # User can choose to fetch state/rto endpoints if available
+# rto_opt = st.selectbox('Show breakdown by', ['State','RTO','None'])
+# if rto_opt != 'None':
+#     # For demo, attempt to call same categories endpoint with state param
+#     target = 'vahandashboard/statewise' if rto_opt=='State' else 'vahandashboard/rtowise'
+#     try:
+#         br_json, _ = get_json(target, params)
+#         df_br = to_df(br_json)
+#         st.dataframe(df_br.head(200))
+#     except Exception as e:
+#         st.warning(f'Breakdown endpoint not available: {e}')
+
+# ============================================================
+# 🌍 ALL-MAXED RTO / STATE BREAKDOWN
+# Includes top-N, YoY growth, interactive charts & comparisons
+# ============================================================
+
+# =========================================================
+# 🌐 ALL-MAXED — State / RTO Analytics (multi-year, multi-frequency)
+# =========================================================
+
+# =========================================================
+# 🚦 ALL-MAXED — RTO / State Analytics (multi-year, multi-frequency)
+# Drop-in Streamlit module. Fully instrumented, mock-safe, debug-friendly.
+# =========================================================
+import time, math, json, random, logging
+from typing import Optional, Dict, Any
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
+import numpy as np
+import pandas as pd
+import streamlit as st
+import plotly.express as px
+import plotly.graph_objects as go
+
+# -------------------------
+# Logging setup
+# -------------------------
+logger = logging.getLogger("all_maxed_rto_state")
+if not logger.handlers:
+    h = logging.StreamHandler()
+    h.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
+    logger.addHandler(h)
+logger.setLevel(logging.DEBUG)
+
+
+# -------------------------
+# Mock generator
+# -------------------------
+def deterministic_mock_rto_state(year: int, seed_base="rto_state") -> Dict[str, Any]:
+    """Generate deterministic mock for RTO/State analytics."""
+    rnd = random.Random(hash((year, seed_base)) & 0xFFFFFFFF)
+    states = [
+        "Maharashtra","Uttar Pradesh","Tamil Nadu","Gujarat","Karnataka",
+        "Rajasthan","Bihar","Haryana","Madhya Pradesh","Telangana",
+        "West Bengal","Delhi","Punjab","Kerala","Odisha"
+    ]
+    data = [{"label": s, "value": rnd.randint(50000, 1200000)} for s in states]
+    return {"data": data, "generatedAt": datetime.utcnow().isoformat()}
+
+
+# -------------------------
+# Visualization helpers
+# -------------------------
+def bar_chart(df, title):
+    try:
+        fig = px.bar(df, x="label", y="value", text_auto=True, title=title)
+        fig.update_layout(template="plotly_white", xaxis_title="State / RTO", yaxis_title="Revenue / Fees")
+        st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        st.warning(f"bar_chart failed: {e}")
+        st.write(df)
+
+def pie_chart(df, title):
+    try:
+        fig = px.pie(df, names="label", values="value", hole=0.55, title=title)
+        st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        st.warning(f"pie_chart failed: {e}")
+        st.write(df)
+
+
+# -------------------------
+# Data fetch with fallback + live debug
+# -------------------------
+def fetch_rto_state_year(year: int, params: dict, show_debug=True) -> pd.DataFrame:
+    """Fetch RTO/state revenue/fee breakdown for a specific year."""
+    try:
+        j, url = get_json("vahandashboard/top5chartRevenueFee", {**params, "year": year})
+    except Exception as e:
+        logger.warning(f"Fetch exception {year}: {e}")
+        j, url = deterministic_mock_rto_state(year), f"mock://rto_state/{year}"
+
+    if show_debug:
+        with st.expander(f"🧩 Debug JSON — RTO/State {year}"):
+            st.write("**URL:**", url)
+            st.json(j)
+
+    # Normalize
+    if j and "data" in j:
+        df = pd.DataFrame(j["data"])
+    else:
+        df = pd.DataFrame(deterministic_mock_rto_state(year)["data"])
+    df["year"] = int(year)
+
+    # Render preview charts
+    st.markdown(f"### 🗺️ RTO / State — {year}")
+    bar_chart(df, f"RTO / State Revenue — {year}")
+    pie_chart(df, f"Revenue Distribution — {year}")
+
+    return df
+
+
+# -------------------------
+# Expand yearly totals to timeseries (synthetic)
+# -------------------------
+def expand_to_timeseries(df_year, year, freq="Monthly"):
+    start = pd.Timestamp(f"{year}-01-01")
+    end = pd.Timestamp(f"{year}-12-31")
+    idx = pd.date_range(start=start, end=end, freq="M" if freq=="Monthly" else "Y")
+    rows = []
+    for _, r in df_year.iterrows():
+        per = r["value"] / len(idx)
+        for ts in idx:
+            rows.append({"ds": ts, "label": r["label"], "value": per, "year": year})
+    return pd.DataFrame(rows)
+
+
+# =========================================================
+# MAIN STREAMLIT UI BLOCK
+# =========================================================
+# =========================================================
+# MAIN STREAMLIT UI BLOCK (Fixed Unique Keys)
+# =========================================================
+def all_maxed_rto_state_block(params: Optional[dict] = None, section_id: str = "rto_state"):
+    params = params or {}
+    st.markdown("## 🏛️ ALL-MAXED — RTO / State Revenue & Fee Analytics")
+
+    freq = st.radio(
+        "Aggregation Frequency",
+        ["Monthly", "Yearly"],
+        index=0,
+        horizontal=True,
+        key=f"freq_{section_id}"
+    )
+
+    current_year = datetime.now().year
+
+    start_year = st.number_input(
+        "From Year",
+        2010,
+        current_year,
+        current_year - 1,
+        key=f"start_year_{section_id}"
+    )
+    end_year = st.number_input(
+        "To Year",
+        start_year,
+        current_year,
+        current_year,
+        key=f"end_year_{section_id}"
+    )
+
+    years = list(range(int(start_year), int(end_year) + 1))
+    st.info(f"Debug ON — years: {years}, freq: {freq}")
+
+    # (rest of your block stays the same)
+
+    # -------------------------
+    # Fetch Data
+    # -------------------------
+    all_years = []
+    with st.spinner("Fetching RTO/State data..."):
+        for y in years:
+            df = fetch_rto_state_year(y, params, show_debug=False)
+            all_years.append(df)
+    df_all = pd.concat(all_years, ignore_index=True)
+
+    # -------------------------
+    # Time-series expansion
+    # -------------------------
+    ts = pd.concat([expand_to_timeseries(df_all[df_all["year"]==y], y, freq) for y in years])
+    ts["ds"] = pd.to_datetime(ts["ds"])
+    ts["year"] = ts["ds"].dt.year
+
+    pivot_year = ts.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
+    pivot = ts.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
+
+    # -------------------------
+    # KPI Metrics
+    # -------------------------
+    st.subheader("💎 Key Metrics")
+    total = pivot_year.sum(axis=1)
+    yoy = total.pct_change()*100
+    cagr = ((total.iloc[-1]/total.iloc[0])**(1/(len(total)-1))-1)*100 if len(total)>1 else np.nan
+    c1,c2,c3 = st.columns(3)
+    c1.metric("Years", f"{years[0]} → {years[-1]}")
+    c2.metric("CAGR", f"{cagr:.2f}%" if not math.isnan(cagr) else "n/a")
+    c3.metric("YoY Latest", f"{yoy.iloc[-1]:.2f}%" if not yoy.isna().iloc[-1] else "n/a")
+
+    # -------------------------
+    # Visualizations
+    # -------------------------
+    st.subheader("📊 Visualizations")
+    fig_area = px.area(pivot.reset_index(), x="ds", y=pivot.columns, title="Combined — RTO/State Revenue Over Time")
+    st.plotly_chart(fig_area, use_container_width=True)
+
+    # Heatmap
+    st.markdown("### 🔥 Heatmap — Year × State")
+    fig_h = go.Figure(data=go.Heatmap(
+        z=pivot_year.values, x=pivot_year.columns.astype(str), y=pivot_year.index.astype(str),
+        colorscale="Viridis"))
+    fig_h.update_layout(title="Revenue heatmap (year × state)")
+    st.plotly_chart(fig_h, use_container_width=True)
+
+    # Radar
+    st.markdown("### 🌈 Radar — Snapshot (last 3 years)")
+    try:
+        fig_r = go.Figure()
+        for y in pivot_year.index[-3:]:
+            fig_r.add_trace(go.Scatterpolar(
+                r=pivot_year.loc[y].values, theta=pivot_year.columns, fill="toself", name=str(y)
+            ))
+        fig_r.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True)
+        st.plotly_chart(fig_r, use_container_width=True)
+    except Exception as e:
+        st.warning(f"Radar failed: {e}")
+
+    # -------------------------
+    # Forecast (Linear)
+    # -------------------------
+    st.subheader("🔮 Forecast (Linear)")
+    state_sel = st.selectbox("Select state to forecast", pivot_year.columns)
+    X = np.arange(len(pivot_year)).reshape(-1,1)
+    y = pivot_year[state_sel].values
+    from sklearn.linear_model import LinearRegression
+    lr = LinearRegression().fit(X,y)
+    fut = np.arange(len(pivot_year)+3).reshape(-1,1)
+    preds = lr.predict(fut)
+    fut_years = list(range(pivot_year.index[0], pivot_year.index[0]+len(fut)))
+    figf = px.line(x=fut_years, y=preds, title=f"Forecast for {state_sel}")
+    figf.add_scatter(x=pivot_year.index, y=y, mode="markers+lines", name="Historical")
+    st.plotly_chart(figf, use_container_width=True)
+
+    # -------------------------
+    # Final summary
+    # -------------------------
+    st.subheader("🧠 Summary")
+    top_state = pivot_year.sum(axis=0).idxmax()
+    top_val = pivot_year.sum(axis=0).max()
+    st.success(f"Top State Overall: **{top_state}** with total ₹{top_val:,.0f}")
+    st.dataframe(pivot_year.style.format("{:,.0f}"))
+
+    logger.info("ALL-MAXED RTO/STATE block complete ✅")
+
+
+# -------------------------
+# Standalone run
+# -------------------------
+if __name__ == "__main__":
+    all_maxed_rto_state_block()
 
 # # ---------- Trend series + resampling & multi-year comparisons ------------------
 # with st.spinner('Fetching trend series...'):
@@ -4471,380 +4735,116 @@ try:
 except Exception as e:
     st.warning(f"Data quality check failed: {e}")
 
-# # ---------- RTO/State detailed breakdown ---------------------------------------
-# st.subheader('RTO / State breakdown')
-# # User can choose to fetch state/rto endpoints if available
-# rto_opt = st.selectbox('Show breakdown by', ['State','RTO','None'])
-# if rto_opt != 'None':
-#     # For demo, attempt to call same categories endpoint with state param
-#     target = 'vahandashboard/statewise' if rto_opt=='State' else 'vahandashboard/rtowise'
-#     try:
-#         br_json, _ = get_json(target, params)
-#         df_br = to_df(br_json)
-#         st.dataframe(df_br.head(200))
-#     except Exception as e:
-#         st.warning(f'Breakdown endpoint not available: {e}')
-
-# ============================================================
-# 🌍 ALL-MAXED RTO / STATE BREAKDOWN
-# Includes top-N, YoY growth, interactive charts & comparisons
-# ============================================================
-
-# =========================================================
-# 🌐 ALL-MAXED — State / RTO Analytics (multi-year, multi-frequency)
-# =========================================================
-
-# =========================================================
-# 🚦 ALL-MAXED — RTO / State Analytics (multi-year, multi-frequency)
-# Drop-in Streamlit module. Fully instrumented, mock-safe, debug-friendly.
-# =========================================================
-import time, math, json, random, logging
-from typing import Optional, Dict, Any
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
-
-import numpy as np
-import pandas as pd
-import streamlit as st
-import plotly.express as px
-import plotly.graph_objects as go
-
-# -------------------------
-# Logging setup
-# -------------------------
-logger = logging.getLogger("all_maxed_rto_state")
-if not logger.handlers:
-    h = logging.StreamHandler()
-    h.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
-    logger.addHandler(h)
-logger.setLevel(logging.DEBUG)
 
 
-# -------------------------
-# Mock generator
-# -------------------------
-def deterministic_mock_rto_state(year: int, seed_base="rto_state") -> Dict[str, Any]:
-    """Generate deterministic mock for RTO/State analytics."""
-    rnd = random.Random(hash((year, seed_base)) & 0xFFFFFFFF)
-    states = [
-        "Maharashtra","Uttar Pradesh","Tamil Nadu","Gujarat","Karnataka",
-        "Rajasthan","Bihar","Haryana","Madhya Pradesh","Telangana",
-        "West Bengal","Delhi","Punjab","Kerala","Odisha"
-    ]
-    data = [{"label": s, "value": rnd.randint(50000, 1200000)} for s in states]
-    return {"data": data, "generatedAt": datetime.utcnow().isoformat()}
+# ---------- Forecasting & Anomalies -------------------------------------------
+if enable_ml and not df_tr.empty:
+    st.subheader('Forecasting & Anomaly Detection')
+    fc_col1, fc_col2 = st.columns([2,3])
+    with fc_col1:
+        method = st.selectbox('Forecast method', ['Naive seasonality','SARIMAX','Prophet','RandomForest','XGBoost'])
+        horizon = st.number_input('Horizon (periods)', 1, 60, 12)
+    with fc_col2:
+        st.info('Some methods require optional packages (statsmodels, prophet, sklearn, xgboost).')
 
+    ts = df_tr['value'].astype(float)
+    # naive
+    if st.button('Run forecast'):
+        try:
+            if method=='Naive seasonality':
+                last = ts[-12:] if len(ts)>=12 else ts
+                preds = np.tile(last.values, int(np.ceil(horizon/len(last))))[:horizon]
+                idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq=freq_map.get(frequency,'M'))
+                fc = pd.Series(preds, index=idx)
+                st.line_chart(pd.concat([ts, fc]))
+            elif method=='SARIMAX':
+                sm = lazy('statsmodels')
+                if sm is None:
+                    st.error('statsmodels not installed')
+                else:
+                    from statsmodels.tsa.statespace.sarimax import SARIMAX
+                    mod = SARIMAX(ts, order=(1,1,1), seasonal_order=(1,1,1,12))
+                    res = mod.fit(disp=False)
+                    pred = res.get_forecast(steps=horizon).predicted_mean
+                    idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq='M')
+                    fc = pd.Series(pred.values, index=idx)
+                    st.line_chart(pd.concat([ts, fc]))
+            elif method=='Prophet':
+                if prophet_mod is None:
+                    st.error('prophet not installed')
+                else:
+                    from prophet import Prophet
+                    pdf = ts.reset_index().rename(columns={'date':'ds','value':'y'})
+                    m = Prophet()
+                    m.fit(pdf)
+                    future = m.make_future_dataframe(periods=horizon, freq='M')
+                    fc = m.predict(future).set_index('ds')['yhat'].tail(horizon)
+                    st.line_chart(pd.concat([ts, fc]))
+            elif method=='RandomForest':
+                skl = lazy('sklearn')
+                if skl is None:
+                    st.error('scikit-learn not installed')
+                else:
+                    from sklearn.ensemble import RandomForestRegressor
+                    df_feat = pd.DataFrame({'y':ts})
+                    for l in range(1,13): df_feat[f'lag_{l}'] = df_feat['y'].shift(l)
+                    df_feat = df_feat.dropna()
+                    X = df_feat.drop(columns=['y']).values; y = df_feat['y'].values
+                    model = RandomForestRegressor(n_estimators=100).fit(X,y)
+                    last = df_feat.drop(columns=['y']).iloc[-1].values
+                    preds=[]; cur = last.copy()
+                    for i in range(horizon):
+                        p = model.predict(cur.reshape(1,-1))[0]
+                        preds.append(p); cur = np.roll(cur,1); cur[0]=p
+                    idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq='M')
+                    fc = pd.Series(preds, index=idx)
+                    st.line_chart(pd.concat([ts, fc]))
+            elif method=='XGBoost':
+                if xgb is None:
+                    st.error('xgboost not installed')
+                else:
+                    import xgboost as xgb
+                    df_feat = pd.DataFrame({'y':ts})
+                    for l in range(1,13): df_feat[f'lag_{l}'] = df_feat['y'].shift(l)
+                    df_feat = df_feat.dropna()
+                    X = df_feat.drop(columns=['y']); y = df_feat['y']
+                    dtrain = xgb.DMatrix(X, label=y)
+                    bst = xgb.train({'objective':'reg:squarederror'}, dtrain, num_boost_round=100)
+                    last = X.iloc[-1].values; preds=[]; cur = last.copy()
+                    for i in range(horizon):
+                        dcur = xgb.DMatrix(cur.reshape(1,-1)); p = bst.predict(dcur)[0]; preds.append(p); cur = np.roll(cur,1); cur[0]=p
+                    idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq='M')
+                    fc = pd.Series(preds, index=idx)
+                    st.line_chart(pd.concat([ts, fc]))
+        except Exception as e:
+            st.error(f'Forecast failed: {e}')
 
-# -------------------------
-# Visualization helpers
-# -------------------------
-def bar_chart(df, title):
-    try:
-        fig = px.bar(df, x="label", y="value", text_auto=True, title=title)
-        fig.update_layout(template="plotly_white", xaxis_title="State / RTO", yaxis_title="Revenue / Fees")
-        st.plotly_chart(fig, use_container_width=True)
-    except Exception as e:
-        st.warning(f"bar_chart failed: {e}")
-        st.write(df)
+    # anomaly detection
+    st.markdown('**Anomaly detection**')
+    a_method = st.selectbox('Anomaly method', ['Z-score','IQR','IsolationForest'])
+    if st.button('Run anomaly detection'):
+        try:
+            if a_method=='Z-score':
+                z = (ts - ts.mean())/ts.std()
+                anoms = z.abs() > 3
+            elif a_method=='IQR':
+                q1 = ts.quantile(0.25); q3 = ts.quantile(0.75); iqr=q3-q1
+                anoms = (ts < q1 - 1.5*iqr) | (ts > q3 + 1.5*iqr)
+            else:
+                skl = lazy('sklearn')
+                if skl is None:
+                    st.error('scikit-learn not installed')
+                    anoms = pd.Series(False, index=ts.index)
+                else:
+                    from sklearn.ensemble import IsolationForest
+                    iso = IsolationForest(random_state=0).fit(ts.values.reshape(-1,1)); preds = iso.predict(ts.values.reshape(-1,1)); anoms = preds==-1
+            out = ts[anoms]
+            st.write('Anomalies found:', out.shape[0])
+            if not out.empty: st.write(out)
+        except Exception as e:
+            st.error(f'Anomaly detection failed: {e}')
 
-def pie_chart(df, title):
-    try:
-        fig = px.pie(df, names="label", values="value", hole=0.55, title=title)
-        st.plotly_chart(fig, use_container_width=True)
-    except Exception as e:
-        st.warning(f"pie_chart failed: {e}")
-        st.write(df)
-
-
-# -------------------------
-# Data fetch with fallback + live debug
-# -------------------------
-def fetch_rto_state_year(year: int, params: dict, show_debug=True) -> pd.DataFrame:
-    """Fetch RTO/state revenue/fee breakdown for a specific year."""
-    try:
-        j, url = get_json("vahandashboard/top5chartRevenueFee", {**params, "year": year})
-    except Exception as e:
-        logger.warning(f"Fetch exception {year}: {e}")
-        j, url = deterministic_mock_rto_state(year), f"mock://rto_state/{year}"
-
-    if show_debug:
-        with st.expander(f"🧩 Debug JSON — RTO/State {year}"):
-            st.write("**URL:**", url)
-            st.json(j)
-
-    # Normalize
-    if j and "data" in j:
-        df = pd.DataFrame(j["data"])
-    else:
-        df = pd.DataFrame(deterministic_mock_rto_state(year)["data"])
-    df["year"] = int(year)
-
-    # Render preview charts
-    st.markdown(f"### 🗺️ RTO / State — {year}")
-    bar_chart(df, f"RTO / State Revenue — {year}")
-    pie_chart(df, f"Revenue Distribution — {year}")
-
-    return df
-
-
-# -------------------------
-# Expand yearly totals to timeseries (synthetic)
-# -------------------------
-def expand_to_timeseries(df_year, year, freq="Monthly"):
-    start = pd.Timestamp(f"{year}-01-01")
-    end = pd.Timestamp(f"{year}-12-31")
-    idx = pd.date_range(start=start, end=end, freq="M" if freq=="Monthly" else "Y")
-    rows = []
-    for _, r in df_year.iterrows():
-        per = r["value"] / len(idx)
-        for ts in idx:
-            rows.append({"ds": ts, "label": r["label"], "value": per, "year": year})
-    return pd.DataFrame(rows)
-
-
-# =========================================================
-# MAIN STREAMLIT UI BLOCK
-# =========================================================
-# =========================================================
-# MAIN STREAMLIT UI BLOCK (Fixed Unique Keys)
-# =========================================================
-def all_maxed_rto_state_block(params: Optional[dict] = None, section_id: str = "rto_state"):
-    params = params or {}
-    st.markdown("## 🏛️ ALL-MAXED — RTO / State Revenue & Fee Analytics")
-
-    freq = st.radio(
-        "Aggregation Frequency",
-        ["Monthly", "Yearly"],
-        index=0,
-        horizontal=True,
-        key=f"freq_{section_id}"
-    )
-
-    current_year = datetime.now().year
-
-    start_year = st.number_input(
-        "From Year",
-        2010,
-        current_year,
-        current_year - 1,
-        key=f"start_year_{section_id}"
-    )
-    end_year = st.number_input(
-        "To Year",
-        start_year,
-        current_year,
-        current_year,
-        key=f"end_year_{section_id}"
-    )
-
-    years = list(range(int(start_year), int(end_year) + 1))
-    st.info(f"Debug ON — years: {years}, freq: {freq}")
-
-    # (rest of your block stays the same)
-
-    # -------------------------
-    # Fetch Data
-    # -------------------------
-    all_years = []
-    with st.spinner("Fetching RTO/State data..."):
-        for y in years:
-            df = fetch_rto_state_year(y, params, show_debug=False)
-            all_years.append(df)
-    df_all = pd.concat(all_years, ignore_index=True)
-
-    # -------------------------
-    # Time-series expansion
-    # -------------------------
-    ts = pd.concat([expand_to_timeseries(df_all[df_all["year"]==y], y, freq) for y in years])
-    ts["ds"] = pd.to_datetime(ts["ds"])
-    ts["year"] = ts["ds"].dt.year
-
-    pivot_year = ts.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
-    pivot = ts.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
-
-    # -------------------------
-    # KPI Metrics
-    # -------------------------
-    st.subheader("💎 Key Metrics")
-    total = pivot_year.sum(axis=1)
-    yoy = total.pct_change()*100
-    cagr = ((total.iloc[-1]/total.iloc[0])**(1/(len(total)-1))-1)*100 if len(total)>1 else np.nan
-    c1,c2,c3 = st.columns(3)
-    c1.metric("Years", f"{years[0]} → {years[-1]}")
-    c2.metric("CAGR", f"{cagr:.2f}%" if not math.isnan(cagr) else "n/a")
-    c3.metric("YoY Latest", f"{yoy.iloc[-1]:.2f}%" if not yoy.isna().iloc[-1] else "n/a")
-
-    # -------------------------
-    # Visualizations
-    # -------------------------
-    st.subheader("📊 Visualizations")
-    fig_area = px.area(pivot.reset_index(), x="ds", y=pivot.columns, title="Combined — RTO/State Revenue Over Time")
-    st.plotly_chart(fig_area, use_container_width=True)
-
-    # Heatmap
-    st.markdown("### 🔥 Heatmap — Year × State")
-    fig_h = go.Figure(data=go.Heatmap(
-        z=pivot_year.values, x=pivot_year.columns.astype(str), y=pivot_year.index.astype(str),
-        colorscale="Viridis"))
-    fig_h.update_layout(title="Revenue heatmap (year × state)")
-    st.plotly_chart(fig_h, use_container_width=True)
-
-    # Radar
-    st.markdown("### 🌈 Radar — Snapshot (last 3 years)")
-    try:
-        fig_r = go.Figure()
-        for y in pivot_year.index[-3:]:
-            fig_r.add_trace(go.Scatterpolar(
-                r=pivot_year.loc[y].values, theta=pivot_year.columns, fill="toself", name=str(y)
-            ))
-        fig_r.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True)
-        st.plotly_chart(fig_r, use_container_width=True)
-    except Exception as e:
-        st.warning(f"Radar failed: {e}")
-
-    # -------------------------
-    # Forecast (Linear)
-    # -------------------------
-    st.subheader("🔮 Forecast (Linear)")
-    state_sel = st.selectbox("Select state to forecast", pivot_year.columns)
-    X = np.arange(len(pivot_year)).reshape(-1,1)
-    y = pivot_year[state_sel].values
-    from sklearn.linear_model import LinearRegression
-    lr = LinearRegression().fit(X,y)
-    fut = np.arange(len(pivot_year)+3).reshape(-1,1)
-    preds = lr.predict(fut)
-    fut_years = list(range(pivot_year.index[0], pivot_year.index[0]+len(fut)))
-    figf = px.line(x=fut_years, y=preds, title=f"Forecast for {state_sel}")
-    figf.add_scatter(x=pivot_year.index, y=y, mode="markers+lines", name="Historical")
-    st.plotly_chart(figf, use_container_width=True)
-
-    # -------------------------
-    # Final summary
-    # -------------------------
-    st.subheader("🧠 Summary")
-    top_state = pivot_year.sum(axis=0).idxmax()
-    top_val = pivot_year.sum(axis=0).max()
-    st.success(f"Top State Overall: **{top_state}** with total ₹{top_val:,.0f}")
-    st.dataframe(pivot_year.style.format("{:,.0f}"))
-
-    logger.info("ALL-MAXED RTO/STATE block complete ✅")
-
-
-# -------------------------
-# Standalone run
-# -------------------------
-if __name__ == "__main__":
-    all_maxed_rto_state_block()
-
-
-# # ---------- Forecasting & Anomalies -------------------------------------------
-# if enable_ml and not df_tr.empty:
-#     st.subheader('Forecasting & Anomaly Detection')
-#     fc_col1, fc_col2 = st.columns([2,3])
-#     with fc_col1:
-#         method = st.selectbox('Forecast method', ['Naive seasonality','SARIMAX','Prophet','RandomForest','XGBoost'])
-#         horizon = st.number_input('Horizon (periods)', 1, 60, 12)
-#     with fc_col2:
-#         st.info('Some methods require optional packages (statsmodels, prophet, sklearn, xgboost).')
-
-#     ts = df_tr['value'].astype(float)
-#     # naive
-#     if st.button('Run forecast'):
-#         try:
-#             if method=='Naive seasonality':
-#                 last = ts[-12:] if len(ts)>=12 else ts
-#                 preds = np.tile(last.values, int(np.ceil(horizon/len(last))))[:horizon]
-#                 idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq=freq_map.get(frequency,'M'))
-#                 fc = pd.Series(preds, index=idx)
-#                 st.line_chart(pd.concat([ts, fc]))
-#             elif method=='SARIMAX':
-#                 sm = lazy('statsmodels')
-#                 if sm is None:
-#                     st.error('statsmodels not installed')
-#                 else:
-#                     from statsmodels.tsa.statespace.sarimax import SARIMAX
-#                     mod = SARIMAX(ts, order=(1,1,1), seasonal_order=(1,1,1,12))
-#                     res = mod.fit(disp=False)
-#                     pred = res.get_forecast(steps=horizon).predicted_mean
-#                     idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq='M')
-#                     fc = pd.Series(pred.values, index=idx)
-#                     st.line_chart(pd.concat([ts, fc]))
-#             elif method=='Prophet':
-#                 if prophet_mod is None:
-#                     st.error('prophet not installed')
-#                 else:
-#                     from prophet import Prophet
-#                     pdf = ts.reset_index().rename(columns={'date':'ds','value':'y'})
-#                     m = Prophet()
-#                     m.fit(pdf)
-#                     future = m.make_future_dataframe(periods=horizon, freq='M')
-#                     fc = m.predict(future).set_index('ds')['yhat'].tail(horizon)
-#                     st.line_chart(pd.concat([ts, fc]))
-#             elif method=='RandomForest':
-#                 skl = lazy('sklearn')
-#                 if skl is None:
-#                     st.error('scikit-learn not installed')
-#                 else:
-#                     from sklearn.ensemble import RandomForestRegressor
-#                     df_feat = pd.DataFrame({'y':ts})
-#                     for l in range(1,13): df_feat[f'lag_{l}'] = df_feat['y'].shift(l)
-#                     df_feat = df_feat.dropna()
-#                     X = df_feat.drop(columns=['y']).values; y = df_feat['y'].values
-#                     model = RandomForestRegressor(n_estimators=100).fit(X,y)
-#                     last = df_feat.drop(columns=['y']).iloc[-1].values
-#                     preds=[]; cur = last.copy()
-#                     for i in range(horizon):
-#                         p = model.predict(cur.reshape(1,-1))[0]
-#                         preds.append(p); cur = np.roll(cur,1); cur[0]=p
-#                     idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq='M')
-#                     fc = pd.Series(preds, index=idx)
-#                     st.line_chart(pd.concat([ts, fc]))
-#             elif method=='XGBoost':
-#                 if xgb is None:
-#                     st.error('xgboost not installed')
-#                 else:
-#                     import xgboost as xgb
-#                     df_feat = pd.DataFrame({'y':ts})
-#                     for l in range(1,13): df_feat[f'lag_{l}'] = df_feat['y'].shift(l)
-#                     df_feat = df_feat.dropna()
-#                     X = df_feat.drop(columns=['y']); y = df_feat['y']
-#                     dtrain = xgb.DMatrix(X, label=y)
-#                     bst = xgb.train({'objective':'reg:squarederror'}, dtrain, num_boost_round=100)
-#                     last = X.iloc[-1].values; preds=[]; cur = last.copy()
-#                     for i in range(horizon):
-#                         dcur = xgb.DMatrix(cur.reshape(1,-1)); p = bst.predict(dcur)[0]; preds.append(p); cur = np.roll(cur,1); cur[0]=p
-#                     idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq='M')
-#                     fc = pd.Series(preds, index=idx)
-#                     st.line_chart(pd.concat([ts, fc]))
-#         except Exception as e:
-#             st.error(f'Forecast failed: {e}')
-
-#     # anomaly detection
-#     st.markdown('**Anomaly detection**')
-#     a_method = st.selectbox('Anomaly method', ['Z-score','IQR','IsolationForest'])
-#     if st.button('Run anomaly detection'):
-#         try:
-#             if a_method=='Z-score':
-#                 z = (ts - ts.mean())/ts.std()
-#                 anoms = z.abs() > 3
-#             elif a_method=='IQR':
-#                 q1 = ts.quantile(0.25); q3 = ts.quantile(0.75); iqr=q3-q1
-#                 anoms = (ts < q1 - 1.5*iqr) | (ts > q3 + 1.5*iqr)
-#             else:
-#                 skl = lazy('sklearn')
-#                 if skl is None:
-#                     st.error('scikit-learn not installed')
-#                     anoms = pd.Series(False, index=ts.index)
-#                 else:
-#                     from sklearn.ensemble import IsolationForest
-#                     iso = IsolationForest(random_state=0).fit(ts.values.reshape(-1,1)); preds = iso.predict(ts.values.reshape(-1,1)); anoms = preds==-1
-#             out = ts[anoms]
-#             st.write('Anomalies found:', out.shape[0])
-#             if not out.empty: st.write(out)
-#         except Exception as e:
-#             st.error(f'Anomaly detection failed: {e}')
-
-#---------------------------------------------------
+---------------------------------------------------
 
 # # ---------- RAG / LLM + vector DB (FAISS or fallback) -------------------------------------
 # if enable_rag:
