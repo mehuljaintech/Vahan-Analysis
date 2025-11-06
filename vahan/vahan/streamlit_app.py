@@ -4637,7 +4637,7 @@ import numpy as np
 from datetime import datetime
 
 def all_maxed_maker_block(params: Optional[dict] = None):
-    """Render the MAXED multi-year Maker analytics block inside Streamlit."""x
+    """Render the MAXED multi-year Maker analytics block inside Streamlit."""
     
     # -------------------------
     # Fetch multi-year maker data (All-Maxed)
