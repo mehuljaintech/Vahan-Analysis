@@ -4664,11 +4664,21 @@ from dateutil.relativedelta import relativedelta
 series = df_trend.groupby("year")["value"].sum().reset_index()
 series.columns = ["ds", "y"]
 series["ds"] = pd.to_datetime(series["ds"].astype(str) + "-01-01")
-# Forecast section
-horizon = st.slider("Forecast horizon (years)", 1, 10, 3, key="forecast_horizon_slider")
+horizon = st.slider(
+    "Forecast horizon (years)",
+    1,
+    10,
+    3,
+    key="forecast_horizon_slider_unique_001"
+)
 
-# Clustering section
-k = st.slider("Clusters (k)", 2, min(10, len(month_pivot)), 3, key="cluster_slider")
+k = st.slider(
+    "Clusters (k)",
+    2,
+    min(10, len(month_pivot)),
+    3,
+    key="cluster_slider_unique_002"
+)
 
 # Linear Forecast
 try:
