@@ -3432,6 +3432,10 @@ import plotly.graph_objects as go
 import uuid
 import math
 from datetime import datetime
+import time
+
+# Start timer for KPI/summary section
+summary_start = time.time()
 
 # -----------------------------------------------------
 # ⚡ GLOBAL VISUAL THEME
