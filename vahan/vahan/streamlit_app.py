@@ -4026,9 +4026,27 @@ def deterministic_mock_rto_state(year: int, seed_base="rto_state") -> Dict[str, 
 
 
 # -------------------------
-# Visualization helpers
+# Visualization helpers (safe)
 # -------------------------
 def bar_chart(df, title):
+    if df.empty:
+        st.warning("bar_chart skipped: DataFrame is empty")
+        return
+    
+    # Ensure 'label' and 'value' exist
+    if "label" not in df.columns or "value" not in df.columns:
+        # Try to melt pivoted DataFrame
+        if df.index.name is None or df.index.name == "year":
+            df = df.reset_index().melt(id_vars="year", var_name="label", value_name="value")
+        else:
+            df["label"] = df.columns[0]
+            df["value"] = df.iloc[:, 0]
+    
+    if df.empty or "label" not in df.columns or "value" not in df.columns:
+        st.warning("bar_chart skipped: no suitable columns found")
+        st.write(df)
+        return
+    
     try:
         fig = px.bar(df, x="label", y="value", text_auto=True, title=title)
         fig.update_layout(template="plotly_white", xaxis_title="State / RTO", yaxis_title="Revenue / Fees")
@@ -4037,7 +4055,25 @@ def bar_chart(df, title):
         st.warning(f"bar_chart failed: {e}")
         st.write(df)
 
+
 def pie_chart(df, title):
+    if df.empty:
+        st.warning("pie_chart skipped: DataFrame is empty")
+        return
+    
+    # Ensure 'label' and 'value' exist
+    if "label" not in df.columns or "value" not in df.columns:
+        if df.index.name is None or df.index.name == "year":
+            df = df.reset_index().melt(id_vars="year", var_name="label", value_name="value")
+        else:
+            df["label"] = df.columns[0]
+            df["value"] = df.iloc[:, 0]
+    
+    if df.empty or "label" not in df.columns or "value" not in df.columns:
+        st.warning("pie_chart skipped: no suitable columns found")
+        st.write(df)
+        return
+    
     try:
         fig = px.pie(df, names="label", values="value", hole=0.55, title=title)
         st.plotly_chart(fig, use_container_width=True)
