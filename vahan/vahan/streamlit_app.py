@@ -3290,744 +3290,744 @@ if __name__ == "__main__":
 # -----------------------------
 # MAKERS ANALYTICS — ALL MAXED (DROP-IN)
 # -----------------------------
-import math
-import json
-import numpy as np
-import pandas as pd
-import streamlit as st
-import plotly.express as px
-import plotly.graph_objects as go
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
-import random
-import logging
-
-st.markdown("## 🏭 ALL-MAXED — Makers Analytics (multi-frequency, multi-year)")
-
-# =====================================================
-# CONTROLS — ALL ON MAIN PAGE (no sidebar)
-# =====================================================
-section_id = rto_opt.lower() if "rto_opt" in locals() else "main"
-
-# Frequency & Mode
-freq = st.radio(
-    "Aggregation Frequency",
-    ["Daily", "Monthly", "Quarterly", "Yearly"],
-    index=3,
-    horizontal=True,
-    key=f"freq_{section_id}"
-)
-
-mode = st.radio(
-    "View Mode",
-    ["Separate (Small Multiples)", "Combined (Overlay / Stacked)"],
-    index=1,
-    horizontal=True,
-    key=f"mode_{section_id}"
-)
-
-# Year range
-today = datetime.now()
-current_year = today.year
-default_from_year = current_year - 1
-
-
-from_year = st.sidebar.number_input(
-    "From Year",
-    min_value=2012,
-    max_value=today.year,
-    value=default_from_year,
-    key=f"from_year_{section_id}"
-)
-
-to_year = st.sidebar.number_input(
-    "To Year",
-    min_value=from_year,
-    max_value=today.year,
-    value=today.year,
-    key=f"to_year_{section_id}"
-)
-
-state_code = st.sidebar.text_input(
-    "State Code (blank=All-India)",
-    value="",
-    key=f"state_{section_id}"
-)
-
-rto_code = st.sidebar.text_input(
-    "RTO Code (0=aggregate)",
-    value="0",
-    key=f"rto_{section_id}"
-)
-
-vehicle_classes = st.sidebar.text_input(
-    "Vehicle Classes (e.g., 2W,3W,4W if accepted)",
-    value="",
-    key=f"classes_{section_id}"
-)
-
-vehicle_makers = st.sidebar.text_input(
-    "Vehicle Makers (comma-separated or IDs)",
-    value="",
-    key=f"makers_{section_id}"
-)
-
-time_period = st.sidebar.selectbox(
-    "Time Period",
-    options=[0, 1, 2],
-    index=0,
-    key=f"period_{section_id}"
-)
-
-fitness_check = st.sidebar.selectbox(
-    "Fitness Check",
-    options=[True, False],
-    index=0,
-    format_func=lambda x: "Enabled" if x else "Disabled",
-    key=f"fitness_{section_id}"
-)
-
-vehicle_type = st.sidebar.text_input(
-    "Vehicle Type (optional)",
-    value="",
-    key=f"type_{section_id}"
-)
-
-# Extra feature toggles
-st.divider()
-col3, col4, col5 = st.columns(3)
-with col3:
-    show_heatmap = st.checkbox("Show Heatmap (year × maker)", True, key=f"heatmap_{section_id}")
-    show_radar = st.checkbox("Show Radar (per year)", True, key=f"radar_{section_id}")
-with col4:
-    do_forecast = st.checkbox("Enable Forecasting", True, key=f"forecast_{section_id}")
-    do_anomaly = st.checkbox("Enable Anomaly Detection", False, key=f"anomaly_{section_id}")
-with col5:
-    do_clustering = st.checkbox("Enable Clustering (KMeans)", False, key=f"cluster_{section_id}")
-
-params_common = build_params(
-    from_year=from_year,
-    to_year=to_year,
-    state_code=state_code or "ALL",
-    rto_code=rto_code or "0",
-    vehicle_classes=vehicle_classes or "ALL",
-    vehicle_makers=vehicle_makers or "ALL",
-    time_period=freq,
-    fitness_check=fitness_check,
-    vehicle_type=vehicle_type or "ALL"
-)
-
-years = list(range(int(from_year), int(to_year) + 1))
-
-st.info(f"🔗 Using parameters: {params_common}")
-
-# =====================================================
-# 🚗 VAHAN MAKER ANALYTICS — ALL-MAXED VISUAL ENGINE
-# =====================================================
-import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
-import uuid
-import math
-from datetime import datetime
-import time
-
-# Start timer for KPI/summary section
-summary_start = time.time()
-
-# -----------------------------------------------------
-# ⚡ GLOBAL VISUAL THEME
-# -----------------------------------------------------
-MAXED_COLORS = px.colors.qualitative.Safe + px.colors.qualitative.Plotly
-TITLE_FONT = dict(size=20, color="#111", family="Segoe UI Semibold")
-LABEL_FONT = dict(size=13, color="#333", family="Segoe UI")
-HOVER_TMPL = "<b>%{label}</b><br>%{y:,.0f} registrations<br>Year: %{x}"
-
-# -----------------------------------------------------
-# 🔹 UNIVERSAL SAFE WRAPPER
-# -----------------------------------------------------
-def _safe_df(df: pd.DataFrame, required: list[str]) -> pd.DataFrame:
-    if df is None or df.empty:
-        st.warning("⚠️ Empty dataframe provided to chart renderer.")
-        return pd.DataFrame(columns=required)
-    missing = [c for c in required if c not in df.columns]
-    if missing:
-        st.warning(f"⚠️ Missing columns for chart: {missing}")
-        for c in missing:
-            df[c] = np.nan
-    return df
-
-
-# -----------------------------------------------------
-# 🟦 MAXED BAR CHART (COMBINED / STACKED / NORMALIZED)
-# -----------------------------------------------------
-def _bar_from_df(
-    df: pd.DataFrame,
-    title: str,
-    combined: bool = False,
-    stacked: bool = False,
-    normalized: bool = False,
-    section_id: str = "",
-    color_field: str = "year",
-):
-    """Render a polished bar chart with advanced legend, hover, and adaptive layout."""
-    try:
-        df = _safe_df(df, ["label", "value"])
-        unique_key = f"barmaxed_{section_id}_{uuid.uuid4().hex[:6]}"
-
-        if df.empty:
-            st.info("ℹ️ No data to render.")
-            return
-
-        if combined and color_field in df.columns:
-            mode = "stack" if stacked else "group"
-            fig = px.bar(
-                df,
-                x="label",
-                y="value",
-                color=color_field,
-                barmode=mode,
-                text_auto=True,
-                title=title,
-                color_discrete_sequence=MAXED_COLORS,
-            )
-        else:
-            fig = px.bar(
-                df,
-                x="label",
-                y="value",
-                color="label",
-                text_auto=True,
-                title=title,
-                color_discrete_sequence=MAXED_COLORS,
-            )
-
-        # --- Normalization (percentage)
-        if normalized:
-            fig.for_each_trace(
-                lambda t: t.update(y=t.y / np.sum(t.y) * 100 if np.sum(t.y) > 0 else t.y)
-            )
-            fig.update_yaxes(title_text="Share (%)")
-
-        # --- Layout polish
-        fig.update_layout(
-            template="plotly_white",
-            title_font=TITLE_FONT,
-            legend_title_text="",
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=-0.25,
-                xanchor="center",
-                x=0.5,
-                bgcolor="rgba(250,250,250,0.9)",
-                bordercolor="rgba(0,0,0,0.1)",
-                borderwidth=1,
-            ),
-            xaxis_title="Category / Maker",
-            yaxis_title="Registrations",
-            margin=dict(t=60, b=80, l=40, r=30),
-            bargap=0.15,
-            height=480,
-        )
-
-        # --- Enhanced hover
-        fig.update_traces(
-            hovertemplate="<b>%{x}</b><br>Registrations: %{y:,.0f}<extra></extra>",
-            textfont=LABEL_FONT,
-        )
-
-        st.plotly_chart(fig, use_container_width=True, key=unique_key)
-
-    except Exception as e:
-        st.warning(f"⚠️ MAXED Bar chart failed: {e}")
-
-
-# -----------------------------------------------------
-# 🟣 MAXED PIE / DONUT CHART (3D FEEL + CENTER LABEL)
-# -----------------------------------------------------
-def _pie_from_df(
-    df: pd.DataFrame,
-    title: str,
-    section_id: str = "",
-    donut: bool = True,
-    legend: bool = True,
-):
-    """Render a fully-styled donut/pie chart with hover & label polish."""
-    try:
-        df = _safe_df(df, ["label", "value"])
-        unique_key = f"piemaxed_{section_id}_{uuid.uuid4().hex[:6]}"
-
-        if df.empty or df["value"].sum() <= 0:
-            st.info("ℹ️ No valid data for pie chart.")
-            return
-
-        fig = px.pie(
-            df,
-            names="label",
-            values="value",
-            hole=0.45 if donut else 0,
-            title=title,
-            color_discrete_sequence=MAXED_COLORS,
-        )
-
-        fig.update_traces(
-            textinfo="percent+label",
-            hovertemplate="<b>%{label}</b><br>%{value:,.0f} registrations<br>%{percent}",
-            pull=[0.05] * len(df),
-        )
-
-        # Center label for donut
-        if donut:
-            total = df["value"].sum()
-            fig.add_annotation(
-                text=f"<b>{total:,.0f}</b><br><span style='font-size:12px;color:#666'>Total</span>",
-                showarrow=False,
-                font=dict(size=14),
-                x=0.5,
-                y=0.5,
-            )
-
-        fig.update_layout(
-            template="plotly_white",
-            title_font=TITLE_FONT,
-            margin=dict(t=60, b=40, l=40, r=40),
-            showlegend=legend,
-            height=420,
-            legend_title_text="",
-        )
-
-        st.plotly_chart(fig, use_container_width=True, key=unique_key)
-
-    except Exception as e:
-        st.warning(f"⚠️ MAXED Pie chart failed: {e}")
-
-
-# -----------------------------------------------------
-# 🟨 MAXED LINE / TREND CHART
-# -----------------------------------------------------
-def _line_from_df(
-    df: pd.DataFrame,
-    x_field: str = "year",
-    y_field: str = "value",
-    color_field: str = "label",
-    title: str = "",
-    section_id: str = "",
-    smooth: bool = False,
-):
-    """Render a smooth trend line chart with multi-series overlay."""
-    try:
-        df = _safe_df(df, [x_field, y_field, color_field])
-        unique_key = f"linemaxed_{section_id}_{uuid.uuid4().hex[:6]}"
-
-        if df.empty:
-            st.info("ℹ️ No data to render trend.")
-            return
-
-        fig = px.line(
-            df,
-            x=x_field,
-            y=y_field,
-            color=color_field,
-            markers=True,
-            title=title,
-            color_discrete_sequence=MAXED_COLORS,
-        )
-
-        if smooth:
-            # Basic moving average smoothing for visual
-            df_sorted = df.sort_values(x_field)
-            fig.data = []
-            for lbl in df[color_field].unique():
-                sub = df_sorted[df_sorted[color_field] == lbl]
-                sub["smoothed"] = sub[y_field].rolling(3, min_periods=1).mean()
-                fig.add_trace(go.Scatter(
-                    x=sub[x_field], y=sub["smoothed"],
-                    name=lbl, mode="lines+markers"
-                ))
-
-        fig.update_layout(
-            template="plotly_white",
-            title_font=TITLE_FONT,
-            xaxis_title=x_field.capitalize(),
-            yaxis_title=y_field.capitalize(),
-            legend=dict(orientation="h", y=-0.3, x=0.5, xanchor="center"),
-            margin=dict(t=60, b=60, l=40, r=30),
-            height=460,
-        )
-
-        st.plotly_chart(fig, use_container_width=True, key=unique_key)
-
-    except Exception as e:
-        st.warning(f"⚠️ MAXED Line chart failed: {e}")
-
-
-# -----------------------------------------------------
-# FETCH FUNCTION (ROBUST + MOCK FALLBACK)
-# -----------------------------------------------------
-# =====================================================
-# 🚀 ALL-MAXED MAKER FETCH & VISUAL MODULE
-# =====================================================
-
-# -----------------------------------------------------
-# 🔧 FETCH FUNCTION — SAFE + SMART + MOCK-RESILIENT
-# -----------------------------------------------------
-def fetch_maker_year(year: int, params_common: dict):
-    """Fetch top vehicle makers for a given year — fully maxed with safe params + mock fallback."""
-    logger.info(Fore.CYAN + f"🚀 Fetching top makers for {year}...")
-
-    # --- Safe param cleanup ---
-    safe_params = params_common.copy()
-    safe_params["fromYear"] = year
-    safe_params["toYear"] = year
-
-    for k in ["fitnessCheck", "stateCode", "rtoCode", "vehicleType"]:
-        if k in safe_params and (
-            safe_params[k] in ["ALL", "0", "", None, False]
-        ):
-            safe_params.pop(k, None)
-
-    mk_json, mk_url = None, None
-    try:
-        mk_json, mk_url = get_json("vahandashboard/top5Makerchart", safe_params)
-    except Exception as e:
-        logger.error(Fore.RED + f"❌ API fetch failed for {year}: {e}")
-        mk_json, mk_url = None, "MOCK://top5Makerchart"
-
-    # --- Status caption ---
-    color = "orange" if mk_url and "MOCK" in mk_url else "green"
-    st.markdown(
-        f"🔗 **API ({year}):** <span style='color:{color}'>{mk_url or 'N/A'}</span>",
-        unsafe_allow_html=True,
-    )
-
-    with st.expander(f"🧩 JSON Debug — {year}", expanded=False):
-        st.json(mk_json)
-
-    # --- Validation: check for expected fields ---
-    is_valid = False
-    df = pd.DataFrame()
-
-    if isinstance(mk_json, dict):
-        # ✅ Case 1: Chart.js-style JSON
-        if "datasets" in mk_json and "labels" in mk_json:
-            data_values = mk_json["datasets"][0].get("data", [])
-            labels = mk_json.get("labels", [])
-            if data_values and labels:
-                df = pd.DataFrame({"label": labels, "value": data_values})
-                is_valid = True
-
-        # ✅ Case 2: API returned dict with "data" or "result"
-        elif "data" in mk_json:
-            df = pd.DataFrame(mk_json["data"])
-            is_valid = not df.empty
-        elif "result" in mk_json:
-            df = pd.DataFrame(mk_json["result"])
-            is_valid = not df.empty
-
-    elif isinstance(mk_json, list) and mk_json:
-        # ✅ Case 3: Direct list of records
-        df = pd.DataFrame(mk_json)
-        is_valid = not df.empty
-
-    # --- Handle missing or invalid data ---
-    if not is_valid or df.empty:
-        logger.warning(Fore.YELLOW + f"⚠️ Using mock data for {year}")
-        st.warning(f"⚠️ No valid API data for {year}, generating mock values.")
-        random.seed(year)
-
-        makers = [
-            "Maruti Suzuki", "Tata Motors", "Hyundai", "Mahindra", "Hero MotoCorp",
-            "Bajaj Auto", "TVS Motor", "Honda", "Kia", "Toyota", "Renault",
-            "Ashok Leyland", "MG Motor", "Eicher", "Piaggio", "BYD", "Olectra", "Force Motors"
-        ]
-        random.shuffle(makers)
-        top = makers[:10]
-        base = random.randint(200_000, 1_000_000)
-        growth = 1 + (year - 2020) * 0.06
-        df = pd.DataFrame({
-            "label": top,
-            "value": [int(base * random.uniform(0.5, 1.5) * growth) for _ in top]
-        })
-    else:
-        st.success(f"✅ Valid API data loaded for {year}")
-
-    # --- Normalize columns ---
-    df.columns = [c.lower() for c in df.columns]
-    df["year"] = year
-    df = df.sort_values("value", ascending=False)
-
-    # --- Visual output ---
-    if not df.empty:
-        st.info(f"🏆 **{year}** → **{df.iloc[0]['label']}** — {df.iloc[0]['value']:,} registrations")
-        _bar_from_df(df, f"Top Makers ({year})", combined=False)
-        _pie_from_df(df, f"Maker Share ({year})")
-
-    return df
-# -----------------------------------------------------
-# 🔁 MAIN LOOP — MULTI-YEAR FETCH
-# -----------------------------------------------------
-all_years = []
-with st.spinner("⏳ Fetching maker data for all selected years..."):
-    for y in years:
-        try:
-            dfy = fetch_maker_year(y, params_common)   # ✅ FIXED: pass params_common
-            all_years.append(dfy)
-        except Exception as e:
-            st.error(f"❌ {y} fetch error: {e}")
-            logger.error(Fore.RED + f"Fetch error {y}: {e}")
-
-# ===============================================================
-# 🚘 MAKER ANALYTICS — FULLY MAXED + SAFE + DEBUG READY
-# ===============================================================
-import pandas as pd, numpy as np, math, time, random
-import streamlit as st
-import plotly.express as px
-import plotly.graph_objects as go
-from colorama import Fore
-from sklearn.linear_model import LinearRegression
-from dateutil.relativedelta import relativedelta
-
-# ----------------------------------
-# 🧩 Helpers
-# ----------------------------------
-def normalize_freq_rule(freq):
-    return {"Daily": "D", "Monthly": "M", "Quarterly": "Q"}.get(freq, "Y")
-
-def year_to_timeseries_maker(df_year, year, freq):
-    """Convert maker-year totals into evenly distributed synthetic timeseries."""
-    rule = normalize_freq_rule(freq)
-    idx = pd.date_range(
-        start=f"{year}-01-01",
-        end=f"{year}-12-31",
-        freq=("D" if freq == "Daily" else "M"),
-    )
-    rows = []
-    for _, r in df_year.iterrows():
-        maker = r.get("label", f"Maker_{_}")
-        total = float(r.get("value", 0))
-        per = total / max(1, len(idx))
-        for ts in idx:
-            rows.append({"ds": ts, "label": maker, "value": per, "year": year})
-    return pd.DataFrame(rows)
-
-# ===============================================================
-# 🧭 FETCH MAKER DATA (PER YEAR)
-# ===============================================================
-def fetch_maker_year(year: int, params_common: dict):
-    """Fetch top vehicle makers for a given year — fully maxed with safe params + mock fallback."""
-    logger.info(Fore.CYAN + f"🚀 Fetching top makers for {year}...")
-
-    safe_params = params_common.copy()
-    safe_params["fromYear"] = year
-    safe_params["toYear"] = year
-
-    mk_json, mk_url = None, None
-    try:
-        mk_json, mk_url = get_json("vahandashboard/top5Makerchart", safe_params)
-    except Exception as e:
-        logger.error(Fore.RED + f"❌ API fetch failed for {year}: {e}")
-        mk_json, mk_url = None, "MOCK://top5Makerchart"
-
-    color = "orange" if mk_url and "MOCK" in mk_url else "green"
-    st.markdown(f"🔗 **API ({year}):** <span style='color:{color}'>{mk_url or 'N/A'}</span>", unsafe_allow_html=True)
-
-    with st.expander(f"🧩 JSON Debug — {year}", expanded=False):
-        st.json(mk_json)
-
-    if not mk_json or (isinstance(mk_json, dict) and not mk_json.get("datasets")):
-        st.warning(f"⚠️ No valid API data for {year}, generating mock values.")
-        random.seed(year)
-        makers = [
-            "Maruti Suzuki", "Tata Motors", "Hyundai", "Mahindra", "Hero MotoCorp",
-            "Bajaj Auto", "TVS Motor", "Honda", "Kia", "Toyota", "Renault",
-            "Ashok Leyland", "MG Motor", "Eicher", "Piaggio", "BYD", "Olectra", "Force Motors"
-        ]
-        random.shuffle(makers)
-        mk_json = {
-            "datasets": [{"data": [random.randint(200_000, 1_200_000) for _ in range(5)],
-                          "label": "Vehicle Registered"}],
-            "labels": makers[:5]
-        }
-
-    # --- Normalize API data
-    if isinstance(mk_json, dict) and "datasets" in mk_json:
-        data = mk_json["datasets"][0]["data"]
-        labels = mk_json["labels"]
-        mk_json = [{"label": l, "value": v} for l, v in zip(labels, data)]
-
-    df = pd.DataFrame(mk_json)
-    df.columns = [c.lower() for c in df.columns]
-    df["year"] = year
-    df = df.sort_values("value", ascending=False)
-
-    if not df.empty:
-        st.info(f"🏆 **{year}** → **{df.iloc[0]['label']}** — {df.iloc[0]['value']:,} registrations")
-        _bar_from_df(df, f"Top Makers ({year})", combined=False)
-        _pie_from_df(df, f"Maker Share ({year})")
-    return df
-
-# ===============================================================
-# ⏳ MULTI-YEAR DATA COLLECTION
-# ===============================================================
-with st.spinner("Fetching maker data for selected years..."):
-    all_year_dfs = []
-    for y in years:
-        try:
-            df_y = fetch_maker_year(y, params_common)
-            if df_y is not None and not df_y.empty:
-                all_year_dfs.append(df_y)
-            else:
-                st.warning(f"No data for {y}")
-        except Exception as e:
-            st.error(f"Error fetching {y}: {e}")
-
-if not all_year_dfs:
-    st.error("🚫 No maker data loaded for selected range.")
-    st.stop()
-
-df_maker_all = pd.concat(all_year_dfs, ignore_index=True)
-
-# ===============================================================
-# 📈 TIME SERIES & METRICS
-# ===============================================================
-rule = normalize_freq_rule(freq)
-ts_frames = [year_to_timeseries_maker(df_maker_all[df_maker_all["year"] == y], y, freq)
-             for y in sorted(df_maker_all["year"].unique())]
-df_ts = pd.concat(ts_frames, ignore_index=True)
-df_ts["ds"] = pd.to_datetime(df_ts["ds"])
-
-resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq=rule)])["value"].sum().reset_index()
-resampled["year"] = resampled["ds"].dt.year
-pivot = resampled.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
-pivot_year = resampled.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
-
-# ===============================================================
-# 💎 KPI METRICS — Makers
-# ===============================================================
-st.subheader("💎 Key Metrics & Growth (Makers)")
-
-if pivot_year.empty:
-    st.warning("⚠️ No yearly data found for KPI computation.")
-    st.stop()
-
-# --- Compute totals and YoY
-year_totals = pivot_year.sum(axis=1).rename("TotalRegistrations").to_frame()
-year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
-year_totals["TotalRegistrations"] = year_totals["TotalRegistrations"].fillna(0).astype(int)
-year_totals["YoY_%"] = year_totals["YoY_%"].replace([np.inf, -np.inf], np.nan).fillna(0)
-
-# --- CAGR
-if len(year_totals) >= 2:
-    first = float(year_totals["TotalRegistrations"].iloc[0])
-    last = float(year_totals["TotalRegistrations"].iloc[-1])
-    years_count = max(1, len(year_totals) - 1)
-    cagr = ((last / first) ** (1 / years_count) - 1) * 100 if first > 0 else 0.0
-else:
-    cagr = 0.0
-
-# --- MoM (if monthly)
-if freq == "Monthly":
-    resampled["month_period"] = resampled["year"].astype(str) + "-" + resampled["month"].astype(str)
-    month_totals = resampled.groupby("month_period")["value"].sum().reset_index()
-    month_totals["MoM_%"] = month_totals["value"].pct_change() * 100
-    latest_mom = f"{month_totals['MoM_%'].iloc[-1]:.2f}%" if len(month_totals) > 1 and not np.isnan(month_totals["MoM_%"].iloc[-1]) else "n/a"
-else:
-    latest_mom = "n/a"
-
-# --- Category (Maker) shares
-latest_year = int(year_totals.index.max())
-latest_total = int(year_totals.loc[latest_year, "TotalRegistrations"])
-cat_share = (pivot_year.loc[latest_year] / pivot_year.loc[latest_year].sum() * 100).sort_values(ascending=False).round(1)
-
-# ----------------------------------------------------
-# DISPLAY KPIs
-# ----------------------------------------------------
-c1, = st.columns(1)
-c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
-
-st.markdown("#### 📘 Maker Share (Latest Year)")
-st.dataframe(
-    pd.DataFrame({
-        "Maker": cat_share.index,
-        "Share_%": cat_share.values,
-        "Volume": pivot_year.loc[latest_year].astype(int).values
-    }).sort_values("Share_%", ascending=False),
-    use_container_width=True
-)
-
-with st.expander("🔍 Yearly Totals & Growth"):
-    st.dataframe(year_totals.style.format({"TotalRegistrations": "{:,}", "YoY_%": "{:.2f}"}))
-
-# ----------------------------------------------------
-# DEEP INSIGHTS + TRENDS
-# ----------------------------------------------------
-total_all = df_maker_all["value"].sum()
-n_cats = df_maker_all["label"].nunique()
-n_years = df_maker_all["year"].nunique()
-
-# --- Top Maker
-top_cat_row = df_maker_all.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
-top_cat = {"label": str(top_cat_row["label"]), "value": float(top_cat_row["value"])}
-top_cat_share = (top_cat["value"] / total_all) * 100 if total_all > 0 else 0
-
-# --- Top Year
-top_year_row = df_maker_all.groupby("year")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
-top_year = {"year": int(top_year_row["year"]), "value": float(top_year_row["value"])}
-
-st.metric("🏆 Absolute Top Maker", top_cat["label"], f"{top_cat_share:.2f}% share")
-st.metric("📅 Peak Year", f"{top_year['year']}", f"{top_year['value']:,.0f} registrations")
-
-# --- Plot: Top 10 Makers
-st.write("### 🧾 Top 10 Makers — Overall")
-top_debug = df_maker_all.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False)
-fig_top10 = px.bar(top_debug.head(10), x="label", y="value", text_auto=True,
-                   color="value", color_continuous_scale="Blues", title="Top 10 Makers (All Years)")
-fig_top10.update_layout(template="plotly_white", margin=dict(t=50, b=40))
-st.plotly_chart(fig_top10, use_container_width=True)
-
-# ----------------------------------------------------
-# ADVANCED DEBUG METRICS
-# ----------------------------------------------------
-volatility = df_maker_all.groupby("year")["value"].sum().pct_change().std() * 100 \
-    if len(df_maker_all["year"].unique()) > 2 else 0
-dominance_ratio = (top_cat["value"] / total_all) * n_cats if total_all > 0 else 0
-direction = "increased" if cagr > 0 else "declined"
-
-summary_time = time.time() - summary_start
-st.markdown("### ⚙️ Debug Performance Metrics")
-st.code(f"""
-Years analyzed: {years}
-Makers: {n_cats}
-Rows processed: {len(df_maker_all):,}
-Total registrations: {total_all:,.0f}
-Top maker: {top_cat['label']} → {top_cat['value']:,.0f} ({top_cat_share:.2f}%)
-Peak year: {int(top_year['year'])} → {top_year['value']:,.0f}
-Dominance ratio: {dominance_ratio:.2f}
-Runtime: {summary_time:.2f}s
-""", language="yaml")
-
-# ----------------------------------------------------
-# 8️⃣ SMART SUMMARY — All-Maxed
-# ----------------------------------------------------
-if isinstance(top_cat, list):
-    top_cat = top_cat[0] if top_cat else {"label": "N/A", "value": 0}
-
-years_valid = years is not None and len(years) > 0
-top_year_valid = top_year is not None and "year" in top_year and "value" in top_year
-
-if top_cat and years_valid and top_year_valid:
-    st.success(
-        f"From **{years[0]}** to **{years[-1]}**, total registrations {direction}. "
-        f"**{top_cat.get('label', 'N/A')}** leads with **{top_cat_share:.2f}%** share. "
-        f"Peak year: **{top_year['year']}** with **{top_year['value']:,.0f}** registrations."
-    )
-    logger.info(f"✅ ALL-MAXED summary completed in {summary_time:.2f}s")
-else:
-    st.error("⛔ ALL-MAXED summary failed: Missing or invalid data.")
-    logger.warning("⚠️ ALL-MAXED summary skipped due to incomplete data")
+# import math
+# import json
+# import numpy as np
+# import pandas as pd
+# import streamlit as st
+# import plotly.express as px
+# import plotly.graph_objects as go
+# from datetime import datetime
+# from dateutil.relativedelta import relativedelta
+# import random
+# import logging
+
+# st.markdown("## 🏭 ALL-MAXED — Makers Analytics (multi-frequency, multi-year)")
+
+# # =====================================================
+# # CONTROLS — ALL ON MAIN PAGE (no sidebar)
+# # =====================================================
+# section_id = rto_opt.lower() if "rto_opt" in locals() else "main"
+
+# # Frequency & Mode
+# freq = st.radio(
+#     "Aggregation Frequency",
+#     ["Daily", "Monthly", "Quarterly", "Yearly"],
+#     index=3,
+#     horizontal=True,
+#     key=f"freq_{section_id}"
+# )
+
+# mode = st.radio(
+#     "View Mode",
+#     ["Separate (Small Multiples)", "Combined (Overlay / Stacked)"],
+#     index=1,
+#     horizontal=True,
+#     key=f"mode_{section_id}"
+# )
+
+# # Year range
+# today = datetime.now()
+# current_year = today.year
+# default_from_year = current_year - 1
+
+
+# from_year = st.sidebar.number_input(
+#     "From Year",
+#     min_value=2012,
+#     max_value=today.year,
+#     value=default_from_year,
+#     key=f"from_year_{section_id}"
+# )
+
+# to_year = st.sidebar.number_input(
+#     "To Year",
+#     min_value=from_year,
+#     max_value=today.year,
+#     value=today.year,
+#     key=f"to_year_{section_id}"
+# )
+
+# state_code = st.sidebar.text_input(
+#     "State Code (blank=All-India)",
+#     value="",
+#     key=f"state_{section_id}"
+# )
+
+# rto_code = st.sidebar.text_input(
+#     "RTO Code (0=aggregate)",
+#     value="0",
+#     key=f"rto_{section_id}"
+# )
+
+# vehicle_classes = st.sidebar.text_input(
+#     "Vehicle Classes (e.g., 2W,3W,4W if accepted)",
+#     value="",
+#     key=f"classes_{section_id}"
+# )
+
+# vehicle_makers = st.sidebar.text_input(
+#     "Vehicle Makers (comma-separated or IDs)",
+#     value="",
+#     key=f"makers_{section_id}"
+# )
+
+# time_period = st.sidebar.selectbox(
+#     "Time Period",
+#     options=[0, 1, 2],
+#     index=0,
+#     key=f"period_{section_id}"
+# )
+
+# fitness_check = st.sidebar.selectbox(
+#     "Fitness Check",
+#     options=[True, False],
+#     index=0,
+#     format_func=lambda x: "Enabled" if x else "Disabled",
+#     key=f"fitness_{section_id}"
+# )
+
+# vehicle_type = st.sidebar.text_input(
+#     "Vehicle Type (optional)",
+#     value="",
+#     key=f"type_{section_id}"
+# )
+
+# # Extra feature toggles
+# st.divider()
+# col3, col4, col5 = st.columns(3)
+# with col3:
+#     show_heatmap = st.checkbox("Show Heatmap (year × maker)", True, key=f"heatmap_{section_id}")
+#     show_radar = st.checkbox("Show Radar (per year)", True, key=f"radar_{section_id}")
+# with col4:
+#     do_forecast = st.checkbox("Enable Forecasting", True, key=f"forecast_{section_id}")
+#     do_anomaly = st.checkbox("Enable Anomaly Detection", False, key=f"anomaly_{section_id}")
+# with col5:
+#     do_clustering = st.checkbox("Enable Clustering (KMeans)", False, key=f"cluster_{section_id}")
+
+# params_common = build_params(
+#     from_year=from_year,
+#     to_year=to_year,
+#     state_code=state_code or "ALL",
+#     rto_code=rto_code or "0",
+#     vehicle_classes=vehicle_classes or "ALL",
+#     vehicle_makers=vehicle_makers or "ALL",
+#     time_period=freq,
+#     fitness_check=fitness_check,
+#     vehicle_type=vehicle_type or "ALL"
+# )
+
+# years = list(range(int(from_year), int(to_year) + 1))
+
+# st.info(f"🔗 Using parameters: {params_common}")
+
+# # =====================================================
+# # 🚗 VAHAN MAKER ANALYTICS — ALL-MAXED VISUAL ENGINE
+# # =====================================================
+# import streamlit as st
+# import pandas as pd
+# import numpy as np
+# import plotly.express as px
+# import plotly.graph_objects as go
+# import uuid
+# import math
+# from datetime import datetime
+# import time
+
+# # Start timer for KPI/summary section
+# summary_start = time.time()
+
+# # -----------------------------------------------------
+# # ⚡ GLOBAL VISUAL THEME
+# # -----------------------------------------------------
+# MAXED_COLORS = px.colors.qualitative.Safe + px.colors.qualitative.Plotly
+# TITLE_FONT = dict(size=20, color="#111", family="Segoe UI Semibold")
+# LABEL_FONT = dict(size=13, color="#333", family="Segoe UI")
+# HOVER_TMPL = "<b>%{label}</b><br>%{y:,.0f} registrations<br>Year: %{x}"
+
+# # -----------------------------------------------------
+# # 🔹 UNIVERSAL SAFE WRAPPER
+# # -----------------------------------------------------
+# def _safe_df(df: pd.DataFrame, required: list[str]) -> pd.DataFrame:
+#     if df is None or df.empty:
+#         st.warning("⚠️ Empty dataframe provided to chart renderer.")
+#         return pd.DataFrame(columns=required)
+#     missing = [c for c in required if c not in df.columns]
+#     if missing:
+#         st.warning(f"⚠️ Missing columns for chart: {missing}")
+#         for c in missing:
+#             df[c] = np.nan
+#     return df
+
+
+# # -----------------------------------------------------
+# # 🟦 MAXED BAR CHART (COMBINED / STACKED / NORMALIZED)
+# # -----------------------------------------------------
+# def _bar_from_df(
+#     df: pd.DataFrame,
+#     title: str,
+#     combined: bool = False,
+#     stacked: bool = False,
+#     normalized: bool = False,
+#     section_id: str = "",
+#     color_field: str = "year",
+# ):
+#     """Render a polished bar chart with advanced legend, hover, and adaptive layout."""
+#     try:
+#         df = _safe_df(df, ["label", "value"])
+#         unique_key = f"barmaxed_{section_id}_{uuid.uuid4().hex[:6]}"
+
+#         if df.empty:
+#             st.info("ℹ️ No data to render.")
+#             return
+
+#         if combined and color_field in df.columns:
+#             mode = "stack" if stacked else "group"
+#             fig = px.bar(
+#                 df,
+#                 x="label",
+#                 y="value",
+#                 color=color_field,
+#                 barmode=mode,
+#                 text_auto=True,
+#                 title=title,
+#                 color_discrete_sequence=MAXED_COLORS,
+#             )
+#         else:
+#             fig = px.bar(
+#                 df,
+#                 x="label",
+#                 y="value",
+#                 color="label",
+#                 text_auto=True,
+#                 title=title,
+#                 color_discrete_sequence=MAXED_COLORS,
+#             )
+
+#         # --- Normalization (percentage)
+#         if normalized:
+#             fig.for_each_trace(
+#                 lambda t: t.update(y=t.y / np.sum(t.y) * 100 if np.sum(t.y) > 0 else t.y)
+#             )
+#             fig.update_yaxes(title_text="Share (%)")
+
+#         # --- Layout polish
+#         fig.update_layout(
+#             template="plotly_white",
+#             title_font=TITLE_FONT,
+#             legend_title_text="",
+#             legend=dict(
+#                 orientation="h",
+#                 yanchor="bottom",
+#                 y=-0.25,
+#                 xanchor="center",
+#                 x=0.5,
+#                 bgcolor="rgba(250,250,250,0.9)",
+#                 bordercolor="rgba(0,0,0,0.1)",
+#                 borderwidth=1,
+#             ),
+#             xaxis_title="Category / Maker",
+#             yaxis_title="Registrations",
+#             margin=dict(t=60, b=80, l=40, r=30),
+#             bargap=0.15,
+#             height=480,
+#         )
+
+#         # --- Enhanced hover
+#         fig.update_traces(
+#             hovertemplate="<b>%{x}</b><br>Registrations: %{y:,.0f}<extra></extra>",
+#             textfont=LABEL_FONT,
+#         )
+
+#         st.plotly_chart(fig, use_container_width=True, key=unique_key)
+
+#     except Exception as e:
+#         st.warning(f"⚠️ MAXED Bar chart failed: {e}")
+
+
+# # -----------------------------------------------------
+# # 🟣 MAXED PIE / DONUT CHART (3D FEEL + CENTER LABEL)
+# # -----------------------------------------------------
+# def _pie_from_df(
+#     df: pd.DataFrame,
+#     title: str,
+#     section_id: str = "",
+#     donut: bool = True,
+#     legend: bool = True,
+# ):
+#     """Render a fully-styled donut/pie chart with hover & label polish."""
+#     try:
+#         df = _safe_df(df, ["label", "value"])
+#         unique_key = f"piemaxed_{section_id}_{uuid.uuid4().hex[:6]}"
+
+#         if df.empty or df["value"].sum() <= 0:
+#             st.info("ℹ️ No valid data for pie chart.")
+#             return
+
+#         fig = px.pie(
+#             df,
+#             names="label",
+#             values="value",
+#             hole=0.45 if donut else 0,
+#             title=title,
+#             color_discrete_sequence=MAXED_COLORS,
+#         )
+
+#         fig.update_traces(
+#             textinfo="percent+label",
+#             hovertemplate="<b>%{label}</b><br>%{value:,.0f} registrations<br>%{percent}",
+#             pull=[0.05] * len(df),
+#         )
+
+#         # Center label for donut
+#         if donut:
+#             total = df["value"].sum()
+#             fig.add_annotation(
+#                 text=f"<b>{total:,.0f}</b><br><span style='font-size:12px;color:#666'>Total</span>",
+#                 showarrow=False,
+#                 font=dict(size=14),
+#                 x=0.5,
+#                 y=0.5,
+#             )
+
+#         fig.update_layout(
+#             template="plotly_white",
+#             title_font=TITLE_FONT,
+#             margin=dict(t=60, b=40, l=40, r=40),
+#             showlegend=legend,
+#             height=420,
+#             legend_title_text="",
+#         )
+
+#         st.plotly_chart(fig, use_container_width=True, key=unique_key)
+
+#     except Exception as e:
+#         st.warning(f"⚠️ MAXED Pie chart failed: {e}")
+
+
+# # -----------------------------------------------------
+# # 🟨 MAXED LINE / TREND CHART
+# # -----------------------------------------------------
+# def _line_from_df(
+#     df: pd.DataFrame,
+#     x_field: str = "year",
+#     y_field: str = "value",
+#     color_field: str = "label",
+#     title: str = "",
+#     section_id: str = "",
+#     smooth: bool = False,
+# ):
+#     """Render a smooth trend line chart with multi-series overlay."""
+#     try:
+#         df = _safe_df(df, [x_field, y_field, color_field])
+#         unique_key = f"linemaxed_{section_id}_{uuid.uuid4().hex[:6]}"
+
+#         if df.empty:
+#             st.info("ℹ️ No data to render trend.")
+#             return
+
+#         fig = px.line(
+#             df,
+#             x=x_field,
+#             y=y_field,
+#             color=color_field,
+#             markers=True,
+#             title=title,
+#             color_discrete_sequence=MAXED_COLORS,
+#         )
+
+#         if smooth:
+#             # Basic moving average smoothing for visual
+#             df_sorted = df.sort_values(x_field)
+#             fig.data = []
+#             for lbl in df[color_field].unique():
+#                 sub = df_sorted[df_sorted[color_field] == lbl]
+#                 sub["smoothed"] = sub[y_field].rolling(3, min_periods=1).mean()
+#                 fig.add_trace(go.Scatter(
+#                     x=sub[x_field], y=sub["smoothed"],
+#                     name=lbl, mode="lines+markers"
+#                 ))
+
+#         fig.update_layout(
+#             template="plotly_white",
+#             title_font=TITLE_FONT,
+#             xaxis_title=x_field.capitalize(),
+#             yaxis_title=y_field.capitalize(),
+#             legend=dict(orientation="h", y=-0.3, x=0.5, xanchor="center"),
+#             margin=dict(t=60, b=60, l=40, r=30),
+#             height=460,
+#         )
+
+#         st.plotly_chart(fig, use_container_width=True, key=unique_key)
+
+#     except Exception as e:
+#         st.warning(f"⚠️ MAXED Line chart failed: {e}")
+
+
+# # -----------------------------------------------------
+# # FETCH FUNCTION (ROBUST + MOCK FALLBACK)
+# # -----------------------------------------------------
+# # =====================================================
+# # 🚀 ALL-MAXED MAKER FETCH & VISUAL MODULE
+# # =====================================================
+
+# # -----------------------------------------------------
+# # 🔧 FETCH FUNCTION — SAFE + SMART + MOCK-RESILIENT
+# # -----------------------------------------------------
+# def fetch_maker_year(year: int, params_common: dict):
+#     """Fetch top vehicle makers for a given year — fully maxed with safe params + mock fallback."""
+#     logger.info(Fore.CYAN + f"🚀 Fetching top makers for {year}...")
+
+#     # --- Safe param cleanup ---
+#     safe_params = params_common.copy()
+#     safe_params["fromYear"] = year
+#     safe_params["toYear"] = year
+
+#     for k in ["fitnessCheck", "stateCode", "rtoCode", "vehicleType"]:
+#         if k in safe_params and (
+#             safe_params[k] in ["ALL", "0", "", None, False]
+#         ):
+#             safe_params.pop(k, None)
+
+#     mk_json, mk_url = None, None
+#     try:
+#         mk_json, mk_url = get_json("vahandashboard/top5Makerchart", safe_params)
+#     except Exception as e:
+#         logger.error(Fore.RED + f"❌ API fetch failed for {year}: {e}")
+#         mk_json, mk_url = None, "MOCK://top5Makerchart"
+
+#     # --- Status caption ---
+#     color = "orange" if mk_url and "MOCK" in mk_url else "green"
+#     st.markdown(
+#         f"🔗 **API ({year}):** <span style='color:{color}'>{mk_url or 'N/A'}</span>",
+#         unsafe_allow_html=True,
+#     )
+
+#     with st.expander(f"🧩 JSON Debug — {year}", expanded=False):
+#         st.json(mk_json)
+
+#     # --- Validation: check for expected fields ---
+#     is_valid = False
+#     df = pd.DataFrame()
+
+#     if isinstance(mk_json, dict):
+#         # ✅ Case 1: Chart.js-style JSON
+#         if "datasets" in mk_json and "labels" in mk_json:
+#             data_values = mk_json["datasets"][0].get("data", [])
+#             labels = mk_json.get("labels", [])
+#             if data_values and labels:
+#                 df = pd.DataFrame({"label": labels, "value": data_values})
+#                 is_valid = True
+
+#         # ✅ Case 2: API returned dict with "data" or "result"
+#         elif "data" in mk_json:
+#             df = pd.DataFrame(mk_json["data"])
+#             is_valid = not df.empty
+#         elif "result" in mk_json:
+#             df = pd.DataFrame(mk_json["result"])
+#             is_valid = not df.empty
+
+#     elif isinstance(mk_json, list) and mk_json:
+#         # ✅ Case 3: Direct list of records
+#         df = pd.DataFrame(mk_json)
+#         is_valid = not df.empty
+
+#     # --- Handle missing or invalid data ---
+#     if not is_valid or df.empty:
+#         logger.warning(Fore.YELLOW + f"⚠️ Using mock data for {year}")
+#         st.warning(f"⚠️ No valid API data for {year}, generating mock values.")
+#         random.seed(year)
+
+#         makers = [
+#             "Maruti Suzuki", "Tata Motors", "Hyundai", "Mahindra", "Hero MotoCorp",
+#             "Bajaj Auto", "TVS Motor", "Honda", "Kia", "Toyota", "Renault",
+#             "Ashok Leyland", "MG Motor", "Eicher", "Piaggio", "BYD", "Olectra", "Force Motors"
+#         ]
+#         random.shuffle(makers)
+#         top = makers[:10]
+#         base = random.randint(200_000, 1_000_000)
+#         growth = 1 + (year - 2020) * 0.06
+#         df = pd.DataFrame({
+#             "label": top,
+#             "value": [int(base * random.uniform(0.5, 1.5) * growth) for _ in top]
+#         })
+#     else:
+#         st.success(f"✅ Valid API data loaded for {year}")
+
+#     # --- Normalize columns ---
+#     df.columns = [c.lower() for c in df.columns]
+#     df["year"] = year
+#     df = df.sort_values("value", ascending=False)
+
+#     # --- Visual output ---
+#     if not df.empty:
+#         st.info(f"🏆 **{year}** → **{df.iloc[0]['label']}** — {df.iloc[0]['value']:,} registrations")
+#         _bar_from_df(df, f"Top Makers ({year})", combined=False)
+#         _pie_from_df(df, f"Maker Share ({year})")
+
+#     return df
+# # -----------------------------------------------------
+# # 🔁 MAIN LOOP — MULTI-YEAR FETCH
+# # -----------------------------------------------------
+# all_years = []
+# with st.spinner("⏳ Fetching maker data for all selected years..."):
+#     for y in years:
+#         try:
+#             dfy = fetch_maker_year(y, params_common)   # ✅ FIXED: pass params_common
+#             all_years.append(dfy)
+#         except Exception as e:
+#             st.error(f"❌ {y} fetch error: {e}")
+#             logger.error(Fore.RED + f"Fetch error {y}: {e}")
+
+# # ===============================================================
+# # 🚘 MAKER ANALYTICS — FULLY MAXED + SAFE + DEBUG READY
+# # ===============================================================
+# import pandas as pd, numpy as np, math, time, random
+# import streamlit as st
+# import plotly.express as px
+# import plotly.graph_objects as go
+# from colorama import Fore
+# from sklearn.linear_model import LinearRegression
+# from dateutil.relativedelta import relativedelta
+
+# # ----------------------------------
+# # 🧩 Helpers
+# # ----------------------------------
+# def normalize_freq_rule(freq):
+#     return {"Daily": "D", "Monthly": "M", "Quarterly": "Q"}.get(freq, "Y")
+
+# def year_to_timeseries_maker(df_year, year, freq):
+#     """Convert maker-year totals into evenly distributed synthetic timeseries."""
+#     rule = normalize_freq_rule(freq)
+#     idx = pd.date_range(
+#         start=f"{year}-01-01",
+#         end=f"{year}-12-31",
+#         freq=("D" if freq == "Daily" else "M"),
+#     )
+#     rows = []
+#     for _, r in df_year.iterrows():
+#         maker = r.get("label", f"Maker_{_}")
+#         total = float(r.get("value", 0))
+#         per = total / max(1, len(idx))
+#         for ts in idx:
+#             rows.append({"ds": ts, "label": maker, "value": per, "year": year})
+#     return pd.DataFrame(rows)
+
+# # ===============================================================
+# # 🧭 FETCH MAKER DATA (PER YEAR)
+# # ===============================================================
+# def fetch_maker_year(year: int, params_common: dict):
+#     """Fetch top vehicle makers for a given year — fully maxed with safe params + mock fallback."""
+#     logger.info(Fore.CYAN + f"🚀 Fetching top makers for {year}...")
+
+#     safe_params = params_common.copy()
+#     safe_params["fromYear"] = year
+#     safe_params["toYear"] = year
+
+#     mk_json, mk_url = None, None
+#     try:
+#         mk_json, mk_url = get_json("vahandashboard/top5Makerchart", safe_params)
+#     except Exception as e:
+#         logger.error(Fore.RED + f"❌ API fetch failed for {year}: {e}")
+#         mk_json, mk_url = None, "MOCK://top5Makerchart"
+
+#     color = "orange" if mk_url and "MOCK" in mk_url else "green"
+#     st.markdown(f"🔗 **API ({year}):** <span style='color:{color}'>{mk_url or 'N/A'}</span>", unsafe_allow_html=True)
+
+#     with st.expander(f"🧩 JSON Debug — {year}", expanded=False):
+#         st.json(mk_json)
+
+#     if not mk_json or (isinstance(mk_json, dict) and not mk_json.get("datasets")):
+#         st.warning(f"⚠️ No valid API data for {year}, generating mock values.")
+#         random.seed(year)
+#         makers = [
+#             "Maruti Suzuki", "Tata Motors", "Hyundai", "Mahindra", "Hero MotoCorp",
+#             "Bajaj Auto", "TVS Motor", "Honda", "Kia", "Toyota", "Renault",
+#             "Ashok Leyland", "MG Motor", "Eicher", "Piaggio", "BYD", "Olectra", "Force Motors"
+#         ]
+#         random.shuffle(makers)
+#         mk_json = {
+#             "datasets": [{"data": [random.randint(200_000, 1_200_000) for _ in range(5)],
+#                           "label": "Vehicle Registered"}],
+#             "labels": makers[:5]
+#         }
+
+#     # --- Normalize API data
+#     if isinstance(mk_json, dict) and "datasets" in mk_json:
+#         data = mk_json["datasets"][0]["data"]
+#         labels = mk_json["labels"]
+#         mk_json = [{"label": l, "value": v} for l, v in zip(labels, data)]
+
+#     df = pd.DataFrame(mk_json)
+#     df.columns = [c.lower() for c in df.columns]
+#     df["year"] = year
+#     df = df.sort_values("value", ascending=False)
+
+#     if not df.empty:
+#         st.info(f"🏆 **{year}** → **{df.iloc[0]['label']}** — {df.iloc[0]['value']:,} registrations")
+#         _bar_from_df(df, f"Top Makers ({year})", combined=False)
+#         _pie_from_df(df, f"Maker Share ({year})")
+#     return df
+
+# # ===============================================================
+# # ⏳ MULTI-YEAR DATA COLLECTION
+# # ===============================================================
+# with st.spinner("Fetching maker data for selected years..."):
+#     all_year_dfs = []
+#     for y in years:
+#         try:
+#             df_y = fetch_maker_year(y, params_common)
+#             if df_y is not None and not df_y.empty:
+#                 all_year_dfs.append(df_y)
+#             else:
+#                 st.warning(f"No data for {y}")
+#         except Exception as e:
+#             st.error(f"Error fetching {y}: {e}")
+
+# if not all_year_dfs:
+#     st.error("🚫 No maker data loaded for selected range.")
+#     st.stop()
+
+# df_maker_all = pd.concat(all_year_dfs, ignore_index=True)
+
+# # ===============================================================
+# # 📈 TIME SERIES & METRICS
+# # ===============================================================
+# rule = normalize_freq_rule(freq)
+# ts_frames = [year_to_timeseries_maker(df_maker_all[df_maker_all["year"] == y], y, freq)
+#              for y in sorted(df_maker_all["year"].unique())]
+# df_ts = pd.concat(ts_frames, ignore_index=True)
+# df_ts["ds"] = pd.to_datetime(df_ts["ds"])
+
+# resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq=rule)])["value"].sum().reset_index()
+# resampled["year"] = resampled["ds"].dt.year
+# pivot = resampled.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
+# pivot_year = resampled.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
+
+# # ===============================================================
+# # 💎 KPI METRICS — Makers
+# # ===============================================================
+# st.subheader("💎 Key Metrics & Growth (Makers)")
+
+# if pivot_year.empty:
+#     st.warning("⚠️ No yearly data found for KPI computation.")
+#     st.stop()
+
+# # --- Compute totals and YoY
+# year_totals = pivot_year.sum(axis=1).rename("TotalRegistrations").to_frame()
+# year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
+# year_totals["TotalRegistrations"] = year_totals["TotalRegistrations"].fillna(0).astype(int)
+# year_totals["YoY_%"] = year_totals["YoY_%"].replace([np.inf, -np.inf], np.nan).fillna(0)
+
+# # --- CAGR
+# if len(year_totals) >= 2:
+#     first = float(year_totals["TotalRegistrations"].iloc[0])
+#     last = float(year_totals["TotalRegistrations"].iloc[-1])
+#     years_count = max(1, len(year_totals) - 1)
+#     cagr = ((last / first) ** (1 / years_count) - 1) * 100 if first > 0 else 0.0
+# else:
+#     cagr = 0.0
+
+# # --- MoM (if monthly)
+# if freq == "Monthly":
+#     resampled["month_period"] = resampled["year"].astype(str) + "-" + resampled["month"].astype(str)
+#     month_totals = resampled.groupby("month_period")["value"].sum().reset_index()
+#     month_totals["MoM_%"] = month_totals["value"].pct_change() * 100
+#     latest_mom = f"{month_totals['MoM_%'].iloc[-1]:.2f}%" if len(month_totals) > 1 and not np.isnan(month_totals["MoM_%"].iloc[-1]) else "n/a"
+# else:
+#     latest_mom = "n/a"
+
+# # --- Category (Maker) shares
+# latest_year = int(year_totals.index.max())
+# latest_total = int(year_totals.loc[latest_year, "TotalRegistrations"])
+# cat_share = (pivot_year.loc[latest_year] / pivot_year.loc[latest_year].sum() * 100).sort_values(ascending=False).round(1)
+
+# # ----------------------------------------------------
+# # DISPLAY KPIs
+# # ----------------------------------------------------
+# c1, = st.columns(1)
+# c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
+
+# st.markdown("#### 📘 Maker Share (Latest Year)")
+# st.dataframe(
+#     pd.DataFrame({
+#         "Maker": cat_share.index,
+#         "Share_%": cat_share.values,
+#         "Volume": pivot_year.loc[latest_year].astype(int).values
+#     }).sort_values("Share_%", ascending=False),
+#     use_container_width=True
+# )
+
+# with st.expander("🔍 Yearly Totals & Growth"):
+#     st.dataframe(year_totals.style.format({"TotalRegistrations": "{:,}", "YoY_%": "{:.2f}"}))
+
+# # ----------------------------------------------------
+# # DEEP INSIGHTS + TRENDS
+# # ----------------------------------------------------
+# total_all = df_maker_all["value"].sum()
+# n_cats = df_maker_all["label"].nunique()
+# n_years = df_maker_all["year"].nunique()
+
+# # --- Top Maker
+# top_cat_row = df_maker_all.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
+# top_cat = {"label": str(top_cat_row["label"]), "value": float(top_cat_row["value"])}
+# top_cat_share = (top_cat["value"] / total_all) * 100 if total_all > 0 else 0
+
+# # --- Top Year
+# top_year_row = df_maker_all.groupby("year")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
+# top_year = {"year": int(top_year_row["year"]), "value": float(top_year_row["value"])}
+
+# st.metric("🏆 Absolute Top Maker", top_cat["label"], f"{top_cat_share:.2f}% share")
+# st.metric("📅 Peak Year", f"{top_year['year']}", f"{top_year['value']:,.0f} registrations")
+
+# # --- Plot: Top 10 Makers
+# st.write("### 🧾 Top 10 Makers — Overall")
+# top_debug = df_maker_all.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False)
+# fig_top10 = px.bar(top_debug.head(10), x="label", y="value", text_auto=True,
+#                    color="value", color_continuous_scale="Blues", title="Top 10 Makers (All Years)")
+# fig_top10.update_layout(template="plotly_white", margin=dict(t=50, b=40))
+# st.plotly_chart(fig_top10, use_container_width=True)
+
+# # ----------------------------------------------------
+# # ADVANCED DEBUG METRICS
+# # ----------------------------------------------------
+# volatility = df_maker_all.groupby("year")["value"].sum().pct_change().std() * 100 \
+#     if len(df_maker_all["year"].unique()) > 2 else 0
+# dominance_ratio = (top_cat["value"] / total_all) * n_cats if total_all > 0 else 0
+# direction = "increased" if cagr > 0 else "declined"
+
+# summary_time = time.time() - summary_start
+# st.markdown("### ⚙️ Debug Performance Metrics")
+# st.code(f"""
+# Years analyzed: {years}
+# Makers: {n_cats}
+# Rows processed: {len(df_maker_all):,}
+# Total registrations: {total_all:,.0f}
+# Top maker: {top_cat['label']} → {top_cat['value']:,.0f} ({top_cat_share:.2f}%)
+# Peak year: {int(top_year['year'])} → {top_year['value']:,.0f}
+# Dominance ratio: {dominance_ratio:.2f}
+# Runtime: {summary_time:.2f}s
+# """, language="yaml")
+
+# # ----------------------------------------------------
+# # 8️⃣ SMART SUMMARY — All-Maxed
+# # ----------------------------------------------------
+# if isinstance(top_cat, list):
+#     top_cat = top_cat[0] if top_cat else {"label": "N/A", "value": 0}
+
+# years_valid = years is not None and len(years) > 0
+# top_year_valid = top_year is not None and "year" in top_year and "value" in top_year
+
+# if top_cat and years_valid and top_year_valid:
+#     st.success(
+#         f"From **{years[0]}** to **{years[-1]}**, total registrations {direction}. "
+#         f"**{top_cat.get('label', 'N/A')}** leads with **{top_cat_share:.2f}%** share. "
+#         f"Peak year: **{top_year['year']}** with **{top_year['value']:,.0f}** registrations."
+#     )
+#     logger.info(f"✅ ALL-MAXED summary completed in {summary_time:.2f}s")
+# else:
+#     st.error("⛔ ALL-MAXED summary failed: Missing or invalid data.")
+#     logger.warning("⚠️ ALL-MAXED summary skipped due to incomplete data")
 
 # ----------------------------------------------------
 # 9️⃣ MAKERS + STATES SECTIONS (reuse same pattern)
@@ -4043,6 +4043,1739 @@ else:
     # 9️⃣ MAKERS + STATES SECTIONS (reuse same pattern)
     # ----------------------------------------------------
     # repeat the above block for Makers/States as needed
+
+
+# =========================================================
+# 🔥 ALL-MAXED — Maker (multi-frequency, multi-year) — MAXED BLOCK
+# Drop-in Streamlit module. Replace or import into your app.
+# Created: ALL-MAXED v2 — resilient, instrumented, cached, mock-safe
+# =========================================================
+# ======================================================
+# 🚀 MAXED-OUT DASHBOARD TEMPLATE — STREAMLIT + PLOTLY
+# ======================================================
+
+import time
+import math
+import json
+import random
+import logging
+import requests
+from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
+import numpy as np
+import pandas as pd
+import streamlit as st
+import plotly.express as px
+import plotly.graph_objects as go
+
+# -------------------------
+# Logging Setup
+# -------------------------
+logger = logging.getLogger("all_maxed_category")
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
+    logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
+
+# =====================================================
+# 🚀 ALL-MAXED MAKERS ANALYTICS CORE v1.0
+# -----------------------------------------------------
+# Fully loaded mock data, chart builders, and analytics UI helpers for Makers
+# =====================================================
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+import random, uuid
+import plotly.express as px
+from datetime import datetime
+from typing import Dict, Any
+from plotly.colors import qualitative
+
+# -----------------------------------------------------
+# 🎯 Master Maker Reference
+# -----------------------------------------------------
+MAKERS_MASTER = [
+    "Maruti Suzuki", "Tata Motors", "Hyundai", "Mahindra", "Hero MotoCorp",
+    "Bajaj Auto", "TVS Motor", "Honda", "Kia", "Toyota", "Renault",
+    "Ashok Leyland", "MG Motor", "Eicher", "Piaggio", "BYD", "Olectra", "Force Motors"
+]
+
+# -----------------------------------------------------
+# 💾 Deterministic Mock Data Generator (Multi-Frequency)
+# -----------------------------------------------------
+def deterministic_mock_makers(year: int, freq: str = "Monthly", seed_base: str = "makers") -> Dict[str, Any]:
+    """Generate reproducible, realistic mock data for makers (daily, monthly, yearly)."""
+    rnd = random.Random(hash((year, seed_base)) & 0xFFFFFFFF)
+    data = []
+
+    if freq == "Yearly":
+        for m in MAKERS_MASTER:
+            val = rnd.randint(50_000, 2_500_000)
+            data.append({"label": m, "value": val, "year": year})
+
+    elif freq == "Monthly":
+        for month in range(1, 13):
+            for m in MAKERS_MASTER:
+                base = rnd.randint(10_000, 200_000)
+                seasonal_boost = 1.2 if month in [3, 9, 12] else 1.0
+                value = int(base * seasonal_boost * (0.8 + rnd.random() * 0.5))
+                data.append({
+                    "label": m,
+                    "value": value,
+                    "year": year,
+                    "month": month,
+                    "month_name": datetime(year, month, 1).strftime("%b")
+                })
+
+    elif freq == "Daily":
+        for month in range(1, 13):
+            for day in range(1, 29):
+                for m in MAKERS_MASTER:
+                    base = rnd.randint(200, 15_000)
+                    val = int(base * (0.8 + rnd.random() * 0.6))
+                    data.append({
+                        "label": m, "value": val, "year": year, "month": month, "day": day
+                    })
+
+    return {
+        "data": data,
+        "meta": {
+            "generatedAt": datetime.utcnow().isoformat(),
+            "note": f"deterministic mock for {year} ({freq})",
+            "freq": freq
+        }
+    }
+
+# -----------------------------------------------------
+# ⚙️ Formatting helpers
+# -----------------------------------------------------
+def format_number(n):
+    """Return number formatted as K, M, or Cr."""
+    if n >= 10_000_000:
+        return f"{n/10_000_000:.2f} Cr"
+    elif n >= 100_000:
+        return f"{n/100_000:.2f} L"
+    elif n >= 1_000:
+        return f"{n/1_000:.2f} K"
+    return f"{n:,}"
+
+# -----------------------------------------------------
+# 🎨 Global Chart Style Settings
+# -----------------------------------------------------
+COLOR_PALETTE = qualitative.Plotly + qualitative.D3 + qualitative.Vivid
+DEFAULT_TEMPLATE = "plotly_white"
+TITLE_STYLE = dict(size=20, color="#111", family="Segoe UI Semibold")
+
+# -----------------------------------------------------
+# 🧩 MAXED CHART HELPERS (Legend, Hover, UI polish)
+# -----------------------------------------------------
+def _unique_key(prefix="chart"):
+    return f"{prefix}_{uuid.uuid4().hex[:6]}"
+
+def bar_from_makers(df: pd.DataFrame, title="Bar Chart", x="label", y="value",
+                    color=None, barmode="group", height=500, section_id="bar"):
+    if df is None or df.empty:
+        st.warning("⚠️ No data to plot.")
+        return
+    fig = px.bar(
+        df, x=x, y=y, color=color or x, text_auto=".2s",
+        title=title, color_discrete_sequence=COLOR_PALETTE,
+        barmode=barmode
+    )
+    fig.update_traces(
+        hovertemplate="<b>%{x}</b><br>%{y:,.0f} registrations",
+        textfont_size=12, textangle=0, cliponaxis=False
+    )
+    fig.update_layout(
+        template=DEFAULT_TEMPLATE,
+        title_font=TITLE_STYLE,
+        xaxis_title=x.title(),
+        yaxis_title=y.title(),
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.02,
+            xanchor="right", x=1, title=None, bgcolor="rgba(0,0,0,0)"
+        ),
+        height=height, bargap=0.2, margin=dict(t=60, b=40, l=40, r=20)
+    )
+    st.plotly_chart(fig, use_container_width=True, key=_unique_key(section_id))
+
+def pie_from_makers(df: pd.DataFrame, title="Pie Chart", donut=True, section_id="pie", height=450):
+    if df is None or df.empty:
+        st.warning("⚠️ No data to plot.")
+        return
+    fig = px.pie(
+        df, names="label", values="value", hole=0.45 if donut else 0.0,
+        title=title, color_discrete_sequence=COLOR_PALETTE
+    )
+    fig.update_traces(
+        textinfo="label+percent",
+        hovertemplate="<b>%{label}</b><br>%{value:,.0f} registrations<br>%{percent}",
+        pull=[0.03] * len(df),
+    )
+    fig.update_layout(
+        template=DEFAULT_TEMPLATE,
+        title_font=TITLE_STYLE,
+        legend=dict(orientation="v", yanchor="top", y=0.95, xanchor="left", x=0),
+        height=height, margin=dict(t=60, b=40, l=40, r=40)
+    )
+    st.plotly_chart(fig, use_container_width=True, key=_unique_key(section_id))
+
+def trend_from_makers(df: pd.DataFrame, title="Trend Over Time", section_id="trend", height=500):
+    if df is None or df.empty:
+        st.warning("⚠️ No trend data available.")
+        return
+    if "month_name" in df.columns:
+        df["month_order"] = pd.Categorical(
+            df["month_name"],
+            categories=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+            ordered=True
+        )
+    fig = px.line(
+        df, x="month_order" if "month_order" in df.columns else "year",
+        y="value", color="label", markers=True,
+        title=title, color_discrete_sequence=COLOR_PALETTE,
+        line_shape="spline"
+    )
+    fig.update_traces(hovertemplate="<b>%{x}</b><br>%{y:,.0f} registrations")
+    fig.update_layout(
+        template=DEFAULT_TEMPLATE,
+        title_font=TITLE_STYLE,
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.02,
+            xanchor="right", x=1, bgcolor="rgba(0,0,0,0)"
+        ),
+        height=height, margin=dict(t=60, b=40, l=40, r=40)
+    )
+    st.plotly_chart(fig, use_container_width=True, key=_unique_key(section_id))
+
+# -----------------------------------------------------
+# 🧠 Auto Dashboard Section — Single Function (MAKERS)
+# -----------------------------------------------------
+def render_maker_dashboard(year: int, freq="Monthly"):
+    """Render full UI: fetch mock makers data, show KPI, bar, pie, trend — ALL-MAXED."""
+    st.subheader(f"📊 Maker Distribution — {year} ({freq})")
+
+    # Generate deterministic data
+    mock_json = deterministic_mock_makers(year, freq=freq)
+    df = pd.DataFrame(mock_json["data"])
+
+    total = df["value"].sum()
+    top = df.sort_values("value", ascending=False).iloc[0]
+    st.success(f"🏆 **Top Maker:** {top['label']} — {format_number(top['value'])} registrations")
+    st.caption(f"Total: {format_number(total)} | Generated: {mock_json['meta']['generatedAt']}")
+
+    # Layout 2-col + trend
+    c1, c2 = st.columns([2, 1])
+    with c1:
+        bar_from_makers(df, title=f"{year} {freq} Breakdown (Bar)", color="label", section_id=f"bar_{year}")
+    with c2:
+        pie_from_makers(df, title=f"{year} Share (Donut)", section_id=f"pie_{year}")
+
+    # Optional trend
+    if "month_name" in df.columns:
+        trend_from_makers(df, title=f"{year} Monthly Trend (Animated)", section_id=f"trend_{year}")
+    else:
+        trend_from_makers(df, title=f"{year} Maker Trend", section_id=f"trend_{year}")
+
+    return df
+
+
+# ============================================================
+# ⚙️ Synthetic Timeseries Expansion — MAKER ULTRA MAXED
+# ------------------------------------------------------------
+# Generates per-category realistic timeseries for Maker dashboards
+# Includes trend, seasonality, noise, and deterministic reproducibility
+# ============================================================
+
+import numpy as np
+import pandas as pd
+from datetime import datetime
+
+def maker_year_to_timeseries(
+    df_year: pd.DataFrame,
+    year: int,
+    freq: str = "Monthly",
+    trend_strength: float = 0.15,
+    noise_strength: float = 0.10,
+    seasonal_boost: bool = True,
+    seed_base: str = "maker_timeseries"
+) -> pd.DataFrame:
+    """
+    Expand annual category totals into Maker-ready realistic timeseries.
+    
+    Returns columns: ds, label, value, year, month, quarter, month_name, maker_key
+    """
+    if df_year is None or df_year.empty:
+        return pd.DataFrame(columns=[
+            "ds","label","value","year","month","quarter","month_name","maker_key"
+        ])
+
+    # --- deterministic seed for reproducibility
+    seed = abs(hash((year, freq, seed_base))) % (2**32)
+    rng = np.random.default_rng(seed)
+
+    # --- time index generation
+    start = pd.Timestamp(f"{year}-01-01")
+    end = pd.Timestamp(f"{year}-12-31")
+    freq = freq.capitalize()
+    if freq == "Daily":
+        idx = pd.date_range(start=start, end=end, freq="D")
+    elif freq == "Monthly":
+        idx = pd.date_range(start=start, end=end, freq="M")
+    elif freq == "Quarterly":
+        idx = pd.date_range(start=start, end=end, freq="Q")
+    else:
+        idx = pd.date_range(start=start, end=end, freq="Y")
+
+    n = len(idx)
+    rows = []
+
+    # --- seasonal sinusoidal factor helper
+    def seasonal_factor(i):
+        if not seasonal_boost:
+            return 1.0
+        return 1.0 + 0.25 * np.sin((i / n) * 2 * np.pi * 4)  # 4 seasonal peaks
+
+    for _, r in df_year.iterrows():
+        cat = r.get("label", "Unknown")
+        total = float(r.get("value", 0.0))
+        if total <= 0:
+            continue
+
+        base_per = total / max(1, n)
+
+        # trend (up/down) + noise
+        trend = np.linspace(1 - trend_strength, 1 + trend_strength, n)
+        if rng.random() > 0.5:
+            trend = trend[::-1]
+        noise = rng.normal(0, noise_strength, n)
+
+        vals = base_per * trend * (1 + noise)
+        vals = np.maximum(vals, 0)
+
+        for i, ts in enumerate(idx):
+            factor = seasonal_factor(i)
+            v = vals[i] * factor
+            rows.append({
+                "ds": ts,
+                "label": cat,
+                "value": float(v),
+                "year": int(year),
+                "month": ts.month,
+                "quarter": ts.quarter,
+                "month_name": ts.strftime("%b"),
+                "maker_key": f"{cat}_{ts.strftime('%Y%m%d')}"
+            })
+
+    df_out = pd.DataFrame(rows)
+    df_out["value"] = df_out["value"].round(2)
+
+    # --- normalize to match original annual totals
+    grouped = df_out.groupby("label")["value"].sum().to_dict()
+    for cat in grouped:
+        original_total = float(df_year.loc[df_year["label"] == cat, "value"].iloc[0])
+        if grouped[cat] > 0:
+            df_out.loc[df_out["label"] == cat, "value"] *= original_total / grouped[cat]
+
+    df_out.reset_index(drop=True, inplace=True)
+    return df_out
+
+
+
+# ============================================================
+# 🚀 MAKER DASHBOARD FETCHER — ALL-MAXED ULTRA
+# ------------------------------------------------------------
+# Fetch Top 5 Makers, render bar + pie charts, insights, 
+# and synthetic trends with fallback.
+# ============================================================
+
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import numpy as np
+from typing import Dict
+
+# -----------------------------
+# Fallback deterministic mock
+# -----------------------------
+def maker_mock_top5(year: int) -> Dict:
+    """Return deterministic mock Top 5 Makers data."""
+    return {
+        "data": [
+            {"label": f"Maker {i}", "value": np.random.randint(500, 2000)}
+            for i in range(1, 6)
+        ]
+    }
+
+# -----------------------------
+# Normalize JSON -> DataFrame
+# -----------------------------
+def maker_to_df(json_data: Dict) -> pd.DataFrame:
+    if isinstance(json_data, dict) and "data" in json_data:
+        return pd.DataFrame(json_data["data"])
+    elif isinstance(json_data, list):
+        return pd.DataFrame(json_data)
+    else:
+        return pd.DataFrame()
+
+# -----------------------------
+# MAXED Maker fetch + render
+# -----------------------------
+def fetch_maker_top5(year: int, params: Dict = None, show_debug: bool = True) -> pd.DataFrame:
+    """Fetch Top 5 Maker data and render MAXED dashboard."""
+    st.subheader(f"📊 Top 5 Makers — {year}")
+
+    p = params.copy() if params else {}
+    p["year"] = year
+
+    # --- Fetch JSON safely ---
+    try:
+        mk_json, mk_url = get_json("vahandashboard/top5Makerchart", p)
+    except Exception:
+        mk_json, mk_url = maker_mock_top5(year), f"mock://top5Maker/{year}"
+
+    # --- Debug panel ---
+    if show_debug:
+        with st.expander(f"🧩 Debug JSON — Top 5 Makers {year}", expanded=False):
+            st.write("**URL:**", mk_url)
+            st.json(mk_json)
+
+    # --- Normalize to DataFrame ---
+    df = maker_to_df(mk_json)
+    if df.empty:
+        df = maker_to_df(maker_mock_top5(year))
+
+    df["year"] = year
+    df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
+    df = df.sort_values("value", ascending=False)
+    total_val = df["value"].sum()
+
+    st.caption(f"🔗 Source: {mk_url}")
+    st.markdown(f"**Total Score / Registrations:** {int(total_val):,}")
+
+    # --- Charts layout ---
+    c1, c2 = st.columns([1.8, 1.2])
+    with c1:
+        try:
+            fig_bar = px.bar(
+                df,
+                x="label",
+                y="value",
+                color="label",
+                text_auto=".2s",
+                title=f"🏗️ Top 5 Maker Scores — {year}",
+                color_discrete_sequence=px.colors.qualitative.Safe,
+            )
+            fig_bar.update_layout(template="plotly_white", showlegend=False, height=450)
+            st.plotly_chart(fig_bar, use_container_width=True, key=f"bar_maker_{year}")
+        except Exception:
+            st.dataframe(df)
+
+    with c2:
+        try:
+            fig_pie = px.pie(
+                df,
+                names="label",
+                values="value",
+                hole=0.45,
+                color_discrete_sequence=px.colors.qualitative.Vivid,
+                title=f"Maker Share — {year}",
+            )
+            fig_pie.update_traces(
+                textinfo="percent+label",
+                pull=[0.05]*len(df),
+            )
+            fig_pie.update_layout(template="plotly_white", height=400, showlegend=False)
+            st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_maker_{year}")
+        except Exception:
+            st.dataframe(df)
+
+    # --- Top Maker insight ---
+    if not df.empty:
+        top = df.iloc[0]
+        pct = (top["value"] / total_val * 100) if total_val else 0
+        st.success(f"🏆 **Top Maker:** {top['label']} — {int(top['value']):,} ({pct:.1f}%)")
+
+    # --- Extra insights table ---
+    df["share_%"] = (df["value"] / total_val * 100).round(2)
+    st.dataframe(
+        df.style.format({"value": "{:,.0f}", "share_%": "{:.2f}%"}).bar(
+            subset=["share_%"], color="#4CAF50"
+        ),
+        use_container_width=True,
+        height=320,
+    )
+
+    # --- Synthetic monthly trend simulation ---
+    with st.expander("📈 Trend simulation (synthetic)", expanded=False):
+        months = pd.date_range(start=f"{year}-01-01", end=f"{year}-12-31", freq="M")
+        df_ts = pd.DataFrame({
+            "ds": np.tile(months, len(df)),
+            "label": np.repeat(df["label"].values, len(months)),
+            "value": np.repeat(df["value"].values, len(months)) * np.random.uniform(0.7,1.3, size=len(df)*len(months))
+        })
+        fig_line = px.line(
+            df_ts,
+            x="ds",
+            y="value",
+            color="label",
+            line_group="label",
+            markers=True,
+            title=f"Synthetic Trend — {year}",
+            color_discrete_sequence=px.colors.qualitative.Set2,
+        )
+        fig_line.update_layout(template="plotly_white", height=400)
+        st.plotly_chart(fig_line, use_container_width=True, key=f"trend_maker_{year}")
+
+    return df
+
+# =====================================================
+# -------------------------
+# Main Streamlit UI — All-Maxed Maker Block
+# -------------------------
+# =====================================================
+
+from typing import Optional
+import streamlit as st
+import pandas as pd
+import numpy as np
+from datetime import datetime
+
+def all_maxed_maker_block(params: Optional[dict] = None):
+    """Render the MAXED multi-year Maker analytics block inside Streamlit."""
+    import time, logging
+    logger = logging.getLogger("maker_block")
+    
+    start_overall = time.time()
+    params = params or {}
+
+    st.markdown("## 🏗️ ALL-MAXED — Maker Analytics (Multi-frequency, Multi-year)")
+
+    # -------------------------
+    # Controls
+    # -------------------------
+    freq = st.radio("Aggregation Frequency", ["Daily", "Monthly", "Quarterly", "Yearly"], index=1, horizontal=True)
+    mode = st.radio("View Mode", ["Separate (Small Multiples)", "Combined (Overlay / Stacked)"], index=1, horizontal=True)
+    current_year = datetime.now().year
+    start_year = st.number_input("From Year", 2010, current_year, current_year-1)
+    end_year = st.number_input("To Year", start_year, current_year, current_year)
+    years = list(range(int(start_year), int(end_year)+1))
+
+    show_heatmap = st.checkbox("Show Heatmap (year × maker)", True)
+    show_radar = st.checkbox("Show Radar (per year)", True)
+    do_forecast = st.checkbox("Enable Forecasting", True)
+    do_anomaly = st.checkbox("Enable Anomaly Detection", False)
+    do_clustering = st.checkbox("Enable Clustering (KMeans)", False)
+    enable_ai = st.checkbox("Enable AI Narrative (requires provider)", False)
+
+    st.info(f"🚀 Starting ALL-MAXED Maker pipeline — years: {years} | freq: {freq} | mode: {mode}")
+
+    # -------------------------
+    # Fetch multi-year maker data
+    # -------------------------
+    all_year_dfs = []
+    with st.spinner("Fetching maker data for selected years..."):
+        for y in years:
+            try:
+                df_y = fetch_maker_top5(y, params, show_debug=False)  # <-- Maker fetcher
+                if df_y is None or df_y.empty:
+                    st.warning(f"No maker data for {y}")
+                    continue
+                all_year_dfs.append(df_y)
+            except Exception as e:
+                logger.exception(f"Error fetching {y}: {e}")
+                st.error(f"Error fetching {y}: {e}")
+
+    if not all_year_dfs:
+        st.info("No maker data loaded for selected range. Displaying deterministic mocks for demonstration.")
+        for y in years:
+            all_year_dfs.append(
+                pd.DataFrame(maker_mock_top5(y)["data"]).assign(year=y)
+            )
+
+    df_maker_all = pd.concat(all_year_dfs, ignore_index=True)
+
+    # -------------------------
+    # Frequency expansion -> synthetic timeseries
+    # -------------------------
+    ts_list = []
+    for y in sorted(df_maker_all["year"].unique()):
+        df_y = df_maker_all[df_maker_all["year"]==y].reset_index(drop=True)
+        # Re-use the year_to_timeseries logic for synthetic monthly trend
+        ts = year_to_timeseries(df_y.rename(columns={"label":"label","value":"value"}), int(y), freq=freq)
+        ts_list.append(ts)
+
+    df_ts = pd.concat(ts_list, ignore_index=True) if ts_list else pd.DataFrame(columns=["ds","label","value","year"])
+    df_ts["ds"] = pd.to_datetime(df_ts["ds"])
+
+    # -------------------------
+    # Resample to requested frequency (group-by maker)
+    # -------------------------
+    if freq == "Daily":
+        resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq="D")])["value"].sum().reset_index()
+    elif freq == "Monthly":
+        resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq="M")])["value"].sum().reset_index()
+    elif freq == "Quarterly":
+        resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq="Q")])["value"].sum().reset_index()
+    else:
+        resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq="Y")])["value"].sum().reset_index()
+
+    resampled["year"] = resampled["ds"].dt.year
+
+    # -------------------------
+    # Pivot tables for heatmap / radar / combined view
+    # -------------------------
+    pivot = resampled.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
+    pivot_year = resampled.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
+
+    # -------------------------
+    # Display heatmap
+    # -------------------------
+    if show_heatmap:
+        st.subheader("📊 Year × Maker Heatmap")
+        import plotly.express as px
+        fig = px.imshow(
+            pivot_year.T,
+            labels=dict(x="Year", y="Maker", color="Value"),
+            text_auto=True,
+            aspect="auto",
+            color_continuous_scale="Viridis"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    # -------------------------
+    # Display radar (per year)
+    # -------------------------
+    if show_radar:
+        st.subheader("📈 Radar / Polar — Makers per Year")
+        import plotly.graph_objects as go
+        fig = go.Figure()
+        for y in pivot_year.index:
+            fig.add_trace(
+                go.Scatterpolar(
+                    r=pivot_year.loc[y].values,
+                    theta=pivot_year.columns.tolist(),
+                    fill='toself',
+                    name=str(y)
+                )
+            )
+        fig.update_layout(
+            polar=dict(radialaxis=dict(visible=True)),
+            showlegend=True,
+            height=450
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    return df_maker_all, df_ts, pivot, pivot_year
+
+    # =====================================================
+    # 📊 VISUALIZATIONS — ALL-MAXED MAKER
+    # =====================================================
+    st.subheader("📊 Maker Visualizations — Multi-year & Multi-frequency (All-Maxed)")
+    
+    # --- Safety Checks ---
+    if "resampled" not in locals() or resampled is None or resampled.empty:
+        st.warning("⚠️ No valid 'resampled' maker data available for visualization.")
+        st.stop()
+    
+    if "pivot" not in locals() or pivot is None or pivot.empty:
+        st.warning("⚠️ No valid 'pivot' maker data available for visualization.")
+        st.stop()
+    
+    if "mode" not in locals():
+        mode = "Combined (Overlay / Stacked)"
+    
+    # -------------------------
+    # Combined / Small Multiples — Maker
+    # -------------------------
+    if mode.startswith("Combined"):
+        st.markdown("### 🌈 Stacked & Overlay Trends — Combined Maker View")
+    
+        # --- Stacked Area Chart ---
+        try:
+            fig_area = px.area(
+                resampled,
+                x="ds",
+                y="value",
+                color="label",
+                title="Stacked Registrations by Maker Over Time",
+                color_discrete_sequence=px.colors.qualitative.Set3,
+            )
+            fig_area.update_layout(
+                legend_title_text="Maker",
+                xaxis_title="Date",
+                yaxis_title="Registrations",
+                template="plotly_white",
+                hovermode="x unified",
+            )
+            st.plotly_chart(fig_area, use_container_width=True)
+        except Exception as e:
+            st.warning(f"⚠️ Stacked area failed: {e}")
+    
+        # --- Overlay Line Chart ---
+        try:
+            fig_line = px.line(
+                resampled,
+                x="ds",
+                y="value",
+                color="label",
+                title="Maker Trends (Overlay)",
+                markers=True,
+                color_discrete_sequence=px.colors.qualitative.Bold,
+            )
+            fig_line.update_traces(line=dict(width=2))
+            fig_line.update_layout(
+                template="plotly_white",
+                xaxis_title="Date",
+                yaxis_title="Registrations",
+                hovermode="x unified",
+            )
+            st.plotly_chart(fig_line, use_container_width=True)
+        except Exception as e:
+            st.warning(f"⚠️ Overlay lines failed: {e}")
+    
+    # -------------------------
+    # Separate Mode (Small Multiples)
+    # -------------------------
+    else:
+        st.markdown("### 🧩 Small Multiples — Yearly Maker Distribution")
+    
+        try:
+            years_sorted = sorted(resampled["year"].unique())
+        except Exception:
+            years_sorted = []
+    
+        sel_small = st.multiselect(
+            "Select specific years for small multiples (limit 6)",
+            years_sorted,
+            default=years_sorted[-min(3, len(years_sorted)):] if years_sorted else [],
+        )
+    
+        if not sel_small:
+            st.info("Select at least one year to show small multiples.")
+        else:
+            for y in sel_small[:6]:
+                d = resampled[resampled["year"] == y]
+                if d.empty:
+                    st.caption(f"⚠️ No data for {y}")
+                    continue
+                try:
+                    fig_bar = px.bar(
+                        d,
+                        x="label",
+                        y="value",
+                        color="label",
+                        text_auto=True,
+                        title=f"Maker Distribution — {y}",
+                        color_discrete_sequence=px.colors.qualitative.Pastel1,
+                    )
+                    fig_bar.update_traces(textfont_size=11, textangle=0)
+                    fig_bar.update_layout(
+                        showlegend=False,
+                        template="plotly_white",
+                        yaxis_title="Registrations",
+                    )
+                    st.plotly_chart(fig_bar, use_container_width=True)
+                except Exception as e:
+                    st.warning(f"⚠️ Failed to plot {y}: {e}")
+    # -------------------------
+    # Optional Advanced Visuals — Maker
+    # -------------------------
+    if show_heatmap:
+        st.markdown("### 🔥 Maker Heatmap (Year × Maker)")
+        try:
+            pivot_heat = pivot_year.copy()
+            fig_heat = px.imshow(
+                pivot_heat.T,
+                labels=dict(x="Year", y="Maker", color="Registrations"),
+                aspect="auto",
+                color_continuous_scale="YlOrRd",
+                title="Heatmap of Registrations per Maker per Year",
+            )
+            st.plotly_chart(fig_heat, use_container_width=True)
+        except Exception as e:
+            st.warning(f"⚠️ Heatmap failed: {e}")
+    
+    if show_radar:
+        st.markdown("### 🕸️ Radar Chart — Maker Profiles per Year")
+        try:
+            import plotly.graph_objects as go
+            makers = list(pivot_year.columns)
+            fig_radar = go.Figure()
+            for y in sorted(pivot_year.index)[-min(4, len(pivot_year.index)):]:
+                vals = pivot_year.loc[y].values
+                fig_radar.add_trace(go.Scatterpolar(
+                    r=vals,
+                    theta=makers,
+                    fill='toself',
+                    name=str(y),
+                ))
+            fig_radar.update_layout(
+                polar=dict(radialaxis=dict(visible=True)),
+                showlegend=True,
+                template="plotly_white",
+                title="Radar Comparison of Maker Patterns",
+            )
+            st.plotly_chart(fig_radar, use_container_width=True)
+        except Exception as e:
+            st.warning(f"⚠️ Radar chart failed: {e}")
+    
+    # -------------------------
+    # 🍩 Donut & Sunburst (All-Maxed) — Maker
+    # -------------------------
+    st.markdown("### 🍩 Donut & Sunburst — Latest Available Period (All-Maxed)")
+    
+    if resampled.empty:
+        st.warning("⚠️ No resampled data available for donut/sunburst charts.")
+    else:
+        latest_period = (
+            resampled.loc[resampled["value"] > 0, "ds"].max()
+            if not resampled.empty
+            else None
+        )
+    
+        if latest_period is None or pd.isna(latest_period):
+            st.info("No valid non-zero data found for latest period visualization.")
+        else:
+            d_latest = (
+                resampled[resampled["ds"] == latest_period]
+                .groupby("label", as_index=False)["value"]
+                .sum()
+                .sort_values("value", ascending=False)
+            )
+    
+            total_latest = d_latest["value"].sum()
+            d_latest["Share_%"] = (d_latest["value"] / total_latest * 100).round(2)
+    
+            if not d_latest.empty and total_latest > 0:
+                # --- Donut Chart ---
+                try:
+                    fig_donut = px.pie(
+                        d_latest,
+                        names="label",
+                        values="value",
+                        hole=0.55,
+                        color_discrete_sequence=px.colors.qualitative.Vivid,
+                        title=f"Maker Split — {latest_period.strftime('%Y-%m')} (Total: {int(total_latest):,})",
+                        hover_data={"Share_%": True, "value": True},
+                    )
+                    fig_donut.update_traces(
+                        textposition="inside",
+                        textinfo="percent+label",
+                        pull=[0.05] * len(d_latest),
+                    )
+                    fig_donut.update_layout(
+                        template="plotly_white",
+                        showlegend=True,
+                        legend_title_text="Maker",
+                    )
+                    st.plotly_chart(fig_donut, use_container_width=True)
+                except Exception as e:
+                    st.warning(f"⚠️ Donut chart failed: {e}")
+    
+                # --- Sunburst Chart ---
+                try:
+                    sb = (
+                        df_maker_all.groupby(["year", "label"], as_index=False)["value"]
+                        .sum()
+                        .sort_values(["year", "value"], ascending=[True, False])
+                    )
+    
+                    fig_sb = px.sunburst(
+                        sb,
+                        path=["year", "label"],
+                        values="value",
+                        color="value",
+                        color_continuous_scale="Sunset",
+                        title="🌞 Sunburst — Year → Maker → Value",
+                        hover_data={"value": True},
+                    )
+                    fig_sb.update_layout(template="plotly_white")
+                    st.plotly_chart(fig_sb, use_container_width=True)
+                except Exception as e:
+                    st.warning(f"⚠️ Sunburst chart failed: {e}")
+    
+                # --- Data summary below ---
+                with st.expander("📋 Latest Period Maker Data Summary"):
+                    st.dataframe(
+                        d_latest.style.format(
+                            {"value": "{:,}", "Share_%": "{:.2f}"}
+                        ),
+                        use_container_width=True,
+                    )
+            else:
+                st.info("⚠️ Latest period has zero or empty Maker values.")
+    
+    # -------------------------
+    # 🔥 HEATMAP — Year × Maker (All-Maxed)
+    # -------------------------
+    if show_heatmap:
+        st.markdown("### 🔥 Heatmap — Year × Maker (All-Maxed)")
+    
+        if pivot_year.empty:
+            st.info("⚠️ No Maker data available for heatmap.")
+        else:
+            try:
+                heat = pivot_year.copy()
+                heat_norm = heat.div(heat.max(axis=1), axis=0).fillna(0)
+                normalize_opt = st.toggle("Normalize heatmap (relative per year)", value=True)
+                heat_used = heat_norm if normalize_opt else heat
+    
+                fig_h = go.Figure(
+                    data=go.Heatmap(
+                        z=heat_used.values,
+                        x=heat_used.columns.astype(str),
+                        y=heat_used.index.astype(str),
+                        colorscale="Viridis",
+                        hoverongaps=False,
+                        texttemplate="%{z:.1f}" if normalize_opt else None,
+                    )
+                )
+                fig_h.update_layout(
+                    title=(
+                        "Normalized Registrations by Maker per Year"
+                        if normalize_opt
+                        else "Absolute Registrations by Maker per Year"
+                    ),
+                    xaxis_title="Maker",
+                    yaxis_title="Year",
+                    template="plotly_white",
+                    coloraxis_colorbar=dict(title="Registrations" if not normalize_opt else "Share (0–1)"),
+                    height=500,
+                )
+                st.plotly_chart(fig_h, use_container_width=True)
+    
+                with st.expander("📋 View Heatmap Data Table"):
+                    st.dataframe(
+                        heat_used.round(2)
+                        .style.format("{:,.0f}" if not normalize_opt else "{:.2f}")
+                        .background_gradient(cmap="viridis"),
+                        use_container_width=True,
+                    )
+            except Exception as e:
+                st.warning(f"⚠️ Heatmap rendering failed: {e}")
+    
+    # -------------------------
+    # 🌈 RADAR — Snapshot per Year (All-Maxed)
+    # -------------------------
+    if show_radar:
+        st.markdown("### 🌈 Radar — Maker Profile Snapshot (All-Maxed)")
+    
+        if pivot_year.empty:
+            st.info("⚠️ Not enough Maker data for radar visualization.")
+        else:
+            try:
+                yrs_for_radar = sorted(pivot_year.index)[-min(4, len(pivot_year.index)):]
+                makers = pivot_year.columns.tolist()
+                radar_df = pivot_year.copy()
+                radar_df_norm = radar_df.div(radar_df.max(axis=0), axis=1).fillna(0)
+                normalize_radar = st.toggle("Normalize radar per Maker (0–1)", value=True)
+                df_radar_used = radar_df_norm if normalize_radar else radar_df
+    
+                fig_r = go.Figure()
+                for y in yrs_for_radar:
+                    vals = df_radar_used.loc[y].values.tolist()
+                    fig_r.add_trace(
+                        go.Scatterpolar(
+                            r=vals,
+                            theta=makers,
+                            fill="toself",
+                            name=str(y),
+                            hovertemplate="<b>%{theta}</b><br>Value: %{r:.2f}<extra></extra>",
+                        )
+                    )
+    
+                fig_r.update_layout(
+                    polar=dict(
+                        radialaxis=dict(
+                            visible=True,
+                            range=[0, 1] if normalize_radar else [0, df_radar_used.values.max()],
+                            showline=True,
+                            linewidth=1,
+                            gridcolor="lightgray",
+                        )
+                    ),
+                    showlegend=True,
+                    title="Maker Distribution Radar (Last Years)",
+                    template="plotly_white",
+                    height=600,
+                )
+                st.plotly_chart(fig_r, use_container_width=True)
+    
+                with st.expander("📋 Radar Data Used"):
+                    st.dataframe(
+                        df_radar_used.round(2)
+                        .style.format("{:,.0f}" if not normalize_radar else "{:.2f}")
+                        .background_gradient(cmap="cool"),
+                        use_container_width=True,
+                    )
+    
+            except Exception as e:
+                st.warning(f"⚠️ Radar chart rendering failed: {e}")
+
+    # -------------------------
+    # 🔮 FORECASTING — All-Maxed (Linear + Prophet + Auto Insights) — Maker
+    # -------------------------
+    if do_forecast:
+        st.markdown("## 🔮 Forecasting — Maker (All-Maxed)")
+    
+        # ---------------------
+        # 1️⃣ Select maker & horizon
+        # ---------------------
+        makers = (
+            pivot_year.columns.tolist()
+            if not pivot_year.empty
+            else df_maker_all["label"].unique().tolist()
+        )
+    
+        if not makers:
+            st.info("⚠️ No makers available for forecasting.")
+        else:
+            maker_to_forecast = st.selectbox("📊 Choose maker to forecast", makers)
+            horizon_years = st.slider("Forecast horizon (years)", 1, 10, 3)
+            st.caption("Select a maker and choose how many future years to forecast.")
+    
+            # ---------------------
+            # 2️⃣ Prepare time series
+            # ---------------------
+            if maker_to_forecast in pivot_year.columns:
+                series = pivot_year[[maker_to_forecast]].reset_index().rename(
+                    columns={maker_to_forecast: "y", "index": "year"}
+                )
+            else:
+                series = pd.DataFrame(columns=["year", "y"])
+    
+            if series.empty or series["y"].isna().all():
+                st.info("⚠️ Insufficient data for forecasting this maker.")
+            else:
+                series["ds"] = pd.to_datetime(series["year"].astype(str) + "-01-01")
+                series = series[["ds", "y"]].dropna()
+    
+                # ---------------------
+                # 3️⃣ Linear Regression Forecast
+                # ---------------------
+                st.markdown("### 📈 Linear Regression Forecast")
+                try:
+                    from sklearn.linear_model import LinearRegression
+                    X = np.arange(len(series)).reshape(-1, 1)
+                    y = series["y"].values
+                    model = LinearRegression().fit(X, y)
+                    fut_idx = np.arange(len(series) + horizon_years).reshape(-1, 1)
+                    preds = model.predict(fut_idx)
+    
+                    fut_dates = pd.date_range(
+                        start=series["ds"].iloc[0],
+                        periods=len(series) + horizon_years,
+                        freq="YS",
+                    )
+                    df_fore = pd.DataFrame({"ds": fut_dates, "Linear": preds})
+                    df_fore["Type"] = ["Historical"] * len(series) + ["Forecast"] * horizon_years
+    
+                    fig_l = px.line(df_fore, x="ds", y="Linear", color="Type",
+                                    title=f"Linear Trend Forecast — {maker_to_forecast}")
+                    fig_l.add_scatter(x=series["ds"], y=series["y"], mode="markers+lines",
+                                      name="Observed", line=dict(color="blue"))
+                    fig_l.update_layout(template="plotly_white", height=500)
+                    st.plotly_chart(fig_l, use_container_width=True)
+    
+                    # KPI summary
+                    last_val = series["y"].iloc[-1]
+                    next_val = preds[len(series)]
+                    growth = ((next_val - last_val) / last_val) * 100 if last_val else np.nan
+                    st.metric("Next Year Projection", f"{next_val:,.0f}", f"{growth:+.1f}% vs last year")
+                except Exception as e:
+                    st.warning(f"⚠️ Linear regression forecast failed: {e}")
+    
+                # ---------------------
+                # 4️⃣ Prophet Forecast (if available)
+                # ---------------------
+                st.markdown("### 🧙 Prophet Forecast (Advanced, if available)")
+                try:
+                    from prophet import Prophet
+    
+                    m = Prophet(
+                        yearly_seasonality=True,
+                        seasonality_mode="multiplicative",
+                        changepoint_prior_scale=0.05,
+                    )
+                    m.fit(series)
+                    future = m.make_future_dataframe(periods=horizon_years, freq="Y")
+                    forecast = m.predict(future)
+    
+                    figp = go.Figure()
+                    figp.add_trace(go.Scatter(
+                        x=series["ds"], y=series["y"],
+                        mode="markers+lines", name="Observed", line=dict(color="blue")))
+                    figp.add_trace(go.Scatter(
+                        x=forecast["ds"], y=forecast["yhat"],
+                        mode="lines", name="Forecast (yhat)", line=dict(color="orange", width=3)))
+                    figp.add_trace(go.Scatter(
+                        x=forecast["ds"], y=forecast["yhat_upper"],
+                        mode="lines", name="Upper Bound", line=dict(color="lightgray", dash="dot")))
+                    figp.add_trace(go.Scatter(
+                        x=forecast["ds"], y=forecast["yhat_lower"],
+                        mode="lines", name="Lower Bound", line=dict(color="lightgray", dash="dot")))
+    
+                    figp.update_layout(
+                        title=f"Prophet Forecast — {maker_to_forecast}",
+                        template="plotly_white",
+                        height=550,
+                        legend=dict(orientation="h", y=-0.2),
+                        xaxis_title="Year",
+                        yaxis_title="Registrations",
+                    )
+                    st.plotly_chart(figp, use_container_width=True)
+    
+                    # Optional insight
+                    fut_y = forecast.tail(horizon_years)["yhat"].mean()
+                    st.success(f"📊 Prophet projects an **average of {fut_y:,.0f}** registrations/year for the next {horizon_years} years.")
+                except ImportError:
+                    st.info("🧠 Prophet not installed — only linear forecast shown.")
+                except Exception as e:
+                    st.warning(f"⚠️ Prophet forecast failed: {e}")
+    
+                # ---------------------
+                # 5️⃣ Display Forecast Data
+                # ---------------------
+                with st.expander("📋 View Forecast Data Table"):
+                    try:
+                        comb = df_fore.copy()
+                        if "forecast" in locals():
+                            comb = comb.merge(
+                                forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]],
+                                on="ds", how="outer"
+                            )
+                        st.dataframe(
+                            comb.round(2).style.background_gradient(cmap="PuBuGn"),
+                            use_container_width=True,
+                        )
+                    except Exception:
+                        st.dataframe(df_fore, use_container_width=True)
+
+    # -------------------------
+    # ⚠️ ANOMALY DETECTION — All-Maxed (Maker)
+    # -------------------------
+    if do_anomaly:
+        st.markdown("## ⚠️ Anomaly Detection — Maker (All-Maxed)")
+        st.caption("Detects outliers and abnormal spikes/drops per maker time series using IsolationForest + backup z-score method.")
+    
+        try:
+            from sklearn.ensemble import IsolationForest
+            import numpy as np
+    
+            anomalies = []
+            anomaly_records = []
+    
+            if resampled.empty:
+                st.warning("No resampled maker data available for anomaly detection.")
+            else:
+                makers = sorted(resampled["label"].unique())
+                prog_bar = st.progress(0.0)
+    
+                for i, mk in enumerate(makers):
+                    prog_bar.progress((i + 1) / len(makers))
+                    ser = (
+                        resampled[resampled["label"] == mk]
+                        .set_index("ds")["value"]
+                        .fillna(0)
+                        .sort_index()
+                    )
+    
+                    if len(ser) < 8 or ser.std() == 0:
+                        continue
+    
+                    # --- Adaptive contamination ---
+                    cont_rate = min(0.05, max(0.01, ser.std() / (ser.mean() + 1e-9) * 0.02))
+    
+                    # --- IsolationForest ---
+                    try:
+                        iso = IsolationForest(
+                            contamination=cont_rate,
+                            random_state=42,
+                            n_estimators=200,
+                            bootstrap=True,
+                        )
+                        X = ser.values.reshape(-1, 1)
+                        preds = iso.fit_predict(X)
+                        an_idxs = ser.index[preds == -1]
+                        ser_an = ser.loc[an_idxs]
+                        for dt, val in ser_an.items():
+                            anomaly_records.append(
+                                {"Maker": mk, "Date": dt, "Value": val}
+                            )
+                    except Exception:
+                        # --- Fallback: rolling z-score ---
+                        zscores = (ser - ser.rolling(6, min_periods=2).mean()) / ser.rolling(6, min_periods=2).std()
+                        ser_an = ser[np.abs(zscores) > 2.8]
+                        for dt, val in ser_an.items():
+                            anomaly_records.append(
+                                {"Maker": mk, "Date": dt, "Value": val}
+                            )
+    
+                prog_bar.empty()
+    
+                # -------------------------------
+                # 🧾 Summary + Visualization
+                # -------------------------------
+                if not anomaly_records:
+                    st.success("✅ No significant anomalies detected across makers.")
+                else:
+                    df_an = pd.DataFrame(anomaly_records)
+                    df_an["Date"] = pd.to_datetime(df_an["Date"])
+                    st.markdown("### 📋 Detected Anomalies Summary — Makers")
+                    st.dataframe(
+                        df_an.sort_values("Date", ascending=False).style.format(
+                            {"Value": "{:,.0f}"}
+                        ),
+                        use_container_width=True,
+                        height=300,
+                    )
+    
+                    # --- Maker selector for visualization ---
+                    sel_mk = st.selectbox(
+                        "🔍 View anomalies for a specific maker", sorted(df_an["Maker"].unique())
+                    )
+                    ser = (
+                        resampled[resampled["label"] == sel_mk]
+                        .set_index("ds")["value"]
+                        .fillna(0)
+                        .sort_index()
+                    )
+                    an_dates = df_an[df_an["Maker"] == sel_mk]["Date"]
+    
+                    fig_a = go.Figure()
+                    fig_a.add_trace(
+                        go.Scatter(
+                            x=ser.index,
+                            y=ser.values,
+                            mode="lines+markers",
+                            name="Value",
+                            line=dict(color="steelblue"),
+                        )
+                    )
+                    if not an_dates.empty:
+                        fig_a.add_trace(
+                            go.Scatter(
+                                x=an_dates,
+                                y=ser.loc[an_dates],
+                                mode="markers",
+                                name="Anomaly",
+                                marker=dict(color="red", size=10, symbol="x"),
+                            )
+                        )
+                    fig_a.update_layout(
+                        title=f"Anomalies in {sel_mk} — Time Series Overlay",
+                        template="plotly_white",
+                        xaxis_title="Date",
+                        yaxis_title="Registrations",
+                        height=500,
+                    )
+                    st.plotly_chart(fig_a, use_container_width=True)
+    
+                    # Quick stats
+                    st.info(f"📊 {len(df_an)} total anomalies detected across {len(makers)} makers.")
+        except Exception as e:
+            st.warning(f"⚠️ Anomaly detection failed: {e}")
+
+    # -------------------------
+    # 🔍 CLUSTERING (KMeans) — All-Maxed (Maker)
+    # -------------------------
+    if do_clustering:
+        st.markdown("## 🔍 Clustering (KMeans) — All-Maxed Maker Mode")
+        st.caption("Groups years by their maker registration mix using KMeans with normalization, PCA view & silhouette score.")
+    
+        try:
+            from sklearn.cluster import KMeans
+            from sklearn.preprocessing import StandardScaler
+            from sklearn.decomposition import PCA
+            from sklearn.metrics import silhouette_score
+    
+            if pivot_year.empty:
+                st.warning("No pivot_year data available for clustering.")
+            else:
+                # Normalize the data
+                X = pivot_year.fillna(0).values
+                scaler = StandardScaler()
+                X_scaled = scaler.fit_transform(X)
+    
+                # Choose K range
+                max_k = min(8, max(3, len(pivot_year) - 1))
+                k = st.slider("Number of clusters (K)", 2, max_k, min(4, max_k))
+    
+                # Fit KMeans
+                km = KMeans(n_clusters=k, n_init="auto", random_state=42)
+                labels = km.fit_predict(X_scaled)
+                inertia = km.inertia_
+    
+                # Compute silhouette (safe)
+                sil = silhouette_score(X_scaled, labels) if len(set(labels)) > 1 else np.nan
+    
+                df_cluster = pd.DataFrame({
+                    "Year": pivot_year.index.astype(str),
+                    "Cluster": labels
+                })
+                st.markdown("### 🧾 Cluster Assignment Summary — Makers")
+                st.dataframe(df_cluster, use_container_width=True, height=300)
+    
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Clusters", str(k))
+                c2.metric("Inertia (↓ better)", f"{inertia:.2f}")
+                c3.metric("Silhouette (↑ better)", f"{sil:.3f}" if not np.isnan(sil) else "n/a")
+    
+                # --- Cluster Centers ---
+                centers = pd.DataFrame(scaler.inverse_transform(km.cluster_centers_), columns=pivot_year.columns)
+                st.markdown("### 🧠 Cluster Centers — Approximate Maker Mix")
+                st.dataframe(centers.style.format("{:,.0f}"), use_container_width=True)
+    
+                # --- PCA 2D visualization ---
+                try:
+                    pca = PCA(n_components=2, random_state=42)
+                    X_pca = pca.fit_transform(X_scaled)
+                    df_pca = pd.DataFrame(X_pca, columns=["PC1", "PC2"])
+                    df_pca["Year"] = pivot_year.index.astype(str)
+                    df_pca["Cluster"] = labels.astype(str)
+    
+                    fig_pca = px.scatter(
+                        df_pca,
+                        x="PC1",
+                        y="PC2",
+                        color="Cluster",
+                        symbol="Cluster",
+                        hover_data=["Year"],
+                        title="📊 PCA Projection — Years clustered by Maker Mix",
+                    )
+                    fig_pca.update_traces(marker=dict(size=12, line=dict(width=1, color="black")))
+                    fig_pca.update_layout(template="plotly_white", height=500)
+                    st.plotly_chart(fig_pca, use_container_width=True)
+                except Exception as e:
+                    st.warning(f"PCA visualization failed: {e}")
+    
+                # --- Radar by cluster (avg maker mix) ---
+                st.markdown("### 🌐 Radar — Cluster-wise Average Maker Mix")
+                try:
+                    fig_r = go.Figure()
+                    for c in sorted(df_cluster["Cluster"].unique()):
+                        cluster_mean = pivot_year.iloc[df_cluster["Cluster"] == c].mean()
+                        fig_r.add_trace(go.Scatterpolar(
+                            r=cluster_mean.values.tolist(),
+                            theta=pivot_year.columns.tolist(),
+                            fill="toself",
+                            name=f"Cluster {c}",
+                        ))
+                    fig_r.update_layout(
+                        polar=dict(radialaxis=dict(visible=True)),
+                        title="Cluster-wise Average Maker Mix (Radar View)",
+                        template="plotly_white",
+                    )
+                    st.plotly_chart(fig_r, use_container_width=True)
+                except Exception as e:
+                    st.warning(f"Radar view failed: {e}")
+    
+                st.success(f"✅ Clustering completed — {k} groups formed, silhouette={sil:.3f}.")
+    
+        except Exception as e:
+            st.warning(f"Clustering failed: {e}")
+
+    # =====================================================
+    # 🤖 AI Narrative (All-Maxed, guarded, Maker)
+    # =====================================================
+    if enable_ai and do_forecast:
+        st.markdown("## 🤖 AI Narrative (Summary & Recommendations) — All-Maxed Maker")
+        try:
+            # Basic safety checks
+            if pivot_year is None or pivot_year.empty or df_cat_all is None or df_cat_all.empty:
+                st.warning("⚠️ No valid data available for AI narrative.")
+            else:
+                # --- UI controls for AI block ---
+                st.caption(
+                    "Generate a concise analyst-style summary plus 3 actionable recommendations. "
+                    "AI output requires a configured provider (universal_chat or other)."
+                )
+                allow_send = st.checkbox(
+                    "I consent to sending an anonymized summary of aggregated metrics to an AI provider",
+                    value=False
+                )
+                preview_prompt = st.checkbox("Preview the prompt sent to the AI (truncated)", value=False)
+                show_raw = st.checkbox("Show raw AI output (if available)", value=False)
+    
+                # Prepare compact aggregated payload (limit tokens & remove PII)
+                agg = pivot_year.reset_index().copy()
+                # Ensure years are strings, and values are ints
+                agg["year"] = agg["year"].astype(str)
+                for col in agg.columns:
+                    if col != "year":
+                        agg[col] = agg[col].fillna(0).astype(int)
+    
+                # small as list of dicts but truncated to safe length
+                small_records = agg.to_dict(orient="records")
+                small_preview = json.dumps(small_records)[:3000]  # truncate for preview/prompt
+    
+                # Basic computed metrics for deterministic fallback and for context
+                total_by_year = agg.set_index("year").sum(axis=1)
+                total_first = float(total_by_year.iloc[0]) if len(total_by_year) > 0 else 0.0
+                total_last = float(total_by_year.iloc[-1]) if len(total_by_year) > 0 else 0.0
+                years_count = max(1, len(total_by_year) - 1)
+                cagr_val = (
+                    ((total_last / total_first) ** (1 / years_count) - 1) * 100
+                    if total_first > 0 and len(total_by_year) > 1 else 0.0
+                )
+    
+                # top makers overall + latest year growth per maker
+                top_overall = (
+                    df_cat_all.groupby("label")["value"].sum().sort_values(ascending=False)
+                )
+                top3 = top_overall.head(3)
+                latest_year = pivot_year.index.max() if not pivot_year.empty else None
+                growth_per_maker = {}
+                if latest_year is not None and latest_year - 1 in pivot_year.index:
+                    prev = pivot_year.loc[latest_year - 1] if (latest_year - 1) in pivot_year.index else None
+                    curr = pivot_year.loc[latest_year]
+                    if prev is not None:
+                        for maker in pivot_year.columns:
+                            prev_v = float(prev.get(maker, 0))
+                            curr_v = float(curr.get(maker, 0))
+                            growth_per_maker[maker] = (
+                                ((curr_v - prev_v) / prev_v * 100) if prev_v > 0 else (100.0 if curr_v > 0 else 0.0)
+                            )
+    
+                # Construct system + user prompts with brevity and clear instructions
+                system_prompt = (
+                    "You are a senior transport data analyst. Provide a concise, factual summary (3-6 bullet points) of trends "
+                    "in vehicle maker registrations based on the provided aggregated metrics. Then give 3 short, prioritized, "
+                    "actionable recommendations for policymakers or transport planners. Use percentages where relevant. Do not invent facts."
+                )
+    
+                user_context = (
+                    f"Aggregated yearly totals (truncated): {small_preview}\n\n"
+                    f"Top makers overall: {', '.join(top3.index.tolist())}.\n"
+                )
+    
+                # Preview prompt
+                if preview_prompt:
+                    st.expander("Prompt preview (truncated)", expanded=False).write({
+                        "system": system_prompt,
+                        "user": user_context[:4000]
+                    })
+    
+                ai_text = None
+                ai_raw = None
+    
+                # Only attempt network/LLM call if user consented
+                if allow_send:
+                    try:
+                        # Try universal_chat if available
+                        if "universal_chat" in globals() or "universal_chat" in locals():
+                            ai_resp = universal_chat(system_prompt, user_context, stream=False, temperature=0.0, max_tokens=500, retries=2)
+                            if isinstance(ai_resp, dict):
+                                ai_raw = ai_resp
+                                ai_text = ai_resp.get("text") or ai_resp.get("response") or ai_resp.get("output")
+                            elif isinstance(ai_resp, str):
+                                ai_text = ai_resp
+                                ai_raw = {"text": ai_resp}
+                        else:
+                            st.info("No AI provider (`universal_chat`) found in this environment. Falling back to deterministic summary.")
+                    except Exception as e:
+                        st.warning(f"AI provider error or network issue: {e}")
+                        ai_text = None
+    
+                # If AI didn't produce text, build deterministic humanized fallback summary
+                if not ai_text:
+                    bullets = []
+                    # 1) Top makers
+                    bullets.append(f"Top makers overall: {', '.join(top3.index.tolist())}.")
+                    # 2) Trend direction by total
+                    if not math.isnan(cagr_val) and abs(cagr_val) > 0.01:
+                        dir_word = "increased" if cagr_val > 0 else "declined"
+                        bullets.append(
+                            f"Total registrations {dir_word} at ~{abs(cagr_val):.2f}% CAGR between {years[0]} and {years[-1]}."
+                        )
+                    else:
+                        bullets.append("Total registrations remained roughly flat across the selected years.")
+                    # 3) Notable maker moves (top few)
+                    notable = []
+                    for maker in top3.index:
+                        g = growth_per_maker.get(maker, None)
+                        if g is not None:
+                            notable.append(f"{maker} {('up' if g>0 else 'down')} {abs(g):.1f}% YoY (latest).")
+                    if notable:
+                        bullets.append("Notable recent moves: " + "; ".join(notable))
+                    # 4) Data quality note
+                    bullets.append("Data note: aggregated counts shown; verify monthly cadence for short-term trends.")
+                    # Recommendations (auto-generated)
+                    recs = [
+                        "Monitor and support high-growth makers (e.g., EV, light-commercial) with targeted policy incentives.",
+                        "Improve inspection and road-safety programs focused on top-volume makers to reduce incidents.",
+                        "Increase data cadence (move to monthly ingestion if possible) to enable finer forecasting and earlier anomaly detection."
+                    ]
+    
+                    # Render fallback
+                    st.markdown("### 🧠 Quick Narrative (deterministic fallback)")
+                    for b in bullets:
+                        st.markdown(f"- {b}")
+                    st.markdown("**Recommendations:**")
+                    for i, r in enumerate(recs, 1):
+                        st.markdown(f"{i}. {r}")
+    
+                else:
+                    # Show AI output and optionally raw JSON
+                    st.markdown("### 🧠 AI Summary")
+                    st.markdown(ai_text)
+                    if show_raw and ai_raw is not None:
+                        st.expander("Raw AI response (debug)", expanded=False).write(ai_raw)
+    
+                # Cache last ai_text in the current Streamlit session state for reuse
+                try:
+                    st.session_state["_last_ai_narrative"] = ai_text or "\n".join(bullets)
+                except Exception:
+                    pass
+    
+        except Exception as e:
+            st.error(f"💥 AI Narrative generation failed: {e}")
+
+    # =====================================================
+# 🧩 ALL-MAXED FINAL SUMMARY + DEBUG INSIGHTS (MAKER MODE)
+# =====================================================
+st.markdown("## 🧠 Final Summary & Debug Insights — ALL-MAXED Maker")
+
+try:
+    summary_start = time.time()
+
+    # ----------------------------------------------------
+    # 1️⃣ SAFE INPUT + FALLBACKS
+    # ----------------------------------------------------
+    df_src = df_cat_all.copy() if "df_cat_all" in locals() else pd.DataFrame()
+    freq = freq if "freq" in locals() else "Monthly"
+    years = years if "years" in locals() and years else [2024, 2025]
+    current_year = datetime.now().year
+
+    if df_src.empty:
+        st.warning("⚠️ No valid ALL-MAXED Maker data found to summarize.")
+        st.stop()
+
+    # ----------------------------------------------------
+    # 2️⃣ BASIC CLEANUP + ADD TIME FIELDS
+    # ----------------------------------------------------
+    df_src = df_src.copy()
+    if "ds" not in df_src.columns and "date" in df_src.columns:
+        df_src["ds"] = pd.to_datetime(df_src["date"])
+    elif "ds" not in df_src.columns:
+        df_src["ds"] = pd.to_datetime(df_src["year"].astype(str) + "-01-01")
+
+    df_src["year"] = df_src["ds"].dt.year
+    df_src["month"] = df_src["ds"].dt.month
+    df_src["maker"] = df_src["label"].astype(str)
+
+    # ----------------------------------------------------
+    # 3️⃣ RESAMPLING BASED ON FREQUENCY
+    # ----------------------------------------------------
+    resampled = (
+        df_src.groupby(["maker", "year"])["value"].sum().reset_index()
+        if freq == "Yearly"
+        else df_src.copy()
+    )
+
+    pivot = resampled.pivot_table(
+        index="ds", columns="maker", values="value", aggfunc="sum"
+    ).fillna(0)
+
+    pivot_year = (
+        resampled.pivot_table(
+            index="year", columns="maker", values="value", aggfunc="sum"
+        ).fillna(0)
+        if "year" in resampled.columns
+        else pd.DataFrame()
+    )
+
+    # ----------------------------------------------------
+    # 4️⃣ KPI METRICS (YoY, CAGR, MoM, Maker Shares)
+    # ----------------------------------------------------
+    st.subheader("💎 Key Metrics & Growth (All-Maxed Maker)")
+
+    if pivot_year.empty:
+        st.warning("⚠️ No yearly data found for KPI computation.")
+        st.stop()
+
+    # --- Compute totals and YoY
+    year_totals = pivot_year.sum(axis=1).rename("TotalRegistrations").to_frame()
+    year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
+    year_totals["TotalRegistrations"] = year_totals["TotalRegistrations"].fillna(0).astype(int)
+    year_totals["YoY_%"] = year_totals["YoY_%"].replace([np.inf, -np.inf], np.nan).fillna(0)
+
+    # --- CAGR
+    if len(year_totals) >= 2:
+        first = float(year_totals["TotalRegistrations"].iloc[0])
+        last = float(year_totals["TotalRegistrations"].iloc[-1])
+        years_count = max(1, len(year_totals) - 1)
+        cagr = ((last / first) ** (1 / years_count) - 1) * 100 if first > 0 else 0.0
+    else:
+        cagr = 0.0
+
+    # --- MoM if monthly
+    if freq == "Monthly":
+        resampled["month_period"] = resampled["year"].astype(str) + "-" + resampled["month"].astype(str)
+        month_totals = resampled.groupby("month_period")["value"].sum().reset_index()
+        month_totals["MoM_%"] = month_totals["value"].pct_change() * 100
+        latest_mom = (
+            f"{month_totals['MoM_%'].iloc[-1]:.2f}%"
+            if len(month_totals) > 1 and not np.isnan(month_totals["MoM_%"].iloc[-1])
+            else "n/a"
+        )
+    else:
+        latest_mom = "n/a"
+
+    # --- Maker shares
+    latest_year = int(year_totals.index.max())
+    latest_total = int(year_totals.loc[latest_year, "TotalRegistrations"])
+    maker_share = (
+        (pivot_year.loc[latest_year] / pivot_year.loc[latest_year].sum() * 100)
+        .sort_values(ascending=False)
+        .round(1)
+    )
+
+    # ----------------------------------------------------
+    # 5️⃣ DISPLAY KPIs
+    # ----------------------------------------------------
+    c1, = st.columns(1)
+    c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
+
+    st.markdown("#### 📘 Maker Share (Latest Year)")
+    st.dataframe(
+        pd.DataFrame({
+            "Maker": maker_share.index,
+            "Share_%": maker_share.values,
+            "Volume": pivot_year.loc[latest_year].astype(int).values,
+        }).sort_values("Share_%", ascending=False),
+        use_container_width=True,
+    )
+
+    with st.expander("🔍 Yearly Totals & Growth"):
+        st.dataframe(year_totals.style.format({"TotalRegistrations": "{:,}", "YoY_%": "{:.2f}"}))
+
+    # ----------------------------------------------------
+    # 6️⃣ DEEP INSIGHTS + TRENDS — FIXED
+    # ----------------------------------------------------
+    total_all = df_src["value"].sum()
+    n_makers = df_src["maker"].nunique()
+    n_years = df_src["year"].nunique()
+
+    # --- Top Maker
+    top_maker_row = (
+        df_src.groupby("maker")["value"]
+        .sum()
+        .reset_index()
+        .sort_values("value", ascending=False)
+        .iloc[0]
+    )
+    top_maker = {
+        "maker": str(top_maker_row["maker"]),
+        "value": float(top_maker_row["value"])
+    }
+    top_maker_share = (top_maker["value"] / total_all) * 100 if total_all > 0 else 0
+
+    # --- Top Year
+    top_year_row = (
+        df_src.groupby("year")["value"]
+        .sum()
+        .reset_index()
+        .sort_values("value", ascending=False)
+        .iloc[0]
+    )
+    top_year = {
+        "year": int(top_year_row["year"]),
+        "value": float(top_year_row["value"])
+    }
+
+    # --- Display metrics safely
+    st.metric("🏆 Absolute Top Maker", top_maker["maker"], f"{top_maker_share:.2f}% share")
+    st.metric("📅 Peak Year", f"{top_year['year']}", f"{top_year['value']:,.0f} registrations")
+
+    # --- Plot: Top 10 Makers
+    st.write("### 🧾 Top 10 Makers — Overall")
+    top_debug = (
+        df_src.groupby("maker")["value"]
+        .sum()
+        .reset_index()
+        .sort_values("value", ascending=False)
+    )
+    fig_top10 = px.bar(
+        top_debug.head(10),
+        x="maker",
+        y="value",
+        text_auto=True,
+        color="value",
+        color_continuous_scale="Blues",
+        title="Top 10 Makers (All Years)",
+    )
+    fig_top10.update_layout(template="plotly_white", margin=dict(t=50, b=40))
+    st.plotly_chart(fig_top10, use_container_width=True)
+
+    # ----------------------------------------------------
+    # 7️⃣ ADVANCED DEBUG METRICS
+    # ----------------------------------------------------
+    volatility = (
+        df_src.groupby("year")["value"].sum().pct_change().std() * 100
+        if len(df_src["year"].unique()) > 2
+        else 0
+    )
+    dominance_ratio = (top_maker["value"] / total_all) * n_makers if total_all > 0 else 0
+    direction = "increased" if cagr > 0 else "declined"
+
+    summary_time = time.time() - summary_start
+    st.markdown("### ⚙️ Debug Performance Metrics")
+    st.code(
+        f"""
+Years analyzed: {years}
+Makers: {n_makers}
+Rows processed: {len(df_src):,}
+Total registrations: {total_all:,.0f}
+Top maker: {top_maker['maker']} → {top_maker['value']:,.0f} ({top_maker_share:.2f}%)
+Peak year: {int(top_year['year'])} → {top_year['value']:,.0f}
+Dominance ratio: {dominance_ratio:.2f}
+Runtime: {summary_time:.2f}s
+        """,
+        language="yaml",
+    )
+
+    # ----------------------------------------------------
+    # 8️⃣ SMART SUMMARY
+    # ----------------------------------------------------
+    if top_maker and years and top_year:
+        st.success(
+            f"From **{years[0]}** to **{years[-1]}**, total registrations {direction}. "
+            f"**{top_maker.get('maker', 'N/A')}** leads with **{top_maker_share:.2f}%** share. "
+            f"Peak year: **{top_year['year']}** with **{top_year['value']:,.0f}** registrations."
+        )
+        logger.info(f"✅ ALL-MAXED Maker summary completed in {summary_time:.2f}s")
+    else:
+        st.error("⛔ ALL-MAXED Maker summary failed: Missing or invalid data.")
+        logger.warning("⚠️ ALL-MAXED Maker summary skipped due to incomplete data.")
+
+# ----------------------------------------------------
+# 9️⃣ CATCH GLOBAL ERRORS
+# ----------------------------------------------------
+except Exception as e:
+    logger.exception(f"ALL-MAXED Maker summary failed: {e}")
+    st.error(f"⛔ ALL-MAXED Maker summary failed: {e}")
+
+# -----------------------------------------------------
+# 🧩 Safe Entry Point — Streamlit-only Execution Guard
+# -----------------------------------------------------
+if __name__ == "__main__":
+    import streamlit as st
+
+    st.markdown("# 🚗 ALL-MAXED MAKER ANALYTICS")
+
+    try:
+        all_maxed_maker_block()
+    except Exception as e:
+        import traceback
+        st.error(f"💥 Error while rendering All-Maxed Maker block: {e}")
+        st.code(traceback.format_exc(), language="python")
+
 
 # # ---------- RTO/State detailed breakdown ---------------------------------------
 # st.subheader('RTO / State breakdown')
@@ -4067,262 +5800,6 @@ else:
 # 🌐 ALL-MAXED — State / RTO Analytics (multi-year, multi-frequency)
 # =========================================================
 
-# =========================================================
-# 🚦 ALL-MAXED — RTO / State Analytics (multi-year, multi-frequency)
-# Drop-in Streamlit module. Fully instrumented, mock-safe, debug-friendly.
-# =========================================================
-import time, math, json, random, logging
-from typing import Optional, Dict, Any
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
-
-import numpy as np
-import pandas as pd
-import streamlit as st
-import plotly.express as px
-import plotly.graph_objects as go
-from sklearn.linear_model import LinearRegression
-
-# -------------------------
-# Logging setup
-# -------------------------
-logger = logging.getLogger("all_maxed_rto_state")
-if not logger.handlers:
-    h = logging.StreamHandler()
-    h.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
-    logger.addHandler(h)
-logger.setLevel(logging.DEBUG)
-
-# -------------------------
-# Mock generator
-# -------------------------
-import uuid
-
-def fetch_rto_state(year: int, params: dict, show_debug: bool = True) -> pd.DataFrame:
-    """Fetch RTO/State revenue per year — maxed, crash-proof, with synthetic monthly trends.
-
-    ✅ Always returns non-empty DataFrame with ['label','value','year']
-    ✅ Ensures non-zero revenue values
-    ✅ Generates unique keys to avoid Streamlit duplicate element errors
-    """
-    p = params.copy() if params else {}
-    p["year"] = int(year)
-    st.markdown(f"## 🏛️ RTO / State Revenue — {year}")
-
-    # --- Fetch safely ---
-    try:
-        rto_json, rto_url = get_json("vahandashboard/top5chartRevenueFee", p)
-    except Exception as e:
-        logger.warning(f"get_json failed for year {year}: {e}")
-        rto_json, rto_url = deterministic_mock_rto_state(year), f"mock://top5chartRevenueFee/{year}"
-
-    # --- Debug ---
-    if show_debug:
-        with st.expander(f"🧩 Debug JSON — RTO/State {year}", expanded=False):
-            st.write("**URL:**", rto_url)
-            st.json(rto_json if isinstance(rto_json, (dict, list)) else str(rto_json))
-
-    # --- Normalize & fallback to deterministic mock ---
-    data_list = rto_json.get("data") or deterministic_mock_rto_state(year)["data"]
-    df = pd.DataFrame(data_list)
-    if "label" not in df.columns or "value" not in df.columns or df.empty:
-        df = pd.DataFrame([{"label": s, "value": 1000} for s in [
-            "Maharashtra","Uttar Pradesh","Tamil Nadu","Gujarat","Karnataka",
-            "Rajasthan","Bihar","Haryana","Madhya Pradesh","Telangana",
-            "West Bengal","Delhi","Punjab","Kerala","Odisha"
-        ]])
-
-    # --- Clean & prepare ---
-    df = df.copy()
-    df["year"] = int(year)
-    df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(1000)  # ensure non-zero
-    df = df.sort_values("value", ascending=False)
-    total_reg = int(df["value"].sum())
-
-    st.caption(f"🔗 **Source:** {rto_url}")
-    st.markdown(f"**Total Revenue / Fees ({year}):** {total_reg:,}")
-
-    # --- Unique keys to avoid Streamlit duplicate key errors ---
-    uid = uuid.uuid4().hex[:6]
-
-    # --- Charts layout ---
-    c1, c2 = st.columns([1.8, 1.2])
-    with c1:
-        try:
-            fig_bar = px.bar(
-                df,
-                x="label",
-                y="value",
-                color="label",
-                text_auto=".2s",
-                title=f"🏛️ Revenue Distribution — {year}",
-                color_discrete_sequence=px.colors.qualitative.Safe,
-            )
-            fig_bar.update_layout(template="plotly_white", showlegend=False, height=450)
-            st.plotly_chart(fig_bar, use_container_width=True, key=f"bar_{year}_{uid}")
-        except Exception as e:
-            st.warning(f"⚠️ Bar chart failed: {e}")
-            st.dataframe(df)
-
-    with c2:
-        try:
-            fig_pie = px.pie(
-                df,
-                names="label",
-                values="value",
-                hole=0.45,
-                color_discrete_sequence=px.colors.qualitative.Vivid,
-                title=f"Revenue Share — {year}",
-            )
-            fig_pie.update_traces(textinfo="percent+label",
-                                   hovertemplate="<b>%{label}</b><br>%{value:,}<br>%{percent}")
-            fig_pie.update_layout(template="plotly_white", height=400, showlegend=False)
-            st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_{year}_{uid}")
-        except Exception as e:
-            st.warning(f"⚠️ Pie chart failed: {e}")
-            st.dataframe(df)
-
-    # --- Top state insight ---
-    top = df.iloc[0]
-    pct = (top["value"] / total_reg) * 100 if total_reg else 0
-    st.success(f"🏆 **Top State:** {top['label']} — {int(top['value']):,} ({pct:.1f}%)")
-
-    # --- Advanced table ---
-    df["share_%"] = (df["value"] / total_reg * 100).round(2)
-    st.dataframe(df.style.format({"value": "{:,.0f}", "share_%": "{:.2f}%"}).bar(subset=["share_%"], color="#4CAF50"), height=300)
-
-    # --- Trend simulation (synthetic) ---
-    with st.expander("📈 Synthetic Monthly Trend", expanded=False):
-        df_ts = expand_to_timeseries(df, year, freq="Monthly")
-        fig_line = px.line(
-            df_ts,
-            x="ds",
-            y="value",
-            color="label",
-            line_group="label",
-            title=f"Synthetic Monthly Revenue Trend — {year}",
-            markers=True,
-            color_discrete_sequence=px.colors.qualitative.Set2,
-        )
-        fig_line.update_layout(template="plotly_white", legend=dict(orientation="h", y=-0.3))
-        st.plotly_chart(fig_line, use_container_width=True, key=f"trend_{year}_{uid}")
-
-    return df
-# -------------------------
-# Main dashboard block
-# -------------------------
-def all_maxed_rto_state_block(params: Optional[dict] = None, section_id: str = "rto_state"):
-    start_time = time.time()
-    params = params or {}
-    st.markdown("## 🏛️ ALL-MAXED — RTO / State Revenue & Fee Analytics")
-
-    # Inputs
-    freq = st.radio("Aggregation Frequency", ["Monthly", "Yearly"], index=0, horizontal=True, key=f"freq_{section_id}")
-    current_year = datetime.now().year
-    start_year = st.number_input("From Year", 2010, current_year, current_year - 1, key=f"start_year_{section_id}")
-    end_year = st.number_input("To Year", start_year, current_year, current_year, key=f"end_year_{section_id}")
-    years = list(range(int(start_year), int(end_year) + 1))
-    st.info(f"Debug ON — years: {years}, freq: {freq}")
-
-    # Fetch data
-    all_years = []
-    for y in years:
-        df = fetch_rto_state(y, params, show_debug=False)
-        if not df.empty:
-            all_years.append(df)
-
-    if not all_years:
-        st.error("No data available for selected years.")
-        return
-
-    df_state_all = pd.concat(all_years, ignore_index=True)
-    if df_state_all.empty or "value" not in df_state_all.columns:
-        st.error("No valid data found after aggregation.")
-        return
-
-    ts_list = [expand_to_timeseries(df_state_all[df_state_all["year"]==y], y, freq) for y in years]
-    ts = pd.concat(ts_list, ignore_index=True)
-    ts["ds"] = pd.to_datetime(ts["ds"])
-    ts["year"] = ts["ds"].dt.year
-
-    # Pivot
-    pivot_year = ts.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
-    pivot = ts.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
-
-    # KPI Metrics
-    st.subheader("💎 Key Metrics")
-    total = pivot_year.sum(axis=1)
-    yoy = total.pct_change()*100
-    cagr = ((total.iloc[-1]/total.iloc[0])**(1/(len(total)-1))-1)*100 if len(total) > 1 else 0
-    st.metric("Years", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
-    st.metric("CAGR", f"{cagr:.2f}%")
-
-    # Visualizations
-    st.subheader("📊 Revenue Charts")
-    st.plotly_chart(px.area(pivot.reset_index(), x="ds", y=pivot.columns, title="RTO/State Revenue Over Time"), use_container_width=True)
-    st.markdown("### 🔥 Heatmap — Year × State")
-    fig_h = go.Figure(data=go.Heatmap(z=pivot_year.values, x=pivot_year.columns, y=pivot_year.index, colorscale="Viridis"))
-    st.plotly_chart(fig_h, use_container_width=True)
-
-    st.markdown("### 🌈 Radar — Last 3 Years")
-    fig_r = go.Figure()
-    for y in pivot_year.index[-3:]:
-        fig_r.add_trace(go.Scatterpolar(r=pivot_year.loc[y].values, theta=pivot_year.columns, fill="toself", name=str(y)))
-    fig_r.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True)
-    st.plotly_chart(fig_r, use_container_width=True)
-
-    # Forecast
-    st.subheader("🔮 Forecast (Linear Regression)")
-    state_sel = st.selectbox("Select State to Forecast", pivot_year.columns)
-    X = np.arange(len(pivot_year)).reshape(-1,1)
-    y_vals = pivot_year[state_sel].values
-    lr = LinearRegression().fit(X, y_vals)
-    fut = np.arange(len(pivot_year)+3).reshape(-1,1)
-    preds = lr.predict(fut)
-    fut_years = list(range(pivot_year.index[0], pivot_year.index[0]+len(fut)))
-    figf = px.line(x=fut_years, y=preds, title=f"Forecast for {state_sel}")
-    figf.add_scatter(x=pivot_year.index, y=y_vals, mode="markers+lines", name="Historical")
-    st.plotly_chart(figf, use_container_width=True)
-
-    # Top States
-    total_all = df_state_all["value"].sum()
-    n_states = df_state_all["label"].nunique()
-    top_state_row = df_state_all.groupby("label")["value"].sum().sort_values(ascending=False).reset_index().iloc[0]
-    top_state = {"label": top_state_row["label"], "value": float(top_state_row["value"])}
-    top_state_share = (top_state["value"]/total_all)*100 if total_all>0 else 0
-    st.metric("🏆 Absolute Top State", top_state["label"], f"{top_state_share:.2f}% share")
-
-    top_10 = df_state_all.groupby("label")["value"].sum().sort_values(ascending=False).reset_index().head(10)
-    st.markdown("### 🔝 Top 10 States (All Years)")
-    st.dataframe(top_10)
-
-    # Advanced Metrics
-    volatility = df_state_all.groupby("year")["value"].sum().pct_change().std()*100 if len(df_state_all["year"].unique())>2 else 0
-    dominance_ratio = (top_state["value"]/total_all)*n_states if total_all>0 else 0
-    runtime = time.time()-start_time
-    st.markdown("### ⚙️ Advanced Metrics")
-    st.code(f"""
-Years analyzed: {years}
-States: {n_states}
-Rows processed: {len(df_state_all):,}
-Total registrations: {total_all:,.0f}
-Top state: {top_state['label']} → {top_state['value']:,.0f} ({top_state_share:.2f}%)
-Dominance ratio: {dominance_ratio:.2f}
-Volatility: {volatility:.2f}%
-Runtime: {runtime:.2f}s
-""", language="yaml")
-
-    # Smart summary
-    st.success(
-        f"From **{years[0]}** → **{years[-1]}**, total registrations {'increased' if cagr>0 else 'declined'}. "
-        f"Top state: **{top_state['label']}** with **{top_state_share:.2f}%** share."
-    )
-
-# -------------------------
-# Standalone run
-# -------------------------
-if __name__ == "__main__":
-    all_maxed_rto_state_block()
 
 # # ---------- Trend series + resampling & multi-year comparisons ------------------
 # with st.spinner('Fetching trend series...'):
