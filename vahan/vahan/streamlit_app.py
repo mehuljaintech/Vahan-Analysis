@@ -4766,6 +4766,34 @@ except Exception as e:
 
 
 # ---------- Forecasting & Anomalies -------------------------------------------
+# --- Ensure required variables exist ---
+if "enable_ml" not in locals():
+    enable_ml = True  # default toggle if missing
+
+if "df_tr" not in locals() or df_tr is None:
+    df_tr = pd.DataFrame(columns=["date", "value"])
+
+if "freq_map" not in locals():
+    freq_map = {"M": "MS", "Y": "YS"}
+
+if "frequency" not in locals():
+    frequency = "M"
+
+if "lazy" not in locals():
+    def lazy(pkg):
+        try:
+            __import__(pkg)
+            return True
+        except ImportError:
+            return None
+
+if "prophet_mod" not in locals():
+    try:
+        from prophet import Prophet
+        prophet_mod = Prophet
+    except Exception:
+        prophet_mod = None
+
 if enable_ml and not df_tr.empty:
     st.subheader('Forecasting & Anomaly Detection')
     fc_col1, fc_col2 = st.columns([2,3])
