@@ -4081,6 +4081,7 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
+from sklearn.linear_model import LinearRegression
 
 # -------------------------
 # Logging setup
@@ -4092,12 +4093,10 @@ if not logger.handlers:
     logger.addHandler(h)
 logger.setLevel(logging.DEBUG)
 
-
 # -------------------------
 # Mock generator
 # -------------------------
 def deterministic_mock_rto_state(year: int, seed_base="rto_state") -> Dict[str, Any]:
-    """Generate deterministic mock for RTO/State analytics."""
     rnd = random.Random(hash((year, seed_base)) & 0xFFFFFFFF)
     states = [
         "Maharashtra","Uttar Pradesh","Tamil Nadu","Gujarat","Karnataka",
@@ -4107,334 +4106,183 @@ def deterministic_mock_rto_state(year: int, seed_base="rto_state") -> Dict[str, 
     data = [{"label": s, "value": rnd.randint(50000, 1200000)} for s in states]
     return {"data": data, "generatedAt": datetime.utcnow().isoformat()}
 
-
 # -------------------------
-# Visualization helpers (safe)
+# Chart helpers
 # -------------------------
 def bar_chart(df, title):
-    if df.empty:
-        st.warning("bar_chart skipped: DataFrame is empty")
-        return
-    
-    # Ensure 'label' and 'value' exist
-    if "label" not in df.columns or "value" not in df.columns:
-        # Try to melt pivoted DataFrame
-        if df.index.name is None or df.index.name == "year":
-            df = df.reset_index().melt(id_vars="year", var_name="label", value_name="value")
-        else:
-            df["label"] = df.columns[0]
-            df["value"] = df.iloc[:, 0]
-    
     if df.empty or "label" not in df.columns or "value" not in df.columns:
-        st.warning("bar_chart skipped: no suitable columns found")
-        st.write(df)
+        st.warning("bar_chart skipped: no suitable data")
         return
-    
-    try:
-        fig = px.bar(df, x="label", y="value", text_auto=True, title=title)
-        fig.update_layout(template="plotly_white", xaxis_title="State / RTO", yaxis_title="Revenue / Fees")
-        st.plotly_chart(fig, use_container_width=True)
-    except Exception as e:
-        st.warning(f"bar_chart failed: {e}")
-        st.write(df)
-
+    fig = px.bar(df, x="label", y="value", text_auto=True, title=title)
+    fig.update_layout(template="plotly_white", xaxis_title="State / RTO", yaxis_title="Revenue / Fees")
+    st.plotly_chart(fig, use_container_width=True)
 
 def pie_chart(df, title):
-    if df.empty:
-        st.warning("pie_chart skipped: DataFrame is empty")
-        return
-    
-    # Ensure 'label' and 'value' exist
-    if "label" not in df.columns or "value" not in df.columns:
-        if df.index.name is None or df.index.name == "year":
-            df = df.reset_index().melt(id_vars="year", var_name="label", value_name="value")
-        else:
-            df["label"] = df.columns[0]
-            df["value"] = df.iloc[:, 0]
-    
     if df.empty or "label" not in df.columns or "value" not in df.columns:
-        st.warning("pie_chart skipped: no suitable columns found")
-        st.write(df)
+        st.warning("pie_chart skipped: no suitable data")
         return
-    
-    try:
-        fig = px.pie(df, names="label", values="value", hole=0.55, title=title)
-        st.plotly_chart(fig, use_container_width=True)
-    except Exception as e:
-        st.warning(f"pie_chart failed: {e}")
-        st.write(df)
-
+    fig = px.pie(df, names="label", values="value", hole=0.55, title=title)
+    st.plotly_chart(fig, use_container_width=True)
 
 # -------------------------
-# Data fetch with fallback + live debug
+# Fetch per-year data
 # -------------------------
 def fetch_rto_state_year(year: int, params: dict, show_debug=True) -> pd.DataFrame:
-    """Fetch RTO/state revenue/fee breakdown for a specific year."""
     try:
         j, url = get_json("vahandashboard/top5chartRevenueFee", {**params, "year": year})
     except Exception as e:
         logger.warning(f"Fetch exception {year}: {e}")
         j, url = deterministic_mock_rto_state(year), f"mock://rto_state/{year}"
 
+    # Normalize columns
+    data_list = j.get("data") or deterministic_mock_rto_state(year)["data"]
+    df = pd.DataFrame(data_list)
+    if "label" not in df.columns or "value" not in df.columns:
+        df = pd.DataFrame([{"label": s, "value": 0} for s in [
+            "Maharashtra","Uttar Pradesh","Tamil Nadu","Gujarat","Karnataka",
+            "Rajasthan","Bihar","Haryana","Madhya Pradesh","Telangana",
+            "West Bengal","Delhi","Punjab","Kerala","Odisha"
+        ]])
+
+    df["year"] = int(year)
+
     if show_debug:
         with st.expander(f"🧩 Debug JSON — RTO/State {year}"):
             st.write("**URL:**", url)
             st.json(j)
+            st.write("**DataFrame:**", df.head())
 
-    # Normalize
-    if j and "data" in j:
-        df = pd.DataFrame(j["data"])
-    else:
-        df = pd.DataFrame(deterministic_mock_rto_state(year)["data"])
-    df["year"] = int(year)
-
-    # Render preview charts
-    st.markdown(f"### 🗺️ RTO / State — {year}")
     bar_chart(df, f"RTO / State Revenue — {year}")
     pie_chart(df, f"Revenue Distribution — {year}")
-
     return df
 
-
+# -------------------------
+# Expand yearly to timeseries
+# -------------------------
 def expand_to_timeseries(df_year, year, freq="Monthly"):
-    # Return empty DataFrame if input is empty
     if df_year.empty:
         return pd.DataFrame(columns=["ds", "label", "value", "year"])
-    
-    # Ensure 'value' column exists
-    if "value" not in df_year.columns:
-        df_year["value"] = 0
-    
     start = pd.Timestamp(f"{year}-01-01")
     end = pd.Timestamp(f"{year}-12-31")
     idx = pd.date_range(start=start, end=end, freq="M" if freq=="Monthly" else "Y")
-    
     rows = []
     for _, r in df_year.iterrows():
-        val = r.get("value", 0)  # safe fallback
+        val = r.get("value", 0)
         label = r.get("label", "N/A")
         per = val / len(idx) if len(idx) > 0 else 0
         for ts in idx:
             rows.append({"ds": ts, "label": label, "value": per, "year": year})
-    
     return pd.DataFrame(rows)
 
-
-# =========================================================
-# MAIN STREAMLIT UI BLOCK
-# =========================================================
-# =========================================================
-# MAIN STREAMLIT UI BLOCK (Fixed Unique Keys)
-# =========================================================
+# -------------------------
+# Main dashboard block
+# -------------------------
 def all_maxed_rto_state_block(params: Optional[dict] = None, section_id: str = "rto_state"):
-    import pandas as pd, numpy as np, plotly.express as px, plotly.graph_objects as go, math, time
-    from datetime import datetime
-    from sklearn.linear_model import LinearRegression
-    import logging
-
-    # -------------------------
-    # Logger & Timing
-    # -------------------------
-    logger = logging.getLogger(__name__)
-    logging.basicConfig(level=logging.INFO)
-    summary_start = time.time()
-
+    start_time = time.time()
     params = params or {}
     st.markdown("## 🏛️ ALL-MAXED — RTO / State Revenue & Fee Analytics")
 
-    # -------------------------
-    # User inputs
-    # -------------------------
-    freq = st.radio(
-        "Aggregation Frequency",
-        ["Monthly", "Yearly"],
-        index=0,
-        horizontal=True,
-        key=f"freq_{section_id}"
-    )
-
+    # Inputs
+    freq = st.radio("Aggregation Frequency", ["Monthly", "Yearly"], index=0, horizontal=True, key=f"freq_{section_id}")
     current_year = datetime.now().year
-
     start_year = st.number_input("From Year", 2010, current_year, current_year - 1, key=f"start_year_{section_id}")
     end_year = st.number_input("To Year", start_year, current_year, current_year, key=f"end_year_{section_id}")
     years = list(range(int(start_year), int(end_year) + 1))
     st.info(f"Debug ON — years: {years}, freq: {freq}")
 
-    # -------------------------
-    # Fetch Data
-    # -------------------------
+    # Fetch data
     all_years = []
-    with st.spinner("Fetching RTO/State data..."):
-        for y in years:
-            df = fetch_rto_state_year(y, params, show_debug=False)
-            if not df.empty:
-                all_years.append(df)
-            else:
-                st.warning(f"No data for year {y}, skipping...")
+    for y in years:
+        df = fetch_rto_state_year(y, params, show_debug=False)
+        if not df.empty:
+            all_years.append(df)
 
     if not all_years:
-        st.error("No data available for the selected years.")
+        st.error("No data available for selected years.")
         return
 
-    # -------------------------
-    # Consolidate Data
-    # -------------------------
-    df_state_all = pd.concat(all_years, ignore_index=True)  # This fixes NameError
-    df_all = df_state_all.copy()
-
-    # -------------------------
-    # Time-series expansion
-    # -------------------------
-    ts_list = []
-    for y in years:
-        df_y = df_all[df_all["year"] == y]
-        if not df_y.empty:
-            ts_list.append(expand_to_timeseries(df_y, y, freq))
-    if ts_list:
-        ts = pd.concat(ts_list, ignore_index=True)
-        ts["ds"] = pd.to_datetime(ts["ds"])
-        ts["year"] = ts["ds"].dt.year
-    else:
-        st.error("Time-series expansion failed: no valid data.")
+    df_state_all = pd.concat(all_years, ignore_index=True)
+    if df_state_all.empty or "value" not in df_state_all.columns:
+        st.error("No valid data found after aggregation.")
         return
 
-    # Pivot tables
+    ts_list = [expand_to_timeseries(df_state_all[df_state_all["year"]==y], y, freq) for y in years]
+    ts = pd.concat(ts_list, ignore_index=True)
+    ts["ds"] = pd.to_datetime(ts["ds"])
+    ts["year"] = ts["ds"].dt.year
+
+    # Pivot
     pivot_year = ts.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
     pivot = ts.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
 
-    # -------------------------
     # KPI Metrics
-    # -------------------------
     st.subheader("💎 Key Metrics")
-    if not pivot_year.empty:
-        total = pivot_year.sum(axis=1)
-        yoy = total.pct_change() * 100
-        cagr = ((total.iloc[-1]/total.iloc[0])**(1/(len(total)-1))-1)*100 if len(total) > 1 else np.nan
-        c1, = st.columns(1)
-        c1.metric("Years", f"{years[0]} → {years[-1]}")
+    total = pivot_year.sum(axis=1)
+    yoy = total.pct_change()*100
+    cagr = ((total.iloc[-1]/total.iloc[0])**(1/(len(total)-1))-1)*100 if len(total) > 1 else 0
+    st.metric("Years", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
+    st.metric("CAGR", f"{cagr:.2f}%")
 
-    # -------------------------
     # Visualizations
-    # -------------------------
-    st.subheader("📊 Visualizations")
-    if not pivot.empty:
-        fig_area = px.area(pivot.reset_index(), x="ds", y=pivot.columns, title="Combined — RTO/State Revenue Over Time")
-        st.plotly_chart(fig_area, use_container_width=True)
-
+    st.subheader("📊 Revenue Charts")
+    st.plotly_chart(px.area(pivot.reset_index(), x="ds", y=pivot.columns, title="RTO/State Revenue Over Time"), use_container_width=True)
     st.markdown("### 🔥 Heatmap — Year × State")
-    if not pivot_year.empty:
-        fig_h = go.Figure(data=go.Heatmap(
-            z=pivot_year.values, x=pivot_year.columns.astype(str), y=pivot_year.index.astype(str),
-            colorscale="Viridis"
-        ))
-        fig_h.update_layout(title="Revenue heatmap (year × state)")
-        st.plotly_chart(fig_h, use_container_width=True)
+    fig_h = go.Figure(data=go.Heatmap(z=pivot_year.values, x=pivot_year.columns, y=pivot_year.index, colorscale="Viridis"))
+    st.plotly_chart(fig_h, use_container_width=True)
 
-    st.markdown("### 🌈 Radar — Snapshot (last 3 years)")
-    if not pivot_year.empty:
-        try:
-            fig_r = go.Figure()
-            for y in pivot_year.index[-3:]:
-                fig_r.add_trace(go.Scatterpolar(
-                    r=pivot_year.loc[y].values, theta=pivot_year.columns, fill="toself", name=str(y)
-                ))
-            fig_r.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True)
-            st.plotly_chart(fig_r, use_container_width=True)
-        except Exception as e:
-            st.warning(f"Radar failed: {e}")
+    st.markdown("### 🌈 Radar — Last 3 Years")
+    fig_r = go.Figure()
+    for y in pivot_year.index[-3:]:
+        fig_r.add_trace(go.Scatterpolar(r=pivot_year.loc[y].values, theta=pivot_year.columns, fill="toself", name=str(y)))
+    fig_r.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True)
+    st.plotly_chart(fig_r, use_container_width=True)
 
-    st.subheader("🔮 Forecast (Linear)")
-    if not pivot_year.empty:
-        state_sel = st.selectbox("Select state to forecast", pivot_year.columns)
-        X = np.arange(len(pivot_year)).reshape(-1,1)
-        y_vals = pivot_year[state_sel].values
-        lr = LinearRegression().fit(X, y_vals)
-        fut = np.arange(len(pivot_year)+3).reshape(-1,1)
-        preds = lr.predict(fut)
-        fut_years = list(range(pivot_year.index[0], pivot_year.index[0]+len(fut)))
-        figf = px.line(x=fut_years, y=preds, title=f"Forecast for {state_sel}")
-        figf.add_scatter(x=pivot_year.index, y=y_vals, mode="markers+lines", name="Historical")
-        st.plotly_chart(figf, use_container_width=True)
+    # Forecast
+    st.subheader("🔮 Forecast (Linear Regression)")
+    state_sel = st.selectbox("Select State to Forecast", pivot_year.columns)
+    X = np.arange(len(pivot_year)).reshape(-1,1)
+    y_vals = pivot_year[state_sel].values
+    lr = LinearRegression().fit(X, y_vals)
+    fut = np.arange(len(pivot_year)+3).reshape(-1,1)
+    preds = lr.predict(fut)
+    fut_years = list(range(pivot_year.index[0], pivot_year.index[0]+len(fut)))
+    figf = px.line(x=fut_years, y=preds, title=f"Forecast for {state_sel}")
+    figf.add_scatter(x=pivot_year.index, y=y_vals, mode="markers+lines", name="Historical")
+    st.plotly_chart(figf, use_container_width=True)
 
-    # -------------------------
-    # KPI Metrics — States
-    # -------------------------
-    st.subheader("💎 Key Metrics & Growth (States)")
-    year_totals = pivot_year.sum(axis=1).rename("TotalRegistrations").to_frame()
-    year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
-    year_totals["TotalRegistrations"] = year_totals["TotalRegistrations"].fillna(0).astype(int)
-    year_totals["YoY_%"] = year_totals["YoY_%"].replace([np.inf,-np.inf], np.nan).fillna(0)
-    first = year_totals["TotalRegistrations"].iloc[0]
-    last = year_totals["TotalRegistrations"].iloc[-1]
-    cagr = ((last/first)**(1/(len(year_totals)-1))-1)*100 if len(year_totals)>1 else np.nan
-
-    latest_year = int(year_totals.index.max())
-    latest_total = int(year_totals.loc[latest_year, "TotalRegistrations"])
-    state_share = (pivot_year.loc[latest_year]/pivot_year.loc[latest_year].sum()*100).sort_values(ascending=False).round(1)
-
-    st.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
-    st.markdown("#### 📘 State Share (Latest Year)")
-    st.dataframe(pd.DataFrame({
-        "State": state_share.index,
-        "Share_%": state_share.values,
-        "Volume": pivot_year.loc[latest_year].astype(int).values
-    }).sort_values("Share_%", ascending=False), use_container_width=True)
-
-    with st.expander("🔍 Yearly Totals & Growth"):
-        st.dataframe(year_totals.style.format({"TotalRegistrations":"{:,}", "YoY_%":"{:.2f}"}))
-
-    # -------------------------
-    # Top State insights
-    # -------------------------
+    # Top States
     total_all = df_state_all["value"].sum()
     n_states = df_state_all["label"].nunique()
-    top_state_row = df_state_all.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
+    top_state_row = df_state_all.groupby("label")["value"].sum().sort_values(ascending=False).reset_index().iloc[0]
     top_state = {"label": top_state_row["label"], "value": float(top_state_row["value"])}
     top_state_share = (top_state["value"]/total_all)*100 if total_all>0 else 0
-
-    top_year_row = df_state_all.groupby("year")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
-    top_year = {"year": int(top_year_row["year"]), "value": float(top_year_row["value"])}
-
     st.metric("🏆 Absolute Top State", top_state["label"], f"{top_state_share:.2f}% share")
-    st.metric("📅 Peak Year", f"{top_year['year']}", f"{top_year['value']:,.0f} registrations")
 
-    top_debug = df_state_all.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False)
-    fig_top10 = px.bar(top_debug.head(10), x="label", y="value", text_auto=True,
-                       color="value", color_continuous_scale="Blues", title="Top 10 States (All Years)")
-    fig_top10.update_layout(template="plotly_white", margin=dict(t=50,b=40))
-    st.plotly_chart(fig_top10, use_container_width=True)
+    top_10 = df_state_all.groupby("label")["value"].sum().sort_values(ascending=False).reset_index().head(10)
+    st.markdown("### 🔝 Top 10 States (All Years)")
+    st.dataframe(top_10)
 
-    # -------------------------
-    # Advanced debug metrics
-    # -------------------------
+    # Advanced Metrics
     volatility = df_state_all.groupby("year")["value"].sum().pct_change().std()*100 if len(df_state_all["year"].unique())>2 else 0
     dominance_ratio = (top_state["value"]/total_all)*n_states if total_all>0 else 0
-    direction = "increased" if cagr>0 else "declined"
-
-    summary_time = time.time() - summary_start
-    st.markdown("### ⚙️ Debug Performance Metrics")
+    runtime = time.time()-start_time
+    st.markdown("### ⚙️ Advanced Metrics")
     st.code(f"""
 Years analyzed: {years}
 States: {n_states}
 Rows processed: {len(df_state_all):,}
 Total registrations: {total_all:,.0f}
 Top state: {top_state['label']} → {top_state['value']:,.0f} ({top_state_share:.2f}%)
-Peak year: {top_year['year']} → {top_year['value']:,.0f}
 Dominance ratio: {dominance_ratio:.2f}
-Runtime: {summary_time:.2f}s
+Volatility: {volatility:.2f}%
+Runtime: {runtime:.2f}s
 """, language="yaml")
 
-    # -------------------------
-    # SMART SUMMARY — States
-    # -------------------------
-    if top_state and years and top_year:
-        st.success(
-            f"From **{years[0]}** to **{years[-1]}**, total registrations {direction}. "
-            f"**{top_state['label']}** leads with **{top_state_share:.2f}%** share. "
-            f"Peak year: **{top_year['year']}** with **{top_year['value']:,.0f}** registrations."
-        )
-        logger.info(f"✅ State summary completed in {summary_time:.2f}s")
-
+    # Smart summary
+    st.success(
+        f"From **{years[0]}** → **{years[-1]}**, total registrations {'increased' if cagr>0 else 'declined'}. "
+        f"Top state: **{top_state['label']}** with **{top_state_share:.2f}%** share."
+    )
 
 # -------------------------
 # Standalone run
