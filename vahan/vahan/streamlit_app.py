@@ -3904,7 +3904,7 @@ if len(year_totals) >= 2:
 else:
     cagr = np.nan
 
-c1= st.columns(1)
+c1, = st.columns(1)
 c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} years")
 # ===============================================================
 # 📊 VISUALS (ALL MODES)
