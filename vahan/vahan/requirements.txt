@@ -177,5 +177,7 @@ starlette
 # ------------------------------
 # Optional / NLP / AI Preload
 # ------------------------------
-python -m spacy download en_core_web_sm
-python -m nltk.downloader punkt averaged_perceptron_tagger vader_lexicon
+en_core_web_sm
+punkt 
+averaged_perceptron_tagger 
+vader_lexicon
