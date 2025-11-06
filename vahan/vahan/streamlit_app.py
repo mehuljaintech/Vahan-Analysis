@@ -4142,15 +4142,20 @@ if not logger.handlers:
     logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
-# -------------------------
-# Controls
-# -------------------------
+## st.markdown("## 🏭 ALL-MAXED — Makers Analytics (multi-frequency, multi-year)")
+
+# =====================================================
+# CONTROLS — ALL ON MAIN PAGE (no sidebar)
+# =====================================================
+section_id = rto_opt.lower() if "rto_opt" in locals() else "main"
+
+# Frequency & Mode
 freq = st.radio(
     "Aggregation Frequency",
     ["Daily", "Monthly", "Quarterly", "Yearly"],
-    index=1,
+    index=3,
     horizontal=True,
-    key="freq_radio",
+    key=f"freq_{section_id}"
 )
 
 mode = st.radio(
@@ -4158,25 +4163,87 @@ mode = st.radio(
     ["Separate (Small Multiples)", "Combined (Overlay / Stacked)"],
     index=1,
     horizontal=True,
-    key="mode_radio",
+    key=f"mode_{section_id}"
 )
 
-current_year = datetime.now().year
-start_year = st.number_input(
-    "From Year", 2010, current_year, current_year-1, key="start_year"
-)
-end_year = st.number_input(
-    "To Year", start_year, current_year, current_year, key="end_year"
+# Year range
+today = datetime.now()
+current_year = today.year
+default_from_year = current_year - 1
+
+
+from_year = st.sidebar.number_input(
+    "From Year",
+    min_value=2012,
+    max_value=today.year,
+    value=default_from_year,
+    key=f"from_year_{section_id}"
 )
 
-years = list(range(int(start_year), int(end_year)+1))
+to_year = st.sidebar.number_input(
+    "To Year",
+    min_value=from_year,
+    max_value=today.year,
+    value=today.year,
+    key=f"to_year_{section_id}"
+)
 
-show_heatmap = st.checkbox("Show Heatmap (year × maker)", True, key="heatmap_chk")
-show_radar = st.checkbox("Show Radar (per year)", True, key="radar_chk")
-do_forecast = st.checkbox("Enable Forecasting", True, key="forecast_chk")
-do_anomaly = st.checkbox("Enable Anomaly Detection", False, key="anomaly_chk")
-do_clustering = st.checkbox("Enable Clustering (KMeans)", False, key="clustering_chk")
-enable_ai = st.checkbox("Enable AI Narrative (requires provider)", False, key="ai_chk")
+state_code = st.sidebar.text_input(
+    "State Code (blank=All-India)",
+    value="",
+    key=f"state_{section_id}"
+)
+
+rto_code = st.sidebar.text_input(
+    "RTO Code (0=aggregate)",
+    value="0",
+    key=f"rto_{section_id}"
+)
+
+vehicle_classes = st.sidebar.text_input(
+    "Vehicle Classes (e.g., 2W,3W,4W if accepted)",
+    value="",
+    key=f"classes_{section_id}"
+)
+
+vehicle_makers = st.sidebar.text_input(
+    "Vehicle Makers (comma-separated or IDs)",
+    value="",
+    key=f"makers_{section_id}"
+)
+
+time_period = st.sidebar.selectbox(
+    "Time Period",
+    options=[0, 1, 2],
+    index=0,
+    key=f"period_{section_id}"
+)
+
+fitness_check = st.sidebar.selectbox(
+    "Fitness Check",
+    options=[True, False],
+    index=0,
+    format_func=lambda x: "Enabled" if x else "Disabled",
+    key=f"fitness_{section_id}"
+)
+
+vehicle_type = st.sidebar.text_input(
+    "Vehicle Type (optional)",
+    value="",
+    key=f"type_{section_id}"
+)
+
+# Extra feature toggles
+st.divider()
+col3, col4, col5 = st.columns(3)
+with col3:
+    show_heatmap = st.checkbox("Show Heatmap (year × maker)", True, key=f"heatmap_{section_id}")
+    show_radar = st.checkbox("Show Radar (per year)", True, key=f"radar_{section_id}")
+with col4:
+    do_forecast = st.checkbox("Enable Forecasting", True, key=f"forecast_{section_id}")
+    do_anomaly = st.checkbox("Enable Anomaly Detection", False, key=f"anomaly_{section_id}")
+with col5:
+    do_clustering = st.checkbox("Enable Clustering (KMeans)", False, key=f"cluster_{section_id}")
 
 st.info(f"🚀 Starting ALL-MAXED Maker pipeline — years: {years} | freq: {freq} | mode: {mode}")
 
