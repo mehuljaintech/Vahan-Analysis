@@ -4662,52 +4662,58 @@ def all_maxed_maker_block(params: Optional[dict] = None):
     st.info(f"🚀 Starting ALL-MAXED Maker pipeline — years: {years} | freq: {freq} | mode: {mode}")
 
     # -------------------------
-    # Fetch multi-year maker data
+    # Fetch multi-year maker data (All-Maxed)
     # -------------------------
     all_year_dfs = []
     
     with st.spinner("Fetching maker data for selected years..."):
         for y in years:
             try:
+                # Use robust single-year fetcher
                 df_y = fetch_maker_top5(y, params, show_debug=False)
+                
+                # Fallback to deterministic mock if empty
                 if df_y is None or df_y.empty:
                     st.warning(f"No maker data for {y}. Using deterministic mock.")
-                    df_y = pd.DataFrame(maker_mock_top5(y)["data"]).copy()
+                    mock_data = maker_mock_top5(y).get("data", [])
+                    df_y = pd.DataFrame(mock_data).copy()
+                    df_y["year"] = y
+                    # Ensure label column
+                    if "label" not in df_y.columns:
+                        if "name" in df_y.columns:
+                            df_y["label"] = df_y["name"].astype(str)
+                        else:
+                            df_y["label"] = [f"Maker {i+1}" for i in range(len(df_y))]
+                    # Ensure value column
+                    if "value" not in df_y.columns:
+                        if "score" in df_y.columns:
+                            df_y["value"] = pd.to_numeric(df_y["score"], errors="coerce").fillna(0)
+                        else:
+                            df_y["value"] = 0
+                all_year_dfs.append(df_y)
             except Exception as e:
                 logger.exception(f"Error fetching maker data for {y}: {e}")
                 st.error(f"Error fetching maker data for {y}: {e}")
-                df_y = pd.DataFrame(maker_mock_top5(y)["data"]).copy()
-    
-            df_y["year"] = y
-    
-            # --- Ensure label column exists ---
-            if "label" not in df_y.columns or df_y["label"].isna().all():
-                if "name" in df_y.columns:
-                    df_y["label"] = df_y["name"].astype(str)
-                elif "maker_name" in df_y.columns:
-                    df_y["label"] = df_y["maker_name"].astype(str)
-                elif "maker" in df_y.columns:
-                    df_y["label"] = df_y["maker"].apply(lambda x: x.get("name") if isinstance(x, dict) else str(x))
-                else:
-                    df_y["label"] = [f"Maker {i+1}" for i in range(len(df_y))]
-    
-            # --- Ensure value column exists ---
-            if "value" not in df_y.columns:
-                if "score" in df_y.columns:
-                    df_y["value"] = pd.to_numeric(df_y["score"], errors="coerce").fillna(0)
-                elif "count" in df_y.columns:
-                    df_y["value"] = pd.to_numeric(df_y["count"], errors="coerce").fillna(0)
-                elif "total" in df_y.columns:
-                    df_y["value"] = pd.to_numeric(df_y["total"], errors="coerce").fillna(0)
-                else:
-                    df_y["value"] = 0
-            else:
-                df_y["value"] = pd.to_numeric(df_y["value"], errors="coerce").fillna(0)
-    
-            all_year_dfs.append(df_y)
+                # Fallback to deterministic mock
+                mock_data = maker_mock_top5(y).get("data", [])
+                df_y = pd.DataFrame(mock_data).copy()
+                df_y["year"] = y
+                if "label" not in df_y.columns:
+                    if "name" in df_y.columns:
+                        df_y["label"] = df_y["name"].astype(str)
+                    else:
+                        df_y["label"] = [f"Maker {i+1}" for i in range(len(df_y))]
+                if "value" not in df_y.columns:
+                    if "score" in df_y.columns:
+                        df_y["value"] = pd.to_numeric(df_y["score"], errors="coerce").fillna(0)
+                    else:
+                        df_y["value"] = 0
+                all_year_dfs.append(df_y)
     
     # Concatenate all years
     df_maker_all = pd.concat(all_year_dfs, ignore_index=True)
+    
+    # Ensure consistent sorting
     df_maker_all = df_maker_all.sort_values(["year", "value"], ascending=[True, False]).reset_index(drop=True)
     
     # -------------------------
@@ -4723,7 +4729,7 @@ def all_maxed_maker_block(params: Optional[dict] = None):
     df_ts["ds"] = pd.to_datetime(df_ts["ds"])
     
     # -------------------------
-    # Resample to requested frequency (group-by maker)
+    # Resample to requested frequency
     # -------------------------
     if freq == "Daily":
         resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq="D")])["value"].sum().reset_index()
