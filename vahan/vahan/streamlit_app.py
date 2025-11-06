@@ -5761,20 +5761,20 @@ def all_maxed_maker_block(params: Optional[dict] = None):
         logger.exception(f"ALL-MAXED Maker summary failed: {e}")
         st.error(f"⛔ ALL-MAXED Maker summary failed: {e}")
     
-    # -----------------------------------------------------
-    # 🧩 Safe Entry Point — Streamlit-only Execution Guard
-    # -----------------------------------------------------
-    if __name__ == "__main__":
-        import streamlit as st
+# -----------------------------------------------------
+# 🧩 Safe Entry Point — Streamlit-only Execution Guard
+# -----------------------------------------------------
+if __name__ == "__main__":
+    import streamlit as st
     
-        st.markdown("# 🚗 ALL-MAXED CATEGORY ANALYTICS")
+    st.markdown("# 🚗 ALL-MAXED CATEGORY ANALYTICS")
     
-        try:
-            all_maxed_category_block()
-        except Exception as e:
-            import traceback
-            st.error(f"💥 Error while rendering All-Maxed block: {e}")
-            st.code(traceback.format_exc(), language="python")
+    try:
+        all_maxed_category_block()
+    except Exception as e:
+        import traceback
+        st.error(f"💥 Error while rendering All-Maxed block: {e}")
+        st.code(traceback.format_exc(), language="python")
 
 # # ---------- RTO/State detailed breakdown ---------------------------------------
 # st.subheader('RTO / State breakdown')
