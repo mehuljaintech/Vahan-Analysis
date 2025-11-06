@@ -2986,7 +2986,6 @@ def all_maxed_category_block(params: Optional[dict] = None):
 
         except Exception as e:
             st.error(f"💥 AI Narrative generation failed: {e}")
-
     # =====================================================
     # 🧩 ALL-MAXED FINAL SUMMARY + DEBUG INSIGHTS (FULL SELF-CONTAINED)
     # =====================================================
@@ -3071,10 +3070,10 @@ def all_maxed_category_block(params: Optional[dict] = None):
     
         # --- MoM if monthly
         if freq == "Monthly":
-            resampled["month_period"] = resampled["year"].astype(str) + "-" + resampled["month"].astype(str)
-            month_totals = (
-                resampled.groupby("month_period")["value"].sum().reset_index()
+            resampled["month_period"] = (
+                resampled["year"].astype(str) + "-" + resampled["month"].astype(str)
             )
+            month_totals = resampled.groupby("month_period")["value"].sum().reset_index()
             month_totals["MoM_%"] = month_totals["value"].pct_change() * 100
             latest_mom = (
                 f"{month_totals['MoM_%'].iloc[-1]:.2f}%"
@@ -3096,7 +3095,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
         # ----------------------------------------------------
         # 5️⃣ DISPLAY KPIs
         # ----------------------------------------------------
-        c1= st.columns(1)
+        c1 = st.columns(1)
         c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
     
         st.markdown("#### 📘 Category Share (Latest Year)")
@@ -3126,16 +3125,30 @@ def all_maxed_category_block(params: Optional[dict] = None):
         n_years = df_src["year"].nunique()
     
         top_cat = (
-            df_src.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
+            df_src.groupby("label")["value"]
+            .sum()
+            .reset_index()
+            .sort_values("value", ascending=False)
+            .iloc[0]
         )
         top_cat_share = (top_cat["value"] / total_all) * 100 if total_all > 0 else 0
     
         top_year = (
-            df_src.groupby("year")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
+            df_src.groupby("year")["value"]
+            .sum()
+            .reset_index()
+            .sort_values("value", ascending=False)
+            .iloc[0]
         )
     
-        st.metric("🏆 Absolute Top Category", f"{top_cat['label']}", f"{top_cat_share:.2f}% share")
-        st.metric("📅 Peak Year", f"{int(top_year['year'])}", f"{top_year['value']:,.0f} registrations")
+        st.metric(
+            "🏆 Absolute Top Category", f"{top_cat['label']}", f"{top_cat_share:.2f}% share"
+        )
+        st.metric(
+            "📅 Peak Year",
+            f"{int(top_year['year'])}",
+            f"{top_year['value']:,.0f} registrations",
+        )
     
         # --- Plot: Top 10 Categories
         st.write("### 🧾 Top 10 Categories — Overall")
@@ -3183,29 +3196,30 @@ def all_maxed_category_block(params: Optional[dict] = None):
             """,
             language="yaml",
         )
-    # ----------------------------------------------------
-    # 8️⃣ SMART SUMMARY (NO TRY/EXCEPT)
-    # ----------------------------------------------------
     
-    # Ensure top_cat is a dict, not a list
-    if isinstance(top_cat, list):
-        top_cat = top_cat[0] if top_cat else {"label": "N/A", "value": 0}
+        # ----------------------------------------------------
+        # 8️⃣ SMART SUMMARY (NO INTERNAL TRY)
+        # ----------------------------------------------------
+        if isinstance(top_cat, list):
+            top_cat = top_cat[0] if top_cat else {"label": "N/A", "value": 0}
     
-    # Validate essential data before summary
-    if top_cat and years and top_year:
-        st.success(
-            f"From **{years[0]}** to **{years[-1]}**, total registrations {direction} "
-            f"**{top_cat.get('label', 'N/A')}** leads with **{top_cat_share:.2f}%** share. "
-            f"Peak year: **{int(top_year['year'])}** with **{top_year['value']:,.0f}** registrations. "
-        )
-        logger.info(f"✅ ALL-MAXED summary completed in {summary_time:.2f}s")
-    else:
-        st.error("⛔ ALL-MAXED summary failed: Missing or invalid data.")
-        logger.warning("⚠️ ALL-MAXED summary skipped due to incomplete data.")
-
+        if top_cat and years and top_year:
+            st.success(
+                f"From **{years[0]}** to **{years[-1]}**, total registrations {direction} "
+                f"**{top_cat.get('label', 'N/A')}** leads with **{top_cat_share:.2f}%** share. "
+                f"Peak year: **{int(top_year['year'])}** with **{top_year['value']:,.0f}** registrations. "
+            )
+            logger.info(f"✅ ALL-MAXED summary completed in {summary_time:.2f}s")
+        else:
+            st.error("⛔ ALL-MAXED summary failed: Missing or invalid data.")
+            logger.warning("⚠️ ALL-MAXED summary skipped due to incomplete data.")
+    
+    # ----------------------------------------------------
+    # 9️⃣ CATCH GLOBAL ERRORS
+    # ----------------------------------------------------
     except Exception as e:
-    logger.exception(f"ALL-MAXED summary failed: {e}")
-    st.error(f"⛔ ALL-MAXED summary failed: {e}")
+        logger.exception(f"ALL-MAXED summary failed: {e}")
+        st.error(f"⛔ ALL-MAXED summary failed: {e}")
     
 # -----------------------------------------------------
 # 🧩 Safe Entry Point — Streamlit-only Execution Guard
