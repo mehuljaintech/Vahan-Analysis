@@ -1,10 +1,10 @@
 # ======================================================
-# 🚀 PARIVAHAN ANALYTICS 2025 — ALL-MAXED CLOUD EDITION
+# 🚀 PARIVAHAN ANALYTICS 2025 — MAXED+ CLOUD EDITION
 # ======================================================
 
-# -----------------------------
-# CORE FRAMEWORK
-# -----------------------------
+# ===============================
+# 🚀 CORE FRAMEWORK
+# ===============================
 streamlit
 pandas
 numpy
@@ -14,148 +14,197 @@ python-dotenv
 urllib3
 tqdm
 pycountry
-validators
-watchdog
-aiofiles
-polars
-psutil
-pyyaml
-rich
-typing-extensions
 
-# -----------------------------
-# VISUALIZATION / DASHBOARD
-# -----------------------------
-matplotlib
+# ===============================
+# 🎨 VISUALIZATION / DASHBOARD
+# ===============================
 plotly
-seaborn
 altair
+matplotlib
+seaborn
 vega-datasets
-pydeck
 folium
-streamlit-aggrid
+pydeck
 streamlit-echarts
-streamlit-extras
+streamlit-aggrid
 streamlit-lottie
+streamlit-extras
 
-# -----------------------------
-# EXCEL / EXPORT / REPORTING
-# -----------------------------
-fpdf2
-odfpy
+# ===============================
+# 📊 EXCEL / EXPORT / REPORTING
+# ===============================
 openpyxl
-pdfplumber
+xlsxwriter
+odfpy
+reportlab
 pypandoc
-PyPDF2
+fpdf2
 python-docx
 python-pptx
-reportlab
-xlsxwriter
+pdfplumber
+PyPDF2
 
-# -----------------------------
-# MACHINE LEARNING / ANALYTICS
-# -----------------------------
+# ===============================
+# 🤖 MACHINE LEARNING / ANALYTICS
+# ===============================
 scikit-learn
+prophet
+statsmodels
 xgboost
 scipy
-statsmodels
 catboost
 lightgbm
 mlxtend
-prophet
 
-# -----------------------------
-# NLP / LINGUISTIC INTELLIGENCE
-# -----------------------------
-nltk
-spacy
-spacy-transformers
-gensim
-wordcloud
-textblob
-
-# -----------------------------
-# AI / LLM / RAG INTEGRATION
-# -----------------------------
-torch==2.3.1+cpu
+# ===============================
+# 💡 AI / LLM INTEGRATION
+# ===============================
+openai
+tiktoken
+deepinfra
+httpx
+tenacity
 transformers
+torch
 accelerate
 sentencepiece
 huggingface-hub
-tokenizers
-openai
-tiktoken
-langchain
-langchain-community
-langchain-core
-langchain-text-splitters
-langchainhub
-sentence-transformers
-chromadb
-faiss-cpu
-deepinfra
 
-# -----------------------------
-# DATA PROCESSING / STORAGE
-# -----------------------------
+# ===============================
+# 🧠 DATA PROCESSING / TRANSFORMATION
+# ===============================
 pyarrow
 fastparquet
 numexpr
 tabulate
 dask
-duckdb
-sqlite-utils
-sqlalchemy
+polars
+dataclasses-json
 
-# -----------------------------
-# DATABASE CONNECTORS
-# -----------------------------
-pymysql
-psycopg2-binary
-pymongo
-redis
+# ===============================
+# ⚙️ UTILITIES / PERFORMANCE / LOGGING
+# ===============================
+cachetools
+pyyaml
+python-json-logger
+loguru
+colorama
+rich
+psutil
+aiofiles
 
-# -----------------------------
-# SECURITY / AUTH / CRYPTO
-# -----------------------------
-bcrypt
-cryptography
-pyjwt
+# ===============================
+# ☁️ STREAMLIT CLOUD / DEPLOYMENT
+# ===============================
+validators
+watchdog
+gunicorn
+uvicorn
+fastapi
+flask
+werkzeug
+jinja2
 
-# -----------------------------
-# NETWORKING / SCRAPING
-# -----------------------------
+# ===============================
+# 🕸️ NETWORKING / SCRAPING (LIGHT)
+# ===============================
+fake-useragent
+requests-toolbelt
 aiohttp
 beautifulsoup4
-fake-useragent
-html5lib
 lxml
-requests-toolbelt
+html5lib
 
-# -----------------------------
-# CLOUD / STORAGE INTEGRATIONS
-# -----------------------------
-azure-storage-blob
+# ===============================
+# 🧩 DATABASE CONNECTORS
+# ===============================
+sqlalchemy
+pymysql
+psycopg2-binary
+sqlite-utils
+duckdb
+redis
+pymongo
+
+# ===============================
+# 🔐 SECURITY / AUTH / CRYPTO
+# ===============================
+cryptography
+pyjwt
+bcrypt
+
+# ===============================
+# 🌐 OPTIONAL — CLOUD & API CLIENTS
+# ===============================
 boto3
-dropbox
 google-cloud-storage
+azure-storage-blob
+dropbox
 gspread
 oauthlib
 
-# -----------------------------
-# UTILITIES / DEBUG / LOGGING
-# -----------------------------
-python-json-logger
-loguru
-cachetools
-colorama
-tenacity
+# ===============================
+# 🎯 BONUS — ENHANCEMENTS / AI AGENTS
+# ===============================
+langchain
+langchain-community
+chromadb
+faiss-cpu
 
-# -----------------------------
-# OPTIONAL HEAVY NLP / EMBEDDINGS (may fail if system deps missing)
-# -----------------------------
-polyglot
-pattern
-python-Levenshtein
-rapidfuzz
+# --- Core essentials
+streamlit
+pandas
+numpy
 
+# --- NLP libraries
+nltk
+spacy
+wordcloud
+textblob
+gensim
+
+# --- Plotting & Visualization
+matplotlib
+plotly
+seaborn
+
+# --- Machine Learning / Embeddings
+scikit-learn
+sentence-transformers
+torch
+
+# --- Export & Excel support
+openpyxl
+xlsxwriter
+odfpy
+
+# --- JSON / File utilities
+pandas
+pyyaml
+
+# --- Optional: Hugging Face Transformers (for advanced LLM summaries)
+transformers
+accelerate
+tokenizers
+
+# --- Optional: RAG / Embedding Indexing
+faiss-cpu
+chromadb
+
+# --- Image tools (for your visualizations)
+Pillow
+
+# --- Debug / Performance utils
+tqdm
+rich
+
+# --- Web / API utils (if you're doing LLM calls or summaries)
+requests
+httpx
+
+# --- Compatibility helpers
+typing-extensions
+
+langchain
+openai
+tiktoken
