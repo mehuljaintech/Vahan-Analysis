@@ -4127,33 +4127,116 @@ def pie_chart(df, title):
 # -------------------------
 # Fetch per-year data
 # -------------------------
-def fetch_rto_state_year(year: int, params: dict, show_debug=True) -> pd.DataFrame:
-    try:
-        j, url = get_json("vahandashboard/top5chartRevenueFee", {**params, "year": year})
-    except Exception as e:
-        logger.warning(f"Fetch exception {year}: {e}")
-        j, url = deterministic_mock_rto_state(year), f"mock://rto_state/{year}"
+def fetch_rto_state(year: int, params: dict, show_debug: bool = True) -> pd.DataFrame:
+    """Fetch RTO/State revenue for a given year and render charts, KPIs, and summaries.
 
-    # Normalize columns
-    data_list = j.get("data") or deterministic_mock_rto_state(year)["data"]
-    df = pd.DataFrame(data_list)
-    if "label" not in df.columns or "value" not in df.columns:
+    ✅ Always returns non-empty DataFrame with ['label','value','year'].
+    ✅ Includes deterministic mock fallback and rich Plotly visualizations.
+    """
+    p = params.copy() if params else {}
+    p["year"] = int(year)
+    st.markdown(f"## 🏛️ RTO / State Revenue — {year}")
+
+    # --- Fetch safely ---
+    try:
+        rto_json, rto_url = get_json("vahandashboard/top5chartRevenueFee", p)
+    except Exception as e:
+        logger.warning(f"get_json failed for year {year}: {e}")
+        rto_json, rto_url = deterministic_mock_rto_state(year), f"mock://top5chartRevenueFee/{year}"
+
+    # --- Debug ---
+    if show_debug:
+        with st.expander(f"🧩 Debug JSON — RTO/State {year}", expanded=False):
+            st.write("**URL:**", rto_url)
+            st.json(rto_json if isinstance(rto_json, (dict, list)) else str(rto_json))
+
+    # --- Normalize to DataFrame ---
+    try:
+        data_list = rto_json.get("data") or deterministic_mock_rto_state(year)["data"]
+        df = pd.DataFrame(data_list)
+        if "label" not in df.columns or "value" not in df.columns:
+            raise ValueError("Missing expected columns")
+    except Exception as e:
+        logger.warning(f"Data normalization failed for {year}: {e}")
         df = pd.DataFrame([{"label": s, "value": 0} for s in [
             "Maharashtra","Uttar Pradesh","Tamil Nadu","Gujarat","Karnataka",
             "Rajasthan","Bihar","Haryana","Madhya Pradesh","Telangana",
             "West Bengal","Delhi","Punjab","Kerala","Odisha"
         ]])
 
+    df = df.copy()
     df["year"] = int(year)
+    df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
+    df = df.sort_values("value", ascending=False)
+    total_reg = int(df["value"].sum())
 
-    if show_debug:
-        with st.expander(f"🧩 Debug JSON — RTO/State {year}"):
-            st.write("**URL:**", url)
-            st.json(j)
-            st.write("**DataFrame:**", df.head())
+    st.caption(f"🔗 **Source:** {rto_url}")
+    st.markdown(f"**Total Revenue / Fees ({year}):** {total_reg:,}")
 
-    bar_chart(df, f"RTO / State Revenue — {year}")
-    pie_chart(df, f"Revenue Distribution — {year}")
+    # --- Charts layout ---
+    c1, c2 = st.columns([1.8, 1.2])
+    with c1:
+        try:
+            fig_bar = px.bar(
+                df,
+                x="label",
+                y="value",
+                color="label",
+                text_auto=".2s",
+                title=f"🏛️ Revenue Distribution — {year}",
+                color_discrete_sequence=px.colors.qualitative.Safe,
+            )
+            fig_bar.update_layout(template="plotly_white", showlegend=False, height=450)
+            st.plotly_chart(fig_bar, use_container_width=True, key=f"bar_{year}")
+        except Exception as e:
+            st.warning(f"⚠️ Bar chart failed: {e}")
+            st.dataframe(df)
+
+    with c2:
+        try:
+            fig_pie = px.pie(
+                df,
+                names="label",
+                values="value",
+                hole=0.45,
+                color_discrete_sequence=px.colors.qualitative.Vivid,
+                title=f"Revenue Share — {year}",
+            )
+            fig_pie.update_traces(textinfo="percent+label", hovertemplate="<b>%{label}</b><br>%{value:,}<br>%{percent}")
+            fig_pie.update_layout(template="plotly_white", height=400, showlegend=False)
+            st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_{year}")
+        except Exception as e:
+            st.warning(f"⚠️ Pie chart failed: {e}")
+            st.dataframe(df)
+
+    # --- Top state insight ---
+    try:
+        top = df.iloc[0]
+        pct = (top["value"] / total_reg) * 100 if total_reg else 0
+        st.success(f"🏆 **Top State:** {top['label']} — {int(top['value']):,} ({pct:.1f}%)")
+    except Exception:
+        st.warning("⚠️ Could not determine top state")
+
+    # --- Advanced table ---
+    df["share_%"] = (df["value"] / total_reg * 100).round(2)
+    st.dataframe(df.style.format({"value": "{:,.0f}", "share_%": "{:.2f}%"}).bar(subset=["share_%"], color="#4CAF50"), height=300)
+
+    # --- Trend simulation (synthetic) ---
+    with st.expander("📈 Synthetic Monthly Trend", expanded=False):
+        df_ts = expand_to_timeseries(df, year, freq="Monthly")
+        fig_line = px.line(
+            df_ts,
+            x="ds",
+            y="value",
+            color="label",
+            line_group="label",
+            title=f"Synthetic Monthly Revenue Trend — {year}",
+            markers=True,
+            color_discrete_sequence=px.colors.qualitative.Set2,
+        )
+        fig_line.update_layout(template="plotly_white", legend=dict(orientation="h", y=-0.3))
+        st.plotly_chart(fig_line, use_container_width=True, key=f"trend_{year}")
+
     return df
 
 # -------------------------
