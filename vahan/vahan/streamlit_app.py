@@ -3185,22 +3185,23 @@ def all_maxed_category_block(params: Optional[dict] = None):
         )
     
         try:
-    # Ensure top_cat is a dict, not a list
-    if isinstance(top_cat, list):
-        top_cat = top_cat[0] if top_cat else {"label": "N/A", "value": 0}
-
-    # Build smart summary
-    st.success(
-        f"From **{years[0]}** to **{years[-1]}**, total registrations {direction} "
-        f"**{top_cat.get('label', 'N/A')}** leads with **{top_cat_share:.2f}%** share. "
-        f"Peak year: **{int(top_year['year'])}** with **{top_year['value']:,.0f}** registrations. "
-    )
-
-    logger.info(f"✅ ALL-MAXED summary completed in {summary_time:.2f}s")
-
-    except Exception as e:
-        logger.exception(f"ALL-MAXED summary failed: {e}")
-        st.error(f"⛔ ALL-MAXED summary failed: {e}")
+            
+            # Ensure top_cat is a dict, not a list
+            if isinstance(top_cat, list):
+                top_cat = top_cat[0] if top_cat else {"label": "N/A", "value": 0}
+        
+            # Build smart summary
+            st.success(
+                f"From **{years[0]}** to **{years[-1]}**, total registrations {direction} "
+                f"**{top_cat.get('label', 'N/A')}** leads with **{top_cat_share:.2f}%** share. "
+                f"Peak year: **{int(top_year['year'])}** with **{top_year['value']:,.0f}** registrations. "
+            )
+        
+            logger.info(f"✅ ALL-MAXED summary completed in {summary_time:.2f}s")
+    
+        except Exception as e:
+            logger.exception(f"ALL-MAXED summary failed: {e}")
+            st.error(f"⛔ ALL-MAXED summary failed: {e}")
 
 # -----------------------------------------------------
 # 🧩 Safe Entry Point — Streamlit-only Execution Guard
