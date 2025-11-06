@@ -4474,11 +4474,26 @@ def maker_mock_top5(year: int) -> Dict:
 # -----------------------------
 def maker_to_df(json_data: Dict) -> pd.DataFrame:
     if isinstance(json_data, dict) and "data" in json_data:
-        return pd.DataFrame(json_data["data"])
+        df = pd.DataFrame(json_data["data"])
     elif isinstance(json_data, list):
-        return pd.DataFrame(json_data)
+        df = pd.DataFrame(json_data)
     else:
-        return pd.DataFrame()
+        df = pd.DataFrame()
+
+    # Ensure column names are consistent
+    if not df.empty:
+        # Try to find a name column
+        for name_col in ["label", "name", "maker", "maker_name"]:
+            if name_col in df.columns:
+                df = df.rename(columns={name_col: "label"})
+                break
+        # Ensure value column exists
+        if "value" not in df.columns and "score" in df.columns:
+            df = df.rename(columns={"score": "value"})
+        # Keep only necessary columns
+        df = df[["label","value"]]
+
+    return df
 
 # -----------------------------
 # MAXED Maker fetch + render
