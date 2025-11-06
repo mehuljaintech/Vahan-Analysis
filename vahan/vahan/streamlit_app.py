@@ -4469,31 +4469,6 @@ def maker_mock_top5(year: int) -> Dict:
         ]
     }
 
-# -----------------------------
-# Normalize JSON -> DataFrame
-# -----------------------------
-def maker_to_df(json_data: Dict) -> pd.DataFrame:
-    if isinstance(json_data, dict) and "data" in json_data:
-        df = pd.DataFrame(json_data["data"])
-    elif isinstance(json_data, list):
-        df = pd.DataFrame(json_data)
-    else:
-        df = pd.DataFrame()
-
-    # Ensure column names are consistent
-    if not df.empty:
-        # Try to find a name column
-        for name_col in ["label", "name", "maker", "maker_name"]:
-            if name_col in df.columns:
-                df = df.rename(columns={name_col: "label"})
-                break
-        # Ensure value column exists
-        if "value" not in df.columns and "score" in df.columns:
-            df = df.rename(columns={"score": "value"})
-        # Keep only necessary columns
-        df = df[["label","value"]]
-
-    return df
 
 # -----------------------------
 # MAXED Maker fetch + render
@@ -4518,9 +4493,9 @@ def fetch_maker_top5(year: int, params: Dict = None, show_debug: bool = True) ->
             st.json(mk_json)
 
     # --- Normalize to DataFrame ---
-    df = maker_to_df(mk_json)
+    df = to_df(mk_json)
     if df.empty:
-        df = maker_to_df(maker_mock_top5(year))
+        df = to_df(maker_mock_top5(year))
 
     df["year"] = year
     df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
