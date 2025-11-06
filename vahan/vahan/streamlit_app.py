@@ -4474,37 +4474,70 @@ def maker_mock_top5(year: int) -> Dict:
 # MAXED Maker fetch + render
 # -----------------------------
 def fetch_maker_top5(year: int, params: Dict = None, show_debug: bool = True) -> pd.DataFrame:
-    """Fetch Top 5 Maker data and render MAXED dashboard."""
+    """Fetch Top 5 Maker data and render MAXED dashboard (robust, fully All-Maxed)."""
+    
     st.subheader(f"📊 Top 5 Makers — {year}")
-
+    
+    # --- Prepare request ---
     p = params.copy() if params else {}
-    p["year"] = year
-
-    # --- Fetch JSON safely ---
+    p["year"] = int(year)
+    
+    # --- Fetch safely ---
     try:
         mk_json, mk_url = get_json("vahandashboard/top5Makerchart", p)
-    except Exception:
+    except Exception as e:
+        logger.warning(f"❌ get_json failed for Top 5 Makers {year}: {e}")
         mk_json, mk_url = maker_mock_top5(year), f"mock://top5Maker/{year}"
-
+    
     # --- Debug panel ---
     if show_debug:
         with st.expander(f"🧩 Debug JSON — Top 5 Makers {year}", expanded=False):
             st.write("**URL:**", mk_url)
-            st.json(mk_json)
-
-    # --- Normalize to DataFrame ---
-    df = to_df(mk_json)
-    if df.empty:
+            st.json(mk_json if isinstance(mk_json, (dict, list)) else str(mk_json))
+    
+    # --- Normalize JSON to DataFrame safely ---
+    try:
+        df = to_df(mk_json)
+    except Exception as e:
+        logger.warning(f"⚠️ to_df failed for Top 5 Makers {year}: {e}")
         df = to_df(maker_mock_top5(year))
-
-    df["year"] = year
-    df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
+    
+    if df is None or df.empty:
+        df = to_df(maker_mock_top5(year))
+    
+    # --- Ensure columns exist ---
+    df = df.copy()
+    df["year"] = int(year)
+    
+    # Handle label column robustly
+    if "label" not in df.columns:
+        for col in ["name", "maker_name", "maker"]:
+            if col in df.columns:
+                if col == "maker":
+                    df["label"] = df["maker"].apply(lambda x: x.get("name") if isinstance(x, dict) else str(x))
+                else:
+                    df["label"] = df[col].astype(str)
+                break
+        else:
+            df["label"] = [f"Maker {i+1}" for i in range(len(df))]
+    
+    # Handle value column robustly
+    if "value" not in df.columns:
+        for val_col in ["score", "count", "total"]:
+            if val_col in df.columns:
+                df["value"] = pd.to_numeric(df[val_col], errors="coerce").fillna(0)
+                break
+        else:
+            df["value"] = 0
+    else:
+        df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
+    
     df = df.sort_values("value", ascending=False)
     total_val = df["value"].sum()
-
+    
     st.caption(f"🔗 Source: {mk_url}")
     st.markdown(f"**Total Score / Registrations:** {int(total_val):,}")
-
+    
     # --- Charts layout ---
     c1, c2 = st.columns([1.8, 1.2])
     with c1:
@@ -4520,9 +4553,10 @@ def fetch_maker_top5(year: int, params: Dict = None, show_debug: bool = True) ->
             )
             fig_bar.update_layout(template="plotly_white", showlegend=False, height=450)
             st.plotly_chart(fig_bar, use_container_width=True, key=f"bar_maker_{year}")
-        except Exception:
+        except Exception as e:
+            st.warning(f"⚠️ Bar chart failed: {e}")
             st.dataframe(df)
-
+    
     with c2:
         try:
             fig_pie = px.pie(
@@ -4539,15 +4573,18 @@ def fetch_maker_top5(year: int, params: Dict = None, show_debug: bool = True) ->
             )
             fig_pie.update_layout(template="plotly_white", height=400, showlegend=False)
             st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_maker_{year}")
-        except Exception:
+        except Exception as e:
+            st.warning(f"⚠️ Pie chart failed: {e}")
             st.dataframe(df)
-
+    
     # --- Top Maker insight ---
-    if not df.empty:
+    try:
         top = df.iloc[0]
         pct = (top["value"] / total_val * 100) if total_val else 0
         st.success(f"🏆 **Top Maker:** {top['label']} — {int(top['value']):,} ({pct:.1f}%)")
-
+    except Exception:
+        st.warning("⚠️ Could not determine top maker")
+    
     # --- Extra insights table ---
     df["share_%"] = (df["value"] / total_val * 100).round(2)
     st.dataframe(
@@ -4557,7 +4594,7 @@ def fetch_maker_top5(year: int, params: Dict = None, show_debug: bool = True) ->
         use_container_width=True,
         height=320,
     )
-
+    
     # --- Synthetic monthly trend simulation ---
     with st.expander("📈 Trend simulation (synthetic)", expanded=False):
         months = pd.date_range(start=f"{year}-01-01", end=f"{year}-12-31", freq="M")
@@ -4578,7 +4615,7 @@ def fetch_maker_top5(year: int, params: Dict = None, show_debug: bool = True) ->
         )
         fig_line.update_layout(template="plotly_white", height=400)
         st.plotly_chart(fig_line, use_container_width=True, key=f"trend_maker_{year}")
-
+    
     return df
 
 # =====================================================
