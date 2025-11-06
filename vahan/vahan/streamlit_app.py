@@ -4245,7 +4245,6 @@ with col4:
 with col5:
     do_clustering = st.checkbox("Enable Clustering (KMeans)", False, key=f"cluster_{section_id}")
 
-st.info(f"🚀 Starting ALL-MAXED Maker pipeline — years: {years} | freq: {freq} | mode: {mode}")
 
 
 # =====================================================
