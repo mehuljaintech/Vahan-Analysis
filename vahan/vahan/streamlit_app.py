@@ -4276,7 +4276,7 @@ def all_maxed_rto_state_block(params: Optional[dict] = None, section_id: str = "
     # Fetch data
     all_years = []
     for y in years:
-        df = fetch_rto_state_year(y, params, show_debug=False)
+        df = fetch_rto_state(y, params, show_debug=False)
         if not df.empty:
             all_years.append(df)
 
