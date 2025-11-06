@@ -4475,41 +4475,35 @@ def maker_mock_top5(year: int) -> Dict:
 # -----------------------------
 def fetch_maker_top5(year: int, params: Dict = None, show_debug: bool = True) -> pd.DataFrame:
     """Fetch Top 5 Maker data and render MAXED dashboard (robust, fully All-Maxed)."""
-    
+
     st.subheader(f"📊 Top 5 Makers — {year}")
-    
+
     # --- Prepare request ---
     p = params.copy() if params else {}
     p["year"] = int(year)
-    
+
     # --- Fetch safely ---
     try:
         mk_json, mk_url = get_json("vahandashboard/top5Makerchart", p)
     except Exception as e:
         logger.warning(f"❌ get_json failed for Top 5 Makers {year}: {e}")
         mk_json, mk_url = maker_mock_top5(year), f"mock://top5Maker/{year}"
-    
+
     # --- Debug panel ---
     if show_debug:
         with st.expander(f"🧩 Debug JSON — Top 5 Makers {year}", expanded=False):
             st.write("**URL:**", mk_url)
             st.json(mk_json if isinstance(mk_json, (dict, list)) else str(mk_json))
-    
+
     # --- Normalize JSON to DataFrame safely ---
-    try:
-        df = to_df(mk_json)
-    except Exception as e:
-        logger.warning(f"⚠️ to_df failed for Top 5 Makers {year}: {e}")
+    df = to_df(mk_json) if mk_json else pd.DataFrame()
+    if df.empty:
         df = to_df(maker_mock_top5(year))
-    
-    if df is None or df.empty:
-        df = to_df(maker_mock_top5(year))
-    
-    # --- Ensure columns exist ---
+
     df = df.copy()
     df["year"] = int(year)
-    
-    # Handle label column robustly
+
+    # --- Robust label handling ---
     if "label" not in df.columns:
         for col in ["name", "maker_name", "maker"]:
             if col in df.columns:
@@ -4520,8 +4514,8 @@ def fetch_maker_top5(year: int, params: Dict = None, show_debug: bool = True) ->
                 break
         else:
             df["label"] = [f"Maker {i+1}" for i in range(len(df))]
-    
-    # Handle value column robustly
+
+    # --- Robust value handling ---
     if "value" not in df.columns:
         for val_col in ["score", "count", "total"]:
             if val_col in df.columns:
@@ -4531,15 +4525,16 @@ def fetch_maker_top5(year: int, params: Dict = None, show_debug: bool = True) ->
             df["value"] = 0
     else:
         df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
-    
+
     df = df.sort_values("value", ascending=False)
     total_val = df["value"].sum()
-    
+
     st.caption(f"🔗 Source: {mk_url}")
     st.markdown(f"**Total Score / Registrations:** {int(total_val):,}")
-    
+
     # --- Charts layout ---
     c1, c2 = st.columns([1.8, 1.2])
+
     with c1:
         try:
             fig_bar = px.bar(
@@ -4553,10 +4548,9 @@ def fetch_maker_top5(year: int, params: Dict = None, show_debug: bool = True) ->
             )
             fig_bar.update_layout(template="plotly_white", showlegend=False, height=450)
             st.plotly_chart(fig_bar, use_container_width=True, key=f"bar_maker_{year}")
-        except Exception as e:
-            st.warning(f"⚠️ Bar chart failed: {e}")
-            st.dataframe(df)
-    
+        except Exception:
+            st.dataframe(df, use_container_width=True)
+
     with c2:
         try:
             fig_pie = px.pie(
@@ -4567,41 +4561,35 @@ def fetch_maker_top5(year: int, params: Dict = None, show_debug: bool = True) ->
                 color_discrete_sequence=px.colors.qualitative.Vivid,
                 title=f"Maker Share — {year}",
             )
-            fig_pie.update_traces(
-                textinfo="percent+label",
-                pull=[0.05]*len(df),
-            )
+            fig_pie.update_traces(textinfo="percent+label", pull=[0.05]*len(df))
             fig_pie.update_layout(template="plotly_white", height=400, showlegend=False)
             st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_maker_{year}")
-        except Exception as e:
-            st.warning(f"⚠️ Pie chart failed: {e}")
-            st.dataframe(df)
-    
+        except Exception:
+            st.dataframe(df, use_container_width=True)
+
     # --- Top Maker insight ---
-    try:
+    if not df.empty:
         top = df.iloc[0]
         pct = (top["value"] / total_val * 100) if total_val else 0
         st.success(f"🏆 **Top Maker:** {top['label']} — {int(top['value']):,} ({pct:.1f}%)")
-    except Exception:
+    else:
         st.warning("⚠️ Could not determine top maker")
-    
+
     # --- Extra insights table ---
     df["share_%"] = (df["value"] / total_val * 100).round(2)
     st.dataframe(
-        df.style.format({"value": "{:,.0f}", "share_%": "{:.2f}%"}).bar(
-            subset=["share_%"], color="#4CAF50"
-        ),
+        df.style.format({"value": "{:,.0f}", "share_%": "{:.2f}%"}).bar(subset=["share_%"], color="#4CAF50"),
         use_container_width=True,
         height=320,
     )
-    
+
     # --- Synthetic monthly trend simulation ---
     with st.expander("📈 Trend simulation (synthetic)", expanded=False):
         months = pd.date_range(start=f"{year}-01-01", end=f"{year}-12-31", freq="M")
         df_ts = pd.DataFrame({
             "ds": np.tile(months, len(df)),
             "label": np.repeat(df["label"].values, len(months)),
-            "value": np.repeat(df["value"].values, len(months)) * np.random.uniform(0.7,1.3, size=len(df)*len(months))
+            "value": np.repeat(df["value"].values, len(months)) * np.random.uniform(0.7, 1.3, size=len(df)*len(months))
         })
         fig_line = px.line(
             df_ts,
@@ -4615,7 +4603,7 @@ def fetch_maker_top5(year: int, params: Dict = None, show_debug: bool = True) ->
         )
         fig_line.update_layout(template="plotly_white", height=400)
         st.plotly_chart(fig_line, use_container_width=True, key=f"trend_maker_{year}")
-    
+
     return df
 
 # =====================================================
@@ -4663,26 +4651,37 @@ def all_maxed_maker_block(params: Optional[dict] = None):
     # Fetch multi-year maker data
     # -------------------------
     all_year_dfs = []
+    
     with st.spinner("Fetching maker data for selected years..."):
         for y in years:
             try:
-                df_y = fetch_maker_top5(y, params, show_debug=False)  # <-- Maker fetcher
+                df_y = fetch_maker_top5(y, params, show_debug=False)
                 if df_y is None or df_y.empty:
-                    st.warning(f"No maker data for {y}")
-                    continue
+                    st.warning(f"No maker data for {y}. Using deterministic mock.")
+                    df_y = pd.DataFrame(maker_mock_top5(y)["data"]).copy()
+                    df_y["year"] = y
+                    if "label" not in df_y.columns:
+                        df_y["label"] = df_y.get("name", [f"Maker {i+1}" for i in range(len(df_y))])
+                    if "value" not in df_y.columns:
+                        df_y["value"] = pd.to_numeric(df_y.get("score", 0), errors="coerce").fillna(0)
                 all_year_dfs.append(df_y)
             except Exception as e:
-                logger.exception(f"Error fetching {y}: {e}")
-                st.error(f"Error fetching {y}: {e}")
-
-    if not all_year_dfs:
-        st.info("No maker data loaded for selected range. Displaying deterministic mocks for demonstration.")
-        for y in years:
-            all_year_dfs.append(
-                pd.DataFrame(maker_mock_top5(y)["data"]).assign(year=y)
-            )
-
+                logger.exception(f"Error fetching maker data for {y}: {e}")
+                st.error(f"Error fetching maker data for {y}: {e}")
+                # Fallback to mock
+                df_y = pd.DataFrame(maker_mock_top5(y)["data"]).copy()
+                df_y["year"] = y
+                if "label" not in df_y.columns:
+                    df_y["label"] = df_y.get("name", [f"Maker {i+1}" for i in range(len(df_y))])
+                if "value" not in df_y.columns:
+                    df_y["value"] = pd.to_numeric(df_y.get("score", 0), errors="coerce").fillna(0)
+                all_year_dfs.append(df_y)
+    
+    # Concatenate all years
     df_maker_all = pd.concat(all_year_dfs, ignore_index=True)
+    
+    # Ensure consistent sorting
+    df_maker_all = df_maker_all.sort_values(["year", "value"], ascending=[True, False]).reset_index(drop=True)
 
     # -------------------------
     # Frequency expansion -> synthetic timeseries
