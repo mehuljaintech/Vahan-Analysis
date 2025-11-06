@@ -3118,38 +3118,43 @@ def all_maxed_category_block(params: Optional[dict] = None):
             )
     
         # ----------------------------------------------------
-        # 6️⃣ DEEP INSIGHTS + TRENDS
+        # 6️⃣ DEEP INSIGHTS + TRENDS — FIXED
         # ----------------------------------------------------
         total_all = df_src["value"].sum()
         n_cats = df_src["label"].nunique()
         n_years = df_src["year"].nunique()
-    
-        top_cat = (
+        
+        # --- Top Category as dict (scalar values)
+        top_cat_row = (
             df_src.groupby("label")["value"]
             .sum()
             .reset_index()
             .sort_values("value", ascending=False)
             .iloc[0]
         )
+        top_cat = {
+            "label": str(top_cat_row["label"]),
+            "value": float(top_cat_row["value"])
+        }
         top_cat_share = (top_cat["value"] / total_all) * 100 if total_all > 0 else 0
-    
-        top_year = (
+        
+        # --- Top Year as dict (scalar values)
+        top_year_row = (
             df_src.groupby("year")["value"]
             .sum()
             .reset_index()
             .sort_values("value", ascending=False)
             .iloc[0]
         )
-    
-        st.metric(
-            "🏆 Absolute Top Category", f"{top_cat['label']}", f"{top_cat_share:.2f}% share"
-        )
-        st.metric(
-            "📅 Peak Year",
-            f"{int(top_year['year'])}",
-            f"{top_year['value']:,.0f} registrations",
-        )
-    
+        top_year = {
+            "year": int(top_year_row["year"]),
+            "value": float(top_year_row["value"])
+        }
+        
+        # --- Display metrics safely
+        st.metric("🏆 Absolute Top Category", top_cat["label"], f"{top_cat_share:.2f}% share")
+        st.metric("📅 Peak Year", f"{top_year['year']}", f"{top_year['value']:,.0f} registrations")
+        
         # --- Plot: Top 10 Categories
         st.write("### 🧾 Top 10 Categories — Overall")
         top_debug = (
@@ -3169,6 +3174,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
         )
         fig_top10.update_layout(template="plotly_white", margin=dict(t=50, b=40))
         st.plotly_chart(fig_top10, use_container_width=True)
+
     
         # ----------------------------------------------------
         # 7️⃣ ADVANCED DEBUG METRICS
