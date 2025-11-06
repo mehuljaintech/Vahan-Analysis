@@ -4470,155 +4470,116 @@ def maker_mock_top5(year: int) -> Dict:
     }
 
 
-# -----------------------------
-# MAXED Maker fetch + render
-# -----------------------------
-def fetch_maker_top5(year: int, params: Dict = None, show_debug: bool = True) -> pd.DataFrame:
-    """Fetch Top 5 Maker data and render fully All-Maxed dashboard."""
-    
-    st.subheader(f"📊 Top 5 Makers — {year}")
-    
-    # --- Prepare request ---
-    p = params.copy() if params else {}
-    p["year"] = int(year)
-    
-    # --- Fetch safely ---
+#-----------------------------
+#MAXED Maker fetch + render
+#-----------------------------
+# -----------------------------------------------------
+# 🔧 FETCH FUNCTION — SAFE + SMART + MOCK-RESILIENT
+# -----------------------------------------------------
+def fetch_maker_top5(year: int, params_common: dict):
+    """Fetch top vehicle makers for a given year — fully maxed with safe params + mock fallback."""
+    logger.info(Fore.CYAN + f"🚀 Fetching top makers for {year}...")
+
+    # --- Safe param cleanup ---
+    safe_params = params_common.copy()
+    safe_params["fromYear"] = year
+    safe_params["toYear"] = year
+
+    for k in ["fitnessCheck", "stateCode", "rtoCode", "vehicleType"]:
+        if k in safe_params and (
+            safe_params[k] in ["ALL", "0", "", None, False]
+        ):
+            safe_params.pop(k, None)
+
+    mk_json, mk_url = None, None
     try:
-        mk_json, mk_url = get_json("vahandashboard/top5Makerchart", p)
+        mk_json, mk_url = get_json("vahandashboard/top5Makerchart", safe_params)
     except Exception as e:
-        logger.warning(f"❌ get_json failed for Top 5 Makers {year}: {e}")
-        mk_json, mk_url = maker_mock_top5(year), f"mock://top5Maker/{year}"
-    
-    # --- Debug panel ---
-    if show_debug:
-        with st.expander(f"🧩 Debug JSON — Top 5 Makers {year}", expanded=False):
-            st.write("**URL:**", mk_url)
-            st.json(mk_json if isinstance(mk_json, (dict, list)) else str(mk_json))
-    
-    # --- Normalize JSON to DataFrame safely ---
-    try:
-        df = to_df(mk_json)
-    except Exception as e:
-        logger.warning(f"⚠️ to_df failed for Top 5 Makers {year}: {e}")
-        df = to_df(maker_mock_top5(year))
-    
-    if df is None or df.empty:
-        df = to_df(maker_mock_top5(year))
-    
-    df = df.copy()
-    df["year"] = int(year)
-    
-    # --- Robust label handling ---
-    # Prefer real name columns; fallback to mock or generic
-    if "label" not in df.columns or df["label"].isna().all():
-        if "name" in df.columns:
-            df["label"] = df["name"].astype(str)
-        elif "maker_name" in df.columns:
-            df["label"] = df["maker_name"].astype(str)
-        elif "maker" in df.columns:
-            df["label"] = df["maker"].apply(lambda x: x.get("name") if isinstance(x, dict) else str(x))
-        else:
-            # Attempt to extract from mock JSON
-            if isinstance(mk_json, dict) and "data" in mk_json:
-                df["label"] = [str(d.get("name", f"Maker {i+1}")) for i,d in enumerate(mk_json["data"])]
-            else:
-                df["label"] = [f"Maker {i+1}" for i in range(len(df))]
-    
-    # --- Robust value handling ---
-    if "value" not in df.columns:
-        for val_col in ["score", "count", "total"]:
-            if val_col in df.columns:
-                df["value"] = pd.to_numeric(df[val_col], errors="coerce").fillna(0)
-                break
-        else:
-            df["value"] = 0
-    else:
-        df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
-    
-    df = df.sort_values("value", ascending=False)
-    total_val = df["value"].sum()
-    
-    st.caption(f"🔗 Source: {mk_url}")
-    st.markdown(f"**Total Score / Registrations:** {int(total_val):,}")
-    
-    # --- Charts layout ---
-    c1, c2 = st.columns([1.8, 1.2])
-    
-    with c1:
-        try:
-            fig_bar = px.bar(
-                df,
-                x="label",
-                y="value",
-                color="label",
-                text_auto=".2s",
-                title=f"🏗️ Top 5 Maker Scores — {year}",
-                color_discrete_sequence=px.colors.qualitative.Safe,
-            )
-            fig_bar.update_layout(template="plotly_white", showlegend=False, height=450)
-            st.plotly_chart(fig_bar, use_container_width=True, key=f"bar_maker_{year}")
-        except Exception as e:
-            st.warning(f"⚠️ Bar chart failed: {e}")
-            st.dataframe(df)
-    
-    with c2:
-        try:
-            fig_pie = px.pie(
-                df,
-                names="label",
-                values="value",
-                hole=0.45,
-                color_discrete_sequence=px.colors.qualitative.Vivid,
-                title=f"Maker Share — {year}",
-            )
-            fig_pie.update_traces(
-                textinfo="percent+label",
-                pull=[0.05]*len(df),
-            )
-            fig_pie.update_layout(template="plotly_white", height=400, showlegend=False)
-            st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_maker_{year}")
-        except Exception as e:
-            st.warning(f"⚠️ Pie chart failed: {e}")
-            st.dataframe(df)
-    
-    # --- Top Maker insight ---
-    if not df.empty:
-        top = df.iloc[0]
-        pct = (top["value"] / total_val * 100) if total_val else 0
-        st.success(f"🏆 **Top Maker:** {top['label']} — {int(top['value']):,} ({pct:.1f}%)")
-    
-    # --- Extra insights table ---
-    df["share_%"] = (df["value"] / total_val * 100).round(2)
-    st.dataframe(
-        df.style.format({"value": "{:,.0f}", "share_%": "{:.2f}%"}).bar(
-            subset=["share_%"], color="#4CAF50"
-        ),
-        use_container_width=True,
-        height=320,
+        logger.error(Fore.RED + f"❌ API fetch failed for {year}: {e}")
+        mk_json, mk_url = None, "MOCK://top5Makerchart"
+
+    # --- Status caption ---
+    color = "orange" if mk_url and "MOCK" in mk_url else "green"
+    st.markdown(
+        f"🔗 **API ({year}):** <span style='color:{color}'>{mk_url or 'N/A'}</span>",
+        unsafe_allow_html=True,
     )
-    
-    # --- Synthetic monthly trend simulation ---
-    with st.expander("📈 Trend simulation (synthetic)", expanded=False):
-        months = pd.date_range(start=f"{year}-01-01", end=f"{year}-12-31", freq="M")
-        df_ts = pd.DataFrame({
-            "ds": np.tile(months, len(df)),
-            "label": np.repeat(df["label"].values, len(months)),
-            "value": np.repeat(df["value"].values, len(months)) * np.random.uniform(0.7,1.3, size=len(df)*len(months))
+
+    with st.expander(f"🧩 JSON Debug — {year}", expanded=False):
+        st.json(mk_json)
+
+    # --- Validation: check for expected fields ---
+    is_valid = False
+    df = pd.DataFrame()
+
+    if isinstance(mk_json, dict):
+        # ✅ Case 1: Chart.js-style JSON
+        if "datasets" in mk_json and "labels" in mk_json:
+            data_values = mk_json["datasets"][0].get("data", [])
+            labels = mk_json.get("labels", [])
+            if data_values and labels:
+                df = pd.DataFrame({"label": labels, "value": data_values})
+                is_valid = True
+
+        # ✅ Case 2: API returned dict with "data" or "result"
+        elif "data" in mk_json:
+            df = pd.DataFrame(mk_json["data"])
+            is_valid = not df.empty
+        elif "result" in mk_json:
+            df = pd.DataFrame(mk_json["result"])
+            is_valid = not df.empty
+
+    elif isinstance(mk_json, list) and mk_json:
+        # ✅ Case 3: Direct list of records
+        df = pd.DataFrame(mk_json)
+        is_valid = not df.empty
+
+    # --- Handle missing or invalid data ---
+    if not is_valid or df.empty:
+        logger.warning(Fore.YELLOW + f"⚠️ Using mock data for {year}")
+        st.warning(f"⚠️ No valid API data for {year}, generating mock values.")
+        random.seed(year)
+
+        makers = [
+            "Maruti Suzuki", "Tata Motors", "Hyundai", "Mahindra", "Hero MotoCorp",
+            "Bajaj Auto", "TVS Motor", "Honda", "Kia", "Toyota", "Renault",
+            "Ashok Leyland", "MG Motor", "Eicher", "Piaggio", "BYD", "Olectra", "Force Motors"
+        ]
+        random.shuffle(makers)
+        top = makers[:10]
+        base = random.randint(200_000, 1_000_000)
+        growth = 1 + (year - 2020) * 0.06
+        df = pd.DataFrame({
+            "label": top,
+            "value": [int(base * random.uniform(0.5, 1.5) * growth) for _ in top]
         })
-        fig_line = px.line(
-            df_ts,
-            x="ds",
-            y="value",
-            color="label",
-            line_group="label",
-            markers=True,
-            title=f"Synthetic Trend — {year}",
-            color_discrete_sequence=px.colors.qualitative.Set2,
-        )
-        fig_line.update_layout(template="plotly_white", height=400)
-        st.plotly_chart(fig_line, use_container_width=True, key=f"trend_maker_{year}")
-    
+    else:
+        st.success(f"✅ Valid API data loaded for {year}")
+
+    # --- Normalize columns ---
+    df.columns = [c.lower() for c in df.columns]
+    df["year"] = year
+    df = df.sort_values("value", ascending=False)
+
+    # --- Visual output ---
+    if not df.empty:
+        st.info(f"🏆 **{year}** → **{df.iloc[0]['label']}** — {df.iloc[0]['value']:,} registrations")
+        _bar_from_df(df, f"Top Makers ({year})", combined=False)
+        _pie_from_df(df, f"Maker Share ({year})")
+
     return df
+# -----------------------------------------------------
+# 🔁 MAIN LOOP — MULTI-YEAR FETCH
+# -----------------------------------------------------
+all_years = []
+with st.spinner("⏳ Fetching maker data for all selected years..."):
+    for y in years:
+        try:
+            dfy = fetch_maker_year(y, params_common)   # ✅ FIXED: pass params_common
+            all_years.append(dfy)
+        except Exception as e:
+            st.error(f"❌ {y} fetch error: {e}")
+            logger.error(Fore.RED + f"Fetch error {y}: {e}")
 
 # =====================================================
 # -------------------------
