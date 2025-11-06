@@ -3095,7 +3095,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
         # ----------------------------------------------------
         # 5️⃣ DISPLAY KPIs
         # ----------------------------------------------------
-        c1 = st.columns(1)
+        c1, = st.columns(1)
         c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
     
         st.markdown("#### 📘 Category Share (Latest Year)")
