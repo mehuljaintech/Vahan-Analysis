@@ -3988,18 +3988,17 @@ fig_top10 = px.bar(top_debug.head(10), x="label", y="value", text_auto=True,
 fig_top10.update_layout(template="plotly_white", margin=dict(t=50, b=40))
 st.plotly_chart(fig_top10, use_container_width=True)
 
-try:
-    # ----------------------------------------------------
-    # ADVANCED DEBUG METRICS
-    # ----------------------------------------------------
-    volatility = df_maker_all.groupby("year")["value"].sum().pct_change().std() * 100 \
-        if len(df_maker_all["year"].unique()) > 2 else 0
-    dominance_ratio = (top_cat["value"] / total_all) * n_cats if total_all > 0 else 0
-    direction = "increased" if cagr > 0 else "declined"
+# ----------------------------------------------------
+# ADVANCED DEBUG METRICS
+# ----------------------------------------------------
+volatility = df_maker_all.groupby("year")["value"].sum().pct_change().std() * 100 \
+    if len(df_maker_all["year"].unique()) > 2 else 0
+dominance_ratio = (top_cat["value"] / total_all) * n_cats if total_all > 0 else 0
+direction = "increased" if cagr > 0 else "declined"
 
-    summary_time = time.time() - summary_start
-    st.markdown("### ⚙️ Debug Performance Metrics")
-    st.code(f"""
+summary_time = time.time() - summary_start
+st.markdown("### ⚙️ Debug Performance Metrics")
+st.code(f"""
 Years analyzed: {years}
 Makers: {n_cats}
 Rows processed: {len(df_maker_all):,}
@@ -4010,34 +4009,40 @@ Dominance ratio: {dominance_ratio:.2f}
 Runtime: {summary_time:.2f}s
 """, language="yaml")
 
-    # ----------------------------------------------------
-    # 8️⃣ SMART SUMMARY — All-Maxed
-    # ----------------------------------------------------
-    if isinstance(top_cat, list):
-        top_cat = top_cat[0] if top_cat else {"label": "N/A", "value": 0}
+# ----------------------------------------------------
+# 8️⃣ SMART SUMMARY — All-Maxed
+# ----------------------------------------------------
+if isinstance(top_cat, list):
+    top_cat = top_cat[0] if top_cat else {"label": "N/A", "value": 0}
 
-    years_valid = years is not None and len(years) > 0
-    top_year_valid = top_year is not None and "year" in top_year and "value" in top_year
+years_valid = years is not None and len(years) > 0
+top_year_valid = top_year is not None and "year" in top_year and "value" in top_year
 
-    if top_cat and years_valid and top_year_valid:
-        st.success(
-            f"From **{years[0]}** to **{years[-1]}**, total registrations {direction}. "
-            f"**{top_cat.get('label', 'N/A')}** leads with **{top_cat_share:.2f}%** share. "
-            f"Peak year: **{top_year['year']}** with **{top_year['value']:,.0f}** registrations."
-        )
-        logger.info(f"✅ ALL-MAXED summary completed in {summary_time:.2f}s")
-    else:
-        st.error("⛔ ALL-MAXED summary failed: Missing or invalid data.")
-        logger.warning("⚠️ ALL-MAXED summary skipped due to incomplete data")
+if top_cat and years_valid and top_year_valid:
+    st.success(
+        f"From **{years[0]}** to **{years[-1]}**, total registrations {direction}. "
+        f"**{top_cat.get('label', 'N/A')}** leads with **{top_cat_share:.2f}%** share. "
+        f"Peak year: **{top_year['year']}** with **{top_year['value']:,.0f}** registrations."
+    )
+    logger.info(f"✅ ALL-MAXED summary completed in {summary_time:.2f}s")
+else:
+    st.error("⛔ ALL-MAXED summary failed: Missing or invalid data.")
+    logger.warning("⚠️ ALL-MAXED summary skipped due to incomplete data")
+
+# ----------------------------------------------------
+# 9️⃣ MAKERS + STATES SECTIONS (reuse same pattern)
+# ----------------------------------------------------
+# Repeat the above block for Makers and States by replacing:
+# df_src → df_maker_all / df_state_all
+# pivot_year → pivot_maker_year / pivot_state_year
+# top_cat → top_maker / top_state
+# top_cat_share → top_mk_share / top_state_share
+# Adjust headings & success messages accordingly
 
     # ----------------------------------------------------
     # 9️⃣ MAKERS + STATES SECTIONS (reuse same pattern)
     # ----------------------------------------------------
     # repeat the above block for Makers/States as needed
-
-except Exception as e:
-    logger.exception(f"ALL-MAXED summary failed: {e}")
-    st.error(f"⛔ ALL-MAXED summary failed: {e}")
 
 # # ---------- RTO/State detailed breakdown ---------------------------------------
 # st.subheader('RTO / State breakdown')
