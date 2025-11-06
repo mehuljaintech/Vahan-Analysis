@@ -2900,11 +2900,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
 
                 user_context = (
                     f"Aggregated yearly totals (truncated): {small_preview}\n\n"
-                    f"Top categories overall: {', '.join(top3.index.tolist())}.\n"
-                    f"CAGR total (approx): {cagr_val:.2f}%.\n"
-                    f"Latest-year per-category growth (where available): { {k: round(v,1) for k,v in list(growth_per_cat.items())[:5]} }\n"
-                    f"Forecast target category: {cat_to_forecast if 'cat_to_forecast' in locals() else 'N/A'}; Horizon: {horizon_years if 'horizon_years' in locals() else 'N/A'} years."
-                )
+                    f"Top categories overall: {', '.join(top3.index.tolist())}.\n"                )
 
                 # Preview prompt
                 if preview_prompt:
