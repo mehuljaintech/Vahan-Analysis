@@ -3183,8 +3183,11 @@ def all_maxed_category_block(params: Optional[dict] = None):
             """,
             language="yaml",
         )
+    # ----------------------------------------------------
+    # 8️⃣ SMART SUMMARY (NO TRY/EXCEPT)
+    # ----------------------------------------------------
     
-            # Ensure top_cat is a dict, not a list
+    # Ensure top_cat is a dict, not a list
     if isinstance(top_cat, list):
         top_cat = top_cat[0] if top_cat else {"label": "N/A", "value": 0}
     
