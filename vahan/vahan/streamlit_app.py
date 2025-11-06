@@ -5006,21 +5006,29 @@ else:
 #                     st.write("\n---\n".join(hits))
 
 
-# ================================
-# 🧠 RAG / LLM + Multi-Source Vector Intelligence (ALL-MAXED) — FIXED
-# ================================
-
 # -------------------
-# Debug & intelligence summary (safe, all-maxed)
+# 🧠 RAG Debug + Intelligence Summary (ALL-MAXED - SAFE VERSION)
 # -------------------
 st.markdown("---")
 st.subheader("🧠 RAG Debug + Intelligence Summary")
 
 try:
-    debug_block = {"query": q, "topk": int(topk), "retrieved_count": len(hits)}
+    # make sure base variables exist
+    q = globals().get("q", "")
+    hits = globals().get("hits", [])
+    topk = int(globals().get("topk", 8))
+    docs = globals().get("docs", [])
+    emb = globals().get("emb", None)
+    index_type = globals().get("index_type", "Unknown")
+
+    debug_block = {
+        "query": str(q),
+        "topk": int(topk),
+        "retrieved_count": len(hits) if isinstance(hits, list) else 0,
+    }
     st.json({"retrieval": debug_block})
 
-    # ---- helper to find first non-empty df
+    # ---- helper to find first non-empty df safely
     def first_nonempty(*names):
         for n in names:
             df = globals().get(n)
@@ -5060,7 +5068,9 @@ try:
                 }
                 st.markdown(
                     f"**{name} → {top_summary[name]['Top']}**  \n"
-                    f"Top Value {top_summary[name]['Value']:,.0f}  | Mean {top_summary[name]['Mean']:,.0f}  | Total {top_summary[name]['Total']:,.0f}"
+                    f"Top Value {top_summary[name]['Value']:,.0f}  | "
+                    f"Mean {top_summary[name]['Mean']:,.0f}  | "
+                    f"Total {top_summary[name]['Total']:,.0f}"
                 )
 
                 # ----- simple maxed visualization
@@ -5079,13 +5089,13 @@ try:
     st.session_state["rag_debug_summary"] = {
         "retrieval": debug_block,
         "top_summary": top_summary,
-        "hits_preview": hits[:topk],
+        "hits_preview": hits[:topk] if isinstance(hits, list) else [],
         "docs_count": len(docs),
         "index_type": index_type,
-        "emb_shape": emb.shape if emb is not None else None,
+        "emb_shape": getattr(emb, "shape", None),
     }
 
-    # ---- optional LLM synthesis placeholder
+    # ---- optional AI synthesis
     use_ai_summary = st.checkbox(
         "🤖 Generate AI narrative using configured LLM (placeholder)",
         value=False,
