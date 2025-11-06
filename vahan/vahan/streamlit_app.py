@@ -4620,7 +4620,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
-def all_maxed_maker_block(params: Optional[dict] = None):
+def all_maxed_maker_block(params: Optional[dict] = None,freq=freq, section_id="maker_section"):
     """Render the MAXED multi-year Maker analytics block inside Streamlit."""
 
     import streamlit as st
