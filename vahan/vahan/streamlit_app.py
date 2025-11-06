@@ -4672,14 +4672,6 @@ horizon = st.slider(
     key="forecast_horizon_slider_unique_001"
 )
 
-k = st.slider(
-    "Clusters (k)",
-    2,
-    min(10, len(month_pivot)),
-    3,
-    key="cluster_slider_unique_002"
-)
-
 # Linear Forecast
 try:
     X = np.arange(len(series)).reshape(-1, 1)
