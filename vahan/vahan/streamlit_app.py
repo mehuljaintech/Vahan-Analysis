@@ -5095,143 +5095,143 @@ else:
 #         doc = nlp(text)
 #         st.write('Entities:', [(ent.text, ent.label_) for ent in doc.ents])
 
-# =====================================================
-# 🧠 NLP ANALYZER — ALL-MAXED ULTIMATE FUSION LAB (SAFE)
-# =====================================================
-enable_nlp = st.checkbox("🗣️ Enable NLP Analyzer (ALL-MAXED ULTIMATE SAFE)", False, key="nlp_toggle")
+# # =====================================================
+# # 🧠 NLP ANALYZER — ALL-MAXED ULTIMATE FUSION LAB (SAFE)
+# # =====================================================
+# enable_nlp = st.checkbox("🗣️ Enable NLP Analyzer (ALL-MAXED ULTIMATE SAFE)", False, key="nlp_toggle")
 
-if enable_nlp:
-    import pandas as pd
-    import numpy as np
-    import io, base64, re
-    import matplotlib.pyplot as plt
-    import plotly.express as px
-    from collections import Counter
+# if enable_nlp:
+#     import pandas as pd
+#     import numpy as np
+#     import io, base64, re
+#     import matplotlib.pyplot as plt
+#     import plotly.express as px
+#     from collections import Counter
 
-    st.markdown("## 🧠 NLP Analyzer — ALL-MAXED ULTIMATE (SAFE MODE)")
+#     st.markdown("## 🧠 NLP Analyzer — ALL-MAXED ULTIMATE (SAFE MODE)")
 
-    # --- Try importing optional NLP libs safely
-    def safe_import(module_name, install_name=None):
-        try:
-            return __import__(module_name)
-        except ModuleNotFoundError:
-            install_name = install_name or module_name
-            st.warning(f"⚠️ `{module_name}` not found — attempting auto-install...")
-            import subprocess, sys
-            try:
-                subprocess.run(
-                    [sys.executable, "-m", "pip", "install", install_name, "--quiet"],
-                    check=True
-                )
-                return __import__(module_name)
-            except Exception as e:
-                st.error(f"❌ Failed to import {module_name}: {e}")
-                return None
+#     # --- Try importing optional NLP libs safely
+#     def safe_import(module_name, install_name=None):
+#         try:
+#             return __import__(module_name)
+#         except ModuleNotFoundError:
+#             install_name = install_name or module_name
+#             st.warning(f"⚠️ `{module_name}` not found — attempting auto-install...")
+#             import subprocess, sys
+#             try:
+#                 subprocess.run(
+#                     [sys.executable, "-m", "pip", "install", install_name, "--quiet"],
+#                     check=True
+#                 )
+#                 return __import__(module_name)
+#             except Exception as e:
+#                 st.error(f"❌ Failed to import {module_name}: {e}")
+#                 return None
 
-    nltk = safe_import("nltk")
-    spacy = safe_import("spacy")
-    seaborn = safe_import("seaborn")
-    from wordcloud import WordCloud
-    from openpyxl import Workbook
-    from openpyxl.utils.dataframe import dataframe_to_rows
+#     nltk = safe_import("nltk")
+#     spacy = safe_import("spacy")
+#     seaborn = safe_import("seaborn")
+#     from wordcloud import WordCloud
+#     from openpyxl import Workbook
+#     from openpyxl.utils.dataframe import dataframe_to_rows
 
-    if nltk:
-        nltk.download("punkt", quiet=True)
-        nltk.download("averaged_perceptron_tagger", quiet=True)
-        nltk.download("vader_lexicon", quiet=True)
-        from nltk.tokenize import word_tokenize
-        from nltk.sentiment import SentimentIntensityAnalyzer
-        sia = SentimentIntensityAnalyzer()
-    else:
-        word_tokenize = lambda x: x.split()
-        sia = None
+#     if nltk:
+#         nltk.download("punkt", quiet=True)
+#         nltk.download("averaged_perceptron_tagger", quiet=True)
+#         nltk.download("vader_lexicon", quiet=True)
+#         from nltk.tokenize import word_tokenize
+#         from nltk.sentiment import SentimentIntensityAnalyzer
+#         sia = SentimentIntensityAnalyzer()
+#     else:
+#         word_tokenize = lambda x: x.split()
+#         sia = None
 
-    # --- Input Section
-    model_choice = st.selectbox("Choose NLP Engine", ["spaCy", "NLTK", "None (Fallback)"], index=0)
-    text_input = st.text_area("📝 Enter text for full analysis:",
-                              "Maharashtra saw record EV registrations in 2024.")
-    if not text_input.strip():
-        st.stop()
+#     # --- Input Section
+#     model_choice = st.selectbox("Choose NLP Engine", ["spaCy", "NLTK", "None (Fallback)"], index=0)
+#     text_input = st.text_area("📝 Enter text for full analysis:",
+#                               "Maharashtra saw record EV registrations in 2024.")
+#     if not text_input.strip():
+#         st.stop()
 
-    # --- Load spaCy if available
-    if spacy:
-        try:
-            nlp = spacy.load("en_core_web_sm")
-        except OSError:
-            from spacy.cli import download
-            download("en_core_web_sm")
-            nlp = spacy.load("en_core_web_sm")
-    else:
-        nlp = None
+#     # --- Load spaCy if available
+#     if spacy:
+#         try:
+#             nlp = spacy.load("en_core_web_sm")
+#         except OSError:
+#             from spacy.cli import download
+#             download("en_core_web_sm")
+#             nlp = spacy.load("en_core_web_sm")
+#     else:
+#         nlp = None
 
-    # --- Core NLP Analysis
-    toks = word_tokenize(text_input) if nltk else text_input.split()
-    pos_tags = nltk.pos_tag(toks) if nltk else []
-    sent_score = sia.polarity_scores(text_input) if sia else {"compound": 0, "pos": 0, "neg": 0, "neu": 1}
+#     # --- Core NLP Analysis
+#     toks = word_tokenize(text_input) if nltk else text_input.split()
+#     pos_tags = nltk.pos_tag(toks) if nltk else []
+#     sent_score = sia.polarity_scores(text_input) if sia else {"compound": 0, "pos": 0, "neg": 0, "neu": 1}
 
-    if nlp:
-        doc = nlp(text_input)
-        ents = [(ent.text, ent.label_) for ent in doc.ents]
-        keywords = [tok.text.lower() for tok in doc if tok.is_alpha and not tok.is_stop]
-    else:
-        ents = []
-        keywords = [t.lower() for t in toks if len(t) > 3]
+#     if nlp:
+#         doc = nlp(text_input)
+#         ents = [(ent.text, ent.label_) for ent in doc.ents]
+#         keywords = [tok.text.lower() for tok in doc if tok.is_alpha and not tok.is_stop]
+#     else:
+#         ents = []
+#         keywords = [t.lower() for t in toks if len(t) > 3]
 
-    top_kw = Counter(keywords).most_common(15)
-    st.metric("Sentiment (compound)", f"{sent_score['compound']:.3f}")
-    st.write("🔑 Keywords:", top_kw)
-    st.write("🧩 Entities:", ents if ents else "— None —")
+#     top_kw = Counter(keywords).most_common(15)
+#     st.metric("Sentiment (compound)", f"{sent_score['compound']:.3f}")
+#     st.write("🔑 Keywords:", top_kw)
+#     st.write("🧩 Entities:", ents if ents else "— None —")
 
-    # --- WordCloud
-    wc = WordCloud(width=600, height=300, background_color="white").generate(" ".join(keywords))
-    fig, ax = plt.subplots()
-    ax.imshow(wc, interpolation="bilinear")
-    ax.axis("off")
-    st.pyplot(fig)
+#     # --- WordCloud
+#     wc = WordCloud(width=600, height=300, background_color="white").generate(" ".join(keywords))
+#     fig, ax = plt.subplots()
+#     ax.imshow(wc, interpolation="bilinear")
+#     ax.axis("off")
+#     st.pyplot(fig)
 
-    # --- Summary DataFrame
-    df_summary = pd.DataFrame([{
-        "Tokens": len(toks),
-        "Sentiment": sent_score["compound"],
-        "Pos": sent_score["pos"],
-        "Neg": sent_score["neg"],
-        "Neu": sent_score["neu"],
-        "TopKeywords": ", ".join([k for k, _ in top_kw])
-    }])
-    st.dataframe(df_summary)
+#     # --- Summary DataFrame
+#     df_summary = pd.DataFrame([{
+#         "Tokens": len(toks),
+#         "Sentiment": sent_score["compound"],
+#         "Pos": sent_score["pos"],
+#         "Neg": sent_score["neg"],
+#         "Neu": sent_score["neu"],
+#         "TopKeywords": ", ".join([k for k, _ in top_kw])
+#     }])
+#     st.dataframe(df_summary)
 
-    # --- Charts
-    if seaborn:
-        import seaborn as sns
-        fig, ax = plt.subplots()
-        sns.heatmap(df_summary[["Sentiment", "Pos", "Neg", "Neu"]].T, cmap="RdYlGn", annot=True, ax=ax)
-        st.pyplot(fig)
+#     # --- Charts
+#     if seaborn:
+#         import seaborn as sns
+#         fig, ax = plt.subplots()
+#         sns.heatmap(df_summary[["Sentiment", "Pos", "Neg", "Neu"]].T, cmap="RdYlGn", annot=True, ax=ax)
+#         st.pyplot(fig)
 
-    fig_kw = px.bar(pd.DataFrame(top_kw, columns=["Keyword", "Frequency"]),
-                    x="Keyword", y="Frequency", title="Keyword Frequency")
-    st.plotly_chart(fig_kw, use_container_width=True)
+#     fig_kw = px.bar(pd.DataFrame(top_kw, columns=["Keyword", "Frequency"]),
+#                     x="Keyword", y="Frequency", title="Keyword Frequency")
+#     st.plotly_chart(fig_kw, use_container_width=True)
 
-    # --- Export
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Summary"
-    for r in dataframe_to_rows(df_summary, index=False, header=True):
-        ws.append(r)
-    buf = io.BytesIO()
-    wb.save(buf)
-    buf.seek(0)
+#     # --- Export
+#     wb = Workbook()
+#     ws = wb.active
+#     ws.title = "Summary"
+#     for r in dataframe_to_rows(df_summary, index=False, header=True):
+#         ws.append(r)
+#     buf = io.BytesIO()
+#     wb.save(buf)
+#     buf.seek(0)
 
-    st.download_button("📥 Download Excel",
-                       data=buf,
-                       file_name="NLP_AllMaxed_Safe.xlsx",
-                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+#     st.download_button("📥 Download Excel",
+#                        data=buf,
+#                        file_name="NLP_AllMaxed_Safe.xlsx",
+#                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-    st.download_button("🧠 Download JSON",
-                       data=df_summary.to_json(orient="records", indent=2),
-                       file_name="nlp_allmaxed_safe.json",
-                       mime="application/json")
+#     st.download_button("🧠 Download JSON",
+#                        data=df_summary.to_json(orient="records", indent=2),
+#                        file_name="nlp_allmaxed_safe.json",
+#                        mime="application/json")
 
-    st.success("✅ NLP Analyzer fully loaded — all maxed (safe mode)!")
+#     st.success("✅ NLP Analyzer fully loaded — all maxed (safe mode)!")
 
 
 # # ---------- Exports & comparisons ------------------------------------------------
@@ -5252,13 +5252,13 @@ if enable_nlp:
 
 
 # =====================================================
-# 🚀 Final Dashboard Footer (ALL-MAXED Polished Edition)
+# 🚀 ALL-MAXED Final Dashboard Footer
 # =====================================================
 try:
     import time
     from datetime import datetime
 
-    # compute runtime duration if start_ts exists
+    # Track runtime if app_start_time exists
     runtime = ""
     if "app_start_time" in globals():
         try:
@@ -5266,26 +5266,35 @@ try:
             runtime = f" • Runtime: {runtime_secs:,.1f}s"
         except Exception:
             runtime = ""
-    
-    # count how many dataframes we loaded
+
+    # Count loaded DataFrames
     df_count = sum(1 for v in globals().values() if isinstance(v, pd.DataFrame))
     df_text = f" • DataFrames: {df_count}" if df_count else ""
 
+    # Current UTC timestamp
     footer_ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+
+    # Render ALL-MAXED gradient footer
     st.markdown(f"""
-    <div style="text-align:center;padding:16px;border-radius:14px;
-                background:linear-gradient(90deg,#051937,#004d7a,#008793,#00bf72,#a8eb12);
-                color:white;margin-top:18px;box-shadow:0 0 12px rgba(0,0,0,0.4);">
+    <div style="
+        text-align:center;
+        padding:16px;
+        border-radius:14px;
+        background:linear-gradient(90deg,#051937,#004d7a,#008793,#00bf72,#a8eb12);
+        color:white;
+        margin-top:18px;
+        box-shadow:0 0 12px rgba(0,0,0,0.4);
+    ">
         <h3 style="margin:0;">🚗 Parivahan Analytics — ALL-MAXED DASHBOARD</h3>
         <div style="opacity:0.95;font-size:14px;">
-            Snapshot: <code>{footer_ts}</code>{runtime}{df_text} • Built with ❤️ & ⚙️ Streamlit
+            Snapshot: <code>{footer_ts}</code>{runtime}{df_text} • Built with ❤️ & ⚙️ Streamlit • ALLLL MAXED ✅
         </div>
     </div>
     """, unsafe_allow_html=True)
 
     st.caption("💡 Tip: Use the exported Excel for polished reports and the ZIP snapshot for full archival backups.")
 
-    # graceful balloon launch
+    # Optional celebratory balloons
     try:
         st.balloons()
     except Exception:
