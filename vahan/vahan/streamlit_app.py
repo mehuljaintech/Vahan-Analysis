@@ -3199,9 +3199,9 @@ def all_maxed_category_block(params: Optional[dict] = None):
         
             logger.info(f"✅ ALL-MAXED summary completed in {summary_time:.2f}s")
     
-        except Exception as e:
-            logger.exception(f"ALL-MAXED summary failed: {e}")
-            st.error(f"⛔ ALL-MAXED summary failed: {e}")
+    except Exception as e:
+        logger.exception(f"ALL-MAXED summary failed: {e}")
+        st.error(f"⛔ ALL-MAXED summary failed: {e}")
 
 # -----------------------------------------------------
 # 🧩 Safe Entry Point — Streamlit-only Execution Guard
