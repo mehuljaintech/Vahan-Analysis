@@ -5770,7 +5770,7 @@ if __name__ == "__main__":
     st.markdown("# 🚗 ALL-MAXED CATEGORY ANALYTICS")
     
     try:
-        all_maxed_category_block()
+        all_maxed_maker_block()
     except Exception as e:
         import traceback
         st.error(f"💥 Error while rendering All-Maxed block: {e}")
