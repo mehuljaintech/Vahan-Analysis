@@ -1,10 +1,10 @@
 # ======================================================
-# 🚀 PARIVAHAN ANALYTICS 2025 — ALL-MAXED ULTIMATE CLOUD
+# 🚀 PARIVAHAN ANALYTICS 2025 — ALL-MAXED CLOUD EDITION
 # ======================================================
 
-# ------------------------------
-# Core / Framework
-# ------------------------------
+# -----------------------------
+# CORE FRAMEWORK
+# -----------------------------
 streamlit
 pandas
 numpy
@@ -20,16 +20,12 @@ aiofiles
 polars
 psutil
 pyyaml
-typing-extensions
-tenacity
 rich
-loguru
-colorama
-cachetools
+typing-extensions
 
-# ------------------------------
-# Visualization / Dashboard
-# ------------------------------
+# -----------------------------
+# VISUALIZATION / DASHBOARD
+# -----------------------------
 matplotlib
 plotly
 seaborn
@@ -41,143 +37,125 @@ streamlit-aggrid
 streamlit-echarts
 streamlit-extras
 streamlit-lottie
-Pillow
 
-# ------------------------------
-# Excel / Export / Reporting
-# ------------------------------
-openpyxl
-xlsxwriter
-odfpy
-reportlab
-pypandoc
+# -----------------------------
+# EXCEL / EXPORT / REPORTING
+# -----------------------------
 fpdf2
+odfpy
+openpyxl
+pdfplumber
+pypandoc
+PyPDF2
 python-docx
 python-pptx
-pdfplumber
-PyPDF2
+reportlab
+xlsxwriter
 
-# ------------------------------
-# Machine Learning / Analytics
-# ------------------------------
+# -----------------------------
+# MACHINE LEARNING / ANALYTICS
+# -----------------------------
 scikit-learn
-prophet
-statsmodels
 xgboost
 scipy
+statsmodels
 catboost
 lightgbm
 mlxtend
+prophet
 
-# ------------------------------
-# NLP / Linguistic Intelligence
-# ------------------------------
+# -----------------------------
+# NLP / LINGUISTIC INTELLIGENCE
+# -----------------------------
 nltk
 spacy
 spacy-transformers
-wordcloud
 gensim
+wordcloud
 textblob
-emoji
-polyglot
-pattern
-python-Levenshtein
-rapidfuzz
 
-# ------------------------------
-# AI / LLM / RAG Integration
-# ------------------------------
-openai
-tiktoken
-deepinfra
+# -----------------------------
+# AI / LLM / RAG INTEGRATION
+# -----------------------------
+torch==2.3.1+cpu
+transformers
 accelerate
 sentencepiece
 huggingface-hub
 tokenizers
-torch==2.3.1+cpu
+openai
+tiktoken
 langchain
 langchain-community
 langchain-core
 langchain-text-splitters
 langchainhub
 sentence-transformers
-transformers
 chromadb
 faiss-cpu
+deepinfra
 
-# ------------------------------
-# Data Processing / Storage
-# ------------------------------
-dask
-duckdb
+# -----------------------------
+# DATA PROCESSING / STORAGE
+# -----------------------------
+pyarrow
 fastparquet
 numexpr
-pyarrow
+tabulate
+dask
+duckdb
 sqlite-utils
 sqlalchemy
 
-# ------------------------------
-# Database Connectors
-# ------------------------------
+# -----------------------------
+# DATABASE CONNECTORS
+# -----------------------------
 pymysql
 psycopg2-binary
 pymongo
 redis
-elasticsearch
 
-# ------------------------------
-# Security / Auth / Crypto
-# ------------------------------
+# -----------------------------
+# SECURITY / AUTH / CRYPTO
+# -----------------------------
 bcrypt
 cryptography
 pyjwt
 
-# ------------------------------
-# Networking / Scraping
-# ------------------------------
+# -----------------------------
+# NETWORKING / SCRAPING
+# -----------------------------
 aiohttp
 beautifulsoup4
 fake-useragent
 html5lib
 lxml
 requests-toolbelt
-selenium
 
-# ------------------------------
-# Cloud / Storage / API
-# ------------------------------
+# -----------------------------
+# CLOUD / STORAGE INTEGRATIONS
+# -----------------------------
 azure-storage-blob
 boto3
 dropbox
 google-cloud-storage
 gspread
 oauthlib
-paramiko
-fabric
 
-# ------------------------------
-# Utilities / Logging / Debugging
-# ------------------------------
+# -----------------------------
+# UTILITIES / DEBUG / LOGGING
+# -----------------------------
 python-json-logger
-logzero
-pytz
-sentry-sdk
+loguru
+cachetools
+colorama
+tenacity
 
-# ------------------------------
-# Web / App Deployment
-# ------------------------------
-uvicorn
-fastapi
-flask
-werkzeug
-jinja2
-gunicorn
-starlette
+# -----------------------------
+# OPTIONAL HEAVY NLP / EMBEDDINGS (may fail if system deps missing)
+# -----------------------------
+polyglot
+pattern
+python-Levenshtein
+rapidfuzz
 
-# ------------------------------
-# Optional / NLP / AI Preload
-# ------------------------------
-en_core_web_sm
-punkt 
-averaged_perceptron_tagger 
-vader_lexicon
