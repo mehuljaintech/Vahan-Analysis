@@ -4009,34 +4009,34 @@ Runtime: {summary_time:.2f}s
 """, language="yaml")
 
 # ----------------------------------------------------
-    # 8️⃣ SMART SUMMARY — All-Maxed
-    # ----------------------------------------------------
-    if isinstance(top_cat, list):
-        top_cat = top_cat[0] if top_cat else {"label": "N/A", "value": 0}
+# 8️⃣ SMART SUMMARY — All-Maxed
+# ----------------------------------------------------
+if isinstance(top_cat, list):
+    top_cat = top_cat[0] if top_cat else {"label": "N/A", "value": 0}
 
-    years_valid = years is not None and len(years) > 0
-    top_year_valid = top_year is not None and "year" in top_year and "value" in top_year
+years_valid = years is not None and len(years) > 0
+top_year_valid = top_year is not None and "year" in top_year and "value" in top_year
 
-    if top_cat and years_valid and top_year_valid:
-        st.success(
-            f"From **{years[0]}** to **{years[-1]}**, total registrations {direction}. "
-            f"**{top_cat.get('label', 'N/A')}** leads with **{top_cat_share:.2f}%** share. "
-            f"Peak year: **{top_year['year']}** with **{top_year['value']:,.0f}** registrations."
-        )
-        logger.info(f"✅ ALL-MAXED summary completed in {summary_time:.2f}s")
-    else:
-        st.error("⛔ ALL-MAXED summary failed: Missing or invalid data.")
-        logger.warning("⚠️ ALL-MAXED summary skipped due to incomplete data.")
+if top_cat and years_valid and top_year_valid:
+    st.success(
+        f"From **{years[0]}** to **{years[-1]}**, total registrations {direction}. "
+        f"**{top_cat.get('label', 'N/A')}** leads with **{top_cat_share:.2f}%** share. "
+        f"Peak year: **{top_year['year']}** with **{top_year['value']:,.0f}** registrations."
+    )
+    logger.info(f"✅ ALL-MAXED summary completed in {summary_time:.2f}s")
+else:
+    st.error("⛔ ALL-MAXED summary failed: Missing or invalid data.")
+    logger.warning("⚠️ ALL-MAXED summary skipped due to incomplete data")
 
-    # ----------------------------------------------------
-    # 9️⃣ MAKERS + STATES SECTIONS (reuse same pattern)
-    # ----------------------------------------------------
-    # You can repeat the above block replacing:
-    # df_src → df_maker_all / df_state_all
-    # pivot_year → pivot_maker_year / pivot_state_year
-    # top_cat → top_maker / top_state
-    # top_cat_share → top_mk_share / top_state_share
-    # And adjust headings & success messages
+# ----------------------------------------------------
+# 9️⃣ MAKERS + STATES SECTIONS (reuse same pattern)
+# ----------------------------------------------------
+# You can repeat the above block for Makers and States by replacing:
+# df_src → df_maker_all / df_state_all
+# pivot_year → pivot_maker_year / pivot_state_year
+# top_cat → top_maker / top_state
+# top_cat_share → top_mk_share / top_state_share
+# And adjust headings & success messages accordingly
 
 except Exception as e:
     logger.exception(f"ALL-MAXED summary failed: {e}")
