@@ -4447,29 +4447,29 @@ Dominance ratio: {dominance_ratio:.2f}
 Runtime: {summary_time:.2f}s
 """, language="yaml")
 
-        # ----------------------------------------------------
-        # 8️⃣ SMART SUMMARY — States
-        # ----------------------------------------------------
-        if isinstance(top_state, list):
-            top_state = top_state[0] if top_state else {"label": "N/A", "value": 0}
-    
-        years_valid = years is not None and len(years) > 0
-        top_year_valid = top_year is not None and "year" in top_year and "value" in top_year
-    
-        if top_state and years_valid and top_year_valid:
-            st.success(
-                f"From **{years[0]}** to **{years[-1]}**, total registrations {direction}. "
-                f"**{top_state.get('label', 'N/A')}** leads with **{top_state_share:.2f}%** share. "
-                f"Peak year: **{top_year['year']}** with **{top_year['value']:,.0f}** registrations."
-            )
-            logger.info(f"✅ State summary completed in {summary_time:.2f}s")
-        else:
-            st.error("⛔ State summary failed: Missing or invalid data.")
-            logger.warning("⚠️ State summary skipped due to incomplete data.")
-    
-    except Exception as e:
-        logger.exception(f"State summary failed: {e}")
-        st.error(f"⛔ State summary failed: {e}")
+            # ----------------------------------------------------
+            # 8️⃣ SMART SUMMARY — States
+            # ----------------------------------------------------
+            if isinstance(top_state, list):
+                top_state = top_state[0] if top_state else {"label": "N/A", "value": 0}
+        
+            years_valid = years is not None and len(years) > 0
+            top_year_valid = top_year is not None and "year" in top_year and "value" in top_year
+        
+            if top_state and years_valid and top_year_valid:
+                st.success(
+                    f"From **{years[0]}** to **{years[-1]}**, total registrations {direction}. "
+                    f"**{top_state.get('label', 'N/A')}** leads with **{top_state_share:.2f}%** share. "
+                    f"Peak year: **{top_year['year']}** with **{top_year['value']:,.0f}** registrations."
+                )
+                logger.info(f"✅ State summary completed in {summary_time:.2f}s")
+            else:
+                st.error("⛔ State summary failed: Missing or invalid data.")
+                logger.warning("⚠️ State summary skipped due to incomplete data.")
+        
+        except Exception as e:
+            logger.exception(f"State summary failed: {e}")
+            st.error(f"⛔ State summary failed: {e}")
 
 
 # -------------------------
