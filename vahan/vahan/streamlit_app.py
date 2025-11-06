@@ -5028,23 +5028,51 @@ else:
 #         st.write('Entities:', [(ent.text, ent.label_) for ent in doc.ents])
 
 # =====================================================
-# 🧠 NLP ANALYZER — ALL-MAXED ULTIMATE FUSION LAB 🔥
+# 🧠 NLP ANALYZER — ALL-MAXED ULTIMATE FUSION LAB 🔥 (SAFE INSTALL)
 # =====================================================
 enable_nlp = st.checkbox("🗣️ Enable NLP Analyzer (ALL-MAXED ULTIMATE)", False, key="nlp_toggle")
 
 if enable_nlp:
+    import importlib, subprocess, sys, io, base64, re
     import pandas as pd
     import numpy as np
-    import nltk, spacy, re, io, base64, seaborn as sns
-    from nltk.tokenize import word_tokenize
     from collections import Counter
-    from wordcloud import WordCloud
     import matplotlib.pyplot as plt
-    import plotly.express as px
+
+    # ---- helper for safe import or install
+    def safe_import(pkg, pypi=None):
+        try:
+            return importlib.import_module(pkg)
+        except ModuleNotFoundError:
+            try:
+                install_name = pypi if pypi else pkg
+                subprocess.check_call([sys.executable, "-m", "pip", "install", install_name, "--quiet"])
+                return importlib.import_module(pkg)
+            except Exception as e:
+                st.warning(f"⚠️ Failed to import {pkg}: {e}")
+                return None
+
+    # ---- load all deps safely
+    nltk = safe_import("nltk")
+    spacy = safe_import("spacy")
+    sns = safe_import("seaborn")
+    px = safe_import("plotly.express", "plotly")
+    WordCloud = None
+    try:
+        WordCloud = safe_import("wordcloud").WordCloud
+    except Exception:
+        pass
+    openpyxl = safe_import("openpyxl")
+
+    # ---- check minimal viability
+    if nltk is None or spacy is None:
+        st.error("❌ Required NLP modules not available. Try restarting after install.")
+        st.stop()
+
+    from nltk.tokenize import word_tokenize
     from nltk.sentiment import SentimentIntensityAnalyzer
     from openpyxl import Workbook
     from openpyxl.utils.dataframe import dataframe_to_rows
-    from openpyxl.styles import Alignment, Font
 
     st.markdown("## 🧠 NLP Analyzer — ALL-MAXED ULTIMATE FUSION LAB")
 
@@ -5056,19 +5084,20 @@ if enable_nlp:
     sia = SentimentIntensityAnalyzer()
 
     # --- Text Input Section
-    model_choice = st.selectbox("Choose NLP Engine", ["spaCy (default)", "NLTK", "Transformers (HuggingFace)"], index=0)
-
+    model_choice = st.selectbox("Choose NLP Engine", ["spaCy (default)", "NLTK"], index=0)
     text_mode = st.radio("Input Mode", ["Single Text", "Multiple Texts (compare mode)"], horizontal=True)
 
     if text_mode == "Single Text":
         texts = [st.text_area("📝 Paste text to analyze:", "Maharashtra saw record EV registrations in 2024.")]
     else:
-        raw = st.text_area("Enter multiple texts separated by '---'",
-                           "2023: Maharashtra had 8 lakh registrations. --- 2024: Maharashtra had 10 lakh registrations.")
+        raw = st.text_area(
+            "Enter multiple texts separated by '---'",
+            "2023: Maharashtra had 8 lakh registrations. --- 2024: Maharashtra had 10 lakh registrations."
+        )
         texts = [x.strip() for x in raw.split('---') if x.strip()]
 
     # --- Load spaCy model
-    def load_spacy():
+    def load_spacy_model():
         try:
             return spacy.load("en_core_web_sm")
         except OSError:
@@ -5076,21 +5105,20 @@ if enable_nlp:
             download("en_core_web_sm")
             return spacy.load("en_core_web_sm")
 
-    nlp = load_spacy()
+    nlp = load_spacy_model()
 
-    results = []
-    entity_map = []
+    results, entity_map = [], []
 
     for idx, t in enumerate(texts):
         if not t.strip():
             continue
 
         st.markdown(f"### 📄 Text {idx+1}")
+
         toks = word_tokenize(t)
         pos_tags = nltk.pos_tag(toks)
         sent_score = sia.polarity_scores(t)
         doc = nlp(t)
-
         ents = [(ent.text, ent.label_) for ent in doc.ents]
         keywords = [tok.text.lower() for tok in doc if tok.is_alpha and not tok.is_stop]
         top_kw = Counter(keywords).most_common(12)
@@ -5101,13 +5129,13 @@ if enable_nlp:
         st.write("🧱 POS (sample):", pos_tags[:10])
 
         # WordCloud
-        wc = WordCloud(width=600, height=300, background_color="white").generate(" ".join(keywords))
-        fig, ax = plt.subplots()
-        ax.imshow(wc, interpolation="bilinear")
-        ax.axis("off")
-        st.pyplot(fig)
+        if WordCloud:
+            wc = WordCloud(width=600, height=300, background_color="white").generate(" ".join(keywords))
+            fig, ax = plt.subplots()
+            ax.imshow(wc, interpolation="bilinear")
+            ax.axis("off")
+            st.pyplot(fig)
 
-        # Append data
         results.append({
             "TextID": idx + 1,
             "Tokens": len(toks),
@@ -5136,19 +5164,19 @@ if enable_nlp:
     st.metric("📊 Average Sentiment", f"{avg_sent:.3f}")
     st.dataframe(df_results, use_container_width=True)
 
-    # --- Sentiment Chart
-    fig_sent = px.bar(df_results, x="TextID", y="Sentiment", color="Sentiment",
-                      text_auto=True, title="Sentiment per Text", color_continuous_scale="RdYlGn")
-    st.plotly_chart(fig_sent, use_container_width=True)
+    # --- Charts (only if px available)
+    if px:
+        fig_sent = px.bar(df_results, x="TextID", y="Sentiment", color="Sentiment",
+                          text_auto=True, title="Sentiment per Text", color_continuous_scale="RdYlGn")
+        st.plotly_chart(fig_sent, use_container_width=True)
 
-    # --- Keyword frequency
-    all_kw = []
-    for r in results:
-        all_kw.extend(r["TopKeywords"].split(", "))
-    kw_freq = Counter(all_kw).most_common(20)
-    df_kw = pd.DataFrame(kw_freq, columns=["Keyword", "Frequency"])
-    fig_kw = px.bar(df_kw, x="Keyword", y="Frequency", text_auto=True, title="Keyword Frequency")
-    st.plotly_chart(fig_kw, use_container_width=True)
+        all_kw = []
+        for r in results:
+            all_kw.extend(r["TopKeywords"].split(", "))
+        kw_freq = Counter(all_kw).most_common(20)
+        df_kw = pd.DataFrame(kw_freq, columns=["Keyword", "Frequency"])
+        fig_kw = px.bar(df_kw, x="Keyword", y="Frequency", text_auto=True, title="Keyword Frequency")
+        st.plotly_chart(fig_kw, use_container_width=True)
 
     # --- Entity Analysis
     if not df_entities.empty:
@@ -5157,10 +5185,11 @@ if enable_nlp:
         st.bar_chart(ent_counts)
         st.dataframe(df_entities.head(30), use_container_width=True)
 
-    # --- Heatmap for sentiment distribution
-    fig, ax = plt.subplots()
-    sns.heatmap(df_results[["Sentiment", "Pos", "Neg", "Neu"]].T, cmap="RdYlGn", annot=True, ax=ax)
-    st.pyplot(fig)
+    # --- Heatmap for sentiment distribution (if sns)
+    if sns:
+        fig, ax = plt.subplots()
+        sns.heatmap(df_results[["Sentiment", "Pos", "Neg", "Neu"]].T, cmap="RdYlGn", annot=True, ax=ax)
+        st.pyplot(fig)
 
     # ==========================================================
     # 💾 EXPORT SECTION — Excel (auto width) + JSON
@@ -5178,34 +5207,27 @@ if enable_nlp:
         max_len = max(len(str(c.value)) if c.value else 0 for c in col)
         ws_sum.column_dimensions[col[0].column_letter].width = max_len + 2
 
-    ws_ent = wb.create_sheet("Entities")
-    for r in dataframe_to_rows(df_entities, index=False, header=True):
-        ws_ent.append(r)
-    for col in ws_ent.columns:
-        max_len = max(len(str(c.value)) if c.value else 0 for c in col)
-        ws_ent.column_dimensions[col[0].column_letter].width = max_len + 2
+    if not df_entities.empty:
+        ws_ent = wb.create_sheet("Entities")
+        for r in dataframe_to_rows(df_entities, index=False, header=True):
+            ws_ent.append(r)
 
-    ws_kw = wb.create_sheet("Keywords")
-    for r in dataframe_to_rows(df_kw, index=False, header=True):
-        ws_kw.append(r)
-    for col in ws_kw.columns:
-        max_len = max(len(str(c.value)) if c.value else 0 for c in col)
-        ws_kw.column_dimensions[col[0].column_letter].width = max_len + 2
+    if "df_kw" in locals():
+        ws_kw = wb.create_sheet("Keywords")
+        for r in dataframe_to_rows(df_kw, index=False, header=True):
+            ws_kw.append(r)
 
-    # Save Excel in-memory
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
 
-    b64 = base64.b64encode(buf.read()).decode()
     st.download_button(
         label="📥 Download All NLP Results (Excel)",
-        data=base64.b64decode(b64),
+        data=buf.getvalue(),
         file_name="NLP_AllMaxed_Fusion.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-    # JSON Export
     st.download_button(
         label="🧩 Download Results (JSON)",
         data=df_results.to_json(orient="records", indent=2),
