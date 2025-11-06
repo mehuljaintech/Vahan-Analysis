@@ -3202,31 +3202,31 @@ def all_maxed_category_block(params: Optional[dict] = None):
         # ----------------------------------------------------
         # Ensure top_cat is a single dict
         # Ensure top_cat is a dict
-    if isinstance(top_cat, list):
-        top_cat = top_cat[0] if top_cat else {"label": "N/A", "value": 0}
-    
-    # Check years and top_year explicitly
-    years_valid = years is not None and len(years) > 0  # works for list or Series
-    top_year_valid = (
-        top_year is not None 
-        and not getattr(top_year, "empty", True)  # safe for DataFrame/Series
-    )
-    
-    if top_cat and years_valid and top_year_valid:
-        # Safely extract single values from top_year
-        peak_year = int(top_year['year'].iloc[0]) if hasattr(top_year['year'], "iloc") else int(top_year['year'])
-        peak_value = int(top_year['value'].iloc[0]) if hasattr(top_year['value'], "iloc") else int(top_year['value'])
-    
-        st.success(
-            f"From **{years[0]}** to **{years[-1]}**, total registrations {direction} "
-            f"**{top_cat.get('label', 'N/A')}** leads with **{top_cat_share:.2f}%** share. "
-            f"Peak year: **{peak_year}** with **{peak_value:,}** registrations. "
-        )
-        logger.info(f"✅ ALL-MAXED summary completed in {summary_time:.2f}s")
-    else:
-        st.error("⛔ ALL-MAXED summary failed: Missing or invalid data.")
-        logger.warning("⚠️ ALL-MAXED summary skipped due to incomplete data.")
+        if isinstance(top_cat, list):
+            top_cat = top_cat[0] if top_cat else {"label": "N/A", "value": 0}
         
+        # Check years and top_year explicitly
+        years_valid = years is not None and len(years) > 0  # works for list or Series
+        top_year_valid = (
+            top_year is not None 
+            and not getattr(top_year, "empty", True)  # safe for DataFrame/Series
+        )
+        
+        if top_cat and years_valid and top_year_valid:
+            # Safely extract single values from top_year
+            peak_year = int(top_year['year'].iloc[0]) if hasattr(top_year['year'], "iloc") else int(top_year['year'])
+            peak_value = int(top_year['value'].iloc[0]) if hasattr(top_year['value'], "iloc") else int(top_year['value'])
+        
+            st.success(
+                f"From **{years[0]}** to **{years[-1]}**, total registrations {direction} "
+                f"**{top_cat.get('label', 'N/A')}** leads with **{top_cat_share:.2f}%** share. "
+                f"Peak year: **{peak_year}** with **{peak_value:,}** registrations. "
+            )
+            logger.info(f"✅ ALL-MAXED summary completed in {summary_time:.2f}s")
+        else:
+            st.error("⛔ ALL-MAXED summary failed: Missing or invalid data.")
+            logger.warning("⚠️ ALL-MAXED summary skipped due to incomplete data.")
+            
     
     # ----------------------------------------------------
     # 9️⃣ CATCH GLOBAL ERRORS
