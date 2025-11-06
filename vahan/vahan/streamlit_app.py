@@ -4618,7 +4618,7 @@ all_years = []
 with st.spinner("⏳ Fetching maker data for all selected years..."):
     for y in years:
         try:
-            dfy = fetch_maker_year(y, params_common)   # ✅ FIXED: pass params_common
+            dfy = fetch_maker_top5(y, params_common)   # ✅ FIXED: pass params_common
             all_years.append(dfy)
         except Exception as e:
             st.error(f"❌ {y} fetch error: {e}")
@@ -5861,7 +5861,7 @@ def all_maxed_maker_block(params: Optional[dict] = None):
 if __name__ == "__main__":
     import streamlit as st
     
-    st.markdown("# 🚗 ALL-MAXED CATEGORY ANALYTICS")
+    st.markdown("# 🚗 ALL-MAXED MAKER ANALYTICS")
     
     try:
         all_maxed_maker_block()
