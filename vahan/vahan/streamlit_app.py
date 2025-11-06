@@ -5537,245 +5537,244 @@ def all_maxed_maker_block(params: Optional[dict] = None):
             st.error(f"💥 AI Narrative generation failed: {e}")
 
     # =====================================================
-# 🧩 ALL-MAXED FINAL SUMMARY + DEBUG INSIGHTS (MAKER MODE)
-# =====================================================
-st.markdown("## 🧠 Final Summary & Debug Insights — ALL-MAXED Maker")
-
-try:
-    summary_start = time.time()
-
-    # ----------------------------------------------------
-    # 1️⃣ SAFE INPUT + FALLBACKS
-    # ----------------------------------------------------
-    df_src = df_cat_all.copy() if "df_cat_all" in locals() else pd.DataFrame()
-    freq = freq if "freq" in locals() else "Monthly"
-    years = years if "years" in locals() and years else [2024, 2025]
-    current_year = datetime.now().year
-
-    if df_src.empty:
-        st.warning("⚠️ No valid ALL-MAXED Maker data found to summarize.")
-        st.stop()
-
-    # ----------------------------------------------------
-    # 2️⃣ BASIC CLEANUP + ADD TIME FIELDS
-    # ----------------------------------------------------
-    df_src = df_src.copy()
-    if "ds" not in df_src.columns and "date" in df_src.columns:
-        df_src["ds"] = pd.to_datetime(df_src["date"])
-    elif "ds" not in df_src.columns:
-        df_src["ds"] = pd.to_datetime(df_src["year"].astype(str) + "-01-01")
-
-    df_src["year"] = df_src["ds"].dt.year
-    df_src["month"] = df_src["ds"].dt.month
-    df_src["maker"] = df_src["label"].astype(str)
-
-    # ----------------------------------------------------
-    # 3️⃣ RESAMPLING BASED ON FREQUENCY
-    # ----------------------------------------------------
-    resampled = (
-        df_src.groupby(["maker", "year"])["value"].sum().reset_index()
-        if freq == "Yearly"
-        else df_src.copy()
-    )
-
-    pivot = resampled.pivot_table(
-        index="ds", columns="maker", values="value", aggfunc="sum"
-    ).fillna(0)
-
-    pivot_year = (
-        resampled.pivot_table(
-            index="year", columns="maker", values="value", aggfunc="sum"
-        ).fillna(0)
-        if "year" in resampled.columns
-        else pd.DataFrame()
-    )
-
-    # ----------------------------------------------------
-    # 4️⃣ KPI METRICS (YoY, CAGR, MoM, Maker Shares)
-    # ----------------------------------------------------
-    st.subheader("💎 Key Metrics & Growth (All-Maxed Maker)")
-
-    if pivot_year.empty:
-        st.warning("⚠️ No yearly data found for KPI computation.")
-        st.stop()
-
-    # --- Compute totals and YoY
-    year_totals = pivot_year.sum(axis=1).rename("TotalRegistrations").to_frame()
-    year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
-    year_totals["TotalRegistrations"] = year_totals["TotalRegistrations"].fillna(0).astype(int)
-    year_totals["YoY_%"] = year_totals["YoY_%"].replace([np.inf, -np.inf], np.nan).fillna(0)
-
-    # --- CAGR
-    if len(year_totals) >= 2:
-        first = float(year_totals["TotalRegistrations"].iloc[0])
-        last = float(year_totals["TotalRegistrations"].iloc[-1])
-        years_count = max(1, len(year_totals) - 1)
-        cagr = ((last / first) ** (1 / years_count) - 1) * 100 if first > 0 else 0.0
-    else:
-        cagr = 0.0
-
-    # --- MoM if monthly
-    if freq == "Monthly":
-        resampled["month_period"] = resampled["year"].astype(str) + "-" + resampled["month"].astype(str)
-        month_totals = resampled.groupby("month_period")["value"].sum().reset_index()
-        month_totals["MoM_%"] = month_totals["value"].pct_change() * 100
-        latest_mom = (
-            f"{month_totals['MoM_%'].iloc[-1]:.2f}%"
-            if len(month_totals) > 1 and not np.isnan(month_totals["MoM_%"].iloc[-1])
-            else "n/a"
-        )
-    else:
-        latest_mom = "n/a"
-
-    # --- Maker shares
-    latest_year = int(year_totals.index.max())
-    latest_total = int(year_totals.loc[latest_year, "TotalRegistrations"])
-    maker_share = (
-        (pivot_year.loc[latest_year] / pivot_year.loc[latest_year].sum() * 100)
-        .sort_values(ascending=False)
-        .round(1)
-    )
-
-    # ----------------------------------------------------
-    # 5️⃣ DISPLAY KPIs
-    # ----------------------------------------------------
-    c1, = st.columns(1)
-    c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
-
-    st.markdown("#### 📘 Maker Share (Latest Year)")
-    st.dataframe(
-        pd.DataFrame({
-            "Maker": maker_share.index,
-            "Share_%": maker_share.values,
-            "Volume": pivot_year.loc[latest_year].astype(int).values,
-        }).sort_values("Share_%", ascending=False),
-        use_container_width=True,
-    )
-
-    with st.expander("🔍 Yearly Totals & Growth"):
-        st.dataframe(year_totals.style.format({"TotalRegistrations": "{:,}", "YoY_%": "{:.2f}"}))
-
-    # ----------------------------------------------------
-    # 6️⃣ DEEP INSIGHTS + TRENDS — FIXED
-    # ----------------------------------------------------
-    total_all = df_src["value"].sum()
-    n_makers = df_src["maker"].nunique()
-    n_years = df_src["year"].nunique()
-
-    # --- Top Maker
-    top_maker_row = (
-        df_src.groupby("maker")["value"]
-        .sum()
-        .reset_index()
-        .sort_values("value", ascending=False)
-        .iloc[0]
-    )
-    top_maker = {
-        "maker": str(top_maker_row["maker"]),
-        "value": float(top_maker_row["value"])
-    }
-    top_maker_share = (top_maker["value"] / total_all) * 100 if total_all > 0 else 0
-
-    # --- Top Year
-    top_year_row = (
-        df_src.groupby("year")["value"]
-        .sum()
-        .reset_index()
-        .sort_values("value", ascending=False)
-        .iloc[0]
-    )
-    top_year = {
-        "year": int(top_year_row["year"]),
-        "value": float(top_year_row["value"])
-    }
-
-    # --- Display metrics safely
-    st.metric("🏆 Absolute Top Maker", top_maker["maker"], f"{top_maker_share:.2f}% share")
-    st.metric("📅 Peak Year", f"{top_year['year']}", f"{top_year['value']:,.0f} registrations")
-
-    # --- Plot: Top 10 Makers
-    st.write("### 🧾 Top 10 Makers — Overall")
-    top_debug = (
-        df_src.groupby("maker")["value"]
-        .sum()
-        .reset_index()
-        .sort_values("value", ascending=False)
-    )
-    fig_top10 = px.bar(
-        top_debug.head(10),
-        x="maker",
-        y="value",
-        text_auto=True,
-        color="value",
-        color_continuous_scale="Blues",
-        title="Top 10 Makers (All Years)",
-    )
-    fig_top10.update_layout(template="plotly_white", margin=dict(t=50, b=40))
-    st.plotly_chart(fig_top10, use_container_width=True)
-
-    # ----------------------------------------------------
-    # 7️⃣ ADVANCED DEBUG METRICS
-    # ----------------------------------------------------
-    volatility = (
-        df_src.groupby("year")["value"].sum().pct_change().std() * 100
-        if len(df_src["year"].unique()) > 2
-        else 0
-    )
-    dominance_ratio = (top_maker["value"] / total_all) * n_makers if total_all > 0 else 0
-    direction = "increased" if cagr > 0 else "declined"
-
-    summary_time = time.time() - summary_start
-    st.markdown("### ⚙️ Debug Performance Metrics")
-    st.code(
-        f"""
-Years analyzed: {years}
-Makers: {n_makers}
-Rows processed: {len(df_src):,}
-Total registrations: {total_all:,.0f}
-Top maker: {top_maker['maker']} → {top_maker['value']:,.0f} ({top_maker_share:.2f}%)
-Peak year: {int(top_year['year'])} → {top_year['value']:,.0f}
-Dominance ratio: {dominance_ratio:.2f}
-Runtime: {summary_time:.2f}s
-        """,
-        language="yaml",
-    )
-
-    # ----------------------------------------------------
-    # 8️⃣ SMART SUMMARY
-    # ----------------------------------------------------
-    if top_maker and years and top_year:
-        st.success(
-            f"From **{years[0]}** to **{years[-1]}**, total registrations {direction}. "
-            f"**{top_maker.get('maker', 'N/A')}** leads with **{top_maker_share:.2f}%** share. "
-            f"Peak year: **{top_year['year']}** with **{top_year['value']:,.0f}** registrations."
-        )
-        logger.info(f"✅ ALL-MAXED Maker summary completed in {summary_time:.2f}s")
-    else:
-        st.error("⛔ ALL-MAXED Maker summary failed: Missing or invalid data.")
-        logger.warning("⚠️ ALL-MAXED Maker summary skipped due to incomplete data.")
-
-# ----------------------------------------------------
-# 9️⃣ CATCH GLOBAL ERRORS
-# ----------------------------------------------------
-except Exception as e:
-    logger.exception(f"ALL-MAXED Maker summary failed: {e}")
-    st.error(f"⛔ ALL-MAXED Maker summary failed: {e}")
-
-# -----------------------------------------------------
-# 🧩 Safe Entry Point — Streamlit-only Execution Guard
-# -----------------------------------------------------
-if __name__ == "__main__":
-    import streamlit as st
-
-    st.markdown("# 🚗 ALL-MAXED MAKER ANALYTICS")
-
+    # 🧩 ALL-MAXED FINAL SUMMARY + DEBUG INSIGHTS (MAKER MODE)
+    # =====================================================
+    st.markdown("## 🧠 Final Summary & Debug Insights — ALL-MAXED Maker")
+    
     try:
-        all_maxed_maker_block()
+        summary_start = time.time()
+    
+        # ----------------------------------------------------
+        # 1️⃣ SAFE INPUT + FALLBACKS
+        # ----------------------------------------------------
+        df_src = df_cat_all.copy() if "df_cat_all" in locals() else pd.DataFrame()
+        freq = freq if "freq" in locals() else "Monthly"
+        years = years if "years" in locals() and years else [2024, 2025]
+        current_year = datetime.now().year
+    
+        if df_src.empty:
+            st.warning("⚠️ No valid ALL-MAXED Maker data found to summarize.")
+            st.stop()
+    
+        # ----------------------------------------------------
+        # 2️⃣ BASIC CLEANUP + ADD TIME FIELDS
+        # ----------------------------------------------------
+        df_src = df_src.copy()
+        if "ds" not in df_src.columns and "date" in df_src.columns:
+            df_src["ds"] = pd.to_datetime(df_src["date"])
+        elif "ds" not in df_src.columns:
+            df_src["ds"] = pd.to_datetime(df_src["year"].astype(str) + "-01-01")
+    
+        df_src["year"] = df_src["ds"].dt.year
+        df_src["month"] = df_src["ds"].dt.month
+        df_src["maker"] = df_src["label"].astype(str)
+    
+        # ----------------------------------------------------
+        # 3️⃣ RESAMPLING BASED ON FREQUENCY
+        # ----------------------------------------------------
+        resampled = (
+            df_src.groupby(["maker", "year"])["value"].sum().reset_index()
+            if freq == "Yearly"
+            else df_src.copy()
+        )
+    
+        pivot = resampled.pivot_table(
+            index="ds", columns="maker", values="value", aggfunc="sum"
+        ).fillna(0)
+    
+        pivot_year = (
+            resampled.pivot_table(
+                index="year", columns="maker", values="value", aggfunc="sum"
+            ).fillna(0)
+            if "year" in resampled.columns
+            else pd.DataFrame()
+        )
+    
+        # ----------------------------------------------------
+        # 4️⃣ KPI METRICS (YoY, CAGR, MoM, Maker Shares)
+        # ----------------------------------------------------
+        st.subheader("💎 Key Metrics & Growth (All-Maxed Maker)")
+    
+        if pivot_year.empty:
+            st.warning("⚠️ No yearly data found for KPI computation.")
+            st.stop()
+    
+        # --- Compute totals and YoY
+        year_totals = pivot_year.sum(axis=1).rename("TotalRegistrations").to_frame()
+        year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
+        year_totals["TotalRegistrations"] = year_totals["TotalRegistrations"].fillna(0).astype(int)
+        year_totals["YoY_%"] = year_totals["YoY_%"].replace([np.inf, -np.inf], np.nan).fillna(0)
+    
+        # --- CAGR
+        if len(year_totals) >= 2:
+            first = float(year_totals["TotalRegistrations"].iloc[0])
+            last = float(year_totals["TotalRegistrations"].iloc[-1])
+            years_count = max(1, len(year_totals) - 1)
+            cagr = ((last / first) ** (1 / years_count) - 1) * 100 if first > 0 else 0.0
+        else:
+            cagr = 0.0
+    
+        # --- MoM if monthly
+        if freq == "Monthly":
+            resampled["month_period"] = resampled["year"].astype(str) + "-" + resampled["month"].astype(str)
+            month_totals = resampled.groupby("month_period")["value"].sum().reset_index()
+            month_totals["MoM_%"] = month_totals["value"].pct_change() * 100
+            latest_mom = (
+                f"{month_totals['MoM_%'].iloc[-1]:.2f}%"
+                if len(month_totals) > 1 and not np.isnan(month_totals["MoM_%"].iloc[-1])
+                else "n/a"
+            )
+        else:
+            latest_mom = "n/a"
+    
+        # --- Maker shares
+        latest_year = int(year_totals.index.max())
+        latest_total = int(year_totals.loc[latest_year, "TotalRegistrations"])
+        maker_share = (
+            (pivot_year.loc[latest_year] / pivot_year.loc[latest_year].sum() * 100)
+            .sort_values(ascending=False)
+            .round(1)
+        )
+    
+        # ----------------------------------------------------
+        # 5️⃣ DISPLAY KPIs
+        # ----------------------------------------------------
+        c1, = st.columns(1)
+        c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
+    
+        st.markdown("#### 📘 Maker Share (Latest Year)")
+        st.dataframe(
+            pd.DataFrame({
+                "Maker": maker_share.index,
+                "Share_%": maker_share.values,
+                "Volume": pivot_year.loc[latest_year].astype(int).values,
+            }).sort_values("Share_%", ascending=False),
+            use_container_width=True,
+        )
+    
+        with st.expander("🔍 Yearly Totals & Growth"):
+            st.dataframe(year_totals.style.format({"TotalRegistrations": "{:,}", "YoY_%": "{:.2f}"}))
+    
+        # ----------------------------------------------------
+        # 6️⃣ DEEP INSIGHTS + TRENDS — FIXED
+        # ----------------------------------------------------
+        total_all = df_src["value"].sum()
+        n_makers = df_src["maker"].nunique()
+        n_years = df_src["year"].nunique()
+    
+        # --- Top Maker
+        top_maker_row = (
+            df_src.groupby("maker")["value"]
+            .sum()
+            .reset_index()
+            .sort_values("value", ascending=False)
+            .iloc[0]
+        )
+        top_maker = {
+            "maker": str(top_maker_row["maker"]),
+            "value": float(top_maker_row["value"])
+        }
+        top_maker_share = (top_maker["value"] / total_all) * 100 if total_all > 0 else 0
+    
+        # --- Top Year
+        top_year_row = (
+            df_src.groupby("year")["value"]
+            .sum()
+            .reset_index()
+            .sort_values("value", ascending=False)
+            .iloc[0]
+        )
+        top_year = {
+            "year": int(top_year_row["year"]),
+            "value": float(top_year_row["value"])
+        }
+    
+        # --- Display metrics safely
+        st.metric("🏆 Absolute Top Maker", top_maker["maker"], f"{top_maker_share:.2f}% share")
+        st.metric("📅 Peak Year", f"{top_year['year']}", f"{top_year['value']:,.0f} registrations")
+    
+        # --- Plot: Top 10 Makers
+        st.write("### 🧾 Top 10 Makers — Overall")
+        top_debug = (
+            df_src.groupby("maker")["value"]
+            .sum()
+            .reset_index()
+            .sort_values("value", ascending=False)
+        )
+        fig_top10 = px.bar(
+            top_debug.head(10),
+            x="maker",
+            y="value",
+            text_auto=True,
+            color="value",
+            color_continuous_scale="Blues",
+            title="Top 10 Makers (All Years)",
+        )
+        fig_top10.update_layout(template="plotly_white", margin=dict(t=50, b=40))
+        st.plotly_chart(fig_top10, use_container_width=True)
+    
+        # ----------------------------------------------------
+        # 7️⃣ ADVANCED DEBUG METRICS
+        # ----------------------------------------------------
+        volatility = (
+            df_src.groupby("year")["value"].sum().pct_change().std() * 100
+            if len(df_src["year"].unique()) > 2
+            else 0
+        )
+        dominance_ratio = (top_maker["value"] / total_all) * n_makers if total_all > 0 else 0
+        direction = "increased" if cagr > 0 else "declined"
+    
+        summary_time = time.time() - summary_start
+        st.markdown("### ⚙️ Debug Performance Metrics")
+        st.code(
+            f"""
+    Years analyzed: {years}
+    Makers: {n_makers}
+    Rows processed: {len(df_src):,}
+    Total registrations: {total_all:,.0f}
+    Top maker: {top_maker['maker']} → {top_maker['value']:,.0f} ({top_maker_share:.2f}%)
+    Peak year: {int(top_year['year'])} → {top_year['value']:,.0f}
+    Dominance ratio: {dominance_ratio:.2f}
+    Runtime: {summary_time:.2f}s
+            """,
+            language="yaml",
+        )
+    
+        # ----------------------------------------------------
+        # 8️⃣ SMART SUMMARY
+        # ----------------------------------------------------
+        if top_maker and years and top_year:
+            st.success(
+                f"From **{years[0]}** to **{years[-1]}**, total registrations {direction}. "
+                f"**{top_maker.get('maker', 'N/A')}** leads with **{top_maker_share:.2f}%** share. "
+                f"Peak year: **{top_year['year']}** with **{top_year['value']:,.0f}** registrations."
+            )
+            logger.info(f"✅ ALL-MAXED Maker summary completed in {summary_time:.2f}s")
+        else:
+            st.error("⛔ ALL-MAXED Maker summary failed: Missing or invalid data.")
+            logger.warning("⚠️ ALL-MAXED Maker summary skipped due to incomplete data.")
+    
+        # ----------------------------------------------------
+        # 9️⃣ CATCH GLOBAL ERRORS
+    # ----------------------------------------------------
     except Exception as e:
-        import traceback
-        st.error(f"💥 Error while rendering All-Maxed Maker block: {e}")
-        st.code(traceback.format_exc(), language="python")
-
+        logger.exception(f"ALL-MAXED Maker summary failed: {e}")
+        st.error(f"⛔ ALL-MAXED Maker summary failed: {e}")
+    
+    # -----------------------------------------------------
+    # 🧩 Safe Entry Point — Streamlit-only Execution Guard
+    # -----------------------------------------------------
+    if __name__ == "__main__":
+        import streamlit as st
+    
+        st.markdown("# 🚗 ALL-MAXED CATEGORY ANALYTICS")
+    
+        try:
+            all_maxed_category_block()
+        except Exception as e:
+            import traceback
+            st.error(f"💥 Error while rendering All-Maxed block: {e}")
+            st.code(traceback.format_exc(), language="python")
 
 # # ---------- RTO/State detailed breakdown ---------------------------------------
 # st.subheader('RTO / State breakdown')
