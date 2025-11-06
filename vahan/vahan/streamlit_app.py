@@ -4835,9 +4835,12 @@ except Exception as e:
 
 # ---------- Forecasting & Anomalies -------------------------------------------
 # --- Ensure required variables exist ---
-if "enable_ml" not in locals():
-    enable_ml = True  # default toggle if missing
-
+try:
+    if "enable_ml" not in globals():
+        enable_ml = True
+except Exception:
+    enable_ml = True  # fallback in case globals() fails
+    
 if "df_tr" not in locals() or df_tr is None:
     df_tr = pd.DataFrame(columns=["date", "value"])
 
