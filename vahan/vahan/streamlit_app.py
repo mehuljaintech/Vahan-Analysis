@@ -4214,10 +4214,9 @@ def all_maxed_rto_state_block(params: Optional[dict] = None, section_id: str = "
         total = pivot_year.sum(axis=1)
         yoy = total.pct_change() * 100
         cagr = ((total.iloc[-1]/total.iloc[0])**(1/(len(total)-1))-1)*100 if len(total) > 1 else np.nan
-        c1, c2, c3 = st.columns(3)
+        c1, = st.columns(1)
         c1.metric("Years", f"{years[0]} → {years[-1]}")
-        c2.metric("CAGR", f"{cagr:.2f}%" if not math.isnan(cagr) else "n/a")
-        c3.metric("YoY Latest", f"{yoy.iloc[-1]:.2f}%" if not yoy.isna().iloc[-1] else "n/a")
+        
 
     # -------------------------
     # Visualizations
