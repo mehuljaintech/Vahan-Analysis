@@ -3204,8 +3204,8 @@ def all_maxed_category_block(params: Optional[dict] = None):
         logger.warning("⚠️ ALL-MAXED summary skipped due to incomplete data.")
 
     except Exception as e:
-        logger.exception(f"ALL-MAXED summary failed: {e}")
-        st.error(f"⛔ ALL-MAXED summary failed: {e}")
+    logger.exception(f"ALL-MAXED summary failed: {e}")
+    st.error(f"⛔ ALL-MAXED summary failed: {e}")
     
 # -----------------------------------------------------
 # 🧩 Safe Entry Point — Streamlit-only Execution Guard
