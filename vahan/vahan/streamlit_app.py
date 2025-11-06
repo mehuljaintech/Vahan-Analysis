@@ -4725,10 +4725,56 @@ def all_maxed_maker_block(params: Optional[dict] = None):
     # -------------------------
     # Fetch multi-year maker data (All-Maxed)
     # -------------------------
+    def all_maxed_maker_block(section_id="maker_section", params=None, freq="Monthly"):
+    import streamlit as st
+    from datetime import datetime
+
+    # -------------------------
+    # Sidebar / Controls
+    # -------------------------
+    today = datetime.now()
+    current_year = today.year
+    default_from_year = current_year - 1
+
+    from_year = st.sidebar.number_input(
+        "From Year",
+        min_value=2012,
+        max_value=current_year,
+        value=default_from_year,
+        key=f"from_year_{section_id}"
+    )
+
+    to_year = st.sidebar.number_input(
+        "To Year",
+        min_value=from_year,
+        max_value=current_year,
+        value=current_year,
+        key=f"to_year_{section_id}"
+    )
+
+    # Ensure `years` is always defined
+    years = list(range(int(from_year), int(to_year) + 1))
+
+    # Extra feature toggles
+    st.divider()
+    col3, col4, col5 = st.columns(3)
+    with col3:
+        show_heatmap = st.checkbox("Show Heatmap (year × maker)", True, key=f"heatmap_{section_id}")
+        show_radar = st.checkbox("Show Radar (per year)", True, key=f"radar_{section_id}")
+    with col4:
+        do_forecast = st.checkbox("Enable Forecasting", True, key=f"forecast_{section_id}")
+        do_anomaly = st.checkbox("Enable Anomaly Detection", False, key=f"anomaly_{section_id}")
+    with col5:
+        do_clustering = st.checkbox("Enable Clustering (KMeans)", False, key=f"cluster_{section_id}")
+
+    st.info(f"🚀 Starting ALL-MAXED Maker pipeline — years: {years} | freq: {freq}")
+
+    # -------------------------
+    # Fetch multi-year maker data
+    # -------------------------
     all_year_dfs = []
-    
     with st.spinner("Fetching maker data for selected years..."):
-        for y in years:  # <-- now safe
+        for y in years:
             try:
                 df_y = fetch_maker_top5(y, params, show_debug=False)
                 if df_y is None or df_y.empty:
@@ -4736,21 +4782,29 @@ def all_maxed_maker_block(params: Optional[dict] = None):
                     mock_data = maker_mock_top5(y).get("data", [])
                     df_y = pd.DataFrame(mock_data).copy()
                     df_y["year"] = y
-                    df_y["label"] = df_y.get("name", [f"Maker {i+1}" for i in range(len(df_y))])
-                    df_y["value"] = pd.to_numeric(df_y.get("score", 0), errors="coerce").fillna(0)
+                    if "label" not in df_y.columns:
+                        df_y["label"] = df_y.get("name", [f"Maker {i+1}" for i in range(len(df_y))])
+                    if "value" not in df_y.columns:
+                        df_y["value"] = pd.to_numeric(df_y.get("score", 0), errors="coerce").fillna(0)
                 all_year_dfs.append(df_y)
             except Exception as e:
                 logger.exception(f"Error fetching maker data for {y}: {e}")
                 st.error(f"Error fetching maker data for {y}: {e}")
+                # Fallback to deterministic mock
                 mock_data = maker_mock_top5(y).get("data", [])
                 df_y = pd.DataFrame(mock_data).copy()
                 df_y["year"] = y
-                df_y["label"] = df_y.get("name", [f"Maker {i+1}" for i in range(len(df_y))])
-                df_y["value"] = pd.to_numeric(df_y.get("score", 0), errors="coerce").fillna(0)
+                if "label" not in df_y.columns:
+                    df_y["label"] = df_y.get("name", [f"Maker {i+1}" for i in range(len(df_y))])
+                if "value" not in df_y.columns:
+                    df_y["value"] = pd.to_numeric(df_y.get("score", 0), errors="coerce").fillna(0)
                 all_year_dfs.append(df_y)
-    
+
+    # Concatenate and sort
     df_maker_all = pd.concat(all_year_dfs, ignore_index=True)
     df_maker_all = df_maker_all.sort_values(["year", "value"], ascending=[True, False]).reset_index(drop=True)
+
+    return df_maker_all
 
     
     # -------------------------
