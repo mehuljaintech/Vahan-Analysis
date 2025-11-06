@@ -4721,6 +4721,38 @@ from datetime import datetime
 
 def all_maxed_maker_block(params: Optional[dict] = None):
     """Render the MAXED multi-year Maker analytics block inside Streamlit."""
+
+    import streamlit as st
+    from datetime import datetime
+
+    # -------------------------
+    # Sidebar / Controls
+    # -------------------------
+    today = datetime.now()
+    current_year = today.year
+    default_from_year = current_year - 1
+
+    from_year = st.sidebar.number_input(
+        "From Year",
+        min_value=2012,
+        max_value=current_year,
+        value=default_from_year,
+        key=f"from_year_{section_id}"
+    )
+
+    to_year = st.sidebar.number_input(
+        "To Year",
+        min_value=from_year,
+        max_value=current_year,
+        value=current_year,
+        key=f"to_year_{section_id}"
+    )
+
+    # ✅ Define years here, inside the function
+    years = list(range(int(from_year), int(to_year) + 1))
+
+    st.info(f"🚀 Starting ALL-MAXED Maker pipeline — years: {years} | freq: {freq}")
+
     # -------------------------
     # Fetch multi-year maker data
     # -------------------------
