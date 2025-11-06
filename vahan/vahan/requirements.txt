@@ -1,9 +1,9 @@
 # ======================================================
-# 🚀 PARIVAHAN ANALYTICS 2025 — ALL-MAXED ULTIMATE CLOUD EDITION
+# 🚀 PARIVAHAN ANALYTICS 2025 — ALL-MAXED ULTIMATE CLOUD
 # ======================================================
 
 # ------------------------------
-# Core Framework
+# Core / Framework
 # ------------------------------
 streamlit
 pandas
@@ -78,9 +78,14 @@ spacy-transformers
 wordcloud
 gensim
 textblob
+emoji
+polyglot
+pattern
+python-Levenshtein
+rapidfuzz
 
 # ------------------------------
-# AI / LLM Integration
+# AI / LLM / RAG Integration
 # ------------------------------
 openai
 tiktoken
@@ -97,10 +102,6 @@ langchain-text-splitters
 langchainhub
 sentence-transformers
 transformers
-
-# ------------------------------
-# RAG / Embedding Indexing
-# ------------------------------
 chromadb
 faiss-cpu
 
@@ -122,6 +123,7 @@ pymysql
 psycopg2-binary
 pymongo
 redis
+elasticsearch
 
 # ------------------------------
 # Security / Auth / Crypto
@@ -139,9 +141,10 @@ fake-useragent
 html5lib
 lxml
 requests-toolbelt
+selenium
 
 # ------------------------------
-# Cloud / Storage Integrations
+# Cloud / Storage / API
 # ------------------------------
 azure-storage-blob
 boto3
@@ -149,20 +152,19 @@ dropbox
 google-cloud-storage
 gspread
 oauthlib
+paramiko
+fabric
 
 # ------------------------------
-# Utilities / Debug / Logging
+# Utilities / Logging / Debugging
 # ------------------------------
 python-json-logger
+logzero
+pytz
+sentry-sdk
 
 # ------------------------------
-# Full NLP Preload Instructions (Optional post-install)
-# ------------------------------
-# python -m spacy download en_core_web_sm
-# python -m nltk.downloader punkt averaged_perceptron_tagger vader_lexicon
-
-# ------------------------------
-# Streamlit Cloud / Compatibility Helpers
+# Web / App Deployment
 # ------------------------------
 uvicorn
 fastapi
@@ -170,3 +172,10 @@ flask
 werkzeug
 jinja2
 gunicorn
+starlette
+
+# ------------------------------
+# Optional / NLP / AI Preload
+# ------------------------------
+python -m spacy download en_core_web_sm
+python -m nltk.downloader punkt averaged_perceptron_tagger vader_lexicon
