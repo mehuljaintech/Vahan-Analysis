@@ -4148,6 +4148,127 @@ logger.setLevel(logging.DEBUG)
 # CONTROLS — ALL ON MAIN PAGE (no sidebar)
 # =====================================================
 
+import streamlit as st
+from datetime import datetime
+
+# -------------------------------
+# SECTION ID
+# -------------------------------
+section_id = "main"
+
+# -------------------------------
+# FREQUENCY & VIEW MODE
+# -------------------------------
+freq = st.radio(
+    "Aggregation Frequency",
+    ["Daily", "Monthly", "Quarterly", "Yearly"],
+    index=3,  # default Yearly
+    horizontal=True,
+    key=f"freq_{section_id}"
+)
+
+mode = st.radio(
+    "View Mode",
+    ["Separate (Small Multiples)", "Combined (Overlay / Stacked)"],
+    index=1,  # default Combined
+    horizontal=True,
+    key=f"mode_{section_id}"
+)
+
+# -------------------------------
+# YEAR RANGE
+# -------------------------------
+today = datetime.now()
+current_year = today.year
+default_from_year = current_year - 1
+
+from_year = st.sidebar.number_input(
+    "From Year",
+    min_value=2012,
+    max_value=current_year,
+    value=default_from_year,
+    key=f"from_year_{section_id}"
+)
+
+to_year = st.sidebar.number_input(
+    "To Year",
+    min_value=from_year,
+    max_value=current_year,
+    value=current_year,
+    key=f"to_year_{section_id}"
+)
+
+# -------------------------------
+# LOCATION & VEHICLE FILTERS
+# -------------------------------
+state_code = st.sidebar.text_input(
+    "State Code (blank=All-India)",
+    value="",
+    key=f"state_{section_id}"
+)
+
+rto_code = st.sidebar.text_input(
+    "RTO Code (0=aggregate)",
+    value="0",
+    key=f"rto_{section_id}"
+)
+
+vehicle_classes = st.sidebar.text_input(
+    "Vehicle Classes (e.g., 2W,3W,4W)",
+    value="",
+    key=f"classes_{section_id}"
+)
+
+vehicle_makers = st.sidebar.text_input(
+    "Vehicle Makers (comma-separated or IDs)",
+    value="",
+    key=f"makers_{section_id}"
+)
+
+vehicle_type = st.sidebar.text_input(
+    "Vehicle Type (optional)",
+    value="",
+    key=f"type_{section_id}"
+)
+
+time_period = st.sidebar.selectbox(
+    "Time Period",
+    options=[0, 1, 2],
+    index=0,
+    key=f"period_{section_id}"
+)
+
+fitness_check = st.sidebar.selectbox(
+    "Fitness Check",
+    options=[True, False],
+    index=0,
+    format_func=lambda x: "Enabled" if x else "Disabled",
+    key=f"fitness_{section_id}"
+)
+
+# -------------------------------
+# EXTRA FEATURE TOGGLES
+# -------------------------------
+st.divider()
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    show_heatmap = st.checkbox("Show Heatmap (year × maker)", True, key=f"heatmap_{section_id}")
+    show_radar = st.checkbox("Show Radar (per year)", True, key=f"radar_{section_id}")
+
+with col2:
+    do_forecast = st.checkbox("Enable Forecasting", True, key=f"forecast_{section_id}")
+    do_anomaly = st.checkbox("Enable Anomaly Detection", False, key=f"anomaly_{section_id}")
+
+with col3:
+    do_clustering = st.checkbox("Enable Clustering (KMeans)", False, key=f"cluster_{section_id}")
+
+# -------------------------------
+# DERIVE YEARS
+# -------------------------------
+years = list(range(int(from_year), int(to_year) + 1))
+
+
 # =====================================================
 # 🚀 ALL-MAXED MAKERS ANALYTICS CORE v1.0
 # -----------------------------------------------------
