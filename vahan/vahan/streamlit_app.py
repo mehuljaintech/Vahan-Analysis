@@ -4912,8 +4912,6 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
         )
         st.plotly_chart(fig, use_container_width=True)
 
-    return df_maker_all, df_ts, pivot, pivot_year
-
     # =====================================================
     # 📊 VISUALIZATIONS — ALL-MAXED MAKER
     # =====================================================
