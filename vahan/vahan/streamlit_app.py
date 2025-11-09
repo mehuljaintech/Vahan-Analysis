@@ -6050,19 +6050,19 @@ if __name__ == "__main__":
         st.error(f"💥 Error while rendering All-Maxed block: {e}")
         st.code(traceback.format_exc(), language="python")
 
-# ---------- RTO/State detailed breakdown ---------------------------------------
-st.subheader('RTO / State breakdown')
-# User can choose to fetch state/rto endpoints if available
-rto_opt = st.selectbox('Show breakdown by', ['State','RTO','None'])
-if rto_opt != 'None':
-    # For demo, attempt to call same categories endpoint with state param
-    target = 'vahandashboard/statewise' if rto_opt=='State' else 'vahandashboard/rtowise'
-    try:
-        br_json, _ = get_json(target, params)
-        df_br = to_df(br_json)
-        st.dataframe(df_br.head(200))
-    except Exception as e:
-        st.warning(f'Breakdown endpoint not available: {e}')
+# # ---------- RTO/State detailed breakdown ---------------------------------------
+# st.subheader('RTO / State breakdown')
+# # User can choose to fetch state/rto endpoints if available
+# rto_opt = st.selectbox('Show breakdown by', ['State','RTO','None'])
+# if rto_opt != 'None':
+#     # For demo, attempt to call same categories endpoint with state param
+#     target = 'vahandashboard/statewise' if rto_opt=='State' else 'vahandashboard/rtowise'
+#     try:
+#         br_json, _ = get_json(target, params)
+#         df_br = to_df(br_json)
+#         st.dataframe(df_br.head(200))
+#     except Exception as e:
+#         st.warning(f'Breakdown endpoint not available: {e}')
 
 # ============================================================
 # 🌍 ALL-MAXED RTO / STATE BREAKDOWN
