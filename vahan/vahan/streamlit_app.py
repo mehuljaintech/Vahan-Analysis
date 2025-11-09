@@ -6018,6 +6018,34 @@ import plotly.graph_objects as go
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import KMeans 
+
+import pandas as pd
+import random
+import streamlit as st
+
+def safe_get_top5_(params):
+    """
+    Fetch top 5 revenue states from API.
+    If API fails, generates realistic fallback data.
+    Returns a DataFrame with columns ['State','Revenue'].
+    """
+    try:
+        top5_json, url = get_json("vahandashboard/top5chartRevenueFee", params)
+        df = parse_top5_revenue(top5_json)
+        # Ensure required columns exist
+        if df.empty or "State" not in df.columns or "Revenue" not in df.columns:
+            raise ValueError("API returned invalid data")
+        st.success(f"✅ Top 5 revenue fetched from API ({url})")
+    except Exception as e:
+        st.warning(f"⚠️ API unavailable or failed: {e}\nUsing fallback mock data.")
+        states = ["MH", "DL", "KA", "TN", "UP"]
+        revenues = [random.randint(500, 2000) for _ in states]
+        df = pd.DataFrame({"State": states, "Revenue": revenues})
+    # Make sure column names are consistent
+    df = df[["State", "Revenue"]]
+    return df
+
+
 st.markdown("## 💰 ALL-MAXED — Top 5 Revenue States Analytics Suite")
 df_top5 = safe_get_top5_(params_common1)
 
