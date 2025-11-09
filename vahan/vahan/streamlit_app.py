@@ -5779,7 +5779,7 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
         # ----------------------------------------------------
         # 1️⃣ SAFE INPUT + FALLBACKS
         # ----------------------------------------------------
-        df_src = df_cat_all.copy() if "df_cat_all" in locals() else pd.DataFrame()
+        df_src = df_maker_all.copy() if "df_maker_all" in locals() else pd.DataFrame()
         freq = freq if "freq" in locals() else "Monthly"
         years = years if "years" in locals() and years else [2024, 2025]
         current_year = datetime.now().year
