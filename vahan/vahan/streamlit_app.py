@@ -4655,9 +4655,9 @@ def fetch_maker_top5(year: int, params_common: dict):
         unsafe_allow_html=True,
     )
 
-     if show_debug:
+    if show_debug:
         with st.expander(f"🧩 JSON Debug — {year}", expanded=False):
-            st.json(mk_json)
+        st.json(mk_json)
 
     # --- Validation: check for expected fields ---
     is_valid = False
