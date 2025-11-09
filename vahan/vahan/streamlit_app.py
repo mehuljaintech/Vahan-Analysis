@@ -5357,9 +5357,11 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                 # 4️⃣ Prophet Forecast (if available)
                 # ---------------------
                 st.markdown("### 🧙 Prophet Forecast (Advanced, if available)")
+                
                 try:
                     from prophet import Prophet
-    
+                
+                    # Initialize and fit Prophet model
                     m = Prophet(
                         yearly_seasonality=True,
                         seasonality_mode="multiplicative",
@@ -5368,7 +5370,8 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                     m.fit(series)
                     future = m.make_future_dataframe(periods=horizon_years, freq="Y")
                     forecast = m.predict(future)
-    
+                
+                    # Plot forecast
                     figp = go.Figure()
                     figp.add_trace(go.Scatter(
                         x=series["ds"], y=series["y"],
@@ -5395,18 +5398,19 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                         yaxis_title="Registrations",
                     )
                     st.plotly_chart(figp, use_container_width=True, key=f"prophet_forecast_{section_id}")
-    
+                
                     # Optional insight
                     fut_y = forecast.tail(horizon_years)["yhat"].mean()
                     st.success(
                         f"📊 Prophet projects an **average of {fut_y:,.0f}** registrations/year "
-                        f"for the next {horizon_years} years.",
-                        key=f"prophet_avg_{section_id}"
+                        f"for the next {horizon_years} years."
                     )
+                
                 except ImportError:
-                    st.info("🧠 Prophet not installed — only linear forecast shown.", key=f"prophet_info_{section_id}")
+                    st.info("🧠 Prophet not installed — only linear forecast shown.")
                 except Exception as e:
-                    st.warning(f"⚠️ Prophet forecast failed: {e}", key=f"prophet_warning_{section_id}")
+                    st.warning(f"⚠️ Prophet forecast failed: {e}")
+
     
                 # ---------------------
                 # 5️⃣ Display Forecast Data
