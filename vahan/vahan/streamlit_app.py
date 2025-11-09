@@ -6009,104 +6009,95 @@ if __name__ == "__main__":
         st.code(traceback.format_exc(), language="python")
 
 import streamlit as st
-import pandas as pd 
-import numpy as np 
-import random 
-from datetime import datetime 
-import plotly.express as px
-import plotly.graph_objects as go
-from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import IsolationForest
-from sklearn.cluster import KMeans 
-
 import pandas as pd
+import numpy as np
 import random
-import streamlit as st
+from datetime import datetime
+import plotly.express as px
 
+# -----------------------------
+# ⚙️ Safe defaults
+# -----------------------------
+from_year = locals().get("from_year", 2024)
+to_year = locals().get("to_year", datetime.now().year)
+state_code = locals().get("state_code", "ALL")
+rto_code = locals().get("rto_code", "0")
+vehicle_classes = locals().get("vehicle_classes", "ALL")
+vehicle_makers = locals().get("vehicle_makers", "ALL")
+frequency = locals().get("freq", "Monthly")
+fitness_check = locals().get("fitness_check", None)
+vehicle_type = locals().get("vehicle_type", "ALL")
+
+# -----------------------------
+# 🔹 Build params
+# -----------------------------
+params_common1 = build_params(
+    from_year=from_year,
+    to_year=to_year,
+    state_code=state_code,
+    rto_code=rto_code,
+    vehicle_classes=vehicle_classes,
+    vehicle_makers=vehicle_makers,
+    time_period=frequency,
+    fitness_check=fitness_check,
+    vehicle_type=vehicle_type
+)
+
+# -----------------------------
+# 🔹 Safe fetch top 5 revenue
+# -----------------------------
 def safe_get_top5_(params):
-    """
-    Fetch top 5 revenue states from API.
-    If API fails, generates realistic fallback data.
-    Returns a DataFrame with columns ['State','Revenue'].
-    """
     try:
         top5_json, url = get_json("vahandashboard/top5chartRevenueFee", params)
         df = parse_top5_revenue(top5_json)
-        # Ensure required columns exist
-        if df.empty or "State" not in df.columns or "Revenue" not in df.columns:
-            raise ValueError("API returned invalid data")
+        if df.empty or "label" not in df.columns or "value" not in df.columns:
+            raise ValueError("Invalid API data")
         st.success(f"✅ Top 5 revenue fetched from API ({url})")
     except Exception as e:
         st.warning(f"⚠️ API unavailable or failed: {e}\nUsing fallback mock data.")
         states = ["MH", "DL", "KA", "TN", "UP"]
         revenues = [random.randint(500, 2000) for _ in states]
-        df = pd.DataFrame({"State": states, "Revenue": revenues})
-    # Make sure column names are consistent
-    df = df[["State", "Revenue"]]
+        df = pd.DataFrame({"label": states, "value": revenues})
+
+    df = df.rename(columns={"label": "State", "value": "Revenue"})
     return df
 
-# Ensure fallback/default values for all parameters
-from_year_safe = from_year if "from_year" in locals() else 2024
-to_year_safe = to_year if "to_year" in locals() else 2025
-state_code_safe = state_code if state_code else "ALL"
-rto_code_safe = rto_code if rto_code else "0"
-vehicle_classes_safe = vehicle_classes if vehicle_classes else "ALL"
-vehicle_makers_safe = vehicle_makers if vehicle_makers else "ALL"
-time_period_safe = freq if "freq" in locals() else "Monthly"
-fitness_check_safe = fitness_check if "fitness_check" in locals() else None
-vehicle_type_safe = vehicle_type if vehicle_type else "ALL"
-
-# Build params
-params_common1 = build_params(
-    from_year=from_year_safe,
-    to_year=to_year_safe,
-    state_code=state_code_safe,
-    rto_code=rto_code_safe,
-    vehicle_classes=vehicle_classes_safe,
-    vehicle_makers=vehicle_makers_safe,
-    time_period=time_period_safe,
-    fitness_check=fitness_check_safe,
-    vehicle_type=vehicle_type_safe
-)
-
-
+# -----------------------------
+# 🔹 Plot Top 5 Revenue
+# -----------------------------
 st.markdown("## 💰 ALL-MAXED — Top 5 Revenue States Analytics Suite")
 df_top5 = safe_get_top5_(params_common1)
 
-# Always rename for plotting consistency
-df_top5_plot = df_top5.rename(columns={"Revenue": "Revenue_₹Cr"})
-
 # Bar chart
 fig_bar = px.bar(
-    df_top5_plot,
+    df_top5,
     x="State",
-    y="Revenue_₹Cr",
+    y="Revenue",
     title="Top 5 Revenue States (Bar)",
-    text="Revenue_₹Cr",
-    labels={"Revenue_₹Cr": "Revenue (₹ Cr)", "State": "State"}
+    text="Revenue",
+    labels={"Revenue": "Revenue (₹ Cr)", "State": "State"}
 )
 fig_bar.update_layout(template="plotly_white")
 st.plotly_chart(fig_bar, use_container_width=True)
 
 # Pie chart
 fig_pie = px.pie(
-    df_top5_plot,
+    df_top5,
     names="State",
-    values="Revenue_₹Cr",
+    values="Revenue",
     title="Top 5 Revenue States (Pie)",
     hole=0.4
 )
 st.plotly_chart(fig_pie, use_container_width=True)
 
-# KPI Summary
-total_rev = df_top5_plot["Revenue_₹Cr"].sum()
-top_state = df_top5_plot.loc[df_top5_plot["Revenue_₹Cr"].idxmax(), "State"]
-top_value = df_top5_plot["Revenue_₹Cr"].max()
+# KPI summary
+total_rev = df_top5["Revenue"].sum()
+top_state = df_top5.loc[df_top5["Revenue"].idxmax(), "State"]
+top_value = df_top5["Revenue"].max()
 
 st.markdown("### 💎 Key Metrics")
 st.write(f"- **Total Revenue:** ₹{total_rev:,} Cr")
 st.write(f"- **Top State:** {top_state} with ₹{top_value:,} Cr")
-
 # --------------------------------------------------
 # 🔹 Advanced Analytics — Trend Simulation
 # --------------------------------------------------
