@@ -6008,82 +6008,25 @@ if __name__ == "__main__":
         st.error(f"💥 Error while rendering All-Maxed block: {e}")
         st.code(traceback.format_exc(), language="python")
 
-import streamlit as st
-import pandas as pd
-import numpy as np
-import random
-from datetime import datetime
-import plotly.express as px
-import plotly.graph_objects as go
-from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import IsolationForest
-from sklearn.cluster import KMeans
-
 st.markdown("## 💰 ALL-MAXED — Top 5 Revenue States Analytics Suite")
 
-# --------------------------------------------------
-# 🔹 Safe JSON Fetcher (Top 5 Revenue)
-# --------------------------------------------------
-def safe_get_top5_revenue(params):
-    """
-    Fetch top 5 revenue states from API.
-    If API fails, generates realistic fallback data.
-    Returns DataFrame with ['State','Revenue'].
-    """
-    try:
-        top5_json, url = get_json("vahandashboard/top5chartRevenueFee", params)
-        df = parse_top5_revenue(top5_json)
-        if df.empty:
-            raise ValueError("Empty API response")
-        st.success(f"✅ Top 5 revenue fetched from API ({url})")
-    except Exception as e:
-        st.warning(f"⚠️ API unavailable or failed: {e}\nUsing mock data.")
-        states = ["MH","DL","KA","TN","UP"]
-        revenues = [random.randint(500, 2000) for _ in states]
-        df = pd.DataFrame({"State": states, "Revenue": revenues})
-    return df
-
-params_common1 = build_params(
-    from_year=from_year,
-    to_year=to_year,
-    state_code=state_code or "ALL",
-    rto_code=rto_code or "0",
-    vehicle_classes=vehicle_classes or "ALL",
-    vehicle_makers=vehicle_makers or "ALL",
-    time_period=freq,
-    fitness_check=fitness_check,
-    vehicle_type=vehicle_type or "ALL"
-)
-# --------------------------------------------------
-# 🔹 Fetch Data
-# --------------------------------------------------
-with st.spinner("Fetching top 5 revenue states..."):
-    df_top5_rev = safe_get_top5_revenue(params_common1)
-
-# --------------------------------------------------
-# 🔹 Display Top 5 Revenue
-# --------------------------------------------------
-st.subheader("📊 Top 5 Revenue States")
-
 # Bar chart
-fig_bar = px.bar(df_top5_rev, x="State", y="Revenue",
-                 title="Top 5 Revenue States (Bar)", text="Revenue",
-                 labels={"Revenue": "Revenue (₹ Cr)", "State": "State"})
+fig_bar = px.bar(df_top5, x="State", y="Month",
+                 title="Top 5 Revenue States (Bar)", text="Month",
+                 labels={"Month": "Revenue (₹ Cr)", "State": "State"})
 fig_bar.update_layout(template="plotly_white")
 st.plotly_chart(fig_bar, use_container_width=True)
 
 # Pie chart
-fig_pie = px.pie(df_top5_rev, names="State", values="Revenue",
+fig_pie = px.pie(df_top5, names="State", values="Month",
                  title="Top 5 Revenue States (Pie)", hole=0.4)
 st.plotly_chart(fig_pie, use_container_width=True)
 
-# --------------------------------------------------
-# 🔹 KPI Summary
-# --------------------------------------------------
+# KPI Summary
 st.markdown("### 💎 Key Metrics")
-total_rev = df_top5_rev["Revenue"].sum()
-top_state = df_top5_rev.loc[df_top5_rev["Revenue"].idxmax(), "State"]
-top_value = df_top5_rev["Revenue"].max()
+total_rev = df_top5["Month"].sum()
+top_state = df_top5.loc[df_top5["Month"].idxmax(), "State"]
+top_value = df_top5["Month"].max()
 st.write(f"- **Total Revenue:** ₹{total_rev:,} Cr")
 st.write(f"- **Top State:** {top_state} with ₹{top_value:,} Cr")
 
