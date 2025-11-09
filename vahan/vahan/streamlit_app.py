@@ -5351,29 +5351,30 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                 # ---------------------
                 st.markdown("### 🧙 Prophet Forecast (Advanced, if available)")
                 try:
-                    if Prophet:
-                        from prophet import Prophet
-                        m = Prophet(yearly_seasonality=True, seasonality_mode="multiplicative", changepoint_prior_scale=0.05)
-                        m.fit(series)
-                        future = m.make_future_dataframe(periods=horizon_years, freq="Y")
-                        forecast = m.predict(future)
-    
-                        # Plot
-                        figp = go.Figure()
-                        figp.add_trace(go.Scatter(x=series["ds"], y=series["y"], mode="markers+lines", name="Observed", line=dict(color="blue")))
-                        figp.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat"], mode="lines", name="Forecast (yhat)", line=dict(color="orange", width=3)))
-                        figp.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat_upper"], mode="lines", name="Upper Bound", line=dict(color="lightgray", dash="dot")))
-                        figp.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat_lower"], mode="lines", name="Lower Bound", line=dict(color="lightgray", dash="dot")))
-                        figp.update_layout(title=f"Prophet Forecast — {maker_to_forecast}", template="plotly_white", height=550, legend=dict(orientation="h", y=-0.2), xaxis_title="Year", yaxis_title="Registrations")
-                        st.plotly_chart(figp, use_container_width=True)
-    
-                        # Optional insight
-                        fut_y = forecast.tail(horizon_years)["yhat"].mean()
-                        st.success(f"📊 Prophet projects an **average of {fut_y:,.0f}** registrations/year for the next {horizon_years} years.")
-                    else:
-                        st.info("🧠 Prophet not installed — only linear forecast shown.")
+                    from prophet import Prophet  # Import inside try
+                    m = Prophet(yearly_seasonality=True, seasonality_mode="multiplicative", changepoint_prior_scale=0.05)
+                    m.fit(series)
+                    future = m.make_future_dataframe(periods=horizon_years, freq="Y")
+                    forecast = m.predict(future)
+                
+                    # Plot
+                    figp = go.Figure()
+                    figp.add_trace(go.Scatter(x=series["ds"], y=series["y"], mode="markers+lines", name="Observed", line=dict(color="blue")))
+                    figp.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat"], mode="lines", name="Forecast (yhat)", line=dict(color="orange", width=3)))
+                    figp.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat_upper"], mode="lines", name="Upper Bound", line=dict(color="lightgray", dash="dot")))
+                    figp.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat_lower"], mode="lines", name="Lower Bound", line=dict(color="lightgray", dash="dot")))
+                    figp.update_layout(title=f"Prophet Forecast — {maker_to_forecast}", template="plotly_white", height=550, legend=dict(orientation="h", y=-0.2), xaxis_title="Year", yaxis_title="Registrations")
+                    st.plotly_chart(figp, use_container_width=True)
+                
+                    # Optional insight
+                    fut_y = forecast.tail(horizon_years)["yhat"].mean()
+                    st.success(f"📊 Prophet projects an **average of {fut_y:,.0f}** registrations/year for the next {horizon_years} years.")
+                
+                except ImportError:
+                    st.info("🧠 Prophet not installed — only linear forecast shown.")
                 except Exception as e:
                     st.warning(f"⚠️ Prophet forecast failed: {e}")
+
     
                 # ---------------------
                 # 5️⃣ Display Forecast Data
