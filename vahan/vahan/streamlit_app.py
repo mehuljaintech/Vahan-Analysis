@@ -6019,87 +6019,41 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import KMeans 
 st.markdown("## 💰 ALL-MAXED — Top 5 Revenue States Analytics Suite")
-# -------------------------------------------------- # 🔹 Safe JSON Fetcher (Top 5 Revenue) # --------------------------------------------------
-def safe_get_top5_(params):
-    """
-    Fetch top 5 revenue states from API.
-    If API fails, generates realistic fallback data.
-    Returns DataFrame with ['State','Month'].
-    """
-    try:
-        top5_json, url = get_json("vahandashboard/top5chartRevenueFee", params)
-        df = parse_top5_revenue(top5_json)
-        if df.empty:
-            raise ValueError("Empty API response")
-        st.success(f"✅ Top 5 revenue fetched from API ({url})")
-    except Exception as e:
-        st.warning(f"⚠️ API unavailable or failed: {e}\nUsing mock data.")
-        states = ["MH", "DL", "KA", "TN", "UP"]
-        months = [random.randint(500, 2000) for _ in states]  # Random numeric data
-        df = pd.DataFrame({"State": states, "Month": months})
-    return df
+df_top5 = safe_get_top5_(params_common1)
 
-params_common1 = build_params(
-    from_year=from_year,
-    to_year=to_year,
-    state_code=state_code or "ALL",
-    rto_code=rto_code or "0",
-    vehicle_classes=vehicle_classes or "ALL",
-    vehicle_makers=vehicle_makers or "ALL",
-    time_period=freq,
-    fitness_check=fitness_check,
-    vehicle_type=vehicle_type or "ALL"
+# Always rename for plotting consistency
+df_top5_plot = df_top5.rename(columns={"Revenue": "Revenue_₹Cr"})
+
+# Bar chart
+fig_bar = px.bar(
+    df_top5_plot,
+    x="State",
+    y="Revenue_₹Cr",
+    title="Top 5 Revenue States (Bar)",
+    text="Revenue_₹Cr",
+    labels={"Revenue_₹Cr": "Revenue (₹ Cr)", "State": "State"}
 )
+fig_bar.update_layout(template="plotly_white")
+st.plotly_chart(fig_bar, use_container_width=True)
 
-# --------------------------------------------------
-# 🔹 Fetch Data
-# --------------------------------------------------
-with st.spinner("Fetching top 5 revenue states..."):
-    df_top5 = safe_get_top5_(params_common1)
+# Pie chart
+fig_pie = px.pie(
+    df_top5_plot,
+    names="State",
+    values="Revenue_₹Cr",
+    title="Top 5 Revenue States (Pie)",
+    hole=0.4
+)
+st.plotly_chart(fig_pie, use_container_width=True)
 
-st.subheader("📊 Top 5 States — Revenue / Month")
+# KPI Summary
+total_rev = df_top5_plot["Revenue_₹Cr"].sum()
+top_state = df_top5_plot.loc[df_top5_plot["Revenue_₹Cr"].idxmax(), "State"]
+top_value = df_top5_plot["Revenue_₹Cr"].max()
 
-# Make sure the column exists
-# Ensure df_top5 has proper columns for plotting
-if "Revenue" in df_top5.columns:
-    df_top5_plot = df_top5.rename(columns={"Revenue": "Revenue_₹Cr"})
-else:
-    # fallback if even Revenue missing
-    df_top5_plot = df_top5.copy()
-    df_top5_plot["Revenue_₹Cr"] = 0
-
-if "State" not in df_top5_plot.columns:
-    st.error("⚠️ No 'State' column in top5 data — cannot plot chart.")
-else:
-    # Bar chart
-    fig_bar = px.bar(
-        df_top5_plot,
-        x="State",
-        y="Revenue_₹Cr",
-        title="Top 5 Revenue States (Bar)",
-        text="Revenue_₹Cr",
-        labels={"Revenue_₹Cr": "Revenue (₹ Cr)", "State": "State"}
-    )
-    fig_bar.update_layout(template="plotly_white")
-    st.plotly_chart(fig_bar, use_container_width=True)
-
-    # Pie chart
-    fig_pie = px.pie(
-        df_top5_plot,
-        names="State",
-        values="Revenue_₹Cr",
-        title="Top 5 Revenue States (Pie)",
-        hole=0.4
-    )
-    st.plotly_chart(fig_pie, use_container_width=True)
-
-    # KPI Summary
-    total_rev = df_top5_plot["Revenue_₹Cr"].sum()
-    top_state = df_top5_plot.loc[df_top5_plot["Revenue_₹Cr"].idxmax(), "State"]
-    top_value = df_top5_plot["Revenue_₹Cr"].max()
-    st.markdown("### 💎 Key Metrics")
-    st.write(f"- **Total Revenue:** ₹{total_rev:,} Cr")
-    st.write(f"- **Top State:** {top_state} with ₹{top_value:,} Cr")
+st.markdown("### 💎 Key Metrics")
+st.write(f"- **Total Revenue:** ₹{total_rev:,} Cr")
+st.write(f"- **Top State:** {top_state} with ₹{top_value:,} Cr")
 
 # --------------------------------------------------
 # 🔹 Advanced Analytics — Trend Simulation
@@ -6109,8 +6063,8 @@ st.markdown("### 🔮 Simulated Multi-Year Trend (Safe + Maxed)")
 # Generate mock revenue trend per state (2019-2025)
 years = list(range(2019, 2026))
 trend_data = []
-for state in df_top5_rev["State"]:
-    base = df_top5_rev.loc[df_top5_rev["State"]==state, "Revenue"].values[0]
+for state in df_top5["State"]:
+    base = df_top5.loc[df_top5["State"]==state, "Revenue"].values[0]
     for y in years:
         val = int(base * (1 + 0.08*(y-2019)) + random.randint(-50,50))
         trend_data.append({"State": state, "Year": y, "Revenue": val})
