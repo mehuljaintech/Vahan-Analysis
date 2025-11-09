@@ -4628,6 +4628,8 @@ def fetch_maker_top5(year: int, params_common: dict):
     """Fetch top vehicle makers for a given year — fully maxed with safe params + mock fallback."""
     logger.info(Fore.CYAN + f"🚀 Fetching top makers for {year}...")
 
+    
+
     # --- Safe param cleanup ---
     safe_params = params_common.copy()
     safe_params["fromYear"] = year
@@ -4653,8 +4655,9 @@ def fetch_maker_top5(year: int, params_common: dict):
         unsafe_allow_html=True,
     )
 
-    with st.expander(f"🧩 JSON Debug — {year}", expanded=False):
-        st.json(mk_json)
+     if show_debug:
+        with st.expander(f"🧩 JSON Debug — {year}", expanded=False):
+            st.json(mk_json)
 
     # --- Validation: check for expected fields ---
     is_valid = False
@@ -4712,8 +4715,8 @@ def fetch_maker_top5(year: int, params_common: dict):
     # --- Visual output ---
     if not df.empty:
         st.info(f"🏆 **{year}** → **{df.iloc[0]['label']}** — {df.iloc[0]['value']:,} registrations")
-        _bar_from_df(df, f"Top Makers ({year})", combined=False)
-        _pie_from_df(df, f"Maker Share ({year})")
+        bar_from_makers(df, f"Top Makers ({year})", combined=False)
+        pie_from_makers(df, f"Maker Share ({year})")
 
     return df
 # -----------------------------------------------------
@@ -4723,7 +4726,7 @@ all_years = []
 with st.spinner("⏳ Fetching maker data for all selected years..."):
     for y in years:
         try:
-            dfy = fetch_maker_top5(y, params_common)   # ✅ FIXED: pass params_common
+            dfy = fetch_maker_top5(y, params_common, show_debug=True)   # ✅ FIXED: pass params_common
             all_years.append(dfy)
         except Exception as e:
             st.error(f"❌ {y} fetch error: {e}")
