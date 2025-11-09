@@ -6058,14 +6058,14 @@ if rto_opt != 'None':
     except Exception as e:
         st.warning(f'Breakdown endpoint not available: {e}')
 
-============================================================
-🌍 ALL-MAXED RTO / STATE BREAKDOWN
-Includes top-N, YoY growth, interactive charts & comparisons
-============================================================
+# ============================================================
+# 🌍 ALL-MAXED RTO / STATE BREAKDOWN
+# Includes top-N, YoY growth, interactive charts & comparisons
+# ============================================================
 
-=========================================================
-🌐 ALL-MAXED — State / RTO Analytics (multi-year, multi-frequency)
-=========================================================
+# =========================================================
+# 🌐 ALL-MAXED — State / RTO Analytics (multi-year, multi-frequency)
+# =========================================================
 
 
 # ---------- Trend series + resampling & multi-year comparisons ------------------
