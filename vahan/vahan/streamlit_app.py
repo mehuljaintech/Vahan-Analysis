@@ -6045,6 +6045,30 @@ def safe_get_top5_(params):
     df = df[["State", "Revenue"]]
     return df
 
+# Ensure fallback/default values for all parameters
+from_year_safe = from_year if "from_year" in locals() else 2024
+to_year_safe = to_year if "to_year" in locals() else 2025
+state_code_safe = state_code if state_code else "ALL"
+rto_code_safe = rto_code if rto_code else "0"
+vehicle_classes_safe = vehicle_classes if vehicle_classes else "ALL"
+vehicle_makers_safe = vehicle_makers if vehicle_makers else "ALL"
+time_period_safe = freq if "freq" in locals() else "Monthly"
+fitness_check_safe = fitness_check if "fitness_check" in locals() else None
+vehicle_type_safe = vehicle_type if vehicle_type else "ALL"
+
+# Build params
+params_common1 = build_params(
+    from_year=from_year_safe,
+    to_year=to_year_safe,
+    state_code=state_code_safe,
+    rto_code=rto_code_safe,
+    vehicle_classes=vehicle_classes_safe,
+    vehicle_makers=vehicle_makers_safe,
+    time_period=time_period_safe,
+    fitness_check=fitness_check_safe,
+    vehicle_type=vehicle_type_safe
+)
+
 
 st.markdown("## 💰 ALL-MAXED — Top 5 Revenue States Analytics Suite")
 df_top5 = safe_get_top5_(params_common1)
