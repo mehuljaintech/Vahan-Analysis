@@ -5268,16 +5268,11 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
         # ---------------------
         # 1️⃣ Select maker & horizon
         # ---------------------
-        makers = (
-            pivot_year.columns.tolist()
-            if not pivot_year.empty
-            else df_maker_all["label"].unique().tolist()
-        )
+        makers = pivot_year.columns.tolist() if not pivot_year.empty else df_maker_all["label"].unique().tolist()
     
         if not makers:
             st.info("⚠️ No makers available for forecasting.")
         else:
-            # Add unique keys using section_id
             maker_to_forecast = st.selectbox(
                 "📊 Choose maker to forecast",
                 makers,
@@ -5313,13 +5308,13 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                 try:
                     import numpy as np
                     from sklearn.linear_model import LinearRegression
-                
+    
                     X = np.arange(len(series)).reshape(-1, 1)
                     y = series["y"].values
                     model = LinearRegression().fit(X, y)
                     fut_idx = np.arange(len(series) + horizon_years).reshape(-1, 1)
                     preds = model.predict(fut_idx)
-                
+    
                     fut_dates = pd.date_range(
                         start=series["ds"].iloc[0],
                         periods=len(series) + horizon_years,
@@ -5327,7 +5322,7 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                     )
                     df_fore = pd.DataFrame({"ds": fut_dates, "Linear": preds})
                     df_fore["Type"] = ["Historical"] * len(series) + ["Forecast"] * horizon_years
-                
+    
                     fig_l = px.line(
                         df_fore, x="ds", y="Linear", color="Type",
                         title=f"Linear Trend Forecast — {maker_to_forecast}"
@@ -5337,8 +5332,8 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                         name="Observed", line=dict(color="blue")
                     )
                     fig_l.update_layout(template="plotly_white", height=500)
-                    st.plotly_chart(fig_l, use_container_width=True, key=f"linear_forecast_{section_id}")
-                
+                    st.plotly_chart(fig_l, use_container_width=True)
+    
                     # KPI summary
                     last_val = series["y"].iloc[-1]
                     next_val = preds[len(series)]
@@ -5346,87 +5341,49 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                     st.metric(
                         "Next Year Projection",
                         f"{next_val:,.0f}",
-                        f"{growth:+.1f}% vs last year",
-                        key=f"metric_next_year_{section_id}"
+                        f"{growth:+.1f}% vs last year"
                     )
                 except Exception as e:
                     st.warning(f"⚠️ Linear regression forecast failed: {e}")
-
     
                 # ---------------------
                 # 4️⃣ Prophet Forecast (if available)
                 # ---------------------
                 st.markdown("### 🧙 Prophet Forecast (Advanced, if available)")
-                
                 try:
-                    from prophet import Prophet
-                
-                    # Initialize and fit Prophet model
-                    m = Prophet(
-                        yearly_seasonality=True,
-                        seasonality_mode="multiplicative",
-                        changepoint_prior_scale=0.05,
-                    )
-                    m.fit(series)
-                    future = m.make_future_dataframe(periods=horizon_years, freq="Y")
-                    forecast = m.predict(future)
-                
-                    # Plot forecast
-                    figp = go.Figure()
-                    figp.add_trace(go.Scatter(
-                        x=series["ds"], y=series["y"],
-                        mode="markers+lines", name="Observed", line=dict(color="blue")
-                    ))
-                    figp.add_trace(go.Scatter(
-                        x=forecast["ds"], y=forecast["yhat"],
-                        mode="lines", name="Forecast (yhat)", line=dict(color="orange", width=3)
-                    ))
-                    figp.add_trace(go.Scatter(
-                        x=forecast["ds"], y=forecast["yhat_upper"],
-                        mode="lines", name="Upper Bound", line=dict(color="lightgray", dash="dot")
-                    ))
-                    figp.add_trace(go.Scatter(
-                        x=forecast["ds"], y=forecast["yhat_lower"],
-                        mode="lines", name="Lower Bound", line=dict(color="lightgray", dash="dot")
-                    ))
-                    figp.update_layout(
-                        title=f"Prophet Forecast — {maker_to_forecast}",
-                        template="plotly_white",
-                        height=550,
-                        legend=dict(orientation="h", y=-0.2),
-                        xaxis_title="Year",
-                        yaxis_title="Registrations",
-                    )
-                    st.plotly_chart(figp, use_container_width=True, key=f"prophet_forecast_{section_id}")
-                
-                    # Optional insight
-                    fut_y = forecast.tail(horizon_years)["yhat"].mean()
-                    st.success(
-                        f"📊 Prophet projects an **average of {fut_y:,.0f}** registrations/year "
-                        f"for the next {horizon_years} years."
-                    )
-                
-                except ImportError:
-                    st.info("🧠 Prophet not installed — only linear forecast shown.")
+                    if Prophet:
+                        from prophet import Prophet
+                        m = Prophet(yearly_seasonality=True, seasonality_mode="multiplicative", changepoint_prior_scale=0.05)
+                        m.fit(series)
+                        future = m.make_future_dataframe(periods=horizon_years, freq="Y")
+                        forecast = m.predict(future)
+    
+                        # Plot
+                        figp = go.Figure()
+                        figp.add_trace(go.Scatter(x=series["ds"], y=series["y"], mode="markers+lines", name="Observed", line=dict(color="blue")))
+                        figp.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat"], mode="lines", name="Forecast (yhat)", line=dict(color="orange", width=3)))
+                        figp.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat_upper"], mode="lines", name="Upper Bound", line=dict(color="lightgray", dash="dot")))
+                        figp.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat_lower"], mode="lines", name="Lower Bound", line=dict(color="lightgray", dash="dot")))
+                        figp.update_layout(title=f"Prophet Forecast — {maker_to_forecast}", template="plotly_white", height=550, legend=dict(orientation="h", y=-0.2), xaxis_title="Year", yaxis_title="Registrations")
+                        st.plotly_chart(figp, use_container_width=True)
+    
+                        # Optional insight
+                        fut_y = forecast.tail(horizon_years)["yhat"].mean()
+                        st.success(f"📊 Prophet projects an **average of {fut_y:,.0f}** registrations/year for the next {horizon_years} years.")
+                    else:
+                        st.info("🧠 Prophet not installed — only linear forecast shown.")
                 except Exception as e:
                     st.warning(f"⚠️ Prophet forecast failed: {e}")
-
     
                 # ---------------------
                 # 5️⃣ Display Forecast Data
                 # ---------------------
-                with st.expander("📋 View Forecast Data Table", key=f"forecast_table_{section_id}"):
+                with st.expander("📋 View Forecast Data Table"):
                     try:
                         comb = df_fore.copy()
                         if "forecast" in locals():
-                            comb = comb.merge(
-                                forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]],
-                                on="ds", how="outer"
-                            )
-                        st.dataframe(
-                            comb.round(2).style.background_gradient(cmap="PuBuGn"),
-                            use_container_width=True,
-                        )
+                            comb = comb.merge(forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]], on="ds", how="outer")
+                        st.dataframe(comb.round(2).style.background_gradient(cmap="PuBuGn"), use_container_width=True)
                     except Exception:
                         st.dataframe(df_fore, use_container_width=True)
 
