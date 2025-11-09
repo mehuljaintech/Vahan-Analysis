@@ -5150,54 +5150,56 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
             else:
                 st.info("⚠️ Latest period has zero or empty Maker values.")
     
-    # -------------------------
-    # 🔥 HEATMAP — Year × Maker (All-Maxed)
-    # -------------------------
     if show_heatmap:
-        st.markdown("### 🔥 Heatmap — Year × Maker (All-Maxed)")
-    
-        if pivot_year.empty:
-            st.info("⚠️ No Maker data available for heatmap.")
-        else:
-            try:
-                heat = pivot_year.copy()
-                heat_norm = heat.div(heat.max(axis=1), axis=0).fillna(0)
-                normalize_opt = st.toggle("Normalize heatmap (relative per year)", value=True)
-                heat_used = heat_norm if normalize_opt else heat
-    
-                fig_h = go.Figure(
-                    data=go.Heatmap(
-                        z=heat_used.values,
-                        x=heat_used.columns.astype(str),
-                        y=heat_used.index.astype(str),
-                        colorscale="Viridis",
-                        hoverongaps=False,
-                        texttemplate="%{z:.1f}" if normalize_opt else None,
-                    )
+    st.markdown("### 🔥 Heatmap — Year × Maker (All-Maxed)")
+
+    if pivot_year.empty:
+        st.info("⚠️ No Maker data available for heatmap.")
+    else:
+        try:
+            heat = pivot_year.copy()
+            heat_norm = heat.div(heat.max(axis=1), axis=0).fillna(0)
+            normalize_opt = st.toggle(
+                "Normalize heatmap (relative per year)",
+                value=True,
+                key=f"normalize_heatmap_{section_id}_pivot"
+            )
+            heat_used = heat_norm if normalize_opt else heat
+
+            fig_h = go.Figure(
+                data=go.Heatmap(
+                    z=heat_used.values,
+                    x=heat_used.columns.astype(str),
+                    y=heat_used.index.astype(str),
+                    colorscale="Viridis",
+                    hoverongaps=False,
+                    texttemplate="%{z:.1f}" if normalize_opt else None,
                 )
-                fig_h.update_layout(
-                    title=(
-                        "Normalized Registrations by Maker per Year"
-                        if normalize_opt
-                        else "Absolute Registrations by Maker per Year"
-                    ),
-                    xaxis_title="Maker",
-                    yaxis_title="Year",
-                    template="plotly_white",
-                    coloraxis_colorbar=dict(title="Registrations" if not normalize_opt else "Share (0–1)"),
-                    height=500,
+            )
+            fig_h.update_layout(
+                title=(
+                    "Normalized Registrations by Maker per Year"
+                    if normalize_opt
+                    else "Absolute Registrations by Maker per Year"
+                ),
+                xaxis_title="Maker",
+                yaxis_title="Year",
+                template="plotly_white",
+                coloraxis_colorbar=dict(title="Registrations" if not normalize_opt else "Share (0–1)"),
+                height=500,
+            )
+            st.plotly_chart(fig_h, use_container_width=True)
+
+            with st.expander("📋 View Heatmap Data Table"):
+                st.dataframe(
+                    heat_used.round(2)
+                    .style.format("{:,.0f}" if not normalize_opt else "{:.2f}")
+                    .background_gradient(cmap="viridis"),
+                    use_container_width=True,
                 )
-                st.plotly_chart(fig_h, use_container_width=True)
-    
-                with st.expander("📋 View Heatmap Data Table"):
-                    st.dataframe(
-                        heat_used.round(2)
-                        .style.format("{:,.0f}" if not normalize_opt else "{:.2f}")
-                        .background_gradient(cmap="viridis"),
-                        use_container_width=True,
-                    )
-            except Exception as e:
-                st.warning(f"⚠️ Heatmap rendering failed: {e}")
+        except Exception as e:
+            st.warning(f"⚠️ Heatmap rendering failed: {e}")
+
     
     # -------------------------
     # 🌈 RADAR — Snapshot per Year (All-Maxed)
@@ -5275,8 +5277,17 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
         if not makers:
             st.info("⚠️ No makers available for forecasting.")
         else:
-            maker_to_forecast = st.selectbox("📊 Choose maker to forecast", makers)
-            horizon_years = st.slider("Forecast horizon (years)", 1, 10, 3)
+            # Add unique keys using section_id
+            maker_to_forecast = st.selectbox(
+                "📊 Choose maker to forecast",
+                makers,
+                key=f"maker_select_{section_id}"
+            )
+            horizon_years = st.slider(
+                "Forecast horizon (years)",
+                1, 10, 3,
+                key=f"horizon_slider_{section_id}"
+            )
             st.caption("Select a maker and choose how many future years to forecast.")
     
             # ---------------------
@@ -5301,6 +5312,7 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                 st.markdown("### 📈 Linear Regression Forecast")
                 try:
                     from sklearn.linear_model import LinearRegression
+    
                     X = np.arange(len(series)).reshape(-1, 1)
                     y = series["y"].values
                     model = LinearRegression().fit(X, y)
@@ -5315,18 +5327,27 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                     df_fore = pd.DataFrame({"ds": fut_dates, "Linear": preds})
                     df_fore["Type"] = ["Historical"] * len(series) + ["Forecast"] * horizon_years
     
-                    fig_l = px.line(df_fore, x="ds", y="Linear", color="Type",
-                                    title=f"Linear Trend Forecast — {maker_to_forecast}")
-                    fig_l.add_scatter(x=series["ds"], y=series["y"], mode="markers+lines",
-                                      name="Observed", line=dict(color="blue"))
+                    fig_l = px.line(
+                        df_fore, x="ds", y="Linear", color="Type",
+                        title=f"Linear Trend Forecast — {maker_to_forecast}"
+                    )
+                    fig_l.add_scatter(
+                        x=series["ds"], y=series["y"], mode="markers+lines",
+                        name="Observed", line=dict(color="blue")
+                    )
                     fig_l.update_layout(template="plotly_white", height=500)
-                    st.plotly_chart(fig_l, use_container_width=True)
+                    st.plotly_chart(fig_l, use_container_width=True, key=f"linear_forecast_{section_id}")
     
                     # KPI summary
                     last_val = series["y"].iloc[-1]
                     next_val = preds[len(series)]
                     growth = ((next_val - last_val) / last_val) * 100 if last_val else np.nan
-                    st.metric("Next Year Projection", f"{next_val:,.0f}", f"{growth:+.1f}% vs last year")
+                    st.metric(
+                        "Next Year Projection",
+                        f"{next_val:,.0f}",
+                        f"{growth:+.1f}% vs last year",
+                        key=f"metric_next_year_{section_id}"
+                    )
                 except Exception as e:
                     st.warning(f"⚠️ Linear regression forecast failed: {e}")
     
@@ -5349,17 +5370,20 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                     figp = go.Figure()
                     figp.add_trace(go.Scatter(
                         x=series["ds"], y=series["y"],
-                        mode="markers+lines", name="Observed", line=dict(color="blue")))
+                        mode="markers+lines", name="Observed", line=dict(color="blue")
+                    ))
                     figp.add_trace(go.Scatter(
                         x=forecast["ds"], y=forecast["yhat"],
-                        mode="lines", name="Forecast (yhat)", line=dict(color="orange", width=3)))
+                        mode="lines", name="Forecast (yhat)", line=dict(color="orange", width=3)
+                    ))
                     figp.add_trace(go.Scatter(
                         x=forecast["ds"], y=forecast["yhat_upper"],
-                        mode="lines", name="Upper Bound", line=dict(color="lightgray", dash="dot")))
+                        mode="lines", name="Upper Bound", line=dict(color="lightgray", dash="dot")
+                    ))
                     figp.add_trace(go.Scatter(
                         x=forecast["ds"], y=forecast["yhat_lower"],
-                        mode="lines", name="Lower Bound", line=dict(color="lightgray", dash="dot")))
-    
+                        mode="lines", name="Lower Bound", line=dict(color="lightgray", dash="dot")
+                    ))
                     figp.update_layout(
                         title=f"Prophet Forecast — {maker_to_forecast}",
                         template="plotly_white",
@@ -5368,20 +5392,24 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                         xaxis_title="Year",
                         yaxis_title="Registrations",
                     )
-                    st.plotly_chart(figp, use_container_width=True)
+                    st.plotly_chart(figp, use_container_width=True, key=f"prophet_forecast_{section_id}")
     
                     # Optional insight
                     fut_y = forecast.tail(horizon_years)["yhat"].mean()
-                    st.success(f"📊 Prophet projects an **average of {fut_y:,.0f}** registrations/year for the next {horizon_years} years.")
+                    st.success(
+                        f"📊 Prophet projects an **average of {fut_y:,.0f}** registrations/year "
+                        f"for the next {horizon_years} years.",
+                        key=f"prophet_avg_{section_id}"
+                    )
                 except ImportError:
-                    st.info("🧠 Prophet not installed — only linear forecast shown.")
+                    st.info("🧠 Prophet not installed — only linear forecast shown.", key=f"prophet_info_{section_id}")
                 except Exception as e:
-                    st.warning(f"⚠️ Prophet forecast failed: {e}")
+                    st.warning(f"⚠️ Prophet forecast failed: {e}", key=f"prophet_warning_{section_id}")
     
                 # ---------------------
                 # 5️⃣ Display Forecast Data
                 # ---------------------
-                with st.expander("📋 View Forecast Data Table"):
+                with st.expander("📋 View Forecast Data Table", key=f"forecast_table_{section_id}"):
                     try:
                         comb = df_fore.copy()
                         if "forecast" in locals():
@@ -6016,115 +6044,115 @@ if __name__ == "__main__":
         st.error(f"💥 Error while rendering All-Maxed block: {e}")
         st.code(traceback.format_exc(), language="python")
 
-# # ---------- RTO/State detailed breakdown ---------------------------------------
-# st.subheader('RTO / State breakdown')
-# # User can choose to fetch state/rto endpoints if available
-# rto_opt = st.selectbox('Show breakdown by', ['State','RTO','None'])
-# if rto_opt != 'None':
-#     # For demo, attempt to call same categories endpoint with state param
-#     target = 'vahandashboard/statewise' if rto_opt=='State' else 'vahandashboard/rtowise'
-#     try:
-#         br_json, _ = get_json(target, params)
-#         df_br = to_df(br_json)
-#         st.dataframe(df_br.head(200))
-#     except Exception as e:
-#         st.warning(f'Breakdown endpoint not available: {e}')
+# ---------- RTO/State detailed breakdown ---------------------------------------
+st.subheader('RTO / State breakdown')
+# User can choose to fetch state/rto endpoints if available
+rto_opt = st.selectbox('Show breakdown by', ['State','RTO','None'])
+if rto_opt != 'None':
+    # For demo, attempt to call same categories endpoint with state param
+    target = 'vahandashboard/statewise' if rto_opt=='State' else 'vahandashboard/rtowise'
+    try:
+        br_json, _ = get_json(target, params)
+        df_br = to_df(br_json)
+        st.dataframe(df_br.head(200))
+    except Exception as e:
+        st.warning(f'Breakdown endpoint not available: {e}')
 
-# ============================================================
-# 🌍 ALL-MAXED RTO / STATE BREAKDOWN
-# Includes top-N, YoY growth, interactive charts & comparisons
-# ============================================================
+============================================================
+🌍 ALL-MAXED RTO / STATE BREAKDOWN
+Includes top-N, YoY growth, interactive charts & comparisons
+============================================================
 
-# =========================================================
-# 🌐 ALL-MAXED — State / RTO Analytics (multi-year, multi-frequency)
-# =========================================================
+=========================================================
+🌐 ALL-MAXED — State / RTO Analytics (multi-year, multi-frequency)
+=========================================================
 
 
-# # ---------- Trend series + resampling & multi-year comparisons ------------------
-# with st.spinner('Fetching trend series...'):
-#     tr_json, tr_url = get_json('vahandashboard/vahanyearwiseregistrationtrend', params)
-#     df_tr = to_df(tr_json)
+# ---------- Trend series + resampling & multi-year comparisons ------------------
+with st.spinner('Fetching trend series...'):
+    tr_json, tr_url = get_json('vahandashboard/vahanyearwiseregistrationtrend', params)
+    df_tr = to_df(tr_json)
 
-# if not df_tr.empty:
-#     def parse_label(l):
-#         for fmt in ('%Y-%m-%d','%Y-%m','%b %Y','%Y'):
-#             try: 
-#                 return pd.to_datetime(l, format=fmt)
-#             except: 
-#                 pass
-#         try:
-#             return pd.to_datetime(l)
-#         except:
-#             return pd.NaT
+if not df_tr.empty:
+    def parse_label(l):
+        for fmt in ('%Y-%m-%d','%Y-%m','%b %Y','%Y'):
+            try: 
+                return pd.to_datetime(l, format=fmt)
+            except: 
+                pass
+        try:
+            return pd.to_datetime(l)
+        except:
+            return pd.NaT
 
-#     df_tr['date'] = df_tr['label'].apply(parse_label)
-#     df_tr = df_tr.dropna(subset=['date']).sort_values('date')
-#     df_tr['value'] = pd.to_numeric(df_tr['value'], errors='coerce')
-#     df_tr = df_tr.set_index('date')
+    df_tr['date'] = df_tr['label'].apply(parse_label)
+    df_tr = df_tr.dropna(subset=['date']).sort_values('date')
+    df_tr['value'] = pd.to_numeric(df_tr['value'], errors='coerce')
+    df_tr = df_tr.set_index('date')
 
-#     freq_map = {'Daily': 'D', 'Monthly': 'M', 'Quarterly': 'Q', 'Yearly': 'Y'}
-#     df_tr = df_tr.resample(freq_map.get(frequency, 'M')).sum()
+    freq_map = {'Daily': 'D', 'Monthly': 'M', 'Quarterly': 'Q', 'Yearly': 'Y'}
+    df_tr = df_tr.resample(freq_map.get(frequency, 'M')).sum()
 
-# # ---------------- MULTI-YEAR COMPARISONS ----------------
-# st.subheader('📈 Multi-year Comparisons')
+# ---------------- MULTI-YEAR COMPARISONS ----------------
+st.subheader('📈 Multi-year Comparisons')
 
-# if df_tr.empty:
-#     st.warning('No trend data for chosen filters.')
-# else:
-#     df_tr['year'] = df_tr.index.year
-#     years = sorted(df_tr['year'].unique())
+if df_tr.empty:
+    st.warning('No trend data for chosen filters.')
+else:
+    df_tr['year'] = df_tr.index.year
+    years = sorted(df_tr['year'].unique())
 
-#     selected_years = st.sidebar.multiselect(
-#         'Select years to compare',
-#         years,
-#         default=years if len(years) <= 2 else years[-2:]
-#     )
+    selected_years = st.sidebar.multiselect(
+        'Select years to compare',
+        years,
+        default=years if len(years) <= 2 else years[-2:]
+    )
 
-#     # Show separate year charts
-#     st.markdown('### 🔹 Separate Year Charts')
-#     cols = st.columns(len(selected_years) if selected_years else 1)
-#     for y, c in zip(selected_years, cols):
-#         with c:
-#             s = df_tr[df_tr['year'] == y]['value']
-#             st.markdown(f"**{y}**")
-#             st.line_chart(s)
+    # Show separate year charts
+    st.markdown('### 🔹 Separate Year Charts')
+    cols = st.columns(len(selected_years) if selected_years else 1)
+    for y, c in zip(selected_years, cols):
+        with c:
+            s = df_tr[df_tr['year'] == y]['value']
+            st.markdown(f"**{y}**")
+            st.line_chart(s)
 
-#     # Combined comparison chart
-#     st.markdown('### 🔸 Combined Comparison (Each Year as a Separate Line)')
+    # Combined comparison chart
+    st.markdown('### 🔸 Combined Comparison (Each Year as a Separate Line)')
 
-#     df_tr_reset = df_tr.reset_index()
+    df_tr_reset = df_tr.reset_index()
 
-#     # Choose x-axis format
-#     if frequency == 'Yearly':
-#         df_tr_reset['period_label'] = df_tr_reset['date'].dt.strftime('%Y')
-#     elif frequency == 'Quarterly':
-#         df_tr_reset['period_label'] = 'Q' + df_tr_reset['date'].dt.quarter.astype(str)
-#     elif frequency == 'Monthly':
-#         df_tr_reset['period_label'] = df_tr_reset['date'].dt.strftime('%b')
-#     else:  # Daily or others
-#         df_tr_reset['period_label'] = df_tr_reset['date'].dt.strftime('%d-%b')
+    # Choose x-axis format
+    if frequency == 'Yearly':
+        df_tr_reset['period_label'] = df_tr_reset['date'].dt.strftime('%Y')
+    elif frequency == 'Quarterly':
+        df_tr_reset['period_label'] = 'Q' + df_tr_reset['date'].dt.quarter.astype(str)
+    elif frequency == 'Monthly':
+        df_tr_reset['period_label'] = df_tr_reset['date'].dt.strftime('%b')
+    else:  # Daily or others
+        df_tr_reset['period_label'] = df_tr_reset['date'].dt.strftime('%d-%b')
 
-#     pivot = (
-#         df_tr_reset.pivot_table(
-#             index='period_label',
-#             columns='year',
-#             values='value',
-#             aggfunc='sum'
-#         )
-#         .fillna(0)
-#     )
+    pivot = (
+        df_tr_reset.pivot_table(
+            index='period_label',
+            columns='year',
+            values='value',
+            aggfunc='sum'
+        )
+        .fillna(0)
+    )
 
-#     # Plot combined line chart with Plotly
-#     fig = px.line(
-#         pivot,
-#         x=pivot.index,
-#         y=pivot.columns,
-#         markers=True,
-#         title="Multi-Year Comparison of Registrations",
-#         labels={"x": "Period", "value": "Registrations"},
-#     )
-#     fig.update_layout(template="plotly_white", legend_title_text="Year")
-#     st.plotly_chart(fig, use_container_width=True)
+    # Plot combined line chart with Plotly
+    fig = px.line(
+        pivot,
+        x=pivot.index,
+        y=pivot.columns,
+        markers=True,
+        title="Multi-Year Comparison of Registrations",
+        labels={"x": "Period", "value": "Registrations"},
+    )
+    fig.update_layout(template="plotly_white", legend_title_text="Year")
+    st.plotly_chart(fig, use_container_width=True)0
 
 # ===============================================================
 # 📈 ALL-MAXED — Time Series Trend Analytics Suite
