@@ -5311,14 +5311,15 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                 # ---------------------
                 st.markdown("### 📈 Linear Regression Forecast")
                 try:
+                    import numpy as np
                     from sklearn.linear_model import LinearRegression
-    
+                
                     X = np.arange(len(series)).reshape(-1, 1)
                     y = series["y"].values
                     model = LinearRegression().fit(X, y)
                     fut_idx = np.arange(len(series) + horizon_years).reshape(-1, 1)
                     preds = model.predict(fut_idx)
-    
+                
                     fut_dates = pd.date_range(
                         start=series["ds"].iloc[0],
                         periods=len(series) + horizon_years,
@@ -5326,7 +5327,7 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                     )
                     df_fore = pd.DataFrame({"ds": fut_dates, "Linear": preds})
                     df_fore["Type"] = ["Historical"] * len(series) + ["Forecast"] * horizon_years
-    
+                
                     fig_l = px.line(
                         df_fore, x="ds", y="Linear", color="Type",
                         title=f"Linear Trend Forecast — {maker_to_forecast}"
@@ -5337,7 +5338,7 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                     )
                     fig_l.update_layout(template="plotly_white", height=500)
                     st.plotly_chart(fig_l, use_container_width=True, key=f"linear_forecast_{section_id}")
-    
+                
                     # KPI summary
                     last_val = series["y"].iloc[-1]
                     next_val = preds[len(series)]
@@ -5350,6 +5351,7 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                     )
                 except Exception as e:
                     st.warning(f"⚠️ Linear regression forecast failed: {e}")
+
     
                 # ---------------------
                 # 4️⃣ Prophet Forecast (if available)
