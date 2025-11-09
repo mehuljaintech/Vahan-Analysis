@@ -4365,11 +4365,18 @@ TITLE_STYLE = dict(size=20, color="#111", family="Segoe UI Semibold")
 def _unique_key(prefix="chart"):
     return f"{prefix}_{uuid.uuid4().hex[:6]}"
 
-def bar_from_makers(df: pd.DataFrame, title="Bar Chart", x="label", y="value",
-                    color=None, barmode="group", height=500, section_id="bar"):
+# -----------------------------
+# BAR CHART — MAKERS
+# -----------------------------
+def bar_from_makers(df: pd.DataFrame, title="Top Makers", x="label", y="value",
+                    color=None, height=500, section_id="bar", combined=False):
     if df is None or df.empty:
         st.warning("⚠️ No data to plot.")
         return
+
+    # Set barmode based on combined toggle
+    barmode = "stack" if combined else "group"
+
     fig = px.bar(
         df, x=x, y=y, color=color or x, text_auto=".2s",
         title=title, color_discrete_sequence=COLOR_PALETTE,
@@ -4392,10 +4399,15 @@ def bar_from_makers(df: pd.DataFrame, title="Bar Chart", x="label", y="value",
     )
     st.plotly_chart(fig, use_container_width=True, key=_unique_key(section_id))
 
-def pie_from_makers(df: pd.DataFrame, title="Pie Chart", donut=True, section_id="pie", height=450):
+
+# -----------------------------
+# PIE / DONUT CHART — MAKERS
+# -----------------------------
+def pie_from_makers(df: pd.DataFrame, title="Maker Share", donut=True, section_id="pie", height=450):
     if df is None or df.empty:
         st.warning("⚠️ No data to plot.")
         return
+
     fig = px.pie(
         df, names="label", values="value", hole=0.45 if donut else 0.0,
         title=title, color_discrete_sequence=COLOR_PALETTE
@@ -4413,19 +4425,28 @@ def pie_from_makers(df: pd.DataFrame, title="Pie Chart", donut=True, section_id=
     )
     st.plotly_chart(fig, use_container_width=True, key=_unique_key(section_id))
 
+
+# -----------------------------
+# TREND / LINE CHART — MAKERS
+# -----------------------------
 def trend_from_makers(df: pd.DataFrame, title="Trend Over Time", section_id="trend", height=500):
     if df is None or df.empty:
         st.warning("⚠️ No trend data available.")
         return
+
+    # Optional monthly ordering
     if "month_name" in df.columns:
         df["month_order"] = pd.Categorical(
             df["month_name"],
             categories=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
             ordered=True
         )
+        x_axis = "month_order"
+    else:
+        x_axis = "year"
+
     fig = px.line(
-        df, x="month_order" if "month_order" in df.columns else "year",
-        y="value", color="label", markers=True,
+        df, x=x_axis, y="value", color="label", markers=True,
         title=title, color_discrete_sequence=COLOR_PALETTE,
         line_shape="spline"
     )
@@ -4440,7 +4461,6 @@ def trend_from_makers(df: pd.DataFrame, title="Trend Over Time", section_id="tre
         height=height, margin=dict(t=60, b=40, l=40, r=40)
     )
     st.plotly_chart(fig, use_container_width=True, key=_unique_key(section_id))
-
 # -----------------------------------------------------
 # 🧠 Auto Dashboard Section — Single Function (MAKERS)
 # -----------------------------------------------------
