@@ -4774,11 +4774,20 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
-def all_maxed_maker_block(params: Optional[dict] = None,freq=freq, section_id="maker_section"):
-    """Render the MAXED multi-year Maker analytics block inside Streamlit."""
+def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id="maker_section"):
+    """
+    Render the MAXED multi-year Maker analytics block inside Streamlit.
+    Handles multi-year fetching, deterministic fallback, and synthetic time series.
+    """
 
     import streamlit as st
+    import pandas as pd
     from datetime import datetime
+
+    # Ensure params_common is a dict
+    params_common = params_common or {}
+
+    # Determine year range
     years = list(range(int(from_year), int(to_year)+1))
 
     # -------------------------
@@ -4787,37 +4796,52 @@ def all_maxed_maker_block(params: Optional[dict] = None,freq=freq, section_id="m
     all_year_dfs = []
     with st.spinner("Fetching maker data for selected years..."):
         for y in years:
-
             try:
-                df_y = fetch_maker_top5(y, params, show_debug=False)
+                df_y = fetch_maker_top5(y, params_common, show_debug=True)
                 if df_y is None or df_y.empty:
-                    st.warning(f"No maker data for {y}. Using deterministic mock.")
-                    mock_data = maker_mock_top5(y).get("data", [])
-                    df_y = pd.DataFrame(mock_data).copy()
-                    df_y["year"] = y
-                    if "label" not in df_y.columns:
-                        df_y["label"] = df_y.get("name", [f"Maker {i+1}" for i in range(len(df_y))])
-                    if "value" not in df_y.columns:
-                        df_y["value"] = pd.to_numeric(df_y.get("score", 0), errors="coerce").fillna(0)
-                all_year_dfs.append(df_y)
+                    raise ValueError(f"No maker data for {y}")
             except Exception as e:
+                st.warning(f"⚠️ {e}. Using deterministic mock for {y}.")
                 logger.exception(f"Error fetching maker data for {y}: {e}")
-                st.error(f"Error fetching maker data for {y}: {e}")
-                # Fallback to deterministic mock
                 mock_data = maker_mock_top5(y).get("data", [])
-                df_y = pd.DataFrame(mock_data).copy()
+                df_y = pd.DataFrame(mock_data)
                 df_y["year"] = y
                 if "label" not in df_y.columns:
                     df_y["label"] = df_y.get("name", [f"Maker {i+1}" for i in range(len(df_y))])
                 if "value" not in df_y.columns:
                     df_y["value"] = pd.to_numeric(df_y.get("score", 0), errors="coerce").fillna(0)
-                all_year_dfs.append(df_y)
+            all_year_dfs.append(df_y)
 
     # Concatenate and sort
     df_maker_all = pd.concat(all_year_dfs, ignore_index=True)
     df_maker_all = df_maker_all.sort_values(["year", "value"], ascending=[True, False]).reset_index(drop=True)
 
-    return df_maker_all
+    # -------------------------
+    # Frequency expansion -> synthetic time series
+    # -------------------------
+    ts_list = []
+    for y in sorted(df_maker_all["year"].unique()):
+        df_y = df_maker_all[df_maker_all["year"] == y].reset_index(drop=True)
+        ts = year_to_timeseries(df_y.rename(columns={"label":"label", "value":"value"}), int(y), freq=freq)
+        ts_list.append(ts)
+
+    df_ts = pd.concat(ts_list, ignore_index=True) if ts_list else pd.DataFrame(columns=["ds","label","value","year"])
+    df_ts["ds"] = pd.to_datetime(df_ts["ds"])
+
+    # -------------------------
+    # Resample to requested frequency
+    # -------------------------
+    freq_map = {"Daily":"D", "Monthly":"M", "Quarterly":"Q", "Yearly":"Y"}
+    resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq=freq_map.get(freq, "M"))])["value"].sum().reset_index()
+    resampled["year"] = resampled["ds"].dt.year
+
+    # -------------------------
+    # Pivot tables for heatmap / radar / combined view
+    # -------------------------
+    pivot = resampled.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
+    pivot_year = resampled.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
+
+    return df_maker_all, df_ts, pivot, pivot_year
 
     
     # -------------------------
