@@ -4746,6 +4746,7 @@ def all_maxed_maker_block(params: Optional[dict] = None,freq=freq, section_id="m
 
     import streamlit as st
     from datetime import datetime
+    years = list(range(int(from_year), int(to_year)+1))
 
     # -------------------------
     # Fetch multi-year maker data
@@ -4753,8 +4754,6 @@ def all_maxed_maker_block(params: Optional[dict] = None,freq=freq, section_id="m
     all_year_dfs = []
     with st.spinner("Fetching maker data for selected years..."):
         for y in years:
-
-            years = list(range(int(from_year), int(to_year)+1))
 
             try:
                 df_y = fetch_maker_top5(y, params, show_debug=False)
