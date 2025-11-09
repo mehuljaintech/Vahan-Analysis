@@ -6057,25 +6057,39 @@ params_common1 = build_params(
 with st.spinner("Fetching top 5 revenue states..."):
     df_top5 = safe_get_top5_(params_common1)
 
+st.subheader("📊 Top 5 States — Revenue / Month")
+
+# Make sure the column exists
+if "Month" not in df_top5.columns:
+    st.warning("⚠️ Column 'Month' not found in data. Showing fallback values.")
+    df_top5["Month"] = 0
+
 # Bar chart
-fig_bar = px.bar(df_top5, x="State", y="Month",
-                 title="Top 5 Revenue States (Bar)", text="Month",
-                 labels={"Month": "Revenue (₹ Cr)", "State": "State"})
+fig_bar = px.bar(
+    df_top5,
+    x="State",
+    y="Month",
+    title="Top 5 Revenue States (Bar)",
+    text="Month",  # display value on bars
+    labels={"Month": "Revenue (₹ Cr)", "State": "State"}
+)
 fig_bar.update_layout(template="plotly_white")
 st.plotly_chart(fig_bar, use_container_width=True)
 
 # Pie chart
-fig_pie = px.pie(df_top5, names="State", values="Month",
-                 title="Top 5 Revenue States (Pie)", hole=0.4)
+fig_pie = px.pie(
+    df_top5,
+    names="State",
+    values="Month",
+    title="Top 5 Revenue States (Pie)",
+    hole=0.4
+)
 st.plotly_chart(fig_pie, use_container_width=True)
 
 # KPI Summary
-st.markdown("### 💎 Key Metrics")
 total_rev = df_top5["Month"].sum()
 top_state = df_top5.loc[df_top5["Month"].idxmax(), "State"]
 top_value = df_top5["Month"].max()
-st.write(f"- **Total Revenue:** ₹{total_rev:,} Cr")
-st.write(f"- **Top State:** {top_state} with ₹{top_value:,} Cr")
 
 # --------------------------------------------------
 # 🔹 Advanced Analytics — Trend Simulation
