@@ -4841,8 +4841,6 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
     pivot = resampled.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
     pivot_year = resampled.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
 
-    return df_maker_all, df_ts, pivot, pivot_year
-
     
     # -------------------------
     # Frequency expansion -> synthetic timeseries
