@@ -6098,6 +6098,7 @@ top_value = df_top5["Revenue"].max()
 st.markdown("### 💎 Key Metrics")
 st.write(f"- **Total Revenue:** ₹{total_rev:,} Cr")
 st.write(f"- **Top State:** {top_state} with ₹{top_value:,} Cr")
+
 # --------------------------------------------------
 # 🔹 Advanced Analytics — Trend Simulation
 # --------------------------------------------------
@@ -6149,7 +6150,9 @@ st.markdown("---")
 st.success("✅ ALL-MAXED Top 5 Revenue States Dashboard Ready!")
 
 
-# ---------- Trend series + resampling & multi-year comparisons ------------------
+import streamlit as st
+import pandas as pd
+from datetime import datetime
 
 # -------------------------
 # ⚙️ Default parameters
@@ -6164,25 +6167,40 @@ frequency = locals().get('frequency', 'Monthly')  # Options: Daily, Monthly, Qua
 fitness_check = locals().get('fitness_check', False)
 vehicle_type = locals().get('vehicle_type', 'ALL')
 
-# Build params safely
+# -------------------------
+# 🔹 Build params safely
+# -------------------------
 params = build_params(
-    from_year, to_year, state_code, rto_code,
-    vehicle_classes, vehicle_makers,
-    frequency, fitness_check, vehicle_type
+    from_year=from_year,
+    to_year=to_year,
+    state_code=state_code,
+    rto_code=rto_code,
+    vehicle_classes=vehicle_classes,
+    vehicle_makers=vehicle_makers,
+    time_period=frequency,
+    fitness_check=fitness_check,
+    vehicle_type=vehicle_type
 )
+
+# -------------------------
+# 🔹 Fetch trend series
+# -------------------------
 with st.spinner('Fetching trend series...'):
     tr_json, tr_url = get_json('vahandashboard/vahanyearwiseregistrationtrend', params)
     df_tr = to_df(tr_json)
 
+# -------------------------
+# 🔹 Process trend series
+# -------------------------
 if not df_tr.empty:
-    def parse_label(l):
+    def parse_label(label):
         for fmt in ('%Y-%m-%d','%Y-%m','%b %Y','%Y'):
             try: 
-                return pd.to_datetime(l, format=fmt)
-            except: 
-                pass
+                return pd.to_datetime(label, format=fmt)
+            except:
+                continue
         try:
-            return pd.to_datetime(l)
+            return pd.to_datetime(label)
         except:
             return pd.NaT
 
@@ -6193,6 +6211,8 @@ if not df_tr.empty:
 
     freq_map = {'Daily': 'D', 'Monthly': 'M', 'Quarterly': 'Q', 'Yearly': 'Y'}
     df_tr = df_tr.resample(freq_map.get(frequency, 'M')).sum()
+else:
+    st.warning("⚠️ No trend data found for the selected filters.")
 
 # ---------------- MULTI-YEAR COMPARISONS ----------------
 st.subheader('📈 Multi-year Comparisons')
