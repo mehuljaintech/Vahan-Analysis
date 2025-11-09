@@ -6152,7 +6152,7 @@ else:
         labels={"x": "Period", "value": "Registrations"},
     )
     fig.update_layout(template="plotly_white", legend_title_text="Year")
-    st.plotly_chart(fig, use_container_width=True)0
+    st.plotly_chart(fig, use_container_width=True)
 
 # ===============================================================
 # 📈 ALL-MAXED — Time Series Trend Analytics Suite
