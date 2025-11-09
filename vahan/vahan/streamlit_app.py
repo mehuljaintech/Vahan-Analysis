@@ -5151,54 +5151,54 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                 st.info("⚠️ Latest period has zero or empty Maker values.")
     
     if show_heatmap:
-    st.markdown("### 🔥 Heatmap — Year × Maker (All-Maxed)")
-
-    if pivot_year.empty:
-        st.info("⚠️ No Maker data available for heatmap.")
-    else:
-        try:
-            heat = pivot_year.copy()
-            heat_norm = heat.div(heat.max(axis=1), axis=0).fillna(0)
-            normalize_opt = st.toggle(
-                "Normalize heatmap (relative per year)",
-                value=True,
-                key=f"normalize_heatmap_{section_id}_pivot"
-            )
-            heat_used = heat_norm if normalize_opt else heat
-
-            fig_h = go.Figure(
-                data=go.Heatmap(
-                    z=heat_used.values,
-                    x=heat_used.columns.astype(str),
-                    y=heat_used.index.astype(str),
-                    colorscale="Viridis",
-                    hoverongaps=False,
-                    texttemplate="%{z:.1f}" if normalize_opt else None,
+        st.markdown("### 🔥 Heatmap — Year × Maker (All-Maxed)")
+    
+        if pivot_year.empty:
+            st.info("⚠️ No Maker data available for heatmap.")
+        else:
+            try:
+                heat = pivot_year.copy()
+                heat_norm = heat.div(heat.max(axis=1), axis=0).fillna(0)
+                normalize_opt = st.toggle(
+                    "Normalize heatmap (relative per year)",
+                    value=True,
+                    key=f"normalize_heatmap_{section_id}_pivot"
                 )
-            )
-            fig_h.update_layout(
-                title=(
-                    "Normalized Registrations by Maker per Year"
-                    if normalize_opt
-                    else "Absolute Registrations by Maker per Year"
-                ),
-                xaxis_title="Maker",
-                yaxis_title="Year",
-                template="plotly_white",
-                coloraxis_colorbar=dict(title="Registrations" if not normalize_opt else "Share (0–1)"),
-                height=500,
-            )
-            st.plotly_chart(fig_h, use_container_width=True)
-
-            with st.expander("📋 View Heatmap Data Table"):
-                st.dataframe(
-                    heat_used.round(2)
-                    .style.format("{:,.0f}" if not normalize_opt else "{:.2f}")
-                    .background_gradient(cmap="viridis"),
-                    use_container_width=True,
+                heat_used = heat_norm if normalize_opt else heat
+    
+                fig_h = go.Figure(
+                    data=go.Heatmap(
+                        z=heat_used.values,
+                        x=heat_used.columns.astype(str),
+                        y=heat_used.index.astype(str),
+                        colorscale="Viridis",
+                        hoverongaps=False,
+                        texttemplate="%{z:.1f}" if normalize_opt else None,
+                    )
                 )
-        except Exception as e:
-            st.warning(f"⚠️ Heatmap rendering failed: {e}")
+                fig_h.update_layout(
+                    title=(
+                        "Normalized Registrations by Maker per Year"
+                        if normalize_opt
+                        else "Absolute Registrations by Maker per Year"
+                    ),
+                    xaxis_title="Maker",
+                    yaxis_title="Year",
+                    template="plotly_white",
+                    coloraxis_colorbar=dict(title="Registrations" if not normalize_opt else "Share (0–1)"),
+                    height=500,
+                )
+                st.plotly_chart(fig_h, use_container_width=True)
+    
+                with st.expander("📋 View Heatmap Data Table"):
+                    st.dataframe(
+                        heat_used.round(2)
+                        .style.format("{:,.0f}" if not normalize_opt else "{:.2f}")
+                        .background_gradient(cmap="viridis"),
+                        use_container_width=True,
+                    )
+            except Exception as e:
+                st.warning(f"⚠️ Heatmap rendering failed: {e}")
 
     
     # -------------------------
