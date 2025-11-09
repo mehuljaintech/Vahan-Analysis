@@ -6159,6 +6159,11 @@ st.success("✅ ALL-MAXED Top 5 Revenue States Dashboard Ready!")
 
 
 # ---------- Trend series + resampling & multi-year comparisons ------------------
+
+params = build_params(from_year, to_year, state_code, rto_code,
+                      vehicle_classes, vehicle_makers,
+                      frequency, fitness_check, vehicle_type)
+
 with st.spinner('Fetching trend series...'):
     tr_json, tr_url = get_json('vahandashboard/vahanyearwiseregistrationtrend', params)
     df_tr = to_df(tr_json)
