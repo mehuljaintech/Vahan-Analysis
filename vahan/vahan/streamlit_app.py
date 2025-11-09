@@ -4624,11 +4624,27 @@ years = list(range(int(from_year), int(to_year) + 1))
 
 st.info(f"🔗 Using parameters: {params_common}")
 
-def fetch_maker_top5(year: int, params_common: dict):
-    """Fetch top vehicle makers for a given year — fully maxed with safe params + mock fallback."""
-    logger.info(Fore.CYAN + f"🚀 Fetching top makers for {year}...")
+import random
+import pandas as pd
+import streamlit as st
+from colorama import Fore
+import logging
 
+logger = logging.getLogger(__name__)
+
+def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = False):
+    """
+    Fetch top vehicle makers for a given year — fully maxed with safe params + mock fallback.
     
+    Parameters:
+        year (int): Year to fetch
+        params_common (dict): Parameters for the API
+        show_debug (bool): If True, show raw JSON in an expander
+
+    Returns:
+        pd.DataFrame: DataFrame of top makers with 'label', 'value', 'year'
+    """
+    logger.info(Fore.CYAN + f"🚀 Fetching top makers for {year}...")
 
     # --- Safe param cleanup ---
     safe_params = params_common.copy()
@@ -4636,9 +4652,7 @@ def fetch_maker_top5(year: int, params_common: dict):
     safe_params["toYear"] = year
 
     for k in ["fitnessCheck", "stateCode", "rtoCode", "vehicleType"]:
-        if k in safe_params and (
-            safe_params[k] in ["ALL", "0", "", None, False]
-        ):
+        if k in safe_params and safe_params[k] in ["ALL", "0", "", None, False]:
             safe_params.pop(k, None)
 
     mk_json, mk_url = None, None
@@ -4655,37 +4669,33 @@ def fetch_maker_top5(year: int, params_common: dict):
         unsafe_allow_html=True,
     )
 
+    # --- Optional debug ---
     if show_debug:
         with st.expander(f"🧩 JSON Debug — {year}", expanded=False):
-        st.json(mk_json)
+            st.json(mk_json)
 
-    # --- Validation: check for expected fields ---
+    # --- Validate JSON & extract data ---
     is_valid = False
     df = pd.DataFrame()
 
     if isinstance(mk_json, dict):
-        # ✅ Case 1: Chart.js-style JSON
         if "datasets" in mk_json and "labels" in mk_json:
             data_values = mk_json["datasets"][0].get("data", [])
             labels = mk_json.get("labels", [])
             if data_values and labels:
                 df = pd.DataFrame({"label": labels, "value": data_values})
                 is_valid = True
-
-        # ✅ Case 2: API returned dict with "data" or "result"
         elif "data" in mk_json:
             df = pd.DataFrame(mk_json["data"])
             is_valid = not df.empty
         elif "result" in mk_json:
             df = pd.DataFrame(mk_json["result"])
             is_valid = not df.empty
-
     elif isinstance(mk_json, list) and mk_json:
-        # ✅ Case 3: Direct list of records
         df = pd.DataFrame(mk_json)
         is_valid = not df.empty
 
-    # --- Handle missing or invalid data ---
+    # --- Handle missing/invalid data with deterministic mock ---
     if not is_valid or df.empty:
         logger.warning(Fore.YELLOW + f"⚠️ Using mock data for {year}")
         st.warning(f"⚠️ No valid API data for {year}, generating mock values.")
