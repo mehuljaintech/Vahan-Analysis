@@ -6160,10 +6160,25 @@ st.success("✅ ALL-MAXED Top 5 Revenue States Dashboard Ready!")
 
 # ---------- Trend series + resampling & multi-year comparisons ------------------
 
-params = build_params(from_year, to_year, state_code, rto_code,
-                      vehicle_classes, vehicle_makers,
-                      frequency, fitness_check, vehicle_type)
+# -------------------------
+# ⚙️ Default parameters
+# -------------------------
+from_year = locals().get('from_year', 2018)
+to_year = locals().get('to_year', datetime.now().year)
+state_code = locals().get('state_code', 'ALL')
+rto_code = locals().get('rto_code', '0')
+vehicle_classes = locals().get('vehicle_classes', 'ALL')
+vehicle_makers = locals().get('vehicle_makers', 'ALL')
+frequency = locals().get('frequency', 'Monthly')  # Options: Daily, Monthly, Quarterly, Yearly
+fitness_check = locals().get('fitness_check', False)
+vehicle_type = locals().get('vehicle_type', 'ALL')
 
+# Build params safely
+params = build_params(
+    from_year, to_year, state_code, rto_code,
+    vehicle_classes, vehicle_makers,
+    frequency, fitness_check, vehicle_type
+)
 with st.spinner('Fetching trend series...'):
     tr_json, tr_url = get_json('vahandashboard/vahanyearwiseregistrationtrend', params)
     df_tr = to_df(tr_json)
