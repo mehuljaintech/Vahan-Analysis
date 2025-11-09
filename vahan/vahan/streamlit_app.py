@@ -6060,36 +6060,46 @@ with st.spinner("Fetching top 5 revenue states..."):
 st.subheader("📊 Top 5 States — Revenue / Month")
 
 # Make sure the column exists
-if "Month" not in df_top5.columns:
-    st.warning("⚠️ Column 'Month' not found in data. Showing fallback values.")
-    df_top5["Month"] = 0
+# Ensure df_top5 has proper columns for plotting
+if "Revenue" in df_top5.columns:
+    df_top5_plot = df_top5.rename(columns={"Revenue": "Revenue_₹Cr"})
+else:
+    # fallback if even Revenue missing
+    df_top5_plot = df_top5.copy()
+    df_top5_plot["Revenue_₹Cr"] = 0
 
-# Bar chart
-fig_bar = px.bar(
-    df_top5,
-    x="State",
-    y="Month",
-    title="Top 5 Revenue States (Bar)",
-    text="Month",  # display value on bars
-    labels={"Month": "Revenue (₹ Cr)", "State": "State"}
-)
-fig_bar.update_layout(template="plotly_white")
-st.plotly_chart(fig_bar, use_container_width=True)
+if "State" not in df_top5_plot.columns:
+    st.error("⚠️ No 'State' column in top5 data — cannot plot chart.")
+else:
+    # Bar chart
+    fig_bar = px.bar(
+        df_top5_plot,
+        x="State",
+        y="Revenue_₹Cr",
+        title="Top 5 Revenue States (Bar)",
+        text="Revenue_₹Cr",
+        labels={"Revenue_₹Cr": "Revenue (₹ Cr)", "State": "State"}
+    )
+    fig_bar.update_layout(template="plotly_white")
+    st.plotly_chart(fig_bar, use_container_width=True)
 
-# Pie chart
-fig_pie = px.pie(
-    df_top5,
-    names="State",
-    values="Month",
-    title="Top 5 Revenue States (Pie)",
-    hole=0.4
-)
-st.plotly_chart(fig_pie, use_container_width=True)
+    # Pie chart
+    fig_pie = px.pie(
+        df_top5_plot,
+        names="State",
+        values="Revenue_₹Cr",
+        title="Top 5 Revenue States (Pie)",
+        hole=0.4
+    )
+    st.plotly_chart(fig_pie, use_container_width=True)
 
-# KPI Summary
-total_rev = df_top5["Month"].sum()
-top_state = df_top5.loc[df_top5["Month"].idxmax(), "State"]
-top_value = df_top5["Month"].max()
+    # KPI Summary
+    total_rev = df_top5_plot["Revenue_₹Cr"].sum()
+    top_state = df_top5_plot.loc[df_top5_plot["Revenue_₹Cr"].idxmax(), "State"]
+    top_value = df_top5_plot["Revenue_₹Cr"].max()
+    st.markdown("### 💎 Key Metrics")
+    st.write(f"- **Total Revenue:** ₹{total_rev:,} Cr")
+    st.write(f"- **Top State:** {top_state} with ₹{top_value:,} Cr")
 
 # --------------------------------------------------
 # 🔹 Advanced Analytics — Trend Simulation
