@@ -6163,9 +6163,10 @@ state_code = locals().get('state_code', 'ALL')
 rto_code = locals().get('rto_code', '0')
 vehicle_classes = locals().get('vehicle_classes', 'ALL')
 vehicle_makers = locals().get('vehicle_makers', 'ALL')
-frequency = locals().get('frequency', 'Monthly')  # Options: Daily, Monthly, Quarterly, Yearly
+frequency = locals().get('frequency', 'Monthly')
 fitness_check = locals().get('fitness_check', False)
 vehicle_type = locals().get('vehicle_type', 'ALL')
+
 
 # -------------------------
 # 🔹 Build params safely
