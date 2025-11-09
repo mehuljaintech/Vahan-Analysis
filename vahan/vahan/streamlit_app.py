@@ -6050,28 +6050,134 @@ if __name__ == "__main__":
         st.error(f"💥 Error while rendering All-Maxed block: {e}")
         st.code(traceback.format_exc(), language="python")
 
-# # ---------- RTO/State detailed breakdown ---------------------------------------
-# st.subheader('RTO / State breakdown')
-# # User can choose to fetch state/rto endpoints if available
-# rto_opt = st.selectbox('Show breakdown by', ['State','RTO','None'])
-# if rto_opt != 'None':
-#     # For demo, attempt to call same categories endpoint with state param
-#     target = 'vahandashboard/statewise' if rto_opt=='State' else 'vahandashboard/rtowise'
-#     try:
-#         br_json, _ = get_json(target, params)
-#         df_br = to_df(br_json)
-#         st.dataframe(df_br.head(200))
-#     except Exception as e:
-#         st.warning(f'Breakdown endpoint not available: {e}')
+import streamlit as st
+import pandas as pd
+import numpy as np
+import random
+from datetime import datetime
+import plotly.express as px
+import plotly.graph_objects as go
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import IsolationForest
+from sklearn.cluster import KMeans
 
-# ============================================================
-# 🌍 ALL-MAXED RTO / STATE BREAKDOWN
-# Includes top-N, YoY growth, interactive charts & comparisons
-# ============================================================
+st.markdown("## 💰 ALL-MAXED — Top 5 Revenue States Analytics Suite")
 
-# =========================================================
-# 🌐 ALL-MAXED — State / RTO Analytics (multi-year, multi-frequency)
-# =========================================================
+# --------------------------------------------------
+# 🔹 Safe JSON Fetcher (Top 5 Revenue)
+# --------------------------------------------------
+def safe_get_top5_revenue(params):
+    """
+    Fetch top 5 revenue states from API.
+    If API fails, generates realistic fallback data.
+    Returns DataFrame with ['State','Revenue'].
+    """
+    try:
+        top5_json, url = get_json("vahandashboard/top5chartRevenueFee", params)
+        df = parse_top5_revenue(top5_json)
+        if df.empty:
+            raise ValueError("Empty API response")
+        st.success(f"✅ Top 5 revenue fetched from API ({url})")
+    except Exception as e:
+        st.warning(f"⚠️ API unavailable or failed: {e}\nUsing mock data.")
+        states = ["MH","DL","KA","TN","UP"]
+        revenues = [random.randint(500, 2000) for _ in states]
+        df = pd.DataFrame({"State": states, "Revenue": revenues})
+    return df
+
+params_common1 = build_params(
+    from_year=from_year,
+    to_year=to_year,
+    state_code=state_code or "ALL",
+    rto_code=rto_code or "0",
+    vehicle_classes=vehicle_classes or "ALL",
+    vehicle_makers=vehicle_makers or "ALL",
+    time_period=freq,
+    fitness_check=fitness_check,
+    vehicle_type=vehicle_type or "ALL"
+)
+# --------------------------------------------------
+# 🔹 Fetch Data
+# --------------------------------------------------
+with st.spinner("Fetching top 5 revenue states..."):
+    df_top5_rev = safe_get_top5_revenue(params_common1)
+
+# --------------------------------------------------
+# 🔹 Display Top 5 Revenue
+# --------------------------------------------------
+st.subheader("📊 Top 5 Revenue States")
+
+# Bar chart
+fig_bar = px.bar(df_top5_rev, x="State", y="Revenue",
+                 title="Top 5 Revenue States (Bar)", text="Revenue",
+                 labels={"Revenue": "Revenue (₹ Cr)", "State": "State"})
+fig_bar.update_layout(template="plotly_white")
+st.plotly_chart(fig_bar, use_container_width=True)
+
+# Pie chart
+fig_pie = px.pie(df_top5_rev, names="State", values="Revenue",
+                 title="Top 5 Revenue States (Pie)", hole=0.4)
+st.plotly_chart(fig_pie, use_container_width=True)
+
+# --------------------------------------------------
+# 🔹 KPI Summary
+# --------------------------------------------------
+st.markdown("### 💎 Key Metrics")
+total_rev = df_top5_rev["Revenue"].sum()
+top_state = df_top5_rev.loc[df_top5_rev["Revenue"].idxmax(), "State"]
+top_value = df_top5_rev["Revenue"].max()
+st.write(f"- **Total Revenue:** ₹{total_rev:,} Cr")
+st.write(f"- **Top State:** {top_state} with ₹{top_value:,} Cr")
+
+# --------------------------------------------------
+# 🔹 Advanced Analytics — Trend Simulation
+# --------------------------------------------------
+st.markdown("### 🔮 Simulated Multi-Year Trend (Safe + Maxed)")
+
+# Generate mock revenue trend per state (2019-2025)
+years = list(range(2019, 2026))
+trend_data = []
+for state in df_top5_rev["State"]:
+    base = df_top5_rev.loc[df_top5_rev["State"]==state, "Revenue"].values[0]
+    for y in years:
+        val = int(base * (1 + 0.08*(y-2019)) + random.randint(-50,50))
+        trend_data.append({"State": state, "Year": y, "Revenue": val})
+df_trend = pd.DataFrame(trend_data)
+
+# Multi-year comparison chart
+fig_trend = px.line(df_trend, x="Year", y="Revenue", color="State",
+                    markers=True, title="Top 5 Revenue States: Multi-Year Trend")
+st.plotly_chart(fig_trend, use_container_width=True)
+
+# --------------------------------------------------
+# 🔹 Anomaly Detection (IsolationForest)
+# --------------------------------------------------
+st.markdown("### ⚠️ Anomaly Detection — Revenue Trends")
+try:
+    df_trend["Anomaly"] = df_trend.groupby("State")["Revenue"].transform(
+        lambda x: IsolationForest(contamination=0.1, random_state=42).fit_predict(x.values.reshape(-1,1))
+    )
+    fig_anom = px.scatter(df_trend, x="Year", y="Revenue", color=df_trend["Anomaly"].map({1:"Normal",-1:"Anomaly"}),
+                          facet_col="State", title="Revenue Trend Anomalies by State")
+    st.plotly_chart(fig_anom, use_container_width=True)
+except Exception as e:
+    st.warning(f"Anomaly detection failed: {e}")
+
+# --------------------------------------------------
+# 🔹 Clustering (KMeans)
+# --------------------------------------------------
+st.markdown("### 🔍 Clustering — Revenue Patterns Across States")
+try:
+    pivot = df_trend.pivot(index="Year", columns="State", values="Revenue").fillna(0)
+    k = min(3, len(pivot.columns))
+    km = KMeans(n_clusters=k, n_init="auto", random_state=42)
+    pivot["Cluster"] = km.fit_predict(pivot.values)
+    st.dataframe(pivot)
+except Exception as e:
+    st.warning(f"Clustering unavailable: {e}")
+
+st.markdown("---")
+st.success("✅ ALL-MAXED Top 5 Revenue States Dashboard Ready!")
 
 
 # ---------- Trend series + resampling & multi-year comparisons ------------------
