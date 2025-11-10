@@ -3398,12 +3398,15 @@ def all_maxed_category_block(params: Optional[dict] = None):
             print("[ERROR] AI Narrative Exception:", e)
 
     # =====================================================
-    # 🧩 ALL-MAXED FINAL SUMMARY + DEBUG INSIGHTS (FULL SELF-CONTAINED)
+    # 🧩 ALL-MAXED FINAL SUMMARY + EXPORTS + DEBUG INSIGHTS
     # =====================================================
-    st.markdown("## 🧠 Final Summary & Debug Insights — ALL-MAXED")
+    st.markdown("## 🧠 Final Summary, Exports & Debug Insights — ALL-MAXED")
     
     try:
-        print("[ALL-MAXED] Starting Final Summary & Debug Insights")
+        import time
+        import io
+        import xlsxwriter
+    
         summary_start = time.time()
     
         # ----------------------------------------------------
@@ -3414,10 +3417,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
         years = years if "years" in locals() and years else [2024, 2025]
         current_year = datetime.now().year
     
-        print(f"[ALL-MAXED] Inputs — freq={freq}, years={years}, rows_in_df_src={len(df_src)}")
-    
         if df_src.empty:
-            print("[ALL-MAXED] WARNING: df_src is empty — no valid ALL-MAXED data found")
             st.warning("⚠️ No valid ALL-MAXED data found to summarize.")
             st.stop()
     
@@ -3425,65 +3425,37 @@ def all_maxed_category_block(params: Optional[dict] = None):
         # 2️⃣ BASIC CLEANUP + ADD TIME FIELDS
         # ----------------------------------------------------
         df_src = df_src.copy()
-        if "ds" not in df_src.columns and "date" in df_src.columns:
-            df_src["ds"] = pd.to_datetime(df_src["date"])
-            print("[ALL-MAXED] Created 'ds' from 'date' column")
-        elif "ds" not in df_src.columns:
-            df_src["ds"] = pd.to_datetime(df_src["year"].astype(str) + "-01-01")
-            print("[ALL-MAXED] Created 'ds' from 'year' column")
+        if "ds" not in df_src.columns:
+            if "date" in df_src.columns:
+                df_src["ds"] = pd.to_datetime(df_src["date"])
+            elif "year" in df_src.columns:
+                df_src["ds"] = pd.to_datetime(df_src["year"].astype(str) + "-01-01")
+            else:
+                df_src["ds"] = pd.date_range(end=datetime.today(), periods=len(df_src))
     
         df_src["year"] = df_src["ds"].dt.year
         df_src["month"] = df_src["ds"].dt.month
-        df_src["label"] = df_src["label"].astype(str)
-    
-        print(f"[ALL-MAXED] After cleanup: columns={list(df_src.columns)}; years_range={df_src['year'].min()}–{df_src['year'].max()}")
+        df_src["label"] = df_src["label"].astype(str) if "label" in df_src.columns else "Unknown"
     
         # ----------------------------------------------------
-        # 3️⃣ RESAMPLING BASED ON FREQUENCY
+        # 3️⃣ RESAMPLING + PIVOT
         # ----------------------------------------------------
-        resampled = (
-            df_src.groupby(["label", "year"])["value"].sum().reset_index()
-            if freq == "Yearly"
-            else df_src.copy()
-        )
-    
-        pivot = resampled.pivot_table(
-            index="ds", columns="label", values="value", aggfunc="sum"
-        ).fillna(0)
+        resampled = df_src.groupby(["label", "year"])["value"].sum().reset_index() if freq == "Yearly" else df_src.copy()
     
         pivot_year = (
-            resampled.pivot_table(
-                index="year", columns="label", values="value", aggfunc="sum"
-            ).fillna(0)
-            if "year" in resampled.columns
-            else pd.DataFrame()
+            resampled.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
+            if "year" in resampled.columns else pd.DataFrame()
         )
     
-        print(f"[ALL-MAXED] Resampled rows: {len(resampled)}; pivot shape: {pivot.shape}; pivot_year shape: {pivot_year.shape}")
-    
         # ----------------------------------------------------
-        # 4️⃣ KPI METRICS (YoY, CAGR, MoM, Category Shares)
+        # 4️⃣ KPIs & METRICS
         # ----------------------------------------------------
-        st.subheader("💎 Key Metrics & Growth (All-Maxed)")
-    
-        if pivot_year.empty:
-            print("[ALL-MAXED] WARNING: pivot_year is empty — cannot compute yearly KPIs")
-            st.warning("⚠️ No yearly data found for KPI computation.")
-            st.stop()
-    
-        # --- Compute totals and YoY
         year_totals = pivot_year.sum(axis=1).rename("TotalRegistrations").to_frame()
         year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
-        year_totals["TotalRegistrations"] = (
-            year_totals["TotalRegistrations"].fillna(0).astype(int)
-        )
-        year_totals["YoY_%"] = (
-            year_totals["YoY_%"].replace([np.inf, -np.inf], np.nan).fillna(0)
-        )
+        year_totals["TotalRegistrations"] = year_totals["TotalRegistrations"].fillna(0).astype(int)
+        year_totals["YoY_%"] = year_totals["YoY_%"].replace([np.inf, -np.inf], np.nan).fillna(0)
     
-        print(f"[ALL-MAXED] Year totals computed for years: {list(year_totals.index)}")
-    
-        # --- CAGR
+        # CAGR
         if len(year_totals) >= 2:
             first = float(year_totals["TotalRegistrations"].iloc[0])
             last = float(year_totals["TotalRegistrations"].iloc[-1])
@@ -3492,182 +3464,101 @@ def all_maxed_category_block(params: Optional[dict] = None):
         else:
             cagr = 0.0
     
-        print(f"[ALL-MAXED] CAGR computed: {cagr:.2f}%")
-    
-        # --- MoM if monthly
+        # Latest MoM if monthly
+        latest_mom = "n/a"
         if freq == "Monthly":
-            resampled["month_period"] = (
-                resampled["year"].astype(str) + "-" + resampled["month"].astype(str)
-            )
+            resampled["month_period"] = resampled["year"].astype(str) + "-" + resampled["month"].astype(str)
             month_totals = resampled.groupby("month_period")["value"].sum().reset_index()
             month_totals["MoM_%"] = month_totals["value"].pct_change() * 100
-            latest_mom = (
-                f"{month_totals['MoM_%'].iloc[-1]:.2f}%"
-                if len(month_totals) > 1 and not np.isnan(month_totals["MoM_%"].iloc[-1])
-                else "n/a"
-            )
-            print(f"[ALL-MAXED] Latest MoM: {latest_mom}")
-        else:
-            latest_mom = "n/a"
+            latest_mom = f"{month_totals['MoM_%'].iloc[-1]:.2f}%" if len(month_totals) > 1 else "n/a"
     
-        # --- Category shares
+        # Category share
         latest_year = int(year_totals.index.max())
-        latest_total = int(year_totals.loc[latest_year, "TotalRegistrations"])
-        cat_share = (
-            (pivot_year.loc[latest_year] / pivot_year.loc[latest_year].sum() * 100)
-            .sort_values(ascending=False)
-            .round(1)
-        )
+        cat_share = (pivot_year.loc[latest_year] / pivot_year.loc[latest_year].sum() * 100).sort_values(ascending=False).round(1)
     
-        print(f"[ALL-MAXED] Latest year: {latest_year}; latest_total: {latest_total}")
+        # Top Category
+        top_cat_row = df_src.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
+        top_cat_share = (top_cat_row["value"] / df_src["value"].sum()) * 100 if df_src["value"].sum() > 0 else 0
+        # Top Year
+        top_year_row = df_src.groupby("year")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
     
         # ----------------------------------------------------
-        # 5️⃣ DISPLAY KPIs
+        # 5️⃣ DISPLAY METRICS
         # ----------------------------------------------------
-        c1, = st.columns(1)
-        c1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
+        st.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
+        st.metric("🏆 Absolute Top Category", top_cat_row["label"], f"{top_cat_share:.2f}% share")
+        st.metric("📅 Peak Year", f"{int(top_year_row['year'])}", f"{top_year_row['value']:,.0f} registrations")
     
         st.markdown("#### 📘 Category Share (Latest Year)")
-        st.dataframe(
-            pd.DataFrame(
-                {
-                    "Category": cat_share.index,
-                    "Share_%": cat_share.values,
-                    "Volume": pivot_year.loc[latest_year].astype(int).values,
-                }
-            ).sort_values("Share_%", ascending=False),
-            use_container_width=True,
-        )
-    
-        with st.expander("🔍 Yearly Totals & Growth"):
-            st.dataframe(
-                year_totals.style.format(
-                    {"TotalRegistrations": "{:,}", "YoY_%": "{:.2f}"}
-                )
-            )
+        st.dataframe(pd.DataFrame({
+            "Category": cat_share.index,
+            "Share_%": cat_share.values,
+            "Volume": pivot_year.loc[latest_year].astype(int).values
+        }).sort_values("Share_%", ascending=False), use_container_width=True)
     
         # ----------------------------------------------------
-        # 6️⃣ DEEP INSIGHTS + TRENDS — FIXED
+        # 6️⃣ EXPORT XLSX — MULTI-SHEET, FORMATTED
         # ----------------------------------------------------
-        total_all = df_src["value"].sum()
-        n_cats = df_src["label"].nunique()
-        n_years = df_src["year"].nunique()
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+            # Sheet 1: Summary KPIs
+            summary_df = pd.DataFrame({
+                "Metric": ["Years Loaded", "Total Categories", "Total Registrations", "Top Category", "Top Category Share (%)", "Peak Year", "Peak Year Registrations", "CAGR (%)", "Latest MoM (%)"],
+                "Value": [f"{years[0]} → {years[-1]}", df_src["label"].nunique(), df_src["value"].sum(),
+                          top_cat_row["label"], round(top_cat_share, 2),
+                          top_year_row["year"], top_year_row["value"],
+                          round(cagr, 2), latest_mom]
+            })
+            summary_df.to_excel(writer, sheet_name="Summary", index=False)
+            ws = writer.sheets["Summary"]
+            for i, col in enumerate(summary_df.columns):
+                ws.set_column(i, i, 25)  # column width
     
-        print(f"[ALL-MAXED] total_all={total_all}, n_cats={n_cats}, n_years={n_years}")
+            # Sheet 2: Pivot / Yearly
+            if not pivot_year.empty:
+                pivot_year.to_excel(writer, sheet_name="Pivot_Yearly")
+                ws2 = writer.sheets["Pivot_Yearly"]
+                for i, col in enumerate(pivot_year.columns):
+                    ws2.set_column(i, i, max(len(str(col)), 15))
     
-        # --- Top Category as dict (scalar values)
-        top_cat_row = (
-            df_src.groupby("label")["value"]
-            .sum()
-            .reset_index()
-            .sort_values("value", ascending=False)
-            .iloc[0]
-        )
-        top_cat = {
-            "label": str(top_cat_row["label"]),
-            "value": float(top_cat_row["value"])
-        }
-        top_cat_share = (top_cat["value"] / total_all) * 100 if total_all > 0 else 0
+            # Sheet 3: Top Categories
+            top_cat_df = df_src.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False)
+            top_cat_df.to_excel(writer, sheet_name="Top_Categories", index=False)
+            ws3 = writer.sheets["Top_Categories"]
+            for i, col in enumerate(top_cat_df.columns):
+                ws3.set_column(i, i, max(len(str(col)), 15))
     
-        # --- Top Year as dict (scalar values)
-        top_year_row = (
-            df_src.groupby("year")["value"]
-            .sum()
-            .reset_index()
-            .sort_values("value", ascending=False)
-            .iloc[0]
-        )
-        top_year = {
-            "year": int(top_year_row["year"]),
-            "value": float(top_year_row["value"])
-        }
+            # Sheet 4: Full Raw Data
+            df_src.to_excel(writer, sheet_name="Raw_Data", index=False)
+            ws4 = writer.sheets["Raw_Data"]
+            for i, col in enumerate(df_src.columns):
+                ws4.set_column(i, i, max(len(str(col)), 20))
     
-        print(f"[ALL-MAXED] Top category: {top_cat['label']} ({top_cat['value']:.0f}); Top year: {top_year['year']} ({top_year['value']:.0f})")
+            writer.save()
+            processed_data = output.getvalue()
     
-        # --- Display metrics safely
-        st.metric("🏆 Absolute Top Category", top_cat["label"], f"{top_cat_share:.2f}% share")
-        st.metric("📅 Peak Year", f"{top_year['year']}", f"{top_year['value']:,.0f} registrations")
-    
-        # --- Plot: Top 10 Categories
-        st.write("### 🧾 Top 10 Categories — Overall")
-        top_debug = (
-            df_src.groupby("label")["value"]
-            .sum()
-            .reset_index()
-            .sort_values("value", ascending=False)
-        )
-        fig_top10 = px.bar(
-            top_debug.head(10),
-            x="label",
-            y="value",
-            text_auto=True,
-            color="value",
-            color_continuous_scale="Blues",
-            title="Top 10 Categories (All Years)",
-        )
-        fig_top10.update_layout(template="plotly_white", margin=dict(t=50, b=40))
-        st.plotly_chart(fig_top10, use_container_width=True)
+        st.download_button("💾 Download ALL-MAXED XLSX", processed_data, "ALL-MAXED_Summary.xlsx")
     
         # ----------------------------------------------------
-        # 7️⃣ ADVANCED DEBUG METRICS
+        # 7️⃣ DEBUG METRICS
         # ----------------------------------------------------
-        volatility = (
-            df_src.groupby("year")["value"].sum().pct_change().std() * 100
-            if len(df_src["year"].unique()) > 2
-            else 0
-        )
-        dominance_ratio = (top_cat["value"] / total_all) * n_cats if total_all > 0 else 0
-        direction = "increased" if cagr > 0 else "declined"
-    
         summary_time = time.time() - summary_start
         st.markdown("### ⚙️ Debug Performance Metrics")
-        st.code(
-            f"""
-    Years analyzed: {years}
-    Categories: {n_cats}
+        st.code(f"""
     Rows processed: {len(df_src):,}
-    Total registrations: {total_all:,.0f}
-    Top category: {top_cat['label']} → {top_cat['value']:,.0f} ({top_cat_share:.2f}%)
-    Peak year: {int(top_year['year'])} → {top_year['value']:,.0f}
-    Dominance ratio: {dominance_ratio:.2f}
+    Categories: {df_src['label'].nunique()}
+    Total registrations: {df_src['value'].sum():,.0f}
+    Top category: {top_cat_row['label']} → {top_cat_row['value']:,.0f} ({top_cat_share:.2f}%)
+    Peak year: {top_year_row['year']} → {top_year_row['value']:,.0f}
+    CAGR: {cagr:.2f}%
+    Latest MoM: {latest_mom}
     Runtime: {summary_time:.2f}s
-            """,
-            language="yaml",
-        )
+    """, language="yaml")
     
-        print(f"[ALL-MAXED] Debug metrics displayed. Runtime: {summary_time:.2f}s")
-    
-        # ----------------------------------------------------
-        # 8️⃣ SMART SUMMARY (NO INTERNAL TRY)
-        # ----------------------------------------------------
-        if isinstance(top_cat, list):
-            top_cat = top_cat[0] if top_cat else {"label": "N/A", "value": 0}
-    
-        years_valid = years is not None and len(years) > 0
-        top_year_valid = top_year is not None and "year" in top_year and "value" in top_year
-    
-        if top_cat and years_valid and top_year_valid:
-            st.success(
-                f"From **{years[0]}** to **{years[-1]}**, total registrations {direction} "
-                f"**{top_cat.get('label', 'N/A')}** leads with **{top_cat_share:.2f}%** share. "
-                f"Peak year: **{top_year['year']}** with **{top_year['value']:,.0f}** registrations. "
-            )
-            logger.info(f"✅ ALL-MAXED summary completed in {summary_time:.2f}s")
-            print("[ALL-MAXED] Summary success message displayed.")
-        else:
-            st.error("⛔ ALL-MAXED summary failed: Missing or invalid data.")
-            logger.warning("⚠️ ALL-MAXED summary skipped due to incomplete data.")
-            print("[ALL-MAXED] ERROR: Summary failed due to missing/invalid data.")
-    
-    # ----------------------------------------------------
-    # 9️⃣ CATCH GLOBAL ERRORS
-    # ----------------------------------------------------
     except Exception as e:
-        logger.exception(f"ALL-MAXED summary failed: {e}")
         st.error(f"⛔ ALL-MAXED summary failed: {e}")
         import traceback as _tb
-        print("[ALL-MAXED] EXCEPTION:", e)
-        print(_tb.format_exc())
+        st.text(_tb.format_exc())
 
     
 # -----------------------------------------------------
