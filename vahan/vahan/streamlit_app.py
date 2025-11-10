@@ -6120,7 +6120,7 @@ st.write(f"- **Top State:** {top_state} with ₹{top_value:,} Cr")
 st.markdown("### 🔮 Simulated Multi-Year Trend (Safe + Maxed)")
 
 # Generate mock revenue trend per state (2019-2025)
-years = list(range(2019, 2026))
+years = list(range(2019, 2025))
 trend_data = []
 for state in df_top5["State"]:
     base = df_top5.loc[df_top5["State"]==state, "Revenue"].values[0]
@@ -6284,10 +6284,28 @@ else:
 st.subheader("📈 Multi-Year Comparison")
 years = sorted(df_tr["year"].unique())
 selected_years = st.multiselect("Select years to compare", years, default=years[-2:])
-pivot = df_tr.groupby([df_tr["date"].dt.strftime("%b"), "year"])["value"].sum().unstack().fillna(0)
-fig = px.line(pivot, x=pivot.index, y=selected_years, markers=True,
-              title="Year-over-Year Registration Comparison")
-st.plotly_chart(fig, use_container_width=True)
+pivot = (
+    df_tr.groupby([df_tr["date"].dt.strftime("%b"), "year"])["value"]
+    .sum()
+    .unstack()
+    .fillna(0)
+)
+
+# --- Ensure column types are strings for Plotly
+pivot.columns = pivot.columns.astype(str)
+selected_years_str = [str(y) for y in selected_years if str(y) in pivot.columns]
+
+if not selected_years_str:
+    st.warning("⚠️ No matching years found for comparison plot.")
+else:
+    fig = px.line(
+        pivot,
+        x=pivot.index,
+        y=selected_years_str,
+        markers=True,
+        title="Year-over-Year Registration Comparison"
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
 # ================================================================
 # 💰 REVENUE TREND MOCK
