@@ -7664,9 +7664,9 @@ st.subheader('Exports & comparisons')
 if not df_tr.empty:
     st.download_button('Download trend CSV', df_tr.reset_index().to_csv(index=False), 'trend.csv')
 if not df_cat_all.empty:
-    st.download_button('Download categories CSV', df_cat.to_csv(index=False), 'categories.csv')
+    st.download_button('Download categories CSV', df_cat_all.to_csv(index=False), 'categories.csv')
 if not df_maker_all.empty:
-    st.download_button('Download makers CSV', df_mk.to_csv(index=False), 'makers.csv')
+    st.download_button('Download makers CSV', df_maker_all.to_csv(index=False), 'makers.csv')
 
 
 
@@ -7675,15 +7675,15 @@ if not df_maker_all.empty:
 # st.caption('Ultra  V2 — build: ' + datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'))
 
 
-# ---------- Exports & comparisons ------------------------------------------------
-st.subheader('💾 Exports & Comparisons')
+# # ---------- Exports & comparisons ------------------------------------------------
+# st.subheader('💾 Exports & Comparisons')
 
-if not df_tr.empty:
-    st.download_button('Download Trend CSV', df_tr.reset_index().to_csv(index=False), 'trend.csv')
-if 'df_cat' in globals() and not df_cat.empty:
-    st.download_button('Download Categories CSV', df_cat.to_csv(index=False), 'categories.csv')
-if 'df_mk' in globals() and not df_mk.empty:
-    st.download_button('Download Makers CSV', df_mk.to_csv(index=False), 'makers.csv')
+# if not df_tr.empty:
+#     st.download_button('Download Trend CSV', df_tr.reset_index().to_csv(index=False), 'trend.csv')
+# if 'df_cat' in globals() and not df_cat.empty:
+#     st.download_button('Download Categories CSV', df_cat.to_csv(index=False), 'categories.csv')
+# if 'df_mk' in globals() and not df_mk.empty:
+#     st.download_button('Download Makers CSV', df_mk.to_csv(index=False), 'makers.csv')
 
 # =====================================================
 # 🚀 ALL-MAXED Final Dashboard Footer with Debug
