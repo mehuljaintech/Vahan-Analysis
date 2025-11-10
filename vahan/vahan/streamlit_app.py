@@ -3582,7 +3582,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
         
         # XLSX written automatically
         processed_data = output.getvalue()
-        st.download_button("💾 Download ALL-MAXED PowerBI-Style Excel", processed_data, "ALL-MAXED_Categories_Dashboard.xlsx")
+        st.download_button("💾 Download Categories Dashboard", processed_data, "ALL-MAXED_Categories_Dashboard.xlsx")
 
     
         # ----------------------------------------------------
@@ -6621,6 +6621,103 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
         )
         fig_top10.update_layout(template="plotly_white", margin=dict(t=50, b=40))
         st.plotly_chart(fig_top10, use_container_width=True)
+
+        # ----------------------------------------------------
+        # 9️⃣ EXPORT XLSX — ALL-MAXED MAKER DASHBOARD
+        # ----------------------------------------------------
+        import io
+        import pandas as pd
+        import xlsxwriter
+        
+        st.markdown("### 💾 Export ALL-MAXED Maker Excel Dashboard")
+        
+        try:
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+                workbook = writer.book
+        
+                # ------------------ Sheet 1: Dashboard KPIs ------------------
+                summary_df = pd.DataFrame({
+                    "Metric": ["Years Loaded", "Total Makers", "Total Registrations", "Top Maker", "Top Maker Share (%)", 
+                               "Peak Year", "Peak Year Registrations", "CAGR (%)", "Latest MoM (%)"],
+                    "Value": [f"{years[0]} → {years[-1]}", n_makers, total_all,
+                              top_maker["maker"], round(top_maker_share, 2),
+                              top_year["year"], int(top_year["value"]),
+                              round(cagr, 2), latest_mom]
+                })
+                summary_df.to_excel(writer, sheet_name="Dashboard", index=False)
+                ws = writer.sheets["Dashboard"]
+        
+                # Header format
+                header_format = workbook.add_format({'bold': True, 'bg_color': '#051937', 'font_color': 'white', 'align': 'center', 'border':1})
+                for col_num, value in enumerate(summary_df.columns.values):
+                    ws.write(0, col_num, value, header_format)
+                ws.set_column(0, 0, 35)
+                ws.set_column(1, 1, 25)
+        
+                # Highlight top metrics
+                highlight_format = workbook.add_format({'bg_color': '#00bf72', 'font_color': 'white', 'bold': True})
+                ws.write(3, 1, top_maker["maker"], highlight_format)
+                ws.write(5, 1, top_year["year"], highlight_format)
+        
+                # ------------------ Sheet 2: Yearly Pivot with Charts ------------------
+                if not pivot_year.empty:
+                    pivot_year.to_excel(writer, sheet_name="Yearly_Pivot")
+                    ws2 = writer.sheets["Yearly_Pivot"]
+        
+                    # Column widths
+                    for i, col in enumerate(pivot_year.columns):
+                        ws2.set_column(i+1, i+1, max(len(str(col)), 15))  # +1 for index
+        
+                    # Conditional formatting
+                    ws2.conditional_format(1,1,len(pivot_year),len(pivot_year.columns), {'type': '3_color_scale'})
+        
+                    # Column chart for total registrations
+                    chart = workbook.add_chart({'type': 'column'})
+                    chart.add_series({
+                        'name': 'Total Registrations',
+                        'categories': ['Yearly_Pivot', 1, 0, len(pivot_year), 0],
+                        'values': ['Yearly_Pivot', 1, 1, len(pivot_year), 1],
+                        'fill': {'color': '#008793'}
+                    })
+                    chart.set_title({'name': 'Total Registrations per Year'})
+                    chart.set_x_axis({'name': 'Year'})
+                    chart.set_y_axis({'name': 'Registrations'})
+                    ws2.insert_chart('H2', chart, {'x_scale': 1.5, 'y_scale': 1.5})
+        
+                # ------------------ Sheet 3: Top Makers ------------------
+                top_maker_df = df_src.groupby("maker")["value"].sum().reset_index().sort_values("value", ascending=False)
+                top_maker_df.to_excel(writer, sheet_name="Top_Makers", index=False)
+                ws3 = writer.sheets["Top_Makers"]
+                for i, col in enumerate(top_maker_df.columns):
+                    ws3.set_column(i, i, max(len(str(col)), 20))
+        
+                # Top 10 bar chart
+                n_top = min(10, len(top_maker_df))
+                chart2 = workbook.add_chart({'type': 'bar'})
+                chart2.add_series({
+                    'name': 'Registrations',
+                    'categories': ['Top_Makers', 1, 0, n_top, 0],
+                    'values': ['Top_Makers', 1, 1, n_top, 1],
+                    'fill': {'color': '#004d7a'}
+                })
+                chart2.set_title({'name': 'Top 10 Makers'})
+                chart2.set_x_axis({'name': 'Registrations'})
+                chart2.set_y_axis({'name': 'Maker'})
+                ws3.insert_chart('D2', chart2, {'x_scale': 2, 'y_scale': 1.5})
+        
+            # XLSX written automatically
+            processed_data = output.getvalue()
+            st.download_button(
+                "💾 Download ALL-MAXED Maker Excel Dashboard",
+                processed_data,
+                "ALL-MAXED_Makers_Dashboard.xlsx"
+            )
+            print("[ALL-MAXED FINAL] Excel export ready")
+        except Exception as e:
+            st.error(f"⛔ Excel export failed: {e}")
+            print(f"[ALL-MAXED FINAL] Excel export exception: {e}")
+
     
         # ----------------------------------------------------
         # 7️⃣ ADVANCED DEBUG METRICS
