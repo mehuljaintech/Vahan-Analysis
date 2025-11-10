@@ -1526,12 +1526,16 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 
+print("✅ Imports loaded successfully — ALL-MAXED Category Analytics block initialized.")
+
 logger = logging.getLogger("all_maxed_category")
 if not logger.handlers:
     h = logging.StreamHandler()
     h.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
     logger.addHandler(h)
 logger.setLevel(logging.DEBUG)
+
+print("🧠 Logger 'all_maxed_category' configured (level=DEBUG). Ready to log events.")
 
 # =====================================================
 # 🚀 ALL-MAXED ANALYTICS CORE v12.0
@@ -1548,6 +1552,8 @@ from datetime import datetime
 from typing import Dict, Any
 from plotly.colors import qualitative
 
+print("✅ Imports loaded successfully — ALL-MAXED ANALYTICS CORE v12.0 initialized.")
+
 # -----------------------------------------------------
 # 🎯 Master Category Reference
 # -----------------------------------------------------
@@ -1556,20 +1562,25 @@ CATEGORIES_MASTER = [
     "E-Rickshaw", "Trailer", "Pickup", "Ambulance", "Taxi"
 ]
 
+print(f"📦 Loaded {len(CATEGORIES_MASTER)} master categories:", CATEGORIES_MASTER)
+
 # -----------------------------------------------------
 # 💾 Deterministic Mock Data Generator (Multi-Frequency)
 # -----------------------------------------------------
 def deterministic_mock_categories(year: int, freq: str = "Monthly", seed_base: str = "categories") -> Dict[str, Any]:
     """Generate reproducible, realistic mock data for categories (daily, monthly, yearly)."""
+    print(f"🧩 Generating deterministic mock data for year={year}, freq={freq}, seed_base={seed_base}")
     rnd = random.Random(hash((year, seed_base)) & 0xFFFFFFFF)
     data = []
 
     if freq == "Yearly":
+        print("📅 Mode: Yearly")
         for c in CATEGORIES_MASTER:
             val = rnd.randint(50_000, 2_500_000)
             data.append({"label": c, "value": val, "year": year})
 
     elif freq == "Monthly":
+        print("📅 Mode: Monthly")
         for month in range(1, 13):
             for c in CATEGORIES_MASTER:
                 base = rnd.randint(10_000, 200_000)
@@ -1584,6 +1595,7 @@ def deterministic_mock_categories(year: int, freq: str = "Monthly", seed_base: s
                 })
 
     elif freq == "Daily":
+        print("📅 Mode: Daily")
         for month in range(1, 13):
             for day in range(1, 29):
                 for c in CATEGORIES_MASTER:
@@ -1592,6 +1604,10 @@ def deterministic_mock_categories(year: int, freq: str = "Monthly", seed_base: s
                     data.append({
                         "label": c, "value": val, "year": year, "month": month, "day": day
                     })
+    else:
+        print(f"⚠️ Unknown frequency '{freq}' — no data generated.")
+
+    print(f"✅ Generated {len(data)} records for {year} ({freq})")
 
     return {
         "data": data,
@@ -1607,33 +1623,51 @@ def deterministic_mock_categories(year: int, freq: str = "Monthly", seed_base: s
 # -----------------------------------------------------
 def format_number(n):
     """Return number formatted as K, M, or Cr."""
+    print(f"🔢 Formatting number: {n}")
     if n >= 10_000_000:
-        return f"{n/10_000_000:.2f} Cr"
+        formatted = f"{n/10_000_000:.2f} Cr"
     elif n >= 100_000:
-        return f"{n/100_000:.2f} L"
+        formatted = f"{n/100_000:.2f} L"
     elif n >= 1_000:
-        return f"{n/1_000:.2f} K"
-    return f"{n:,}"
+        formatted = f"{n/1_000:.2f} K"
+    else:
+        formatted = f"{n:,}"
+    print(f"✅ Formatted result: {formatted}")
+    return formatted
 
 # -----------------------------------------------------
 # 🎨 Global Chart Style Settings
 # -----------------------------------------------------
+print("🎨 Initializing Global Chart Style Settings...")
+
 COLOR_PALETTE = qualitative.Plotly + qualitative.D3 + qualitative.Vivid
 DEFAULT_TEMPLATE = "plotly_white"
 TITLE_STYLE = dict(size=20, color="#111", family="Segoe UI Semibold")
+
+print(f"✅ COLOR_PALETTE loaded with {len(COLOR_PALETTE)} colors.")
+print(f"✅ DEFAULT_TEMPLATE: {DEFAULT_TEMPLATE}")
+print(f"✅ TITLE_STYLE: {TITLE_STYLE}")
+
 
 # -----------------------------------------------------
 # 🧩 MAXED CHART HELPERS (Legend, Hover, UI polish)
 # -----------------------------------------------------
 def _unique_key(prefix="chart"):
-    return f"{prefix}_{uuid.uuid4().hex[:6]}"
+    key = f"{prefix}_{uuid.uuid4().hex[:6]}"
+    print(f"🧩 Generated unique key: {key}")
+    return key
+
 
 def bar_from_df(df: pd.DataFrame, title="Bar Chart", x="label", y="value",
                 color=None, barmode="group", height=500, section_id="bar"):
     """Enhanced bar chart with full UX polish."""
+    print(f"📊 [bar_from_df] Rendering bar chart: {title}")
     if df is None or df.empty:
+        print("⚠️ [bar_from_df] Empty or missing DataFrame — skipping chart.")
         st.warning("⚠️ No data to plot.")
         return
+
+    print(f"✅ [bar_from_df] Data shape: {df.shape}, Columns: {list(df.columns)}")
 
     fig = px.bar(
         df, x=x, y=y, color=color or x, text_auto=".2s",
@@ -1655,14 +1689,19 @@ def bar_from_df(df: pd.DataFrame, title="Bar Chart", x="label", y="value",
         ),
         height=height, bargap=0.2, margin=dict(t=60, b=40, l=40, r=20)
     )
+    print(f"✅ [bar_from_df] Chart ready — pushing to Streamlit section '{section_id}'.")
     st.plotly_chart(fig, use_container_width=True, key=_unique_key(section_id))
 
 
 def pie_from_df(df: pd.DataFrame, title="Pie Chart", donut=True, section_id="pie", height=450):
     """Enhanced donut/pie chart with interactivity + auto legends."""
+    print(f"🥧 [pie_from_df] Rendering pie chart: {title}")
     if df is None or df.empty:
+        print("⚠️ [pie_from_df] Empty or missing DataFrame — skipping chart.")
         st.warning("⚠️ No data to plot.")
         return
+
+    print(f"✅ [pie_from_df] Data shape: {df.shape}, Labels: {df['label'].nunique()}")
 
     fig = px.pie(
         df, names="label", values="value", hole=0.45 if donut else 0.0,
@@ -1679,16 +1718,22 @@ def pie_from_df(df: pd.DataFrame, title="Pie Chart", donut=True, section_id="pie
         legend=dict(orientation="v", yanchor="top", y=0.95, xanchor="left", x=0),
         height=height, margin=dict(t=60, b=40, l=40, r=40)
     )
+    print(f"✅ [pie_from_df] Chart ready — pushing to Streamlit section '{section_id}'.")
     st.plotly_chart(fig, use_container_width=True, key=_unique_key(section_id))
 
 
 def trend_from_df(df: pd.DataFrame, title="Trend Over Time", section_id="trend", height=500):
     """Advanced line chart supporting animation + multiple years."""
+    print(f"📈 [trend_from_df] Rendering trend chart: {title}")
     if df is None or df.empty:
+        print("⚠️ [trend_from_df] Empty or missing DataFrame — skipping chart.")
         st.warning("⚠️ No trend data available.")
         return
 
+    print(f"✅ [trend_from_df] Data shape: {df.shape}, Columns: {list(df.columns)}")
+
     if "month_name" in df.columns:
+        print("📆 [trend_from_df] Applying month order for chronological axis.")
         df["month_order"] = pd.Categorical(
             df["month_name"], 
             categories=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
@@ -1711,6 +1756,7 @@ def trend_from_df(df: pd.DataFrame, title="Trend Over Time", section_id="trend",
         ),
         height=height, margin=dict(t=60, b=40, l=40, r=40)
     )
+    print(f"✅ [trend_from_df] Chart ready — pushing to Streamlit section '{section_id}'.")
     st.plotly_chart(fig, use_container_width=True, key=_unique_key(section_id))
 
 # -----------------------------------------------------
@@ -1718,30 +1764,44 @@ def trend_from_df(df: pd.DataFrame, title="Trend Over Time", section_id="trend",
 # -----------------------------------------------------
 def render_category_dashboard(year: int, freq="Monthly"):
     """Render full UI: fetch mock data, show KPI, bar, pie, trend — ALL-MAXED."""
+    print(f"\n🚀 [render_category_dashboard] Starting dashboard render for {year} ({freq})")
+
     st.subheader(f"📊 Category Distribution — {year} ({freq})")
 
     # Generate deterministic data
+    print(f"🧮 Generating deterministic mock data for year={year}, freq={freq}")
     mock_json = deterministic_mock_categories(year, freq=freq)
     df = pd.DataFrame(mock_json["data"])
+    print(f"✅ Mock data generated — {len(df):,} rows, columns: {list(df.columns)}")
 
+    # Compute key metrics
     total = df["value"].sum()
     top = df.sort_values("value", ascending=False).iloc[0]
+    print(f"🏆 Top Category: {top['label']} — {format_number(top['value'])}")
+    print(f"📊 Total Registrations: {format_number(total)}")
+
     st.success(f"🏆 **Top Category:** {top['label']} — {format_number(top['value'])} registrations")
     st.caption(f"Total: {format_number(total)} | Generated: {mock_json['meta']['generatedAt']}")
 
     # Layout 2-col + trend
+    print("🧱 Rendering charts layout (bar + pie + trend)...")
     c1, c2 = st.columns([2, 1])
     with c1:
+        print("📊 Rendering BAR chart block...")
         bar_from_df(df, title=f"{year} {freq} Breakdown (Bar)", color="label", section_id=f"bar_{year}")
     with c2:
+        print("🥧 Rendering PIE chart block...")
         pie_from_df(df, title=f"{year} Share (Donut)", section_id=f"pie_{year}")
 
     # Optional trend
     if "month_name" in df.columns:
+        print("📈 Detected monthly data — rendering animated trend...")
         trend_from_df(df, title=f"{year} Monthly Trend (Animated)", section_id=f"trend_{year}")
     else:
+        print("📉 No monthly data — rendering simple category trend...")
         trend_from_df(df, title=f"{year} Category Trend", section_id=f"trend_{year}")
 
+    print(f"✅ [render_category_dashboard] Completed dashboard for {year} ({freq})\n")
     return df
 
 
@@ -1767,40 +1827,23 @@ def year_to_timeseries(
 ) -> pd.DataFrame:
     """
     Expand per-category totals into an enhanced, realistic synthetic timeseries.
-    
-    Parameters
-    ----------
-    df_year : pd.DataFrame
-        Must contain columns ["label", "value"].
-    year : int
-        Target year.
-    freq : str
-        One of ["Daily", "Monthly", "Quarterly", "Yearly"].
-    trend_strength : float
-        Amplitude of upward/downward trend variation (0.0 = flat).
-    noise_strength : float
-        Random noise amplitude applied to each point.
-    seasonal_boost : bool
-        If True, apply seasonal peaks around Mar, Jun, Sep, Dec.
-    seed_base : str
-        Used to derive deterministic seed per (year, freq).
-        
-    Returns
-    -------
-    pd.DataFrame
-        Columns: ds, label, value, year, month, quarter, month_name
     """
+    print(f"\n⚙️ [year_to_timeseries] Start — year={year}, freq={freq}, trend={trend_strength}, noise={noise_strength}")
+    
     if df_year is None or df_year.empty:
+        print("⚠️ Empty input dataframe — returning empty timeseries.")
         return pd.DataFrame(columns=["ds","label","value","year","month","quarter","month_name"])
 
     # --- deterministic seed
     seed = abs(hash((year, freq, seed_base))) % (2**32)
     rng = np.random.default_rng(seed)
+    print(f"🔢 Seed initialized: {seed}")
 
     # --- index generation
     start = pd.Timestamp(f"{year}-01-01")
     end = pd.Timestamp(f"{year}-12-31")
     freq = freq.capitalize()
+
     if freq == "Daily":
         idx = pd.date_range(start=start, end=end, freq="D")
     elif freq == "Monthly":
@@ -1811,20 +1854,23 @@ def year_to_timeseries(
         idx = pd.date_range(start=start, end=end, freq="Y")
 
     n = len(idx)
+    print(f"🗓️ Generated {n} periods from {start.date()} to {end.date()} ({freq})")
+
     rows = []
 
-    # --- helper: seasonal curve (sinusoidal)
     def seasonal_factor(i):
         if not seasonal_boost:
             return 1.0
         return 1.0 + 0.25 * np.sin((i / n) * 2 * np.pi * 4)  # 4 seasonal peaks
 
+    # --- iterate categories
     for _, r in df_year.iterrows():
         cat = r.get("label", "Unknown")
         total = float(r.get("value", 0.0))
         if total <= 0:
             continue
 
+        print(f"📈 Expanding category '{cat}' — total={total:,.0f}")
         base_per = total / max(1, n)
 
         # random trend (upward or downward)
@@ -1832,12 +1878,8 @@ def year_to_timeseries(
         if rng.random() > 0.5:
             trend = trend[::-1]
 
-        # small random noise each step
         noise = rng.normal(0, noise_strength, n)
-
-        # --- compute values
-        vals = base_per * trend * (1 + noise)
-        vals = np.maximum(vals, 0)
+        vals = np.maximum(base_per * trend * (1 + noise), 0)
 
         for i, ts in enumerate(idx):
             factor = seasonal_factor(i)
@@ -1854,28 +1896,23 @@ def year_to_timeseries(
 
     df_out = pd.DataFrame(rows)
     df_out["value"] = df_out["value"].round(2)
+    print(f"✅ Generated {len(df_out):,} records before normalization.")
 
-    # --- safety normalization: ensure yearly totals remain consistent
+    # --- normalize totals
     grouped = df_out.groupby("label")["value"].sum().to_dict()
     for cat in grouped:
         original_total = float(df_year.loc[df_year["label"] == cat, "value"].iloc[0])
         if grouped[cat] > 0:
-            df_out.loc[df_out["label"] == cat, "value"] *= original_total / grouped[cat]
+            scale = original_total / grouped[cat]
+            df_out.loc[df_out["label"] == cat, "value"] *= scale
+            print(f"🔧 Normalized '{cat}': scale={scale:.4f}")
 
     df_out.reset_index(drop=True, inplace=True)
+    print(f"🏁 [year_to_timeseries] Done — final rows: {len(df_out):,}\n")
     return df_out
 
-
-
-# -------------------------
-# Fetch block: multi-year category fetch (maxed)
-# -------------------------
-
 # ============================================================
-# 🚘 CATEGORY FETCHER — ALL-MAXED ULTRA
-# ------------------------------------------------------------
-# Robust, self-healing fetcher + renderer for per-year category
-# distributions with complete UX polish, analytics, and fallbacks.
+# 🚘 CATEGORY FETCHER — ALL-MAXED ULTRA + PRINT DEBUG
 # ============================================================
 
 import streamlit as st
@@ -1888,39 +1925,44 @@ from colorama import Fore
 
 def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.DataFrame:
     """Fetch category donut for a given year and render local charts, insights, and summaries.
-
     ✅ Always returns a non-empty DataFrame with ['label','value','year'].
     ✅ Includes deterministic mock fallback and rich Plotly visualizations.
+    ✅ Now includes print-based debugging for CLI/log visibility.
     """
 
     # --- Prepare request ---
     p = params.copy() if params else {}
     p["year"] = int(year)
-
     st.markdown(f"## 📊 Vehicle Categories — {year}")
+    print(f"\n[INFO] Fetching category data for year: {year}")
+    print(f"[PARAMS] {p}")
 
     # --- Fetch safely ---
     try:
         cat_json, cat_url = get_json("vahandashboard/categoriesdonutchart", p)
+        print(f"[SUCCESS] Data fetched from {cat_url}")
     except Exception as e:
-        logger.exception(Fore.RED + f"❌ get_json failed for year {year}: {e}")
+        print(Fore.RED + f"[ERROR] get_json failed for {year}: {e}")
         cat_json, cat_url = deterministic_mock_categories(year), f"mock://categoriesdonutchart/{year}"
+        print(f"[FALLBACK] Using deterministic mock for year {year}")
 
     # --- Debug panel ---
     if show_debug:
         with st.expander(f"🧩 Debug JSON — Categories {year}", expanded=False):
             st.write("**URL:**", cat_url)
             st.json(cat_json if isinstance(cat_json, (dict, list)) else str(cat_json))
+    print(f"[DEBUG] Source URL: {cat_url}")
 
     # --- Normalize JSON to DataFrame ---
     try:
         df = to_df(cat_json)
+        print(f"[SUCCESS] Converted JSON to DataFrame with {len(df)} rows.")
     except Exception as e:
-        logger.warning(Fore.YELLOW + f"⚠️ to_df failed for {year}: {e}")
+        print(Fore.YELLOW + f"[WARNING] to_df failed for {year}: {e}")
         df = to_df(deterministic_mock_categories(year))
 
     if df is None or df.empty:
-        logger.warning(Fore.YELLOW + f"⚠️ Empty df for {year}, generating deterministic mock")
+        print(Fore.YELLOW + f"[WARNING] Empty df for {year}, regenerating deterministic mock")
         df = to_df(deterministic_mock_categories(year))
 
     df = df.copy()
@@ -1930,6 +1972,9 @@ def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.
     df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
     df = df.sort_values("value", ascending=False)
     total_reg = int(df["value"].sum())
+
+    print(f"[INFO] Total registrations ({year}): {total_reg:,}")
+    print(f"[INFO] Categories: {', '.join(df['label'].astype(str).tolist())}")
 
     st.caption(f"🔗 **Source:** {cat_url}")
     st.markdown(f"**Total Registrations ({year}):** {total_reg:,}")
@@ -1959,6 +2004,7 @@ def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.
             )
             st.plotly_chart(fig_bar, use_container_width=True, key=f"bar_{year}")
         except Exception as e:
+            print(Fore.YELLOW + f"[WARNING] Bar chart failed: {e}")
             st.warning(f"⚠️ Bar chart failed: {e}")
             st.dataframe(df)
 
@@ -1985,6 +2031,7 @@ def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.
             )
             st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_{year}")
         except Exception as e:
+            print(Fore.YELLOW + f"[WARNING] Pie chart failed: {e}")
             st.warning(f"⚠️ Pie chart failed: {e}")
             st.dataframe(df)
 
@@ -1993,7 +2040,9 @@ def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.
         top = df.iloc[0]
         pct = (top["value"] / total_reg) * 100 if total_reg else 0
         st.success(f"🏆 **Top Category:** {top['label']} — {int(top['value']):,} registrations ({pct:.1f}%)")
-    except Exception:
+        print(f"[INFO] Top Category: {top['label']} ({pct:.1f}% share, {int(top['value']):,} units)")
+    except Exception as e:
+        print(Fore.YELLOW + f"[WARNING] Could not determine top category: {e}")
         st.warning("⚠️ Could not determine top category")
 
     # --- Extra insights table ---
@@ -2005,6 +2054,7 @@ def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.
         use_container_width=True,
         height=320,
     )
+    print("[INFO] Added data table with share percentages.")
 
     # --- Minor animations / expansion ---
     with st.expander("📈 Trend simulation (synthetic)", expanded=False):
@@ -2025,7 +2075,9 @@ def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.
             height=400,
         )
         st.plotly_chart(fig_line, use_container_width=True, key=f"trend_{year}")
+        print(f"[INFO] Rendered synthetic monthly trend for {year}")
 
+    print(f"[DONE] Completed fetch_year_category for {year}\n{'-'*60}")
     return df
 
 # =====================================================
@@ -2034,19 +2086,27 @@ def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.
 # -------------------------
 # =====================================================
 def all_maxed_category_block(params: Optional[dict] = None):
-    import numpy as np 
+     import numpy as np 
     import pandas as pd 
     import plotly.express as px 
     import plotly.graph_objects as go 
     import time, math, json 
     from dateutil.relativedelta import relativedelta 
     import streamlit as st
+    from datetime import datetime
+
     """Render the maxed category analytics block inside Streamlit.
 
     Provide `params` to pass to API calls (e.g., region filters). If omitted, defaults are used.
     """
     start_overall = time.time()
     params = params or {}
+
+    print("\n" + "="*80)
+    print("[ALL-MAXED] 🚗 Starting Category Analytics Block")
+    print(f"[DEBUG] Params received: {params if params else 'None'}")
+    print(f"[TIME] Started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("="*80)
 
     st.markdown("## 🚗 ALL-MAXED — Category Analytics (Multi-frequency, Multi-year)")
 
@@ -2060,6 +2120,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
         horizontal=True,
         key="allmaxed_freq_radio"
     )
+    print(f"[CONTROL] Frequency selected → {freq}")
     
     mode = st.radio(
         "View Mode",
@@ -2068,8 +2129,10 @@ def all_maxed_category_block(params: Optional[dict] = None):
         horizontal=True,
         key="allmaxed_mode_radio"
     )
+    print(f"[CONTROL] Mode selected → {mode}")
     
     current_year = datetime.now().year
+    print(f"[INFO] Current year detected: {current_year}")
     
     start_year = st.number_input(
         "From Year",
@@ -2078,6 +2141,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
         value=current_year-1,
         key="allmaxed_start_year"
     )
+    print(f"[CONTROL] Start year selected → {start_year}")
     
     end_year = st.number_input(
         "To Year",
@@ -2086,83 +2150,129 @@ def all_maxed_category_block(params: Optional[dict] = None):
         value=current_year,
         key="allmaxed_end_year"
     )
+    print(f"[CONTROL] End year selected → {end_year}")
     
     years = list(range(int(start_year), int(end_year)+1))
+    print(f"[INFO] Years in scope → {years}")
     
     show_heatmap = st.checkbox(
         "Show Heatmap (year × category)",
         value=True,
         key="allmaxed_show_heatmap"
     )
+    print(f"[OPTION] Heatmap enabled → {show_heatmap}")
     
     show_radar = st.checkbox(
         "Show Radar (per year)",
         value=True,
         key="allmaxed_show_radar"
     )
+    print(f"[OPTION] Radar enabled → {show_radar}")
     
     do_forecast = st.checkbox(
         "Enable Forecasting",
         value=True,
         key="allmaxed_do_forecast"
     )
+    print(f"[OPTION] Forecasting enabled → {do_forecast}")
     
     do_anomaly = st.checkbox(
         "Enable Anomaly Detection",
         value=False,
         key="allmaxed_do_anomaly"
     )
+    print(f"[OPTION] Anomaly detection enabled → {do_anomaly}")
     
     do_clustering = st.checkbox(
         "Enable Clustering (KMeans)",
         value=False,
         key="allmaxed_do_clustering"
     )
+    print(f"[OPTION] Clustering enabled → {do_clustering}")
     
     enable_ai = st.checkbox(
         "Enable AI Narrative (requires provider)",
         value=False,
         key="allmaxed_enable_ai"
     )
+    print(f"[OPTION] AI narrative enabled → {enable_ai}")
 
     st.info(f"🚀 Starting ALL-MAXED category pipeline (debug ON) — years: {years} | freq: {freq} | mode: {mode}")
+    
+    print(f"[PIPELINE] 🚀 ALL-MAXED pipeline initialized successfully")
+    print(f"[SUMMARY] freq={freq} | mode={mode} | years={years}")
+    print("[STATUS] Waiting for further analytics execution...")
+    print("="*80 + "\n")
 
     # -------------------------
     # Fetch multi-year category data
     # -------------------------
+    print("\n" + "-"*80)
+    print(f"[FETCH] Starting multi-year category fetch → {years}")
+    print(f"[FETCH] Parameters: {params}")
+    print("-"*80)
+
     all_year_dfs = []
     with st.spinner("Fetching category data for selected years..."):
         for y in years:
+            print(f"[FETCH] 🔄 Fetching category data for year {y} ...")
             try:
                 df_y = fetch_year_category(y, params, show_debug=False)
                 if df_y is None or df_y.empty:
+                    print(f"[WARN] ⚠️ No category data found for year {y}")
                     st.warning(f"No category data for {y}")
                     continue
+                print(f"[OK] ✅ Year {y}: {len(df_y)} rows loaded.")
                 all_year_dfs.append(df_y)
             except Exception as e:
+                print(f"[ERROR] ❌ Failed to fetch data for {y}: {e}")
                 logger.exception(f"Error fetching {y}: {e}")
                 st.error(f"Error fetching {y}: {e}")
 
     if not all_year_dfs:
+        print("[INFO] ℹ️ No category data loaded for selected range. Falling back to deterministic mocks.")
         st.info("No category data loaded for selected range. Displaying deterministic mocks for demonstration.")
         # Generate mocks
         for y in years:
+            print(f"[MOCK] Generating mock data for {y} ...")
             all_year_dfs.append(to_df(deterministic_mock_categories(y)).assign(year=y))
+        print(f"[MOCK] ✅ Generated {len(all_year_dfs)} mock DataFrames.")
 
     df_cat_all = pd.concat(all_year_dfs, ignore_index=True)
+    print(f"[FINAL] ✅ Combined dataset shape: {df_cat_all.shape}")
+    print("-"*80 + "\n")
 
     # -------------------------
     # Frequency expansion -> time series (synthetic if needed)
     # -------------------------
+    print("\n" + "-"*80)
+    print("[TIMESERIES] 🔁 Starting frequency expansion to time series...")
+    print(f"[TIMESERIES] Unique years in dataset: {sorted(df_cat_all['year'].unique().tolist())}")
+    print(f"[TIMESERIES] Target frequency: {freq}")
+    print("-"*80)
+
     ts_list = []
     for y in sorted(df_cat_all["year"].unique()):
-        df_y = df_cat_all[df_cat_all["year"]==y].reset_index(drop=True)
+        print(f"[TIMESERIES] ⏳ Expanding year {y} ...")
+        df_y = df_cat_all[df_cat_all["year"] == y].reset_index(drop=True)
+        print(f"[TIMESERIES]    - Rows: {len(df_y)} | Categories: {df_y['label'].nunique()}")
         ts = year_to_timeseries(df_y, int(y), freq=freq)
+        print(f"[TIMESERIES]    ✅ Generated {len(ts)} time points for {y}")
         ts_list.append(ts)
-    df_ts = pd.concat(ts_list, ignore_index=True) if ts_list else pd.DataFrame(columns=["ds","label","value","year"])
-    df_ts["ds"] = pd.to_datetime(df_ts["ds"])
 
+    if ts_list:
+        df_ts = pd.concat(ts_list, ignore_index=True)
+        print(f"[TIMESERIES] ✅ Combined time series shape: {df_ts.shape}")
+    else:
+        print("[TIMESERIES] ⚠️ No time series generated, creating empty DataFrame.")
+        df_ts = pd.DataFrame(columns=["ds", "label", "value", "year"])
+
+    df_ts["ds"] = pd.to_datetime(df_ts["ds"], errors="coerce")
+
+    # -------------------------
     # Resample to requested frequency (group-by label)
+    # -------------------------
+    print(f"[RESAMPLE] 🔄 Resampling time series → {freq}")
     if freq == "Daily":
         resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq="D")])["value"].sum().reset_index()
     elif freq == "Monthly":
@@ -2172,36 +2282,64 @@ def all_maxed_category_block(params: Optional[dict] = None):
     else:
         resampled = df_ts.groupby(["label", pd.Grouper(key="ds", freq="Y")])["value"].sum().reset_index()
 
-    resampled["year"] = resampled["ds"].dt.year
+    print(f"[RESAMPLE] ✅ Resampled shape: {resampled.shape}")
 
+    resampled["year"] = resampled["ds"].dt.year
     pivot = resampled.pivot_table(index="ds", columns="label", values="value", aggfunc="sum").fillna(0)
     pivot_year = resampled.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
 
-    # =====================================================
-    # 📊 VISUALIZATIONS (ALL-MAXED)
-    # =====================================================
+    print(f"[PIVOT] 📊 Pivot (date-indexed) shape: {pivot.shape}")
+    print(f"[PIVOT] 📅 Pivot (year-indexed) shape: {pivot_year.shape}")
+    print("-"*80 + "\n")
+
+    # -------------------------
+    # Visualization Section — All-Maxed
+    # -------------------------
+    print("\n" + "="*80)
+    print("[VISUALIZATION] 🎨 Starting visualization section for All-Maxed block")
+    print(f"[VISUALIZATION] Checking data availability before rendering...")
+    print("-"*80)
+
     st.subheader("📊 Visualizations — Multi-year & Multi-frequency (All-Maxed)")
-    
+
     # --- Safety Checks ---
     if "resampled" not in locals() or resampled is None or resampled.empty:
+        print("[VISUALIZATION] ❌ 'resampled' data missing or empty.")
         st.warning("⚠️ No valid 'resampled' data available for visualization.")
         st.stop()
-    
+    else:
+        print(f"[VISUALIZATION] ✅ 'resampled' ready | Shape: {resampled.shape}")
+
     if "pivot" not in locals() or pivot is None or pivot.empty:
+        print("[VISUALIZATION] ❌ 'pivot' data missing or empty.")
         st.warning("⚠️ No valid 'pivot' data available for visualization.")
         st.stop()
-    
+    else:
+        print(f"[VISUALIZATION] ✅ 'pivot' ready | Shape: {pivot.shape}")
+
     if "mode" not in locals():
+        print("[VISUALIZATION] ℹ️ 'mode' not found — defaulting to Combined (Overlay / Stacked).")
         mode = "Combined (Overlay / Stacked)"
+    else:
+        print(f"[VISUALIZATION] 🎛 Mode: {mode}")
+
+    print("="*80 + "\n")
     
     # -------------------------
     # Combined View
     # -------------------------
     if mode.startswith("Combined"):
+        print("\n" + "="*80)
+        print("[COMBINED VIEW] 🌈 Rendering Combined (Stacked + Overlay) View")
+        print(f"[COMBINED VIEW] DataFrame shape: {resampled.shape}")
+        print(f"[COMBINED VIEW] Columns: {list(resampled.columns)}")
+        print("-"*80)
+
         st.markdown("### 🌈 Stacked & Overlay Trends — Combined View")
     
         # --- Stacked Area Chart ---
         try:
+            print("[COMBINED VIEW] ▶ Generating stacked area chart...")
             fig_area = px.area(
                 resampled,
                 x="ds",
@@ -2218,11 +2356,14 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 hovermode="x unified",
             )
             st.plotly_chart(fig_area, use_container_width=True)
+            print("[COMBINED VIEW] ✅ Stacked area chart rendered successfully.")
         except Exception as e:
+            print(f"[COMBINED VIEW] ❌ Stacked area failed: {e}")
             st.warning(f"⚠️ Stacked area failed: {e}")
     
         # --- Overlay Line Chart ---
         try:
+            print("[COMBINED VIEW] ▶ Generating overlay line chart...")
             fig_line = px.line(
                 resampled,
                 x="ds",
@@ -2240,18 +2381,30 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 hovermode="x unified",
             )
             st.plotly_chart(fig_line, use_container_width=True)
+            print("[COMBINED VIEW] ✅ Overlay line chart rendered successfully.")
         except Exception as e:
+            print(f"[COMBINED VIEW] ❌ Overlay lines failed: {e}")
             st.warning(f"⚠️ Overlay lines failed: {e}")
+
+        print("="*80 + "\n")
     
     # -------------------------
     # Separate Mode (Small Multiples)
     # -------------------------
     else:
+        print("\n" + "="*80)
+        print("[SEPARATE VIEW] 🧩 Rendering Small Multiples (Yearly Category Distribution)")
+        print(f"[SEPARATE VIEW] Incoming DataFrame shape: {resampled.shape}")
+        print(f"[SEPARATE VIEW] Columns: {list(resampled.columns)}")
+        print("-"*80)
+
         st.markdown("### 🧩 Small Multiples — Yearly Category Distribution")
     
         try:
             years_sorted = sorted(resampled["year"].unique())
-        except Exception:
+            print(f"[SEPARATE VIEW] Years detected: {years_sorted}")
+        except Exception as e:
+            print(f"[SEPARATE VIEW] ❌ Failed to extract years: {e}")
             years_sorted = []
     
         sel_small = st.multiselect(
@@ -2259,13 +2412,17 @@ def all_maxed_category_block(params: Optional[dict] = None):
             years_sorted,
             default=years_sorted[-min(3, len(years_sorted)):] if years_sorted else [],
         )
+        print(f"[SEPARATE VIEW] Selected years: {sel_small}")
     
         if not sel_small:
+            print("[SEPARATE VIEW] ⚠️ No years selected — aborting rendering.")
             st.info("Select at least one year to show small multiples.")
         else:
             for y in sel_small[:6]:
+                print(f"[SEPARATE VIEW] ▶ Rendering bar chart for year: {y}")
                 d = resampled[resampled["year"] == y]
                 if d.empty:
+                    print(f"[SEPARATE VIEW] ⚠️ No data found for year {y}")
                     st.caption(f"⚠️ No data for {y}")
                     continue
                 try:
@@ -2285,16 +2442,30 @@ def all_maxed_category_block(params: Optional[dict] = None):
                         yaxis_title="Registrations",
                     )
                     st.plotly_chart(fig_bar, use_container_width=True)
+                    print(f"[SEPARATE VIEW] ✅ Bar chart for {y} rendered successfully.")
                 except Exception as e:
+                    print(f"[SEPARATE VIEW] ❌ Failed to plot {y}: {e}")
                     st.warning(f"⚠️ Failed to plot {y}: {e}")
+
+        print("="*80 + "\n")
 
     # -------------------------
     # Optional Advanced Visuals
     # -------------------------
+    print("\n" + "="*80)
+    print("[ADVANCED VISUALS] ⚙️ Starting optional visualization layer...")
+    print(f"[ADVANCED VISUALS] show_heatmap={show_heatmap}, show_radar={show_radar}")
+    print(f"[ADVANCED VISUALS] pivot_year shape: {pivot_year.shape if 'pivot_year' in locals() else 'N/A'}")
+    print("-"*80)
+
     if show_heatmap:
+        print("[HEATMAP] 🔥 Rendering category heatmap (Year × Category)...")
         st.markdown("### 🔥 Category Heatmap (Year × Category)")
         try:
             pivot_heat = pivot_year.copy()
+            print(f"[HEATMAP] Pivot_heat shape: {pivot_heat.shape}")
+            print(f"[HEATMAP] Columns: {list(pivot_heat.columns)} | Years: {list(pivot_heat.index)}")
+
             fig_heat = px.imshow(
                 pivot_heat.T,
                 labels=dict(x="Year", y="Category", color="Registrations"),
@@ -2303,17 +2474,25 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 title="Heatmap of Registrations per Category per Year",
             )
             st.plotly_chart(fig_heat, use_container_width=True)
+            print("[HEATMAP] ✅ Heatmap rendered successfully.")
         except Exception as e:
+            print(f"[HEATMAP] ❌ Heatmap failed: {e}")
             st.warning(f"⚠️ Heatmap failed: {e}")
 
     if show_radar:
+        print("[RADAR] 🕸️ Rendering radar chart (Category profiles per year)...")
         st.markdown("### 🕸️ Radar Chart — Category Profiles per Year")
         try:
             import plotly.graph_objects as go
             cats = list(pivot_year.columns)
+            years_for_radar = sorted(pivot_year.index)[-min(4, len(pivot_year.index)):]
+            print(f"[RADAR] Categories: {cats}")
+            print(f"[RADAR] Years included: {years_for_radar}")
+
             fig_radar = go.Figure()
-            for y in sorted(pivot_year.index)[-min(4, len(pivot_year.index)):]:
+            for y in years_for_radar:
                 vals = pivot_year.loc[y].values
+                print(f"[RADAR] Adding trace for year {y} — total {len(vals)} values.")
                 fig_radar.add_trace(go.Scatterpolar(
                     r=vals,
                     theta=cats,
@@ -2327,15 +2506,25 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 title="Radar Comparison of Category Patterns",
             )
             st.plotly_chart(fig_radar, use_container_width=True)
+            print("[RADAR] ✅ Radar chart rendered successfully.")
         except Exception as e:
+            print(f"[RADAR] ❌ Radar chart failed: {e}")
             st.warning(f"⚠️ Radar chart failed: {e}")
+
+    print("="*80 + "\n")
 
     # -------------------------
     # 🍩 Donut & Sunburst (All-Maxed)
     # -------------------------
+    print("\n" + "="*80)
+    print("[DONUT+SUNBURST] 🍩 Starting latest-period visualization block...")
+    print(f"[DONUT+SUNBURST] resampled rows={len(resampled) if 'resampled' in locals() else 'N/A'}")
+    print("-"*80)
+
     st.markdown("### 🍩 Donut & Sunburst — Latest Available Period (All-Maxed)")
 
     if resampled.empty:
+        print("[DONUT+SUNBURST] ⚠️ resampled DataFrame is empty.")
         st.warning("⚠️ No resampled data available for donut/sunburst charts.")
     else:
         # Find latest period with valid data
@@ -2344,8 +2533,10 @@ def all_maxed_category_block(params: Optional[dict] = None):
             if not resampled.empty
             else None
         )
+        print(f"[DONUT+SUNBURST] Latest period detected: {latest_period}")
 
         if latest_period is None or pd.isna(latest_period):
+            print("[DONUT+SUNBURST] ⚠️ No valid (non-zero) data found for latest period.")
             st.info("No valid non-zero data found for latest period visualization.")
         else:
             d_latest = (
@@ -2354,12 +2545,14 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 .sum()
                 .sort_values("value", ascending=False)
             )
-
             total_latest = d_latest["value"].sum()
             d_latest["Share_%"] = (d_latest["value"] / total_latest * 100).round(2)
+            print(f"[DONUT+SUNBURST] Latest snapshot shape: {d_latest.shape}")
+            print(f"[DONUT+SUNBURST] Total registrations in latest period: {int(total_latest):,}")
 
             if not d_latest.empty and total_latest > 0:
                 # --- Donut Chart ---
+                print("[DONUT] 🍩 Rendering donut chart...")
                 try:
                     fig_donut = px.pie(
                         d_latest,
@@ -2381,16 +2574,20 @@ def all_maxed_category_block(params: Optional[dict] = None):
                         legend_title_text="Category",
                     )
                     st.plotly_chart(fig_donut, use_container_width=True)
+                    print("[DONUT] ✅ Donut chart rendered successfully.")
                 except Exception as e:
+                    print(f"[DONUT] ❌ Donut chart failed: {e}")
                     st.warning(f"⚠️ Donut chart failed: {e}")
 
                 # --- Sunburst Chart ---
+                print("[SUNBURST] 🌞 Rendering sunburst chart (year → category)...")
                 try:
                     sb = (
                         df_cat_all.groupby(["year", "label"], as_index=False)["value"]
                         .sum()
                         .sort_values(["year", "value"], ascending=[True, False])
                     )
+                    print(f"[SUNBURST] Data shape: {sb.shape}, Years: {sb['year'].unique().tolist()}")
 
                     fig_sb = px.sunburst(
                         sb,
@@ -2403,19 +2600,26 @@ def all_maxed_category_block(params: Optional[dict] = None):
                     )
                     fig_sb.update_layout(template="plotly_white")
                     st.plotly_chart(fig_sb, use_container_width=True)
+                    print("[SUNBURST] ✅ Sunburst chart rendered successfully.")
                 except Exception as e:
+                    print(f"[SUNBURST] ❌ Sunburst chart failed: {e}")
                     st.warning(f"⚠️ Sunburst chart failed: {e}")
 
-                # --- Data summary below ---
+                # --- Data summary ---
+                print("[SUMMARY] 📋 Displaying latest period data summary table...")
                 with st.expander("📋 Latest Period Data Summary"):
                     st.dataframe(
-                        d_latest.style.format(
-                            {"value": "{:,}", "Share_%": "{:.2f}"}
-                        ),
+                        d_latest.style.format({"value": "{:,}", "Share_%": "{:.2f}"}),
                         use_container_width=True,
                     )
+                    print(f"[SUMMARY] Table columns: {list(d_latest.columns)}")
+                    print("[SUMMARY] ✅ Data summary rendered.")
             else:
+                print("[DONUT+SUNBURST] ⚠️ Latest period has zero or empty category values.")
                 st.info("⚠️ Latest period has zero or empty category values.")
+
+    print("[DONUT+SUNBURST] ✅ Block completed successfully.")
+    print("="*80 + "\n")
 
     # -------------------------
     # 🔥 HEATMAP — Year × Category (All-Maxed)
@@ -2423,17 +2627,30 @@ def all_maxed_category_block(params: Optional[dict] = None):
     if show_heatmap:
         st.markdown("### 🔥 Heatmap — Year × Category (All-Maxed)")
 
+        print("\n[DEBUG] 🔥 show_heatmap is True")
+        print(f"[DEBUG] pivot_year shape: {pivot_year.shape if 'pivot_year' in locals() else 'pivot_year not defined'}")
+
         if pivot_year.empty:
             st.info("⚠️ No category data available for heatmap.")
+            print("[DEBUG] pivot_year is empty — skipping heatmap.")
         else:
             try:
                 # Normalize optionally (for visual contrast)
                 heat = pivot_year.copy()
+                print(f"[DEBUG] heat (pivot_year copy) — columns: {list(heat.columns)}, index (years): {list(heat.index)}")
+
                 heat_norm = heat.div(heat.max(axis=1), axis=0).fillna(0)
+                print("[DEBUG] heat_norm (normalized) — sample:")
+                print(heat_norm.head())
 
                 # Add toggle for normalization
                 normalize_opt = st.toggle("Normalize heatmap (relative per year)", value=True)
+                print(f"[DEBUG] normalize_opt: {normalize_opt}")
+
                 heat_used = heat_norm if normalize_opt else heat
+                print(f"[DEBUG] Using {'normalized' if normalize_opt else 'absolute'} data for heatmap.")
+                print("[DEBUG] heat_used sample:")
+                print(heat_used.head())
 
                 fig_h = go.Figure(
                     data=go.Heatmap(
@@ -2445,6 +2662,8 @@ def all_maxed_category_block(params: Optional[dict] = None):
                         texttemplate="%{z:.1f}" if normalize_opt else None,
                     )
                 )
+                print("[DEBUG] Heatmap figure created successfully.")
+
                 fig_h.update_layout(
                     title=(
                         "Normalized Registrations by Category per Year"
@@ -2454,10 +2673,13 @@ def all_maxed_category_block(params: Optional[dict] = None):
                     xaxis_title="Category",
                     yaxis_title="Year",
                     template="plotly_white",
-                    coloraxis_colorbar=dict(title="Registrations" if not normalize_opt else "Share (0–1)"),
+                    coloraxis_colorbar=dict(
+                        title="Registrations" if not normalize_opt else "Share (0–1)"
+                    ),
                     height=500,
                 )
                 st.plotly_chart(fig_h, use_container_width=True)
+                print("[DEBUG] Heatmap rendered successfully in Streamlit.")
 
                 # Optional: Table summary
                 with st.expander("📋 View Heatmap Data Table"):
@@ -2467,8 +2689,11 @@ def all_maxed_category_block(params: Optional[dict] = None):
                         .background_gradient(cmap="viridis"),
                         use_container_width=True,
                     )
+                    print("[DEBUG] Heatmap data table shown in expander.")
+
             except Exception as e:
                 st.warning(f"⚠️ Heatmap rendering failed: {e}")
+                print(f"[ERROR] Heatmap rendering failed: {e}")
 
     # -------------------------
     # 🌈 RADAR — Snapshot per Year (All-Maxed)
@@ -2476,23 +2701,42 @@ def all_maxed_category_block(params: Optional[dict] = None):
     if show_radar:
         st.markdown("### 🌈 Radar — Category Profile Snapshot (All-Maxed)")
 
+        print("\n[DEBUG] 🌈 show_radar is True")
+        print(f"[DEBUG] pivot_year shape: {pivot_year.shape if 'pivot_year' in locals() else 'pivot_year not defined'}")
+
         if pivot_year.empty:
             st.info("⚠️ Not enough data for radar visualization.")
+            print("[DEBUG] pivot_year is empty — skipping radar.")
         else:
             try:
                 yrs_for_radar = sorted(pivot_year.index)[-min(4, len(pivot_year.index)):]
                 cats = pivot_year.columns.tolist()
 
+                print(f"[DEBUG] Years selected for radar: {yrs_for_radar}")
+                print(f"[DEBUG] Categories (theta): {cats}")
+
                 # Normalize per category for better radar comparison
                 radar_df = pivot_year.copy()
+                print("[DEBUG] radar_df sample (raw):")
+                print(radar_df.head())
+
                 radar_df_norm = radar_df.div(radar_df.max(axis=0), axis=1).fillna(0)
+                print("[DEBUG] radar_df_norm sample (normalized):")
+                print(radar_df_norm.head())
 
                 normalize_radar = st.toggle("Normalize radar per category (0–1)", value=True)
-                df_radar_used = radar_df_norm if normalize_radar else radar_df
+                print(f"[DEBUG] normalize_radar: {normalize_radar}")
 
+                df_radar_used = radar_df_norm if normalize_radar else radar_df
+                print(f"[DEBUG] Using {'normalized' if normalize_radar else 'absolute'} data for radar plot.")
+                print(f"[DEBUG] df_radar_used shape: {df_radar_used.shape}")
+
+                # --- Build Radar Chart ---
                 fig_r = go.Figure()
                 for y in yrs_for_radar:
                     vals = df_radar_used.loc[y].values.tolist()
+                    print(f"[DEBUG] Year {y} — values: {vals}")
+
                     fig_r.add_trace(
                         go.Scatterpolar(
                             r=vals,
@@ -2519,8 +2763,9 @@ def all_maxed_category_block(params: Optional[dict] = None):
                     height=600,
                 )
                 st.plotly_chart(fig_r, use_container_width=True)
+                print("[DEBUG] Radar chart rendered successfully.")
 
-                # Add summary data
+                # --- Data Summary ---
                 with st.expander("📋 Radar Data Used"):
                     st.dataframe(
                         df_radar_used.round(2)
@@ -2528,15 +2773,19 @@ def all_maxed_category_block(params: Optional[dict] = None):
                         .background_gradient(cmap="cool"),
                         use_container_width=True,
                     )
+                    print("[DEBUG] Radar data table displayed in expander.")
 
             except Exception as e:
                 st.warning(f"⚠️ Radar chart rendering failed: {e}")
+                print(f"[ERROR] Radar chart rendering failed: {e}")
 
     # -------------------------
     # 🔮 FORECASTING — All-Maxed (Linear + Prophet + Auto Insights)
     # -------------------------
     if do_forecast:
         st.markdown("## 🔮 Forecasting (All-Maxed)")
+        print("\n[DEBUG] 🔮 Forecasting section entered")
+        print(f"[DEBUG] pivot_year shape: {pivot_year.shape if 'pivot_year' in locals() else 'pivot_year not defined'}")
 
         # ---------------------
         # 1️⃣ Select category & horizon
@@ -2546,13 +2795,16 @@ def all_maxed_category_block(params: Optional[dict] = None):
             if not pivot_year.empty
             else df_cat_all["label"].unique().tolist()
         )
+        print(f"[DEBUG] Categories available: {categories}")
 
         if not categories:
             st.info("⚠️ No categories available for forecasting.")
+            print("[DEBUG] No categories — exiting forecasting.")
         else:
             cat_to_forecast = st.selectbox("📊 Choose category to forecast", categories)
             horizon_years = st.slider("Forecast horizon (years)", 1, 10, 3)
             st.caption("Select a category and choose how many future years to forecast.")
+            print(f"[DEBUG] Selected category: {cat_to_forecast}, horizon: {horizon_years} years")
 
             # ---------------------
             # 2️⃣ Prepare time series
@@ -2561,14 +2813,20 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 series = pivot_year[[cat_to_forecast]].reset_index().rename(
                     columns={cat_to_forecast: "y", "index": "year"}
                 )
+                print("[DEBUG] Series extracted from pivot_year:")
+                print(series.head())
             else:
                 series = pd.DataFrame(columns=["year", "y"])
+                print("[DEBUG] Category not found in pivot_year, empty DataFrame created.")
 
             if series.empty or series["y"].isna().all():
                 st.info("⚠️ Insufficient data for forecasting this category.")
+                print("[DEBUG] Series is empty or all NaN — cannot forecast.")
             else:
                 series["ds"] = pd.to_datetime(series["year"].astype(str) + "-01-01")
                 series = series[["ds", "y"]].dropna()
+                print("[DEBUG] Final series for forecasting:")
+                print(series)
 
                 # ---------------------
                 # 3️⃣ Linear Regression Forecast
@@ -2578,9 +2836,14 @@ def all_maxed_category_block(params: Optional[dict] = None):
                     from sklearn.linear_model import LinearRegression
                     X = np.arange(len(series)).reshape(-1, 1)
                     y = series["y"].values
+                    print(f"[DEBUG] LinearRegression X shape: {X.shape}, y shape: {y.shape}")
+
                     model = LinearRegression().fit(X, y)
+                    print("[DEBUG] Linear model coefficients:", model.coef_, "Intercept:", model.intercept_)
+
                     fut_idx = np.arange(len(series) + horizon_years).reshape(-1, 1)
                     preds = model.predict(fut_idx)
+                    print(f"[DEBUG] Predictions shape: {preds.shape}")
 
                     fut_dates = pd.date_range(
                         start=series["ds"].iloc[0],
@@ -2589,6 +2852,8 @@ def all_maxed_category_block(params: Optional[dict] = None):
                     )
                     df_fore = pd.DataFrame({"ds": fut_dates, "Linear": preds})
                     df_fore["Type"] = ["Historical"] * len(series) + ["Forecast"] * horizon_years
+                    print("[DEBUG] Forecast DataFrame (Linear):")
+                    print(df_fore.tail())
 
                     fig_l = px.line(df_fore, x="ds", y="Linear", color="Type",
                                     title=f"Linear Trend Forecast — {cat_to_forecast}")
@@ -2602,8 +2867,10 @@ def all_maxed_category_block(params: Optional[dict] = None):
                     next_val = preds[len(series)]
                     growth = ((next_val - last_val) / last_val) * 100 if last_val else np.nan
                     st.metric("Next Year Projection", f"{next_val:,.0f}", f"{growth:+.1f}% vs last year")
+                    print(f"[DEBUG] Linear growth projection: next={next_val}, growth={growth:.2f}%")
                 except Exception as e:
                     st.warning(f"⚠️ Linear regression forecast failed: {e}")
+                    print(f"[ERROR] Linear regression forecast failed: {e}")
 
                 # ---------------------
                 # 4️⃣ Prophet Forecast (if available)
@@ -2611,6 +2878,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 st.markdown("### 🧙 Prophet Forecast (Advanced, if available)")
                 try:
                     from prophet import Prophet
+                    print("[DEBUG] Prophet module imported successfully.")
 
                     m = Prophet(
                         yearly_seasonality=True,
@@ -2618,8 +2886,11 @@ def all_maxed_category_block(params: Optional[dict] = None):
                         changepoint_prior_scale=0.05,
                     )
                     m.fit(series)
+                    print("[DEBUG] Prophet model fitted successfully.")
                     future = m.make_future_dataframe(periods=horizon_years, freq="Y")
                     forecast = m.predict(future)
+                    print(f"[DEBUG] Prophet forecast generated: shape={forecast.shape}")
+                    print(forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail())
 
                     figp = go.Figure()
                     figp.add_trace(go.Scatter(
@@ -2644,15 +2915,18 @@ def all_maxed_category_block(params: Optional[dict] = None):
                         yaxis_title="Registrations",
                     )
                     st.plotly_chart(figp, use_container_width=True)
+                    print("[DEBUG] Prophet forecast plot rendered successfully.")
 
-                    # Optional insight
                     last_year = series["ds"].dt.year.max()
                     fut_y = forecast.tail(horizon_years)["yhat"].mean()
                     st.success(f"📊 Prophet projects an **average of {fut_y:,.0f}** registrations/year for the next {horizon_years} years.")
+                    print(f"[DEBUG] Prophet mean projection next {horizon_years} yrs: {fut_y:,.0f}")
                 except ImportError:
                     st.info("🧠 Prophet not installed — only linear forecast shown.")
+                    print("[DEBUG] Prophet not installed.")
                 except Exception as e:
                     st.warning(f"⚠️ Prophet forecast failed: {e}")
+                    print(f"[ERROR] Prophet forecast failed: {e}")
 
                 # ---------------------
                 # 5️⃣ Display Forecast Data
@@ -2665,23 +2939,32 @@ def all_maxed_category_block(params: Optional[dict] = None):
                                 forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]],
                                 on="ds", how="outer"
                             )
+                            print(f"[DEBUG] Merged Linear + Prophet forecast table, shape={comb.shape}")
                         st.dataframe(
                             comb.round(2).style.background_gradient(cmap="PuBuGn"),
                             use_container_width=True,
                         )
-                    except Exception:
+                    except Exception as e:
                         st.dataframe(df_fore, use_container_width=True)
+                        print(f"[ERROR] Forecast data merge/display failed: {e}")
 
     # -------------------------
-    # ⚠️ ANOMALY DETECTION — All-Maxed
+    # ⚠️ ANOMALY DETECTION — All-Maxed (with params + debug)
     # -------------------------
     if do_anomaly:
         st.markdown("## ⚠️ Anomaly Detection (All-Maxed)")
-        st.caption("Detects outliers and abnormal spikes/drops per category time series using IsolationForest + backup z-score method.")
+        st.caption("Detects outliers and abnormal spikes/drops per category time series using IsolationForest + z-score fallback.")
 
         try:
             from sklearn.ensemble import IsolationForest
             import numpy as np
+
+            # --- User Params ---
+            with st.expander("⚙️ Detection Parameters"):
+                contamination_default = st.slider("Contamination Base Rate", 0.005, 0.1, 0.02, 0.005)
+                z_threshold = st.slider("Z-Score Threshold (fallback)", 1.5, 4.0, 2.8, 0.1)
+                n_estimators = st.slider("Isolation Forest Trees", 50, 500, 200, 50)
+                rolling_window = st.slider("Rolling Window (z-score fallback)", 3, 12, 6, 1)
 
             anomalies = []
             anomaly_records = []
@@ -2691,6 +2974,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
             else:
                 categories = sorted(resampled["label"].unique())
                 prog_bar = st.progress(0.0)
+                total_detected = 0
 
                 for i, cat in enumerate(categories):
                     prog_bar.progress((i + 1) / len(categories))
@@ -2705,14 +2989,15 @@ def all_maxed_category_block(params: Optional[dict] = None):
                         continue
 
                     # --- Adaptive contamination ---
-                    cont_rate = min(0.05, max(0.01, ser.std() / (ser.mean() + 1e-9) * 0.02))
+                    cont_rate = min(0.05, max(0.005, contamination_default * (ser.std() / (ser.mean() + 1e-9))))
+                    print(f"[DEBUG] Category={cat}, Adaptive Contamination={cont_rate:.4f}")
 
                     # --- IsolationForest ---
                     try:
                         iso = IsolationForest(
                             contamination=cont_rate,
                             random_state=42,
-                            n_estimators=200,
+                            n_estimators=n_estimators,
                             bootstrap=True,
                         )
                         X = ser.values.reshape(-1, 1)
@@ -2723,14 +3008,17 @@ def all_maxed_category_block(params: Optional[dict] = None):
                             anomaly_records.append(
                                 {"Category": cat, "Date": dt, "Value": val}
                             )
-                    except Exception:
+                            total_detected += 1
+                    except Exception as e_if:
+                        print(f"[WARN] IsolationForest failed for {cat}: {e_if}")
                         # --- Fallback: rolling z-score ---
-                        zscores = (ser - ser.rolling(6, min_periods=2).mean()) / ser.rolling(6, min_periods=2).std()
-                        ser_an = ser[np.abs(zscores) > 2.8]
+                        zscores = (ser - ser.rolling(rolling_window, min_periods=2).mean()) / ser.rolling(rolling_window, min_periods=2).std()
+                        ser_an = ser[np.abs(zscores) > z_threshold]
                         for dt, val in ser_an.items():
                             anomaly_records.append(
                                 {"Category": cat, "Date": dt, "Value": val}
                             )
+                            total_detected += 1
 
                 prog_bar.empty()
 
@@ -2750,6 +3038,8 @@ def all_maxed_category_block(params: Optional[dict] = None):
                         use_container_width=True,
                         height=300,
                     )
+
+                    st.info(f"📊 {total_detected} anomalies detected across {len(categories)} categories.")
 
                     # --- Category selector for visualization ---
                     sel_cat = st.selectbox(
@@ -2792,13 +3082,12 @@ def all_maxed_category_block(params: Optional[dict] = None):
                     )
                     st.plotly_chart(fig_a, use_container_width=True)
 
-                    # Quick stats
-                    st.info(f"📊 {len(df_an)} total anomalies detected across {len(categories)} categories.")
         except Exception as e:
             st.warning(f"⚠️ Anomaly detection failed: {e}")
+            print("[ERROR] Anomaly detection exception:", e)
 
     # -------------------------
-    # 🔍 CLUSTERING (KMeans) — All-Maxed
+    # 🔍 CLUSTERING (KMeans) — All-Maxed (with params + debug)
     # -------------------------
     if do_clustering:
         st.markdown("## 🔍 Clustering (KMeans) — All-Maxed Mode")
@@ -2806,34 +3095,57 @@ def all_maxed_category_block(params: Optional[dict] = None):
 
         try:
             from sklearn.cluster import KMeans
-            from sklearn.preprocessing import StandardScaler
+            from sklearn.preprocessing import StandardScaler, MinMaxScaler
             from sklearn.decomposition import PCA
             from sklearn.metrics import silhouette_score
+            import numpy as np
 
             if pivot_year.empty:
-                st.warning("No pivot_year data available for clustering.")
+                st.warning("⚠️ No pivot_year data available for clustering.")
             else:
-                # Normalize the data
+                # ------------------------------
+                # ⚙️ PARAMS PANEL
+                # ------------------------------
+                with st.expander("⚙️ Clustering Parameters"):
+                    normalize_opt = st.toggle("Normalize before clustering", value=True)
+                    scale_method = st.selectbox("Scaling method", ["StandardScaler", "MinMaxScaler"])
+                    max_k = min(8, max(3, len(pivot_year) - 1))
+                    k = st.slider("Number of clusters (K)", 2, max_k, min(4, max_k))
+                    n_init = st.slider("KMeans n_init", 5, 50, 10, 5)
+                    pca_dim = st.slider("PCA components (for visualization)", 2, 3, 2, 1)
+                    random_seed = st.number_input("Random Seed", value=42, step=1)
+
+                # ------------------------------
+                # 🧮 DATA PREP
+                # ------------------------------
                 X = pivot_year.fillna(0).values
-                scaler = StandardScaler()
-                X_scaled = scaler.fit_transform(X)
+                scaler = StandardScaler() if scale_method == "StandardScaler" else MinMaxScaler()
+                X_scaled = scaler.fit_transform(X) if normalize_opt else X
 
-                # Choose K range
-                max_k = min(8, max(3, len(pivot_year) - 1))
-                k = st.slider("Number of clusters (K)", 2, max_k, min(4, max_k))
+                print(f"[DEBUG] pivot_year shape={X.shape}, normalize={normalize_opt}, scale={scale_method}")
 
-                # Fit KMeans
-                km = KMeans(n_clusters=k, n_init="auto", random_state=42)
+                # ------------------------------
+                # 🧠 KMEANS FITTING
+                # ------------------------------
+                km = KMeans(
+                    n_clusters=k,
+                    n_init=n_init,
+                    random_state=random_seed,
+                )
                 labels = km.fit_predict(X_scaled)
                 inertia = km.inertia_
-
-                # Compute silhouette (safe)
                 sil = silhouette_score(X_scaled, labels) if len(set(labels)) > 1 else np.nan
 
+                print(f"[DEBUG] KMeans done: K={k}, Inertia={inertia:.3f}, Silhouette={sil:.3f}")
+
+                # ------------------------------
+                # 📋 CLUSTER SUMMARY
+                # ------------------------------
                 df_cluster = pd.DataFrame({
                     "Year": pivot_year.index.astype(str),
                     "Cluster": labels
                 })
+
                 st.markdown("### 🧾 Cluster Assignment Summary")
                 st.dataframe(df_cluster, use_container_width=True, height=300)
 
@@ -2842,37 +3154,58 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 c2.metric("Inertia (↓ better)", f"{inertia:.2f}")
                 c3.metric("Silhouette (↑ better)", f"{sil:.3f}" if not np.isnan(sil) else "n/a")
 
-                # --- Cluster Centers ---
-                centers = pd.DataFrame(km.cluster_centers_, columns=pivot_year.columns)
-                centers = pd.DataFrame(scaler.inverse_transform(km.cluster_centers_), columns=pivot_year.columns)
-                st.markdown("### 🧠 Cluster Centers — (approximate category mix)")
-                st.dataframe(centers.style.format("{:,.0f}"), use_container_width=True)
+                # ------------------------------
+                # 🧩 CLUSTER CENTERS
+                # ------------------------------
+                centers_scaled = km.cluster_centers_
+                centers = scaler.inverse_transform(centers_scaled) if normalize_opt else centers_scaled
+                centers_df = pd.DataFrame(centers, columns=pivot_year.columns)
 
-                # --- PCA 2D visualization ---
+                st.markdown("### 🧠 Cluster Centers — Approximate Category Mix")
+                st.dataframe(centers_df.style.format("{:,.0f}"), use_container_width=True)
+
+                # ------------------------------
+                # 🎨 PCA VISUALIZATION
+                # ------------------------------
                 try:
-                    pca = PCA(n_components=2, random_state=42)
+                    pca = PCA(n_components=pca_dim, random_state=random_seed)
                     X_pca = pca.fit_transform(X_scaled)
-                    df_pca = pd.DataFrame(X_pca, columns=["PC1", "PC2"])
+                    df_pca = pd.DataFrame(X_pca, columns=[f"PC{i+1}" for i in range(pca_dim)])
                     df_pca["Year"] = pivot_year.index.astype(str)
                     df_pca["Cluster"] = labels.astype(str)
 
-                    fig_pca = px.scatter(
-                        df_pca,
-                        x="PC1",
-                        y="PC2",
-                        color="Cluster",
-                        symbol="Cluster",
-                        hover_data=["Year"],
-                        title="📊 PCA Projection — Years clustered by category mix",
-                    )
+                    if pca_dim == 2:
+                        fig_pca = px.scatter(
+                            df_pca,
+                            x="PC1",
+                            y="PC2",
+                            color="Cluster",
+                            symbol="Cluster",
+                            hover_data=["Year"],
+                            title="📊 PCA Projection — Years clustered by category mix",
+                        )
+                    else:
+                        fig_pca = px.scatter_3d(
+                            df_pca,
+                            x="PC1",
+                            y="PC2",
+                            z="PC3",
+                            color="Cluster",
+                            hover_data=["Year"],
+                            title="📊 PCA 3D Projection — Years clustered by category mix",
+                        )
+
                     fig_pca.update_traces(marker=dict(size=12, line=dict(width=1, color="black")))
                     fig_pca.update_layout(template="plotly_white", height=500)
                     st.plotly_chart(fig_pca, use_container_width=True)
                 except Exception as e:
-                    st.warning(f"PCA visualization failed: {e}")
+                    st.warning(f"⚠️ PCA visualization failed: {e}")
+                    print("[ERROR] PCA failure:", e)
 
-                # --- Radar by cluster (avg category mix) ---
-                st.markdown("### 🌐 Radar — Cluster-wise average category mix")
+                # ------------------------------
+                # 🌐 RADAR VISUALIZATION
+                # ------------------------------
+                st.markdown("### 🌐 Radar — Cluster-wise Average Category Mix")
                 try:
                     fig_r = go.Figure()
                     for c in sorted(df_cluster["Cluster"].unique()):
@@ -2885,167 +3218,184 @@ def all_maxed_category_block(params: Optional[dict] = None):
                         ))
                     fig_r.update_layout(
                         polar=dict(radialaxis=dict(visible=True)),
-                        title="Cluster-wise average category mix (Radar View)",
+                        title="Cluster-wise Average Category Mix (Radar View)",
                         template="plotly_white",
                     )
                     st.plotly_chart(fig_r, use_container_width=True)
                 except Exception as e:
-                    st.warning(f"Radar view failed: {e}")
+                    st.warning(f"⚠️ Radar view failed: {e}")
+                    print("[ERROR] Radar failure:", e)
 
-                st.success(f"✅ Clustering completed — {k} groups formed, silhouette={sil:.3f}.")
+                st.success(f"✅ Clustering completed — {k} clusters, silhouette={sil:.3f}.")
 
         except Exception as e:
-            st.warning(f"Clustering failed: {e}")
+            st.warning(f"⚠️ Clustering failed: {e}")
+            print("[ERROR] Clustering exception:", e)
 
     # =====================================================
-    # 🤖 AI Narrative (All-Maxed, guarded)
+    # 🤖 AI Narrative (All-Maxed, guarded, debug-ready)
     # =====================================================
     if enable_ai and do_forecast:
         st.markdown("## 🤖 AI Narrative (Summary & Recommendations) — All-Maxed")
+
         try:
-            # Basic safety checks
+            # Safety checks
             if pivot_year is None or pivot_year.empty or df_cat_all is None or df_cat_all.empty:
                 st.warning("⚠️ No valid data available for AI narrative.")
-            else:
-                # --- UI controls for AI block ---
-                st.caption("Generate a concise analyst-style summary plus 3 actionable recommendations. "
-                           "AI output requires a configured provider (universal_chat or other).")
-                allow_send = st.checkbox("I consent to sending an anonymized summary of aggregated metrics to an AI provider", value=False)
-                preview_prompt = st.checkbox("Preview the prompt sent to the AI (truncated)", value=False)
-                show_raw = st.checkbox("Show raw AI output (if available)", value=False)
+                st.stop()
 
-                # Prepare compact aggregated payload (limit tokens & remove PII)
-                agg = pivot_year.reset_index().copy()
-                # Ensure years are strings, and values are ints
-                agg["year"] = agg["year"].astype(str)
-                for col in agg.columns:
-                    if col != "year":
-                        agg[col] = agg[col].fillna(0).astype(int)
+            # --- UI controls for AI block ---
+            st.caption("Generate a concise analyst-style summary plus 3 actionable recommendations. "
+                       "Requires consent for AI provider (e.g. `universal_chat`).")
 
-                # small as list of dicts but truncated to safe length
-                small_records = agg.to_dict(orient="records")
-                small_preview = json.dumps(small_records)[:3000]  # truncate for preview/prompt
+            with st.expander("⚙️ AI Narrative Parameters"):
+                allow_send = st.checkbox("Allow AI call (send anonymized data)", value=False)
+                preview_prompt = st.checkbox("Preview the generated AI prompt", value=False)
+                show_raw = st.checkbox("Show raw AI output (debug)", value=False)
+                max_chars = st.slider("Prompt truncation length", 1000, 8000, 3000, step=500)
+                temperature = st.slider("AI temperature (creativity)", 0.0, 1.0, 0.0, 0.1)
 
-                # Basic computed metrics for deterministic fallback and for context
-                total_by_year = agg.set_index("year").sum(axis=1)
-                total_first = float(total_by_year.iloc[0]) if len(total_by_year) > 0 else 0.0
-                total_last = float(total_by_year.iloc[-1]) if len(total_by_year) > 0 else 0.0
-                years_count = max(1, len(total_by_year) - 1)
-                cagr_val = ((total_last / total_first) ** (1 / years_count) - 1) * 100 if total_first > 0 and len(total_by_year) > 1 else 0.0
+            # -----------------------------------
+            # 🧮 Data preparation
+            # -----------------------------------
+            agg = pivot_year.reset_index().copy()
+            agg.rename(columns={"index": "year"}, inplace=True)
+            agg["year"] = agg["year"].astype(str)
 
-                # top categories overall + latest year growth per category
-                top_overall = (
-                    df_cat_all.groupby("label")["value"].sum().sort_values(ascending=False)
-                )
-                top3 = top_overall.head(3)
-                latest_year = pivot_year.index.max() if not pivot_year.empty else None
-                growth_per_cat = {}
-                if latest_year is not None and latest_year - 1 in pivot_year.index:
-                    prev = pivot_year.loc[latest_year - 1] if (latest_year - 1) in pivot_year.index else None
-                    curr = pivot_year.loc[latest_year]
-                    if prev is not None:
-                        for cat in pivot_year.columns:
-                            prev_v = float(prev.get(cat, 0))
-                            curr_v = float(curr.get(cat, 0))
-                            growth_per_cat[cat] = ((curr_v - prev_v) / prev_v * 100) if prev_v > 0 else (100.0 if curr_v > 0 else 0.0)
+            for col in agg.columns:
+                if col != "year":
+                    agg[col] = agg[col].fillna(0).astype(int)
 
-                # Construct system + user prompts with brevity and clear instructions
-                system_prompt = (
-                    "You are a senior transport data analyst. Provide a concise, factual summary (3-6 bullet points) of trends "
-                    "in vehicle category registrations based on the provided aggregated metrics. Then give 3 short, prioritized, "
-                    "actionable recommendations for policymakers or transport planners. Use percentages where relevant. Do not invent facts."
-                )
+            small_records = agg.to_dict(orient="records")
+            small_preview = json.dumps(small_records)[:max_chars]
 
-                user_context = (
-                    f"Aggregated yearly totals (truncated): {small_preview}\n\n"
-                    f"Top categories overall: {', '.join(top3.index.tolist())}.\n"                )
+            total_by_year = agg.set_index("year").sum(axis=1)
+            years = list(total_by_year.index)
+            total_first = float(total_by_year.iloc[0]) if len(total_by_year) > 0 else 0.0
+            total_last = float(total_by_year.iloc[-1]) if len(total_by_year) > 0 else 0.0
+            years_count = max(1, len(total_by_year) - 1)
+            cagr_val = ((total_last / total_first) ** (1 / years_count) - 1) * 100 if total_first > 0 else 0.0
 
-                # Preview prompt
-                if preview_prompt:
-                    st.expander("Prompt preview (truncated)", expanded=False).write({"system": system_prompt, "user": user_context[:4000]})
+            # Top categories & growth
+            top_overall = df_cat_all.groupby("label")["value"].sum().sort_values(ascending=False)
+            top3 = top_overall.head(3)
+            latest_year = pivot_year.index.max() if not pivot_year.empty else None
 
-                ai_text = None
-                ai_raw = None
+            growth_per_cat = {}
+            if latest_year is not None and (latest_year - 1) in pivot_year.index:
+                prev = pivot_year.loc[latest_year - 1]
+                curr = pivot_year.loc[latest_year]
+                for cat in pivot_year.columns:
+                    prev_v = float(prev.get(cat, 0))
+                    curr_v = float(curr.get(cat, 0))
+                    growth_per_cat[cat] = ((curr_v - prev_v) / prev_v * 100) if prev_v > 0 else (100.0 if curr_v > 0 else 0.0)
 
-                # Only attempt network/LLM call if user consented
-                if allow_send:
-                    try:
-                        # Try universal_chat if available
-                        if "universal_chat" in globals() or "universal_chat" in locals():
-                            # safe call: small, low temperature, deterministic
-                            ai_resp = universal_chat(system_prompt, user_context, stream=False, temperature=0.0, max_tokens=500, retries=2)
-                            # normalize response types
-                            if isinstance(ai_resp, dict):
-                                ai_raw = ai_resp
-                                ai_text = ai_resp.get("text") or ai_resp.get("response") or ai_resp.get("output")
-                            elif isinstance(ai_resp, str):
-                                ai_text = ai_resp
-                                ai_raw = {"text": ai_resp}
-                        else:
-                            st.info("No AI provider (`universal_chat`) found in this environment. Falling back to deterministic summary.")
-                    except Exception as e:
-                        st.warning(f"AI provider error or network issue: {e}")
-                        ai_text = None
+            print(f"[DEBUG] AI narrative: {len(agg)} years, top3={list(top3.index)}, CAGR={cagr_val:.2f}%")
 
-                # If AI didn't produce text, build deterministic humanized fallback summary
-                if not ai_text:
-                    # Build deterministic summary programmatically
-                    bullets = []
-                    # 1) Top categories
-                    bullets.append(f"Top categories overall: {', '.join(top3.index.tolist())}.")
-                    # 2) Trend direction by total
-                    if not math.isnan(cagr_val) and abs(cagr_val) > 0.01:
-                        dir_word = "increased" if cagr_val > 0 else "declined"
-                        bullets.append(f"Total registrations {dir_word} at ~{abs(cagr_val):.2f}% CAGR between {years[0]} and {years[-1]}.")
-                    else:
-                        bullets.append("Total registrations remained roughly flat across the selected years.")
-                    # 3) Notable category moves (top few)
-                    notable = []
-                    for cat in top3.index:
-                        # recent growth if available
-                        g = growth_per_cat.get(cat, None)
-                        if g is not None:
-                            notable.append(f"{cat} {('up' if g>0 else 'down')} {abs(g):.1f}% YoY (latest).")
-                    if notable:
-                        bullets.append("Notable recent moves: " + "; ".join(notable))
-                    # 4) Data quality note
-                    bullets.append("Data note: aggregated counts shown; verify monthly cadence for short-term trends.")
-                    # Recommendations (auto-generated)
-                    recs = [
-                        "Monitor and support high-growth categories (e.g., EVs, light-commercial) with targeted policy incentives.",
-                        "Improve inspection and road-safety programs focused on top-volume categories to reduce incidents.",
-                        "Increase data cadence (move to monthly ingestion if possible) to enable finer forecasting and earlier anomaly detection."
-                    ]
+            # -----------------------------------
+            # 💬 Prompt Construction
+            # -----------------------------------
+            system_prompt = (
+                "You are a senior transport data analyst. Provide a concise, factual summary (3–6 bullet points) "
+                "of vehicle registration trends based on the provided aggregated metrics. "
+                "Then provide 3 short, prioritized, actionable recommendations for policymakers or planners. "
+                "Avoid speculation; use approximate percentages and category references if relevant."
+            )
 
-                    # Render fallback
-                    st.markdown("### 🧠 Quick Narrative (deterministic fallback)")
-                    for b in bullets:
-                        st.markdown(f"- {b}")
-                    st.markdown("**Recommendations:**")
-                    for i, r in enumerate(recs, 1):
-                        st.markdown(f"{i}. {r}")
+            user_context = (
+                f"Aggregated yearly totals (truncated): {small_preview}\n\n"
+                f"Top categories overall: {', '.join(top3.index.tolist())}.\n"
+                f"Total CAGR: {cagr_val:.2f}% over {len(years)} years."
+            )
 
-                else:
-                    # Show AI output and optionally raw JSON
-                    st.markdown("### 🧠 AI Summary")
-                    st.markdown(ai_text)
-                    if show_raw and ai_raw is not None:
-                        st.expander("Raw AI response (debug)", expanded=False).write(ai_raw)
+            if preview_prompt:
+                with st.expander("Prompt Preview", expanded=False):
+                    st.write({"system": system_prompt, "user": user_context[:max_chars]})
 
-                # Cache last ai_text in the current Streamlit session state for reuse
+            ai_text = None
+            ai_raw = None
+
+            # -----------------------------------
+            # 🌐 AI Call (if consented)
+            # -----------------------------------
+            if allow_send:
                 try:
-                    st.session_state["_last_ai_narrative"] = ai_text or "\n".join(bullets)
-                except Exception:
-                    pass
+                    if "universal_chat" in globals() or "universal_chat" in locals():
+                        ai_resp = universal_chat(
+                            system_prompt,
+                            user_context,
+                            stream=False,
+                            temperature=temperature,
+                            max_tokens=500,
+                            retries=2,
+                        )
+                        if isinstance(ai_resp, dict):
+                            ai_raw = ai_resp
+                            ai_text = ai_resp.get("text") or ai_resp.get("response") or ai_resp.get("output")
+                        elif isinstance(ai_resp, str):
+                            ai_text = ai_resp
+                            ai_raw = {"text": ai_resp}
+                    else:
+                        st.info("🧠 No configured AI provider found (e.g., `universal_chat`).")
+                except Exception as e:
+                    st.warning(f"AI provider call failed: {e}")
+                    print("[ERROR] AI call failed:", e)
+                    ai_text = None
+
+            # -----------------------------------
+            # 🧠 Fallback deterministic summary
+            # -----------------------------------
+            if not ai_text:
+                bullets = [
+                    f"Top categories overall: {', '.join(top3.index.tolist())}.",
+                    f"Total registrations {'increased' if cagr_val>0 else 'decreased'} at ~{abs(cagr_val):.2f}% CAGR ({years[0]}–{years[-1]}).",
+                ]
+
+                notable = [
+                    f"{cat}: {'up' if g>0 else 'down'} {abs(g):.1f}% YoY (latest)"
+                    for cat, g in growth_per_cat.items() if cat in top3.index
+                ]
+                if notable:
+                    bullets.append("Recent changes — " + "; ".join(notable))
+                bullets.append("Data note: Aggregated at yearly level; monthly cadence can reveal finer patterns.")
+
+                recs = [
+                    "Support high-growth vehicle categories with focused policy incentives.",
+                    "Prioritize infrastructure for dominant vehicle types to optimize road load.",
+                    "Adopt higher data update frequency for improved forecasting accuracy."
+                ]
+
+                st.markdown("### 🧠 Quick Narrative (Deterministic Fallback)")
+                for b in bullets:
+                    st.markdown(f"- {b}")
+                st.markdown("**Recommendations:**")
+                for i, r in enumerate(recs, 1):
+                    st.markdown(f"{i}. {r}")
+
+                print("[DEBUG] Fallback narrative generated (no AI call).")
+
+            else:
+                st.markdown("### 🧠 AI Summary")
+                st.markdown(ai_text)
+                if show_raw and ai_raw:
+                    with st.expander("Raw AI Response", expanded=False):
+                        st.json(ai_raw)
+                print("[DEBUG] AI text received and displayed.")
+
+            # Cache last result in session
+            st.session_state["_last_ai_narrative"] = ai_text or "\n".join(bullets)
 
         except Exception as e:
             st.error(f"💥 AI Narrative generation failed: {e}")
+            print("[ERROR] AI Narrative Exception:", e)
+
     # =====================================================
     # 🧩 ALL-MAXED FINAL SUMMARY + DEBUG INSIGHTS (FULL SELF-CONTAINED)
     # =====================================================
     st.markdown("## 🧠 Final Summary & Debug Insights — ALL-MAXED")
     
     try:
+        print("[ALL-MAXED] Starting Final Summary & Debug Insights")
         summary_start = time.time()
     
         # ----------------------------------------------------
@@ -3056,7 +3406,10 @@ def all_maxed_category_block(params: Optional[dict] = None):
         years = years if "years" in locals() and years else [2024, 2025]
         current_year = datetime.now().year
     
+        print(f"[ALL-MAXED] Inputs — freq={freq}, years={years}, rows_in_df_src={len(df_src)}")
+    
         if df_src.empty:
+            print("[ALL-MAXED] WARNING: df_src is empty — no valid ALL-MAXED data found")
             st.warning("⚠️ No valid ALL-MAXED data found to summarize.")
             st.stop()
     
@@ -3066,12 +3419,16 @@ def all_maxed_category_block(params: Optional[dict] = None):
         df_src = df_src.copy()
         if "ds" not in df_src.columns and "date" in df_src.columns:
             df_src["ds"] = pd.to_datetime(df_src["date"])
+            print("[ALL-MAXED] Created 'ds' from 'date' column")
         elif "ds" not in df_src.columns:
             df_src["ds"] = pd.to_datetime(df_src["year"].astype(str) + "-01-01")
+            print("[ALL-MAXED] Created 'ds' from 'year' column")
     
         df_src["year"] = df_src["ds"].dt.year
         df_src["month"] = df_src["ds"].dt.month
         df_src["label"] = df_src["label"].astype(str)
+    
+        print(f"[ALL-MAXED] After cleanup: columns={list(df_src.columns)}; years_range={df_src['year'].min()}–{df_src['year'].max()}")
     
         # ----------------------------------------------------
         # 3️⃣ RESAMPLING BASED ON FREQUENCY
@@ -3094,12 +3451,15 @@ def all_maxed_category_block(params: Optional[dict] = None):
             else pd.DataFrame()
         )
     
+        print(f"[ALL-MAXED] Resampled rows: {len(resampled)}; pivot shape: {pivot.shape}; pivot_year shape: {pivot_year.shape}")
+    
         # ----------------------------------------------------
         # 4️⃣ KPI METRICS (YoY, CAGR, MoM, Category Shares)
         # ----------------------------------------------------
         st.subheader("💎 Key Metrics & Growth (All-Maxed)")
     
         if pivot_year.empty:
+            print("[ALL-MAXED] WARNING: pivot_year is empty — cannot compute yearly KPIs")
             st.warning("⚠️ No yearly data found for KPI computation.")
             st.stop()
     
@@ -3113,6 +3473,8 @@ def all_maxed_category_block(params: Optional[dict] = None):
             year_totals["YoY_%"].replace([np.inf, -np.inf], np.nan).fillna(0)
         )
     
+        print(f"[ALL-MAXED] Year totals computed for years: {list(year_totals.index)}")
+    
         # --- CAGR
         if len(year_totals) >= 2:
             first = float(year_totals["TotalRegistrations"].iloc[0])
@@ -3121,6 +3483,8 @@ def all_maxed_category_block(params: Optional[dict] = None):
             cagr = ((last / first) ** (1 / years_count) - 1) * 100 if first > 0 else 0.0
         else:
             cagr = 0.0
+    
+        print(f"[ALL-MAXED] CAGR computed: {cagr:.2f}%")
     
         # --- MoM if monthly
         if freq == "Monthly":
@@ -3134,6 +3498,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 if len(month_totals) > 1 and not np.isnan(month_totals["MoM_%"].iloc[-1])
                 else "n/a"
             )
+            print(f"[ALL-MAXED] Latest MoM: {latest_mom}")
         else:
             latest_mom = "n/a"
     
@@ -3145,6 +3510,8 @@ def all_maxed_category_block(params: Optional[dict] = None):
             .sort_values(ascending=False)
             .round(1)
         )
+    
+        print(f"[ALL-MAXED] Latest year: {latest_year}; latest_total: {latest_total}")
     
         # ----------------------------------------------------
         # 5️⃣ DISPLAY KPIs
@@ -3177,7 +3544,9 @@ def all_maxed_category_block(params: Optional[dict] = None):
         total_all = df_src["value"].sum()
         n_cats = df_src["label"].nunique()
         n_years = df_src["year"].nunique()
-        
+    
+        print(f"[ALL-MAXED] total_all={total_all}, n_cats={n_cats}, n_years={n_years}")
+    
         # --- Top Category as dict (scalar values)
         top_cat_row = (
             df_src.groupby("label")["value"]
@@ -3191,7 +3560,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
             "value": float(top_cat_row["value"])
         }
         top_cat_share = (top_cat["value"] / total_all) * 100 if total_all > 0 else 0
-        
+    
         # --- Top Year as dict (scalar values)
         top_year_row = (
             df_src.groupby("year")["value"]
@@ -3204,11 +3573,13 @@ def all_maxed_category_block(params: Optional[dict] = None):
             "year": int(top_year_row["year"]),
             "value": float(top_year_row["value"])
         }
-        
+    
+        print(f"[ALL-MAXED] Top category: {top_cat['label']} ({top_cat['value']:.0f}); Top year: {top_year['year']} ({top_year['value']:.0f})")
+    
         # --- Display metrics safely
         st.metric("🏆 Absolute Top Category", top_cat["label"], f"{top_cat_share:.2f}% share")
         st.metric("📅 Peak Year", f"{top_year['year']}", f"{top_year['value']:,.0f} registrations")
-        
+    
         # --- Plot: Top 10 Categories
         st.write("### 🧾 Top 10 Categories — Overall")
         top_debug = (
@@ -3228,7 +3599,6 @@ def all_maxed_category_block(params: Optional[dict] = None):
         )
         fig_top10.update_layout(template="plotly_white", margin=dict(t=50, b=40))
         st.plotly_chart(fig_top10, use_container_width=True)
-
     
         # ----------------------------------------------------
         # 7️⃣ ADVANCED DEBUG METRICS
@@ -3257,19 +3627,17 @@ def all_maxed_category_block(params: Optional[dict] = None):
             language="yaml",
         )
     
+        print(f"[ALL-MAXED] Debug metrics displayed. Runtime: {summary_time:.2f}s")
+    
         # ----------------------------------------------------
         # 8️⃣ SMART SUMMARY (NO INTERNAL TRY)
         # ----------------------------------------------------
-        # Ensure top_cat is a single dict
-        # Ensure top_cat is a dict
-        # Ensure top_cat is a dict
         if isinstance(top_cat, list):
             top_cat = top_cat[0] if top_cat else {"label": "N/A", "value": 0}
-        
-        # Safe years and top_year check
+    
         years_valid = years is not None and len(years) > 0
         top_year_valid = top_year is not None and "year" in top_year and "value" in top_year
-        
+    
         if top_cat and years_valid and top_year_valid:
             st.success(
                 f"From **{years[0]}** to **{years[-1]}**, total registrations {direction} "
@@ -3277,10 +3645,11 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 f"Peak year: **{top_year['year']}** with **{top_year['value']:,.0f}** registrations. "
             )
             logger.info(f"✅ ALL-MAXED summary completed in {summary_time:.2f}s")
+            print("[ALL-MAXED] Summary success message displayed.")
         else:
             st.error("⛔ ALL-MAXED summary failed: Missing or invalid data.")
             logger.warning("⚠️ ALL-MAXED summary skipped due to incomplete data.")
- 
+            print("[ALL-MAXED] ERROR: Summary failed due to missing/invalid data.")
     
     # ----------------------------------------------------
     # 9️⃣ CATCH GLOBAL ERRORS
@@ -3288,21 +3657,44 @@ def all_maxed_category_block(params: Optional[dict] = None):
     except Exception as e:
         logger.exception(f"ALL-MAXED summary failed: {e}")
         st.error(f"⛔ ALL-MAXED summary failed: {e}")
+        import traceback as _tb
+        print("[ALL-MAXED] EXCEPTION:", e)
+        print(_tb.format_exc())
+
     
 # -----------------------------------------------------
 # 🧩 Safe Entry Point — Streamlit-only Execution Guard
+# (with simple prints for local logs / CI)
 # -----------------------------------------------------
 if __name__ == "__main__":
     import streamlit as st
+    import sys
+    import platform
+    import traceback
+    from datetime import datetime
+
+    # Simple console prints for easier debugging in logs
+    print("=== ALL-MAXED CATEGORY ANALYTICS — START ===")
+    print(f"Timestamp: {datetime.utcnow().isoformat()} UTC")
+    print(f"Python: {sys.version.splitlines()[0]}")
+    print(f"Platform: {platform.platform()}")
 
     st.markdown("# 🚗 ALL-MAXED CATEGORY ANALYTICS")
 
     try:
+        print("[ALL-MAXED] Calling all_maxed_category_block()")
         all_maxed_category_block()
+        print("[ALL-MAXED] all_maxed_category_block() completed successfully")
     except Exception as e:
-        import traceback
+        # print traceback to console/logs for easier debugging
+        tb = traceback.format_exc()
+        print("[ALL-MAXED] ERROR during rendering:", e)
+        print(tb)
         st.error(f"💥 Error while rendering All-Maxed block: {e}")
-        st.code(traceback.format_exc(), language="python")
+        st.code(tb, language="python")
+
+    print("=== ALL-MAXED CATEGORY ANALYTICS — END ===")
+
 
 
 #     # ---- Top Makers ----
