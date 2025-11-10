@@ -6742,6 +6742,7 @@ from datetime import datetime
 def safe_value(val, default):
     """Ensures value is not None, empty, or invalid."""
     if val is None or (isinstance(val, str) and val.strip() == ""):
+        print(f"[SAFE_VALUE] Replacing empty or None with default: {default}")
         return default
     return val
 
@@ -6754,6 +6755,10 @@ vehicle_makers = safe_value(locals().get("vehicle_makers"), "ALL")
 frequency = safe_value(locals().get("freq") or locals().get("frequency"), "Monthly")
 fitness_check = safe_value(locals().get("fitness_check"), "ALL")
 vehicle_type = safe_value(locals().get("vehicle_type"), "ALL")
+
+print(f"[PARAMS] from_year={from_year}, to_year={to_year}, state_code={state_code}, rto_code={rto_code}")
+print(f"[PARAMS] vehicle_classes={vehicle_classes}, vehicle_makers={vehicle_makers}, frequency={frequency}")
+print(f"[PARAMS] fitness_check={fitness_check}, vehicle_type={vehicle_type}")
 
 # -----------------------------
 # 🔹 Build params safely
@@ -6771,8 +6776,10 @@ try:
         vehicle_type=vehicle_type
     )
     st.success("✅ Parameters successfully built")
+    print("[PARAMS] Parameters successfully built")
 except Exception as e:
     st.error(f"❌ Parameter build failed: {e}")
+    print(f"[PARAMS] Parameter build failed: {e}")
     st.stop()
 
 # -----------------------------
@@ -6785,11 +6792,14 @@ def safe_get_top5_(params):
         if df.empty or "label" not in df.columns or "value" not in df.columns:
             raise ValueError("Invalid API data")
         st.success(f"✅ Top 5 revenue fetched from API ({url})")
+        print(f"[TOP5] Fetched from API: {url}")
     except Exception as e:
         st.warning(f"⚠️ API unavailable or failed: {e}\nUsing fallback mock data.")
+        print(f"[TOP5] API failed: {e}. Using fallback data.")
         states = ["MH", "DL", "KA", "TN", "UP"]
         revenues = [random.randint(500, 2000) for _ in states]
         df = pd.DataFrame({"label": states, "value": revenues})
+        print(f"[TOP5] Fallback data created: {df.to_dict(orient='records')}")
 
     df = df.rename(columns={"label": "State", "value": "Revenue"})
     return df
@@ -6799,6 +6809,8 @@ def safe_get_top5_(params):
 # -----------------------------
 st.markdown("## 💰 ALL-MAXED — Top 5 Revenue States Analytics Suite")
 df_top5 = safe_get_top5_(params_common1)
+
+print(f"[TOP5] Data for plotting:\n{df_top5}")
 
 # Bar chart
 fig_bar = px.bar(
@@ -6811,6 +6823,7 @@ fig_bar = px.bar(
 )
 fig_bar.update_layout(template="plotly_white")
 st.plotly_chart(fig_bar, use_container_width=True)
+print("[TOP5] Bar chart rendered")
 
 # Pie chart
 fig_pie = px.pie(
@@ -6821,6 +6834,7 @@ fig_pie = px.pie(
     hole=0.4
 )
 st.plotly_chart(fig_pie, use_container_width=True)
+print("[TOP5] Pie chart rendered")
 
 # KPI summary
 total_rev = df_top5["Revenue"].sum()
@@ -6830,6 +6844,8 @@ top_value = df_top5["Revenue"].max()
 st.markdown("### 💎 Key Metrics")
 st.write(f"- **Total Revenue:** ₹{total_rev:,} Cr")
 st.write(f"- **Top State:** {top_state} with ₹{top_value:,} Cr")
+print(f"[TOP5] Total Revenue: ₹{total_rev:,} Cr")
+print(f"[TOP5] Top State: {top_state} with ₹{top_value:,} Cr")
 
 # --------------------------------------------------
 # 🔹 Advanced Analytics — Trend Simulation
@@ -6844,26 +6860,47 @@ for state in df_top5["State"]:
     for y in years:
         val = int(base * (1 + 0.08*(y-2019)) + random.randint(-50,50))
         trend_data.append({"State": state, "Year": y, "Revenue": val})
+
 df_trend = pd.DataFrame(trend_data)
+print("[TREND] Generated multi-year revenue trend:")
+print(df_trend)
 
 # Multi-year comparison chart
-fig_trend = px.line(df_trend, x="Year", y="Revenue", color="State",
-                    markers=True, title="Top 5 Revenue States: Multi-Year Trend")
+fig_trend = px.line(
+    df_trend, x="Year", y="Revenue", color="State",
+    markers=True, title="Top 5 Revenue States: Multi-Year Trend"
+)
 st.plotly_chart(fig_trend, use_container_width=True)
+print("[TREND] Multi-year trend chart rendered")
 
 # --------------------------------------------------
 # 🔹 Anomaly Detection (IsolationForest)
 # --------------------------------------------------
 st.markdown("### ⚠️ Anomaly Detection — Revenue Trends")
 try:
-    df_trend["Anomaly"] = df_trend.groupby("State")["Revenue"].transform(
-        lambda x: IsolationForest(contamination=0.1, random_state=42).fit_predict(x.values.reshape(-1,1))
+    def detect_anomaly(x):
+        iso = IsolationForest(contamination=0.1, random_state=42)
+        preds = iso.fit_predict(x.values.reshape(-1,1))
+        print(f"[ANOMALY] State: {x.name}, Revenue: {x.values}, Predictions: {preds}")
+        return preds
+
+    df_trend["Anomaly"] = df_trend.groupby("State")["Revenue"].transform(detect_anomaly)
+
+    # Map labels to readable
+    df_trend["AnomalyLabel"] = df_trend["Anomaly"].map({1:"Normal",-1:"Anomaly"})
+    print("[ANOMALY] Full DataFrame with anomaly labels:")
+    print(df_trend)
+
+    fig_anom = px.scatter(
+        df_trend, x="Year", y="Revenue",
+        color="AnomalyLabel",
+        facet_col="State",
+        title="Revenue Trend Anomalies by State"
     )
-    fig_anom = px.scatter(df_trend, x="Year", y="Revenue", color=df_trend["Anomaly"].map({1:"Normal",-1:"Anomaly"}),
-                          facet_col="State", title="Revenue Trend Anomalies by State")
     st.plotly_chart(fig_anom, use_container_width=True)
 except Exception as e:
     st.warning(f"Anomaly detection failed: {e}")
+    print(f"[ANOMALY] Exception: {e}")
 
 # --------------------------------------------------
 # 🔹 Clustering (KMeans)
@@ -6871,17 +6908,40 @@ except Exception as e:
 st.markdown("### 🔍 Clustering — Revenue Patterns Across States")
 try:
     pivot = df_trend.pivot(index="Year", columns="State", values="Revenue").fillna(0)
+    
+    # Determine number of clusters (safely)
     k = min(3, len(pivot.columns))
     km = KMeans(n_clusters=k, n_init="auto", random_state=42)
-    pivot["Cluster"] = km.fit_predict(pivot.values)
+    cluster_labels = km.fit_predict(pivot.values)
+    
+    pivot["Cluster"] = cluster_labels
+    
+    # Print cluster assignments
+    print("[CLUSTER] Cluster labels per year:")
+    print(pivot[["Cluster"]])
+    
+    # Print cluster centers
+    print("[CLUSTER] Cluster centers:")
+    print(km.cluster_centers_)
+    
     st.dataframe(pivot)
+    
+    # Optional: simple scatter visualization of clusters
+    pivot_reset = pivot.reset_index()
+    fig_clusters = px.scatter(
+        pivot_reset, x="Year", y=pivot_reset.columns[1],  # example: first state column
+        color=pivot_reset["Cluster"].astype(str),
+        title="KMeans Clustering — Revenue Patterns by Year",
+        labels={"color": "Cluster"}
+    )
+    st.plotly_chart(fig_clusters, use_container_width=True)
+    
 except Exception as e:
     st.warning(f"Clustering unavailable: {e}")
+    print(f"[CLUSTER] Exception: {e}")
 
 st.markdown("---")
 st.success("✅ ALL-MAXED Top 5 Revenue States Dashboard Ready!")
-
-#--------------------
 
 # ================================================================
 # 🚀 VAHAN ALL-MAXED — Unified Trend + Growth + Revenue Analytics
@@ -6938,34 +6998,45 @@ params = build_params(
 st.write("🔍 **Params Sent to API:**")
 st.json(params)
 
-# ================================================================
-# 🧱 SAFE API FETCHERS (Mock if offline)
-# ================================================================
+# ✅ Also print to console for debugging
+print(Fore.CYAN + "[DEBUG] Parameters sent to API:" + Fore.RESET)
+print(params)
+
 def normalize_trend(tr_json):
     """Normalize trend data structure."""
     if not tr_json:
+        print("[DEBUG] Input trend JSON is empty. Returning empty DataFrame.")
         return pd.DataFrame()
+
     if "data" in tr_json:
         df = pd.DataFrame(tr_json["data"])
+        print(f"[DEBUG] Loaded {len(df)} rows from 'data' key.")
     elif isinstance(tr_json, list):
         df = pd.DataFrame(tr_json)
+        print(f"[DEBUG] Loaded {len(df)} rows from list input.")
     else:
         df = pd.DataFrame()
+        print("[DEBUG] Input JSON unrecognized. Returning empty DataFrame.")
+
     if "date" not in df.columns:
         df["date"] = pd.date_range("2020-01-01", periods=len(df), freq="M")
+        print("[DEBUG] 'date' column missing. Added default monthly range starting 2020-01-01.")
+
     if "value" not in df.columns:
         df["value"] = np.random.randint(300000, 800000, len(df))
-    return df
+        print("[DEBUG] 'value' column missing. Filled with random integers.")
 
-# ================================================================
-# 📊 SAFE TREND FETCH + FALLBACK
-# ================================================================
+    print(f"[DEBUG] normalize_trend returning DataFrame with {len(df)} rows and columns: {df.columns.tolist()}")
+    return df
 
 def safe_get_trend(params):
     try:
         tr_json, tr_url = get_json("vahandashboard/vahanyearwiseregistrationtrend", params)
+        print(f"[DEBUG] Fetched trend JSON from URL: {tr_url}")
         df = normalize_trend(tr_json)
-    except Exception:
+        print(f"[DEBUG] Trend DataFrame shape: {df.shape}")
+    except Exception as e:
+        print(f"[DEBUG] API fetch failed: {e}. Using fallback mock data.")
         tr_url = "MOCK://trend"
         np.random.seed(42)
         months = pd.date_range("2020-01-01", "2026-12-01", freq="MS")
@@ -6977,43 +7048,51 @@ def safe_get_trend(params):
                 + np.random.randint(-50000, 50000, len(months))
             ).astype(int)
         })
+        print(f"[DEBUG] Fallback DataFrame shape: {df.shape}")
+
     df["year"] = df["date"].dt.year
     df["month"] = df["date"].dt.month
-    return df, tr_url
 
-# ================================================================
-# 📈 TREND SECTION
-# ================================================================
+    print(f"[DEBUG] Added 'year' and 'month' columns. Final shape: {df.shape}")
+    return df, tr_url
 
 with st.spinner("📡 Fetching trend series..."):
     df_tr, tr_url = safe_get_trend(params)
+    print(f"[DEBUG] Trend URL used: {tr_url}")
+    print(f"[DEBUG] Trend DataFrame head:\n{df_tr.head()}")
+    print(f"[DEBUG] Trend DataFrame shape: {df_tr.shape}")
 
 if df_tr.empty:
     st.error("❌ No trend data found.")
+    print("[DEBUG] df_tr is empty — nothing to plot.")
 else:
     st.success(f"✅ Trend data fetched ({len(df_tr)} records)")
     st.line_chart(df_tr.set_index("date")["value"])
-
-# ================================================================
-# 📆 MULTI-YEAR COMPARISONS
-# ================================================================
+    print(f"[DEBUG] Plotted trend chart for {len(df_tr)} records")
 
 st.subheader("📈 Multi-Year Comparison")
 years = sorted(df_tr["year"].unique())
 selected_years = st.multiselect("Select years to compare", years, default=years[-2:])
+print(f"[DEBUG] All available years: {years}")
+print(f"[DEBUG] User selected years: {selected_years}")
+
 pivot = (
     df_tr.groupby([df_tr["date"].dt.strftime("%b"), "year"])["value"]
     .sum()
     .unstack()
     .fillna(0)
 )
+print(f"[DEBUG] Pivot table head:\n{pivot.head()}")
+print(f"[DEBUG] Pivot table columns: {pivot.columns.tolist()}")
 
 # --- Ensure column types are strings for Plotly
 pivot.columns = pivot.columns.astype(str)
 selected_years_str = [str(y) for y in selected_years if str(y) in pivot.columns]
+print(f"[DEBUG] Selected years (str) in pivot: {selected_years_str}")
 
 if not selected_years_str:
     st.warning("⚠️ No matching years found for comparison plot.")
+    print("[DEBUG] No years available for plotting.")
 else:
     fig = px.line(
         pivot,
@@ -7023,6 +7102,7 @@ else:
         title="Year-over-Year Registration Comparison"
     )
     st.plotly_chart(fig, use_container_width=True)
+    print(f"[DEBUG] Plotted comparison chart for years: {selected_years_str}")
 
 # ================================================================
 # 💰 REVENUE TREND MOCK
@@ -7043,9 +7123,17 @@ def safe_get_revenue_trend(params):
     return df
 
 df_rev = safe_get_revenue_trend(params)
+
+print(f"[DEBUG] Revenue trend head:\n{df_rev.head()}")
+print(f"[DEBUG] Revenue trend years: {df_rev['year'].unique()}")
+print(f"[DEBUG] Revenue trend periods: {df_rev['period'].unique()}")
+
 st.subheader("💰 Revenue Trend Comparison")
 fig_rev = px.line(df_rev, x="period", y="value", color="year", markers=True)
 st.plotly_chart(fig_rev, use_container_width=True)
+
+print(f"[DEBUG] Plotted revenue trend chart for years: {df_rev['year'].unique()}")
+
 
 # ================================================================
 # 🔮 FORECASTING + ANOMALY + CLUSTERING
@@ -7064,28 +7152,39 @@ except ImportError:
 
 st.subheader("🔮 Forecasting (Linear Regression)")
 series = df_tr.groupby("year")["value"].sum().reset_index()
+print(f"[DEBUG] Series for forecasting:\n{series}")
+
 X = np.arange(len(series)).reshape(-1, 1)
 lr = LinearRegression().fit(X, series["value"])
 future_idx = np.arange(len(series) + 5).reshape(-1, 1)
 preds = lr.predict(future_idx)
 future_years = list(range(series["year"].iloc[0], series["year"].iloc[0] + len(preds)))
 df_pred = pd.DataFrame({"year": future_years, "pred": preds})
+print(f"[DEBUG] Forecasted values:\n{df_pred}")
+
 fig_lin = px.line(df_pred, x="year", y="pred", title="Linear Forecast", markers=True)
 fig_lin.add_scatter(x=series["year"], y=series["value"], mode="lines+markers", name="Actual")
 st.plotly_chart(fig_lin, use_container_width=True)
 
+# -----------------------------
 st.subheader("⚠️ Anomaly Detection")
 iso = IsolationForest(contamination=0.03, random_state=42)
 df_tr["anomaly"] = iso.fit_predict(df_tr[["value"]])
+print(f"[DEBUG] Anomalies detected:\n{df_tr[['date','value','anomaly']].tail()}")
+
 fig_a = px.scatter(df_tr, x="date", y="value",
                    color=df_tr["anomaly"].map({1: "Normal", -1: "Anomaly"}))
 st.plotly_chart(fig_a, use_container_width=True)
 
+# -----------------------------
 st.subheader("🔍 Clustering (Monthly Patterns)")
 month_pivot = df_tr.pivot_table(index="year", columns="month", values="value", aggfunc="sum").fillna(0)
+print(f"[DEBUG] Pivot for clustering:\n{month_pivot}")
+
 k = st.slider("Select K (clusters)", 2, min(10, len(month_pivot)), 3)
 km = KMeans(n_clusters=k, random_state=42).fit(month_pivot)
 month_pivot["Cluster"] = km.labels_
+print(f"[DEBUG] Cluster assignments:\n{month_pivot[['Cluster']]}")
 st.dataframe(month_pivot)
 
 # ================================================================
@@ -7093,28 +7192,56 @@ st.dataframe(month_pivot)
 # ================================================================
 
 st.subheader("🔥 Heatmap — Month × Year")
+
+# Pivot table for heatmap
 heat = df_tr.pivot_table(index="year", columns="month", values="value", aggfunc="sum").fillna(0)
-fig_h = go.Figure(data=go.Heatmap(z=heat.values, x=heat.columns, y=heat.index, colorscale="Viridis"))
-fig_h.update_layout(title="Heatmap of Registrations", xaxis_title="Month", yaxis_title="Year")
+
+# DEBUG: print the pivot table
+print("[DEBUG] Heatmap pivot table:")
+print(heat)
+
+# Create heatmap
+fig_h = go.Figure(
+    data=go.Heatmap(
+        z=heat.values,
+        x=heat.columns,
+        y=heat.index,
+        colorscale="Viridis",
+        hovertemplate="Year: %{y}<br>Month: %{x}<br>Registrations: %{z}<extra></extra>"
+    )
+)
+fig_h.update_layout(
+    title="Heatmap of Registrations",
+    xaxis_title="Month",
+    yaxis_title="Year"
+)
 st.plotly_chart(fig_h, use_container_width=True)
+
 
 # ================================================================
 # ✅ SUMMARY
 # ================================================================
 
 st.markdown("---")
-st.markdown(f"**Total Records:** {len(df_tr):,}")
-st.markdown(f"**Duration:** {df_tr['year'].min()} → {df_tr['year'].max()}")
-st.markdown(f"**Peak Value:** {df_tr['value'].max():,.0f}")
+
+total_records = len(df_tr)
+duration_start = df_tr['year'].min()
+duration_end = df_tr['year'].max()
+peak_value = df_tr['value'].max()
+
+# DEBUG prints
+print(f"[DEBUG] Total Records: {total_records}")
+print(f"[DEBUG] Duration: {duration_start} → {duration_end}")
+print(f"[DEBUG] Peak Value: {peak_value:,}")
+
+st.markdown(f"**Total Records:** {total_records:,}")
+st.markdown(f"**Duration:** {duration_start} → {duration_end}")
+st.markdown(f"**Peak Value:** {peak_value:,.0f}")
 st.success("✅ All modules executed successfully — VAHAN ALL-MAXED ready!")
 
 
 # ---------- Forecasting & Anomalies -------------------------------------------
 # --- Ensure required variables exist ---
-# ================================
-# ALLL-MAXED Forecasting & Anomaly
-# ================================
-
 import pandas as pd
 import numpy as np
 import streamlit as st
@@ -7134,21 +7261,30 @@ if "df_tr" not in globals() or df_tr is None or df_tr.empty:
     values = np.random.randint(1000, 5000, size=len(dates))
     df_tr = pd.DataFrame({"date": dates, "value": values})
 
+print(f"[DEBUG] df_tr head:\n{df_tr.head()}")
+print(f"[DEBUG] Total rows: {len(df_tr)}")
+print(f"[DEBUG] Date range: {df_tr['date'].min()} → {df_tr['date'].max()}")
+print(f"[DEBUG] Value stats: min={df_tr['value'].min()}, max={df_tr['value'].max()}, mean={df_tr['value'].mean():.2f}")
+
 freq_map = {"M": "MS", "Y": "YS"}
 frequency = "M"
 
 def lazy(pkg):
     try:
         __import__(pkg)
+        print(f"[DEBUG] Package '{pkg}' is available.")
         return True
     except ImportError:
+        print(f"[DEBUG] Package '{pkg}' not installed.")
         return None
 
 try:
     from prophet import Prophet
     prophet_mod = Prophet
+    print("[DEBUG] Prophet module loaded successfully.")
 except Exception:
     prophet_mod = None
+    print("[DEBUG] Prophet module not available; fallback only.")
 
 # ---------- Forecasting & Anomaly Detection ----------
 if enable_ml and not df_tr.empty:
@@ -7168,6 +7304,9 @@ if enable_ml and not df_tr.empty:
     ts = df_tr.set_index("date")["value"].astype(float)
     freq = freq_map.get(frequency, "M")
 
+    print(f"[DEBUG] Forecast selected: {method}, horizon: {horizon}")
+    print(f"[DEBUG] Time series head:\n{ts.head()}")
+
     # ---- FORECAST ----
     if st.button("Run Forecast (ALLL-MAXED)", key="run_forecast_allmaxed"):
         st.markdown("### 🔮 Forecast Results")
@@ -7179,12 +7318,14 @@ if enable_ml and not df_tr.empty:
             last = ts[-12:] if len(ts) >= 12 else ts
             preds = np.tile(last.values, int(np.ceil(horizon / len(last))))[:horizon]
             fc = pd.Series(preds, index=idx)
+            print(f"[DEBUG] Naive seasonality forecast values:\n{fc}")
 
         elif method == "SARIMAX" and lazy("statsmodels"):
             from statsmodels.tsa.statespace.sarimax import SARIMAX
             model = SARIMAX(ts, order=(1,1,1), seasonal_order=(1,1,1,12))
             res = model.fit(disp=False)
             fc = pd.Series(res.get_forecast(steps=horizon).predicted_mean, index=idx)
+            print(f"[DEBUG] SARIMAX forecast head:\n{fc.head()}")
 
         elif method == "Prophet" and lazy("prophet") and prophet_mod:
             pdf = ts.reset_index().rename(columns={"date": "ds", "value": "y"})
@@ -7192,6 +7333,7 @@ if enable_ml and not df_tr.empty:
             m.fit(pdf)
             future = m.make_future_dataframe(periods=horizon, freq="M")
             fc = m.predict(future).set_index("ds")["yhat"].tail(horizon)
+            print(f"[DEBUG] Prophet forecast head:\n{fc.head()}")
 
         elif method == "RandomForest" and lazy("sklearn"):
             from sklearn.ensemble import RandomForestRegressor
@@ -7210,6 +7352,7 @@ if enable_ml and not df_tr.empty:
                 cur = np.roll(cur, 1)
                 cur[0] = p
             fc = pd.Series(preds, index=idx)
+            print(f"[DEBUG] RandomForest forecast head:\n{fc.head()}")
 
         elif method == "XGBoost" and lazy("xgboost"):
             import xgboost as xgb
@@ -7230,6 +7373,7 @@ if enable_ml and not df_tr.empty:
                 cur = np.roll(cur,1)
                 cur[0] = p
             fc = pd.Series(preds, index=idx)
+            print(f"[DEBUG] XGBoost forecast head:\n{fc.head()}")
 
         if fc is not None and not fc.empty:
             combined = pd.concat([ts, fc])
@@ -7266,6 +7410,8 @@ if enable_ml and not df_tr.empty:
             anoms = pd.Series(False, index=ts.index)
 
         out = ts[anoms]
+        print(f"[DEBUG] Anomalies detected: {out.shape[0]}")
+        print(f"[DEBUG] Anomaly values:\n{out}")
         st.metric("Anomalies Detected", out.shape[0])
         st.line_chart(ts)
         if not out.empty:
@@ -7513,14 +7659,14 @@ if enable_ml and not df_tr.empty:
 #     st.success("✅ NLP Analyzer fully loaded — all maxed (safe mode)!")
 
 
-# # ---------- Exports & comparisons ------------------------------------------------
-# st.subheader('Exports & comparisons')
-# if not df_tr.empty:
-#     st.download_button('Download trend CSV', df_tr.reset_index().to_csv(index=False), 'trend.csv')
-# if not df_cat.empty:
-#     st.download_button('Download categories CSV', df_cat.to_csv(index=False), 'categories.csv')
-# if not df_mk.empty:
-#     st.download_button('Download makers CSV', df_mk.to_csv(index=False), 'makers.csv')
+# ---------- Exports & comparisons ------------------------------------------------
+st.subheader('Exports & comparisons')
+if not df_tr.empty:
+    st.download_button('Download trend CSV', df_tr.reset_index().to_csv(index=False), 'trend.csv')
+if not df_cat.empty:
+    st.download_button('Download categories CSV', df_cat.to_csv(index=False), 'categories.csv')
+if not df_mk.empty:
+    st.download_button('Download makers CSV', df_mk.to_csv(index=False), 'makers.csv')
 
 
 
@@ -7530,7 +7676,7 @@ if enable_ml and not df_tr.empty:
 
 
 # =====================================================
-# 🚀 ALL-MAXED Final Dashboard Footer
+# 🚀 ALL-MAXED Final Dashboard Footer with Debug
 # =====================================================
 try:
     import time
@@ -7542,15 +7688,19 @@ try:
         try:
             runtime_secs = time.time() - app_start_time
             runtime = f" • Runtime: {runtime_secs:,.1f}s"
-        except Exception:
+            print(f"[DEBUG] App runtime: {runtime_secs:.1f}s")
+        except Exception as e:
+            print(f"[DEBUG] Runtime computation failed: {e}")
             runtime = ""
 
     # Count loaded DataFrames
     df_count = sum(1 for v in globals().values() if isinstance(v, pd.DataFrame))
     df_text = f" • DataFrames: {df_count}" if df_count else ""
+    print(f"[DEBUG] Number of DataFrames loaded: {df_count}")
 
     # Current UTC timestamp
     footer_ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    print(f"[DEBUG] Footer timestamp (UTC): {footer_ts}")
 
     # Render ALL-MAXED gradient footer
     st.markdown(f"""
@@ -7575,8 +7725,9 @@ try:
     # Optional celebratory balloons
     try:
         st.balloons()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[DEBUG] Balloons failed: {e}")
 
 except Exception as e:
     st.warning(f"Footer rendering failed: {e}")
+    print(f"[DEBUG] Footer exception: {e}")
