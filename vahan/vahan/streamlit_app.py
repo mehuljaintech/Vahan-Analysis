@@ -7675,6 +7675,16 @@ if not df_mk.empty:
 # st.caption('Ultra  V2 — build: ' + datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'))
 
 
+# ---------- Exports & comparisons ------------------------------------------------
+st.subheader('💾 Exports & Comparisons')
+
+if not df_tr.empty:
+    st.download_button('Download Trend CSV', df_tr.reset_index().to_csv(index=False), 'trend.csv')
+if 'df_cat' in globals() and not df_cat.empty:
+    st.download_button('Download Categories CSV', df_cat.to_csv(index=False), 'categories.csv')
+if 'df_mk' in globals() and not df_mk.empty:
+    st.download_button('Download Makers CSV', df_mk.to_csv(index=False), 'makers.csv')
+
 # =====================================================
 # 🚀 ALL-MAXED Final Dashboard Footer with Debug
 # =====================================================
@@ -7688,19 +7698,19 @@ try:
         try:
             runtime_secs = time.time() - app_start_time
             runtime = f" • Runtime: {runtime_secs:,.1f}s"
-            print(f"[DEBUG] App runtime: {runtime_secs:.1f}s")
+            print(f"[ALL-MAXED DEBUG] App runtime: {runtime_secs:.1f}s")
         except Exception as e:
-            print(f"[DEBUG] Runtime computation failed: {e}")
+            print(f"[ALL-MAXED DEBUG] Runtime computation failed: {e}")
             runtime = ""
 
     # Count loaded DataFrames
     df_count = sum(1 for v in globals().values() if isinstance(v, pd.DataFrame))
     df_text = f" • DataFrames: {df_count}" if df_count else ""
-    print(f"[DEBUG] Number of DataFrames loaded: {df_count}")
+    print(f"[ALL-MAXED DEBUG] Number of DataFrames loaded: {df_count}")
 
     # Current UTC timestamp
     footer_ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
-    print(f"[DEBUG] Footer timestamp (UTC): {footer_ts}")
+    print(f"[ALL-MAXED DEBUG] Footer timestamp (UTC): {footer_ts}")
 
     # Render ALL-MAXED gradient footer
     st.markdown(f"""
@@ -7720,14 +7730,17 @@ try:
     </div>
     """, unsafe_allow_html=True)
 
-    st.caption("💡 Tip: Use the exported Excel for polished reports and the ZIP snapshot for full archival backups.")
+    st.caption("💡 Tip: Use the exported CSVs or ZIP snapshot for polished reports and full archival backups.")
 
     # Optional celebratory balloons
     try:
         st.balloons()
+        print("[ALL-MAXED DEBUG] Balloons triggered!")
     except Exception as e:
-        print(f"[DEBUG] Balloons failed: {e}")
+        print(f"[ALL-MAXED DEBUG] Balloons failed: {e}")
+
+    print("[ALL-MAXED DEBUG] Dashboard fully loaded and ALLLL MAXED ✅")
 
 except Exception as e:
     st.warning(f"Footer rendering failed: {e}")
-    print(f"[DEBUG] Footer exception: {e}")
+    print(f"[ALL-MAXED DEBUG] Footer exception: {e}")
