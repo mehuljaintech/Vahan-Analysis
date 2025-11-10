@@ -3513,31 +3513,31 @@ def all_maxed_category_block(params: Optional[dict] = None):
             ws = writer.sheets["Summary"]
             for i, col in enumerate(summary_df.columns):
                 ws.set_column(i, i, 25)  # column width
-    
+        
             # Sheet 2: Pivot / Yearly
             if not pivot_year.empty:
                 pivot_year.to_excel(writer, sheet_name="Pivot_Yearly")
                 ws2 = writer.sheets["Pivot_Yearly"]
                 for i, col in enumerate(pivot_year.columns):
                     ws2.set_column(i, i, max(len(str(col)), 15))
-    
+        
             # Sheet 3: Top Categories
             top_cat_df = df_src.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False)
             top_cat_df.to_excel(writer, sheet_name="Top_Categories", index=False)
             ws3 = writer.sheets["Top_Categories"]
             for i, col in enumerate(top_cat_df.columns):
                 ws3.set_column(i, i, max(len(str(col)), 15))
-    
+        
             # Sheet 4: Full Raw Data
             df_src.to_excel(writer, sheet_name="Raw_Data", index=False)
             ws4 = writer.sheets["Raw_Data"]
             for i, col in enumerate(df_src.columns):
                 ws4.set_column(i, i, max(len(str(col)), 20))
-    
-            writer.save()
-            processed_data = output.getvalue()
-    
+        
+        # Exiting the 'with' block writes the XLSX automatically
+        processed_data = output.getvalue()
         st.download_button("💾 Download ALL-MAXED XLSX", processed_data, "ALL-MAXED_Summary.xlsx")
+
     
         # ----------------------------------------------------
         # 7️⃣ DEBUG METRICS
