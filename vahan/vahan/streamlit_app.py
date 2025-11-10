@@ -7660,13 +7660,19 @@ if enable_ml and not df_tr.empty:
 
 
 # ---------- Exports & comparisons ------------------------------------------------
-st.subheader('Exports & comparisons')
-if not df_tr.empty:
-    st.download_button('Download trend CSV', df_tr.reset_index().to_csv(index=False), 'trend.csv')
-if not df_cat_all.empty:
-    st.download_button('Download categories CSV', df_cat_all.to_csv(index=False), 'categories.csv')
-if not df_maker_all.empty:
-    st.download_button('Download makers CSV', df_maker_all.to_csv(index=False), 'makers.csv')
+st.subheader('Exports & Comparisons')
+
+# Safe download for trend
+if "df_tr" in globals() and not df_tr.empty:
+    st.download_button('Download Trend CSV', df_tr.reset_index().to_csv(index=False), 'trend.csv')
+
+# Safe download for categories
+if "df_cat_all" in globals() and not df_cat_all.empty:
+    st.download_button('Download Categories CSV', df_cat_all.to_csv(index=False), 'categories.csv')
+
+# Safe download for makers
+if "df_maker_all" in globals() and not df_maker_all.empty:
+    st.download_button('Download Makers CSV', df_maker_all.to_csv(index=False), 'makers.csv')
 
 
 
