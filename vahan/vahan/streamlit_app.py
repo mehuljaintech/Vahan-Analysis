@@ -6008,6 +6008,8 @@ if __name__ == "__main__":
         st.error(f"💥 Error while rendering All-Maxed block: {e}")
         st.code(traceback.format_exc(), language="python")
 
+#-----------------------------
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -6016,32 +6018,45 @@ from datetime import datetime
 import plotly.express as px
 
 # -----------------------------
-# ⚙️ Safe defaults
+# ⚙️ Safe defaults for params
 # -----------------------------
-from_year = locals().get("from_year", 2024)
-to_year = locals().get("to_year", datetime.now().year)
-state_code = locals().get("state_code", "ALL")
-rto_code = locals().get("rto_code", "0")
-vehicle_classes = locals().get("vehicle_classes", "ALL")
-vehicle_makers = locals().get("vehicle_makers", "ALL")
-frequency = locals().get("freq", "Monthly")
-fitness_check = locals().get("fitness_check", None)
-vehicle_type = locals().get("vehicle_type", "ALL")
+from datetime import datetime
+
+def safe_value(val, default):
+    """Ensures value is not None, empty, or invalid."""
+    if val is None or (isinstance(val, str) and val.strip() == ""):
+        return default
+    return val
+
+from_year = safe_value(locals().get("from_year"), 2018)
+to_year = safe_value(locals().get("to_year"), datetime.now().year)
+state_code = safe_value(locals().get("state_code"), "ALL")
+rto_code = safe_value(locals().get("rto_code"), "0")
+vehicle_classes = safe_value(locals().get("vehicle_classes"), "ALL")
+vehicle_makers = safe_value(locals().get("vehicle_makers"), "ALL")
+frequency = safe_value(locals().get("freq") or locals().get("frequency"), "Monthly")
+fitness_check = safe_value(locals().get("fitness_check"), "ALL")
+vehicle_type = safe_value(locals().get("vehicle_type"), "ALL")
 
 # -----------------------------
-# 🔹 Build params
+# 🔹 Build params safely
 # -----------------------------
-params_common1 = build_params(
-    from_year=from_year,
-    to_year=to_year,
-    state_code=state_code,
-    rto_code=rto_code,
-    vehicle_classes=vehicle_classes,
-    vehicle_makers=vehicle_makers,
-    time_period=frequency,
-    fitness_check=fitness_check,
-    vehicle_type=vehicle_type
-)
+try:
+    params_common1 = build_params(
+        from_year=from_year,
+        to_year=to_year,
+        state_code=state_code,
+        rto_code=rto_code,
+        vehicle_classes=vehicle_classes,
+        vehicle_makers=vehicle_makers,
+        time_period=frequency,
+        fitness_check=fitness_check,
+        vehicle_type=vehicle_type
+    )
+    st.success("✅ Parameters successfully built")
+except Exception as e:
+    st.error(f"❌ Parameter build failed: {e}")
+    st.stop()
 
 # -----------------------------
 # 🔹 Safe fetch top 5 revenue
