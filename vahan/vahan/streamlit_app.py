@@ -7663,9 +7663,9 @@ if enable_ml and not df_tr.empty:
 st.subheader('Exports & comparisons')
 if not df_tr.empty:
     st.download_button('Download trend CSV', df_tr.reset_index().to_csv(index=False), 'trend.csv')
-if not df_cat.empty:
+if not df_cat_all.empty:
     st.download_button('Download categories CSV', df_cat.to_csv(index=False), 'categories.csv')
-if not df_mk.empty:
+if not df_maker_all.empty:
     st.download_button('Download makers CSV', df_mk.to_csv(index=False), 'makers.csv')
 
 
