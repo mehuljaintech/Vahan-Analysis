@@ -2085,6 +2085,8 @@ def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.
 # Main Streamlit UI — All-Maxed Block
 # -------------------------
 # =====================================================
+from typing import Optional
+
 def all_maxed_category_block(params: Optional[dict] = None):
     import numpy as np
     import pandas as pd
