@@ -4475,12 +4475,27 @@ print(f"[TIME] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 print("=" * 80)
 
 # -------------------------
-# ALL-MAXED STARTING BANNER
+# ALL-MAXED UI STARTING BANNER
 # -------------------------
-print("\n" + "=" * 80)
-print(f"[ALL-MAXED] 🚀 Starting MAKER Analytics Block — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-print("=" * 80 + "\n")
-logger.info("🚀 Maker Analytics Block initialized")
+st.markdown(
+    f"""
+    <div style="
+        text-align:center;
+        padding:18px;
+        border-radius:12px;
+        background:linear-gradient(90deg,#ff6a00,#ee0979);
+        color:white;
+        font-size:18px;
+        font-weight:bold;
+        box-shadow: 0 0 12px rgba(0,0,0,0.4);
+    ">
+        🚀 ALL-MAXED MAKER Analytics Block Started — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.divider()  # optional visual separation
 
 # =====================================================
 # CONTROLS — ALL ON MAIN PAGE (no sidebar)
