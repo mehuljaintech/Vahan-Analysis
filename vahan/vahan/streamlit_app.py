@@ -2087,7 +2087,17 @@ def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.
 # =====================================================
 from typing import Optional
 
+from typing import Optional
+
 def all_maxed_category_block(params: Optional[dict] = None):
+    """
+    Render the ALL-MAXED category analytics block inside Streamlit.
+
+    Parameters
+    ----------
+    params : dict, optional
+        Dictionary of configuration parameters (e.g., filters or overrides).
+    """
     import numpy as np
     import pandas as pd
     import plotly.express as px
@@ -2097,18 +2107,14 @@ def all_maxed_category_block(params: Optional[dict] = None):
     import streamlit as st
     from datetime import datetime
 
-    """Render the maxed category analytics block inside Streamlit.
-
-    Provide `params` to pass to API calls (e.g., region filters). If omitted, defaults are used.
-    """
     start_overall = time.time()
     params = params or {}
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("[ALL-MAXED] 🚗 Starting Category Analytics Block")
     print(f"[DEBUG] Params received: {params if params else 'None'}")
     print(f"[TIME] Started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("="*80)
+    print("=" * 80)
 
     st.markdown("## 🚗 ALL-MAXED — Category Analytics (Multi-frequency, Multi-year)")
 
