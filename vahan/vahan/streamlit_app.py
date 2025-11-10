@@ -3496,47 +3496,93 @@ def all_maxed_category_block(params: Optional[dict] = None):
             "Volume": pivot_year.loc[latest_year].astype(int).values
         }).sort_values("Share_%", ascending=False), use_container_width=True)
     
-        # ----------------------------------------------------
-        # 6️⃣ EXPORT XLSX — MULTI-SHEET, FORMATTED
-        # ----------------------------------------------------
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-            # Sheet 1: Summary KPIs
-            summary_df = pd.DataFrame({
-                "Metric": ["Years Loaded", "Total Categories", "Total Registrations", "Top Category", "Top Category Share (%)", "Peak Year", "Peak Year Registrations", "CAGR (%)", "Latest MoM (%)"],
-                "Value": [f"{years[0]} → {years[-1]}", df_src["label"].nunique(), df_src["value"].sum(),
-                          top_cat_row["label"], round(top_cat_share, 2),
-                          top_year_row["year"], top_year_row["value"],
-                          round(cagr, 2), latest_mom]
+    import io
+    import pandas as pd
+    import xlsxwriter
+    
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        workbook = writer.book
+    
+        # ------------------ Sheet 1: Summary KPIs ------------------
+        summary_df = pd.DataFrame({
+            "Metric": ["Years Loaded", "Total Categories", "Total Registrations", "Top Category", "Top Category Share (%)", "Peak Year", "Peak Year Registrations", "CAGR (%)", "Latest MoM (%)"],
+            "Value": [f"{years[0]} → {years[-1]}", df_src["label"].nunique(), df_src["value"].sum(),
+                      top_cat_row["label"], round(top_cat_share, 2),
+                      top_year_row["year"], top_year_row["value"],
+                      round(cagr, 2), latest_mom]
+        })
+        summary_df.to_excel(writer, sheet_name="Dashboard", index=False)
+        ws = writer.sheets["Dashboard"]
+    
+        # Format headers
+        header_format = workbook.add_format({'bold': True, 'bg_color': '#051937', 'font_color': 'white', 'align': 'center', 'border':1})
+        for col_num, value in enumerate(summary_df.columns.values):
+            ws.write(0, col_num, value, header_format)
+    
+        # Column widths
+        ws.set_column(0, 0, 30)
+        ws.set_column(1, 1, 25)
+    
+        # Highlight top metrics
+        highlight_format = workbook.add_format({'bg_color': '#00bf72', 'font_color': 'white', 'bold': True})
+        ws.write(3, 1, top_cat_row["label"], highlight_format)
+        ws.write(5, 1, top_year_row["year"], highlight_format)
+    
+        # ------------------ Sheet 2: Yearly Pivot with Sparkline ------------------
+        if not pivot_year.empty:
+            pivot_year.to_excel(writer, sheet_name="Yearly_Pivot")
+            ws2 = writer.sheets["Yearly_Pivot"]
+    
+            # Column widths
+            for i, col in enumerate(pivot_year.columns):
+                ws2.set_column(i+1, i+1, max(len(str(col)), 15))  # +1 for index
+    
+            # Conditional formatting for highest value
+            ws2.conditional_format(1,1,len(pivot_year),len(pivot_year.columns), {'type': '3_color_scale'})
+    
+            # Add sparkline for total registrations per year
+            ws2.write(len(pivot_year)+2,0, "Trend (Sparkline)")
+            ws2.add_sparkline(len(pivot_year)+2,1, {'range': f'B2:{chr(65+len(pivot_year.columns))}{1+len(pivot_year)}', 'type':'line', 'max':True, 'min':True})
+    
+            # Column chart for total registrations
+            chart = workbook.add_chart({'type': 'column'})
+            chart.add_series({
+                'name': 'Total Registrations',
+                'categories': ['Yearly_Pivot', 1, 0, len(pivot_year), 0],
+                'values': ['Yearly_Pivot', 1, 1, len(pivot_year), 1],
+                'fill': {'color': '#008793'}
             })
-            summary_df.to_excel(writer, sheet_name="Summary", index=False)
-            ws = writer.sheets["Summary"]
-            for i, col in enumerate(summary_df.columns):
-                ws.set_column(i, i, 25)  # column width
-        
-            # Sheet 2: Pivot / Yearly
-            if not pivot_year.empty:
-                pivot_year.to_excel(writer, sheet_name="Pivot_Yearly")
-                ws2 = writer.sheets["Pivot_Yearly"]
-                for i, col in enumerate(pivot_year.columns):
-                    ws2.set_column(i, i, max(len(str(col)), 15))
-        
-            # Sheet 3: Top Categories
-            top_cat_df = df_src.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False)
-            top_cat_df.to_excel(writer, sheet_name="Top_Categories", index=False)
-            ws3 = writer.sheets["Top_Categories"]
-            for i, col in enumerate(top_cat_df.columns):
-                ws3.set_column(i, i, max(len(str(col)), 15))
-        
-            # Sheet 4: Full Raw Data
-            df_src.to_excel(writer, sheet_name="Raw_Data", index=False)
-            ws4 = writer.sheets["Raw_Data"]
-            for i, col in enumerate(df_src.columns):
-                ws4.set_column(i, i, max(len(str(col)), 20))
-        
-        # Exiting the 'with' block writes the XLSX automatically
-        processed_data = output.getvalue()
-        st.download_button("💾 Download ALL-MAXED XLSX", processed_data, "ALL-MAXED_Summary.xlsx")
+            chart.set_title({'name': 'Total Registrations per Year'})
+            chart.set_x_axis({'name': 'Year'})
+            chart.set_y_axis({'name': 'Registrations'})
+            ws2.insert_chart('H2', chart, {'x_scale': 1.5, 'y_scale': 1.5})
+    
+        # ------------------ Sheet 3: Top Categories ------------------
+        top_cat_df = df_src.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False)
+        top_cat_df.to_excel(writer, sheet_name="Top_Categories", index=False)
+        ws3 = writer.sheets["Top_Categories"]
+    
+        for i, col in enumerate(top_cat_df.columns):
+            ws3.set_column(i, i, max(len(str(col)), 20))
+    
+        # Top 10 bar chart
+        n_top = min(10, len(top_cat_df))
+        chart2 = workbook.add_chart({'type': 'bar'})
+        chart2.add_series({
+            'name': 'Registrations',
+            'categories': ['Top_Categories', 1, 0, n_top, 0],
+            'values': ['Top_Categories', 1, 1, n_top, 1],
+            'fill': {'color': '#004d7a'}
+        })
+        chart2.set_title({'name': 'Top 10 Categories'})
+        chart2.set_x_axis({'name': 'Registrations'})
+        chart2.set_y_axis({'name': 'Category'})
+        ws3.insert_chart('D2', chart2, {'x_scale': 2, 'y_scale': 1.5})
+    
+    # XLSX written automatically
+    processed_data = output.getvalue()
+    st.download_button("💾 Download ALL-MAXED PowerBI-Style Excel", processed_data, "ALL-MAXED_Categories_Dashboard.xlsx")
 
     
         # ----------------------------------------------------
