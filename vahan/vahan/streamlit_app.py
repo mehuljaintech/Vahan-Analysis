@@ -4474,6 +4474,14 @@ print("[ALL-MAXED] 🚗 Starting MAKER analytics control block setup")
 print(f"[TIME] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 print("=" * 80)
 
+# -------------------------
+# ALL-MAXED STARTING BANNER
+# -------------------------
+print("\n" + "=" * 80)
+print(f"[ALL-MAXED] 🚀 Starting MAKER Analytics Block — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print("=" * 80 + "\n")
+logger.info("🚀 Maker Analytics Block initialized")
+
 # =====================================================
 # CONTROLS — ALL ON MAIN PAGE (no sidebar)
 # =====================================================
