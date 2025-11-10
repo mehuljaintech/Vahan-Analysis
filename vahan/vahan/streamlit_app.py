@@ -6169,19 +6169,29 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# -------------------------
-# ⚙️ Default parameters
-# -------------------------
-from_year = locals().get('from_year', 2018)
-to_year = locals().get('to_year', datetime.now().year)
-state_code = locals().get('state_code', 'ALL')
-rto_code = locals().get('rto_code', '0')
-vehicle_classes = locals().get('vehicle_classes', 'ALL')
-vehicle_makers = locals().get('vehicle_makers', 'ALL')
-frequency = locals().get('frequency', 'Monthly')
-fitness_check = locals().get('fitness_check', False)
-vehicle_type = locals().get('vehicle_type', 'ALL')
+import streamlit as st
+import pandas as pd
+from datetime import datetime
+import json
 
+# -------------------------
+# ⚙️ Default parameters (always valid)
+# -------------------------
+def safe_value(val, default):
+    """Ensure no parameter is blank or None."""
+    if val is None or (isinstance(val, str) and not val.strip()):
+        return default
+    return val
+
+from_year = safe_value(locals().get('from_year'), 2018)
+to_year = safe_value(locals().get('to_year'), datetime.now().year)
+state_code = safe_value(locals().get('state_code'), 'ALL')
+rto_code = safe_value(locals().get('rto_code'), '0')
+vehicle_classes = safe_value(locals().get('vehicle_classes'), 'ALL')
+vehicle_makers = safe_value(locals().get('vehicle_makers'), 'ALL')
+frequency = safe_value(locals().get('frequency'), 'Monthly')
+fitness_check = safe_value(locals().get('fitness_check'), 'ALL')
+vehicle_type = safe_value(locals().get('vehicle_type'), 'ALL')
 
 # -------------------------
 # 🔹 Build params safely
@@ -6198,26 +6208,42 @@ params = build_params(
     vehicle_type=vehicle_type
 )
 
+st.write("🔍 **Params Sent to API:**")
+st.json(params)
+
 # -------------------------
-# 🔹 Fetch trend series
+# 🔹 Fetch trend series with safe HTTP handling
 # -------------------------
-with st.spinner('Fetching trend series...'):
-    tr_json, tr_url = get_json('vahandashboard/vahanyearwiseregistrationtrend', params)
-    df_tr = to_df(tr_json)
+with st.spinner('📡 Fetching trend series...'):
+    try:
+        tr_json, tr_url = get_json('vahandashboard/vahanyearwiseregistrationtrend', params)
+        st.success(f"✅ Data fetched successfully from {tr_url}")
+        df_tr = to_df(tr_json)
+
+    except requests.exceptions.HTTPError as e:
+        st.error("❌ HTTP Error while fetching data.")
+        st.code(f"URL: {tr_url if 'tr_url' in locals() else 'Unknown'}\n"
+                f"Params: {json.dumps(params, indent=2)}\n"
+                f"Error: {e}")
+        st.stop()
+    except Exception as e:
+        st.error("❌ Unexpected error occurred while fetching data.")
+        st.exception(e)
+        st.stop()
 
 # -------------------------
 # 🔹 Process trend series
 # -------------------------
 if not df_tr.empty:
     def parse_label(label):
-        for fmt in ('%Y-%m-%d','%Y-%m','%b %Y','%Y'):
-            try: 
+        for fmt in ('%Y-%m-%d', '%Y-%m', '%b %Y', '%Y'):
+            try:
                 return pd.to_datetime(label, format=fmt)
-            except:
+            except Exception:
                 continue
         try:
             return pd.to_datetime(label)
-        except:
+        except Exception:
             return pd.NaT
 
     df_tr['date'] = df_tr['label'].apply(parse_label)
