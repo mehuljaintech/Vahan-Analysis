@@ -7263,8 +7263,19 @@ num_years = len(month_pivot)
 if num_years < 2:
     st.info("📉 Only one year of data — clustering skipped.")
     st.dataframe(month_pivot)
+
+elif num_years == 2:
+    st.info("⚙️ Only two years available — using K=2 automatically.")
+    try:
+        km = KMeans(n_clusters=2, random_state=42)
+        month_pivot["Cluster"] = km.fit_predict(month_pivot)
+        st.dataframe(month_pivot)
+        st.write(f"[DEBUG] Cluster assignments:\n{month_pivot[['Cluster']]}")
+    except Exception as e:
+        st.error(f"❌ Clustering failed: {e}")
+
 else:
-    # Slider guard
+    # Safe slider only when we have ≥ 3 years
     max_k = min(10, num_years)
     default_k = min(3, max_k)
     k = st.slider(
@@ -7276,7 +7287,6 @@ else:
         help="Choose number of clusters (≤ number of years)"
     )
 
-    # Fit KMeans safely
     try:
         km = KMeans(n_clusters=k, random_state=42)
         month_pivot["Cluster"] = km.fit_predict(month_pivot)
