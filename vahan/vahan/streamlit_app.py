@@ -2001,10 +2001,6 @@ def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.
     st.caption(f"🔗 **Source:** {cat_url}")
     st.markdown(f"**Total Registrations ({year}):** {total_reg:,}")
 
-    import streamlit as st
-    import plotly.express as px
-    import plotly.graph_objects as go
-    import numpy as np
     
     # -----------------------------
     # Calculate stats for tooltips/annotations
@@ -2105,10 +2101,6 @@ def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.
             st.warning(f"⚠️ Pie chart failed: {e}")
             st.dataframe(df)
 
-    import streamlit as st
-    import plotly.express as px
-    import plotly.graph_objects as go
-    import numpy as np
     
     # -----------------------------
     # Calculate stats
