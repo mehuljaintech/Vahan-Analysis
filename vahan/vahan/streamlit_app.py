@@ -1928,92 +1928,173 @@ import pandas as pd
 from colorama import Fore
 import time
 
-def fetch_year_category(years, params, show_debug=True, show_summary=True):
-    """
-    🔥 Master orchestrator for multi-year category analytics.
-    Loops through years, calls `fetch_year_category`, and merges data for all.
-    Returns a combined DataFrame with ['label', 'value', 'year', 'share_%'].
+# ============================================================
+# 🚘 CATEGORY FETCHER — ALL-MAXED ULTRA + PRINT DEBUG
+# ============================================================
 
-    Args:
-        years (list[int]): Years to process.
-        params (dict): Common params (e.g., state_cd, veh_catg, fuel_type).
-        show_debug (bool): Show debug JSON for each year.
-        show_summary (bool): Display multi-year comparison summary.
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import numpy as np
+import random
+from datetime import datetime
+from colorama import Fore
+
+def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.DataFrame:
+    """Fetch category donut for a given year and render local charts, insights, and summaries.
+    ✅ Always returns a non-empty DataFrame with ['label','value','year'].
+    ✅ Includes deterministic mock fallback and rich Plotly visualizations.
+    ✅ Now includes print-based debugging for CLI/log visibility.
     """
 
-    start = time.time()
-    st.markdown("## 🚘 ALL-MAXED ULTRA — Multi-Year Category Analytics")
-    print("\n============================================================")
-    print("[INFO] Starting ALL-MAXED ULTRA — Category Fetch Sequence")
-    print(f"[YEARS] {years}")
+    # --- Prepare request ---
+    st.markdown(f"## 📊 Vehicle Categories — {year}")
+    print(f"\n[INFO] Fetching category data for year: {year}")
     print(f"[PARAMS] {params}")
 
-    dfs = []
+    # --- Fetch safely ---
+    try:
+        cat_json, cat_url = get_json("vahandashboard/categoriesdonutchart", params)
+        print(f"[SUCCESS] Data fetched from {cat_url}")
+    except Exception as e:
+        print(Fore.RED + f"[ERROR] get_json failed for {year}: {e}")
+        cat_json, cat_url = deterministic_mock_categories(year), f"mock://categoriesdonutchart/{year}"
+        print(f"[FALLBACK] Using deterministic mock for year {year}")
 
-    for year in years:
-        df = fetch_year_category(year, params, show_debug=show_debug)
-        if not df.empty:
-            dfs.append(df)
-        else:
-            print(Fore.YELLOW + f"[WARNING] No valid data for {year}")
+    # --- Debug panel ---
+    if show_debug:
+        with st.expander(f"🧩 Debug JSON — Categories {year}", expanded=False):
+            st.write("**URL:**", cat_url)
+            st.json(cat_json if isinstance(cat_json, (dict, list)) else str(cat_json))
+    print(f"[DEBUG] Source URL: {cat_url}")
 
-    if not dfs:
-        print(Fore.RED + "[ERROR] No data available for any year.")
-        st.error("❌ No data available for the selected years.")
-        return pd.DataFrame(columns=["label", "value", "year", "share_%"])
+    # --- Normalize JSON to DataFrame ---
+    try:
+        df = to_df(cat_json)
+        print(f"[SUCCESS] Converted JSON to DataFrame with {len(df)} rows.")
+    except Exception as e:
+        print(Fore.YELLOW + f"[WARNING] to_df failed for {year}: {e}")
+        df = to_df(deterministic_mock_categories(year))
 
-    # --- Combine and summarize ---
-    df_all = pd.concat(dfs, ignore_index=True)
-    df_all["year"] = df_all["year"].astype(int)
-    df_all["share_%"] = pd.to_numeric(df_all["share_%"], errors="coerce").fillna(0)
+    if df is None or df.empty:
+        print(Fore.YELLOW + f"[WARNING] Empty df for {year}, regenerating deterministic mock")
+        df = to_df(deterministic_mock_categories(year))
 
-    print(Fore.GREEN + f"[SUCCESS] Combined {len(years)} year(s) — {df_all.shape[0]} total rows")
+    df = df.copy()
+    df["year"] = int(year)
 
-    # --- Optional summary visualization ---
-    if show_summary:
-        st.markdown("### 📊 Multi-Year Category Summary")
-        pivot = df_all.pivot_table(
-            index="label", columns="year", values="value", aggfunc="sum", fill_value=0
-        )
-        pivot["Δ (latest-prev)"] = pivot.iloc[:, -1] - pivot.iloc[:, -2] if pivot.shape[1] > 1 else 0
-        pivot["Growth_%"] = (pivot["Δ (latest-prev)"] / pivot.iloc[:, -2] * 100).round(2) if pivot.shape[1] > 1 else 0
+    # --- Data quality & totals ---
+    df["value"] = pd.to_numeric(df["value"], errors="coerce").fillna(0)
+    df = df.sort_values("value", ascending=False)
+    total_reg = int(df["value"].sum())
 
-        st.dataframe(
-            pivot.style.format("{:,.0f}").background_gradient(cmap="YlGnBu", axis=None),
-            use_container_width=True,
-            height=400,
-        )
+    print(f"[INFO] Total registrations ({year}): {total_reg:,}")
+    print(f"[INFO] Categories: {', '.join(df['label'].astype(str).tolist())}")
 
+    st.caption(f"🔗 **Source:** {cat_url}")
+    st.markdown(f"**Total Registrations ({year}):** {total_reg:,}")
+
+    # --- Charts layout ---
+    c1, c2 = st.columns([1.8, 1.2])
+    with c1:
         try:
-            import plotly.express as px
-            fig_multi = px.bar(
-                df_all,
+            fig_bar = px.bar(
+                df,
                 x="label",
                 y="value",
-                color="year",
-                barmode="group",
-                title="📈 Category Comparison Across Years",
+                color="label",
+                text_auto=".2s",
+                title=f"🚗 Category Distribution — {year}",
                 color_discrete_sequence=px.colors.qualitative.Safe,
             )
-            fig_multi.update_layout(
+            fig_bar.update_layout(
                 template="plotly_white",
-                height=500,
-                xaxis_title="Vehicle Category",
+                showlegend=False,
+                margin=dict(t=60, b=40, l=40, r=40),
+                title_font=dict(size=20, family="Segoe UI", color="#222"),
+                height=450,
+                xaxis_title="Category",
                 yaxis_title="Registrations",
-                title_font=dict(size=20),
-                legend_title="Year",
-                bargap=0.25,
+                bargap=0.2,
             )
-            st.plotly_chart(fig_multi, use_container_width=True, key="multi_year_bar")
-            print(Fore.CYAN + "[INFO] Rendered multi-year comparison chart.")
+            st.plotly_chart(fig_bar, use_container_width=True, key=f"bar_{year}")
         except Exception as e:
-            print(Fore.YELLOW + f"[WARNING] Multi-year plot failed: {e}")
-            st.warning(f"⚠️ Multi-year plot failed: {e}")
+            print(Fore.YELLOW + f"[WARNING] Bar chart failed: {e}")
+            st.warning(f"⚠️ Bar chart failed: {e}")
+            st.dataframe(df)
 
-    st.success(f"✅ Completed ALL-MAXED ULTRA Category Analytics in {time.time()-start:.2f}s")
-    print(f"[DONE] ALL-MAXED ULTRA block finished in {time.time()-start:.2f}s\n{'='*60}")
-    return df_all
+    with c2:
+        try:
+            fig_pie = px.pie(
+                df,
+                names="label",
+                values="value",
+                hole=0.45,
+                color_discrete_sequence=px.colors.qualitative.Vivid,
+                title=f"Category Share — {year}",
+            )
+            fig_pie.update_traces(
+                textinfo="percent+label",
+                hovertemplate="<b>%{label}</b><br>%{value:,} registrations<br>%{percent}",
+                pull=[0.05]*len(df),
+            )
+            fig_pie.update_layout(
+                template="plotly_white",
+                margin=dict(t=40, b=20, l=20, r=20),
+                height=400,
+                showlegend=False,
+            )
+            st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_{year}")
+        except Exception as e:
+            print(Fore.YELLOW + f"[WARNING] Pie chart failed: {e}")
+            st.warning(f"⚠️ Pie chart failed: {e}")
+            st.dataframe(df)
 
+    # --- Top category insight ---
+    try:
+        top = df.iloc[0]
+        pct = (top["value"] / total_reg) * 100 if total_reg else 0
+        st.success(f"🏆 **Top Category:** {top['label']} — {int(top['value']):,} registrations ({pct:.1f}%)")
+        print(f"[INFO] Top Category: {top['label']} ({pct:.1f}% share, {int(top['value']):,} units)")
+    except Exception as e:
+        print(Fore.YELLOW + f"[WARNING] Could not determine top category: {e}")
+        st.warning("⚠️ Could not determine top category")
+
+    # --- Extra insights table ---
+    df["share_%"] = (df["value"] / total_reg * 100).round(2)
+    st.dataframe(
+        df.style.format({"value": "{:,.0f}", "share_%": "{:.2f}%"}).bar(
+            subset=["share_%"], color="#4CAF50"
+        ),
+        use_container_width=True,
+        height=320,
+    )
+    print("[INFO] Added data table with share percentages.")
+
+    # --- Minor animations / expansion ---
+    with st.expander("📈 Trend simulation (synthetic)", expanded=False):
+        df_ts = year_to_timeseries(df, year, freq="Monthly")
+        fig_line = px.line(
+            df_ts,
+            x="ds",
+            y="value",
+            color="label",
+            line_group="label",
+            title=f"Synthetic Monthly Trend — {year}",
+            markers=True,
+            color_discrete_sequence=px.colors.qualitative.Set2,
+        )
+        fig_line.update_layout(
+            template="plotly_white",
+            legend=dict(orientation="h", yanchor="bottom", y=-0.4, xanchor="center", x=0.5),
+            height=400,
+        )
+        st.plotly_chart(fig_line, use_container_width=True, key=f"trend_{year}")
+        print(f"[INFO] Rendered synthetic monthly trend for {year}")
+
+    print(f"[DONE] Completed fetch_year_category for {year}\n{'-'*60}")
+    return df
+    
 # =====================================================
 # -------------------------
 # Main Streamlit UI — All-Maxed Block
