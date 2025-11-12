@@ -1245,15 +1245,6 @@ with st.sidebar.expander("🕒 Auto-Refresh Control (ALLLL MAXED)", expanded=Fal
             st.toast("⏹️ Auto-refresh stopped.", icon="🔴")
             log_ist("⏹️ Auto-refresh thread stopped", "INFO", Fore.RED)
 
-    # Status
-    elapsed = (datetime.now(ZoneInfo("Asia/Kolkata")) - st.session_state.get("auto_refresh_last", datetime.now(ZoneInfo("Asia/Kolkata")))).seconds
-    next_refresh_in = max(0, st.session_state.get("auto_refresh_interval", 120) - elapsed)
-    if not st.session_state.get("auto_refresh_stop", False):
-        st.markdown(f"**🕒 Next refresh in:** `{next_refresh_in}s`")
-        st.progress(max(0, min(1, 1 - elapsed / st.session_state.get("auto_refresh_interval", 120))))
-    else:
-        st.info("⏸️ Auto-refresh paused.")
-
 # ---------- AUTO START ----------
 if st.session_state.get("auto_refresh", True) and not st.session_state.get("auto_refresh_stop", False):
     if not st.session_state.get("auto_refresh_thread", False):
