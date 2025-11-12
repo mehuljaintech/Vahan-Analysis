@@ -7741,25 +7741,46 @@ try:
     import pandas as pd
     import streamlit as st
     
-    # --- Start timer ---
+    # -------------------------
+    # Start timer
+    # -------------------------
     if 'summary_start' not in locals():
         summary_start = time.time()
     
-    # --- Ensure df_trend has a numeric column named 'value' ---
+    # -------------------------
+    # Standardize df_trend columns
+    # -------------------------
+    # Ensure Year column exists
+    if 'Year' not in df_trend.columns:
+        if 'year' in df_trend.columns:
+            df_trend = df_trend.rename(columns={'year':'Year'})
+        else:
+            raise ValueError("df_trend must have a year column ('Year' or 'year')")
+    
+    # Ensure Month column exists
+    if 'Month' not in df_trend.columns:
+        if 'month' in df_trend.columns:
+            df_trend = df_trend.rename(columns={'month':'Month'})
+        else:
+            df_trend['Month'] = 1  # fallback to 1 if missing
+    
+    # Ensure numeric column is named 'value'
     numeric_cols = df_trend.select_dtypes(include='number').columns.tolist()
+    numeric_cols = [c for c in numeric_cols if c not in ['Year','Month']]
     if 'value' not in df_trend.columns:
         if numeric_cols:
-            # Rename the first numeric column to 'value'
-            df_trend = df_trend.rename(columns={numeric_cols[0]: 'value'})
-            print(f"[TREND] Renamed column '{numeric_cols[0]}' to 'value'")
+            df_trend = df_trend.rename(columns={numeric_cols[0]:'value'})
+            print(f"[TREND] Renamed numeric column '{numeric_cols[0]}' → 'value'")
         else:
-            raise ValueError("df_trend must have at least one numeric column for export")
+            raise ValueError("df_trend must have a numeric column for values")
     
-    # --- Compute summary variables ---
+    # -------------------------
+    # Compute summary metrics
+    # -------------------------
     total_revenue_all = int(df_trend['value'].sum())
-    n_states = df_trend['State'].nunique()
+    n_states = df_trend['State'].nunique() if 'State' in df_trend.columns else df_trend['maker'].nunique()
     
-    top_state_series = df_trend.groupby('State')['value'].sum()
+    top_state_series = df_trend.groupby('State')['value'].sum() if 'State' in df_trend.columns else df_trend.groupby('maker')['value'].sum()
     top_state = top_state_series.idxmax()
     top_state_value = top_state_series.max()
     
@@ -7768,7 +7789,7 @@ try:
     start_val = yearly_totals.iloc[0]
     end_val = yearly_totals.iloc[-1]
     n_years = len(yearly_totals) - 1
-    cagr = ((end_val / start_val) ** (1 / n_years) - 1) * 100 if n_years > 0 else 0
+    cagr = ((end_val / start_val) ** (1/n_years) - 1) * 100 if n_years > 0 else 0
     
     # Latest MoM
     monthly_totals = df_trend.groupby(['Year','Month'])['value'].sum().sort_index()
@@ -7782,7 +7803,7 @@ try:
     run_time = time.time() - summary_start
     
     # -------------------------
-    # ✅ Build Excel workbook in-memory
+    # Build Excel workbook in-memory
     # -------------------------
     st.markdown("### 💾 Export ALL-MAXED States Excel Dashboard")
     try:
@@ -7814,6 +7835,7 @@ try:
                     {'type': '3_color_scale'}
                 )
     
+                # Optional chart sheet
                 totals = year_totals.reset_index()
                 totals.to_excel(writer, sheet_name="Yearly_Totals", index=False)
                 ws_tot = writer.sheets["Yearly_Totals"]
@@ -7847,7 +7869,7 @@ try:
                 "Value": [
                     f"{int(df_trend['Year'].min())} → {int(df_trend['Year'].max())}",
                     n_states, total_revenue_all, top_state, top_state_value,
-                    round(cagr, 2), latest_mom, round(run_time, 2)
+                    round(cagr,2), latest_mom, round(run_time,2)
                 ]
             })
             summary_df.to_excel(writer, sheet_name="Summary", index=False)
@@ -7855,6 +7877,7 @@ try:
             ws6.set_column(0, 0, 36)
             ws6.set_column(1, 1, 22)
     
+        # ✅ No need to call writer.save()
         processed_data = output.getvalue()
         st.download_button(
             label="💾 Download ALL-MAXED States Excel Dashboard",
@@ -7863,12 +7886,10 @@ try:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         print("[ALL-MAXED FINAL] Excel export ready ✅")
-
-
     
     except Exception as e:
-        st.error(f"⛔ Excel export failed: {e}")
-        print("[ALL-MAXED FINAL] Excel export exception:", e)
+        st.error(f"⛔ ALL-MAXED final failed: {e}")
+        print(f"⛔ ALL-MAXED final failed: {e}")
 
 except Exception as e:
     st.error(f"⛔ ALL-MAXED final failed: {e}")
