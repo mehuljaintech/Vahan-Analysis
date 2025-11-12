@@ -7393,24 +7393,46 @@ except Exception as e:
 # -----------------------------
 # 🔹 Safe fetch top 5 revenue
 # -----------------------------
-def safe_get_top5_(params):
+import pandas as pd
+import random
+import streamlit as st
+
+def safe_get_top5_states(params, year=None, show_debug=True):
+    """
+    Safely fetch Top 5 States revenue data.
+    Returns: df with columns ['State', 'Revenue'], source_url
+    """
     try:
         top5_json, url = get_json("vahandashboard/top5chartRevenueFee", params)
-        df = parse_top5_revenue(top5_json)
+        df = parse_top5_revenue(top5_json)  # must return 'label' and 'value' columns
+
+        # Validate
         if df.empty or "label" not in df.columns or "value" not in df.columns:
             raise ValueError("Invalid API data")
-        st.success(f"✅ Top 5 revenue fetched from API ({url})")
+        
+        st.success(f"✅ Top 5 States revenue fetched from API ({url})")
         print(f"[TOP5] Fetched from API: {url}")
+
     except Exception as e:
+        # Fallback mock
         st.warning(f"⚠️ API unavailable or failed: {e}\nUsing fallback mock data.")
         print(f"[TOP5] API failed: {e}. Using fallback data.")
         states = ["MH", "DL", "KA", "TN", "UP"]
         revenues = [random.randint(500, 2000) for _ in states]
-        df = pd.DataFrame({"label": states, "value": revenues})
-        print(f"[TOP5] Fallback data created: {df.to_dict(orient='records')}")
+        df = pd.DataFrame({"State": states, "Revenue": revenues})
+        url = f"mock://top5states/{year or 'unknown'}"
+        print(f"[TOP5] Fallback mock data used for {year}: {df.to_dict(orient='records')}")
 
-    df = df.rename(columns={"label": "State", "value": "Revenue"})
-    return df
+    # Standardize column names
+    df = df.rename(columns={"State": "State", "Revenue": "Revenue"})
+    
+    # Debug panel
+    if show_debug:
+        with st.expander(f"🧩 Debug JSON — Top 5 States {year}", expanded=False):
+            st.write("**Source URL:**", url)
+            st.write(df)
+    
+    return df, url
 
 # -----------------------------
 # 🔹 Plot Top 5 Revenue
