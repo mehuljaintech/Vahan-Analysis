@@ -1394,7 +1394,6 @@ def build_params(
     time_period: str,
     fitness_check: bool,
     vehicle_type: str,
-    extra_params: Optional[dict] = None,
 ) -> dict:
     """Strict builder — all parameters mandatory, debug-friendly."""
     current_year = datetime.now().year
