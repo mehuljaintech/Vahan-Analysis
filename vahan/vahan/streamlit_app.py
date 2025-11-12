@@ -235,17 +235,6 @@ print(f"💻 Platform           : {__import__('platform').system()} {__import__(
 print(f"📂 Working Directory  : {os.getcwd()}")
 print("-" * 60)
 
-# --- Library Versions ---
-print(f"📦 NumPy Version      : {np.__version__}")
-print(f"📦 Pandas Version     : {pd.__version__}")
-print(f"📦 Requests Version   : {requests.__version__}")
-print(f"📦 Streamlit Version  : {st.__version__}")
-print(f"📦 Plotly Version     : {px.__version__}")
-print(f"📦 Prophet Module     : {Prophet.__module__}")
-print(f"📦 scikit-learn Path  : {__import__('sklearn').__file__}")
-print(f"📦 dotenv (load_dotenv): {load_dotenv.__module__}")
-print(f"📦 openpyxl Path      : {__import__('openpyxl').__file__}")
-print("-" * 60)
 
 # --- Runtime Checks ---
 print(f"🧮 Math Module        : {math.__name__}")
