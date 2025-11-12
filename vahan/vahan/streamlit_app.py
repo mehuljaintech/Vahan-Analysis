@@ -7918,6 +7918,38 @@ from colorama import Fore
 # ⚙️ PARAMETER SAFETY + BUILD
 # ================================================================
 
+from datetime import datetime
+import streamlit as st
+
+# ================================================================
+# 🚀 VAHAN ALL-MAXED — Unified Trend + Growth + Revenue Analytics
+# ================================================================
+print("\n" + "=" * 80)
+print("[ALL-MAXED] 🚀 Starting Unified Trend + Growth + Revenue analytics control block setup")
+print(f"[TIME] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print("=" * 80)
+
+st.markdown(
+    f"""
+    <div style="
+        text-align:center;
+        padding:22px;
+        border-radius:16px;
+        background:linear-gradient(90deg,#36D1DC,#5B86E5);
+        color:white;
+        font-size:22px;
+        font-weight:bold;
+        box-shadow: 0 0 18px rgba(0,0,0,0.45);
+    ">
+        🚀 VAHAN ALL-MAXED — Unified Trend + Growth + Revenue Analytics Started — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.divider()  # optional visual separation
+
+
 def safe_value(val, default):
     """Ensure no parameter is blank or None."""
     if val is None or (isinstance(val, str) and not val.strip()):
