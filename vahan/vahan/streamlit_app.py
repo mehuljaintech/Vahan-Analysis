@@ -2001,10 +2001,26 @@ def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.
     st.caption(f"🔗 **Source:** {cat_url}")
     st.markdown(f"**Total Registrations ({year}):** {total_reg:,}")
 
+    import streamlit as st
+    import plotly.express as px
+    import plotly.graph_objects as go
+    import numpy as np
+    
+    # -----------------------------
+    # Calculate stats for tooltips/annotations
+    # -----------------------------
+    total = df["value"].sum()
+    mean_val = df["value"].mean()
+    median_val = df["value"].median()
+    
     # --- Charts layout ---
     c1, c2 = st.columns([1.8, 1.2])
+    
     with c1:
         try:
+            # -------------------------
+            # Maxed Bar Chart
+            # -------------------------
             fig_bar = px.bar(
                 df,
                 x="label",
@@ -2014,88 +2030,175 @@ def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.
                 title=f"🚗 Category Distribution — {year}",
                 color_discrete_sequence=px.colors.qualitative.Safe,
             )
+    
+            # Add mean & median lines
+            fig_bar.add_hline(y=mean_val, line_dash="dash", line_color="green",
+                              annotation_text=f"Mean: {mean_val:.0f}", annotation_position="top left")
+            fig_bar.add_hline(y=median_val, line_dash="dot", line_color="blue",
+                              annotation_text=f"Median: {median_val:.0f}", annotation_position="bottom right")
+    
             fig_bar.update_layout(
                 template="plotly_white",
-                showlegend=False,
-                margin=dict(t=60, b=40, l=40, r=40),
-                title_font=dict(size=20, family="Segoe UI", color="#222"),
-                height=450,
+                showlegend=True,
+                legend_title_text="Categories",
+                margin=dict(t=80, b=50, l=50, r=50),
+                title_font=dict(size=24, family="Segoe UI", color="#222"),
+                height=500,
                 xaxis_title="Category",
                 yaxis_title="Registrations",
-                bargap=0.2,
+                bargap=0.25,
+                hovermode="x unified",
             )
+    
+            # Custom hovertemplate
+            fig_bar.update_traces(
+                hovertemplate="<b>%{x}</b><br>Registrations: %{y:,}<br>Share: %{customdata[0]:.1%}",
+                customdata=np.array(df["value"] / total).reshape(-1, 1),
+                marker_line_width=1.5,
+            )
+    
             st.plotly_chart(fig_bar, use_container_width=True, key=f"bar_{year}")
+    
         except Exception as e:
-            print(Fore.YELLOW + f"[WARNING] Bar chart failed: {e}")
             st.warning(f"⚠️ Bar chart failed: {e}")
             st.dataframe(df)
-
+    
     with c2:
         try:
+            # -------------------------
+            # Maxed Pie Chart
+            # -------------------------
             fig_pie = px.pie(
                 df,
                 names="label",
                 values="value",
-                hole=0.45,
+                hole=0.4,
                 color_discrete_sequence=px.colors.qualitative.Vivid,
                 title=f"Category Share — {year}",
             )
+    
             fig_pie.update_traces(
                 textinfo="percent+label",
                 hovertemplate="<b>%{label}</b><br>%{value:,} registrations<br>%{percent}",
                 pull=[0.05]*len(df),
+                marker=dict(line=dict(color='#ffffff', width=2))
             )
+    
+            # Add annotations for total, mean, median
+            fig_pie.add_annotation(
+                text=f"Total: {total:,}<br>Mean: {mean_val:.0f}<br>Median: {median_val:.0f}",
+                x=0.5, y=-0.1, showarrow=False, font=dict(size=14, color="#555"), align="center"
+            )
+    
             fig_pie.update_layout(
                 template="plotly_white",
-                margin=dict(t=40, b=20, l=20, r=20),
-                height=400,
-                showlegend=False,
+                margin=dict(t=60, b=80, l=20, r=20),
+                height=450,
+                showlegend=True,
+                legend_title_text="Categories",
+                title_font=dict(size=22, family="Segoe UI", color="#222"),
             )
+    
             st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_{year}")
+    
         except Exception as e:
-            print(Fore.YELLOW + f"[WARNING] Pie chart failed: {e}")
             st.warning(f"⚠️ Pie chart failed: {e}")
             st.dataframe(df)
 
-    # --- Top category insight ---
+    import streamlit as st
+    import plotly.express as px
+    import plotly.graph_objects as go
+    import numpy as np
+    
+    # -----------------------------
+    # Calculate stats
+    # -----------------------------
+    total_reg = df["value"].sum()
+    mean_val = df["value"].mean()
+    median_val = df["value"].median()
+    
+    # --- Top category insight (maxed) ---
     try:
         top = df.iloc[0]
         pct = (top["value"] / total_reg) * 100 if total_reg else 0
-        st.success(f"🏆 **Top Category:** {top['label']} — {int(top['value']):,} registrations ({pct:.1f}%)")
+        st.markdown(
+            f"🏆 <span style='font-size:20px; font-weight:bold; color:#2E86AB'>Top Category:</span> "
+            f"<span style='font-size:22px; font-weight:bold;'>{top['label']}</span> — "
+            f"<span style='color:#27AE60;'>{int(top['value']):,}</span> registrations "
+            f"(<span style='color:#D35400'>{pct:.1f}%</span>)",
+            unsafe_allow_html=True,
+        )
+        st.info(f"ℹ️ Mean registrations: {int(mean_val):,}, Median registrations: {int(median_val):,}")
         print(f"[INFO] Top Category: {top['label']} ({pct:.1f}% share, {int(top['value']):,} units)")
     except Exception as e:
-        print(Fore.YELLOW + f"[WARNING] Could not determine top category: {e}")
+        print(f"[WARNING] Could not determine top category: {e}")
         st.warning("⚠️ Could not determine top category")
-
-    # --- Extra insights table ---
+    
+    # --- Extra insights table (maxed) ---
     df["share_%"] = (df["value"] / total_reg * 100).round(2)
+    df_sorted = df.sort_values("share_%", ascending=False)
     st.dataframe(
-        df.style.format({"value": "{:,.0f}", "share_%": "{:.2f}%"}).bar(
+        df_sorted.style.format({"value": "{:,.0f}", "share_%": "{:.2f}%"}).bar(
             subset=["share_%"], color="#4CAF50"
-        ),
+        ).highlight_max(subset=["value"], color="#F39C12").highlight_min(subset=["value"], color="#E74C3C"),
         use_container_width=True,
-        height=320,
+        height=350,
     )
-    print("[INFO] Added data table with share percentages.")
-
-    # --- Minor animations / expansion ---
-    with st.expander("📈 Trend simulation (synthetic)", expanded=False):
-        df_ts = year_to_timeseries(df, year, freq="Monthly")
+    print("[INFO] Added data table with share percentages, max/min highlights.")
+    
+    # --- Minor animations / expansion: synthetic trend (maxed) ---
+    with st.expander("📈 Synthetic Trend Simulation", expanded=True):
+        df_ts = year_to_timeseries(df, year, freq="Monthly")  # Make sure this returns ['ds','label','value']
+    
+        # Maxed line chart
         fig_line = px.line(
             df_ts,
             x="ds",
             y="value",
             color="label",
             line_group="label",
-            title=f"Synthetic Monthly Trend — {year}",
+            title=f"📊 Synthetic Monthly Trend — {year}",
             markers=True,
             color_discrete_sequence=px.colors.qualitative.Set2,
         )
+    
+        # Add mean and median lines
+        fig_line.add_hline(y=mean_val, line_dash="dash", line_color="green",
+                           annotation_text=f"Mean: {mean_val:.0f}", annotation_position="top left")
+        fig_line.add_hline(y=median_val, line_dash="dot", line_color="blue",
+                           annotation_text=f"Median: {median_val:.0f}", annotation_position="bottom right")
+    
+        # Add shaded area for min/max per month
+        min_max = df_ts.groupby("ds")["value"].agg(["min", "max"]).reset_index()
+        fig_line.add_traces([
+            go.Scatter(
+                x=min_max["ds"].tolist() + min_max["ds"].tolist()[::-1],
+                y=min_max["max"].tolist() + min_max["min"].tolist()[::-1],
+                fill='toself',
+                fillcolor='rgba(0,176,246,0.1)',
+                line=dict(color='rgba(255,255,255,0)'),
+                hoverinfo="skip",
+                showlegend=False,
+            )
+        ])
+    
+        # Layout maxed
         fig_line.update_layout(
             template="plotly_white",
-            legend=dict(orientation="h", yanchor="bottom", y=-0.4, xanchor="center", x=0.5),
-            height=400,
+            legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5),
+            margin=dict(t=80, b=100, l=60, r=40),
+            height=450,
+            title_font=dict(size=22, family="Segoe UI", color="#222"),
+            hovermode="x unified",
+            xaxis_title="Month",
+            yaxis_title="Registrations",
         )
+    
+        # Custom hover template
+        fig_line.update_traces(
+            hovertemplate="<b>%{fullData.name}</b><br>Date: %{x|%b %Y}<br>Registrations: %{y:,}"
+        )
+    
         st.plotly_chart(fig_line, use_container_width=True, key=f"trend_{year}")
         print(f"[INFO] Rendered synthetic monthly trend for {year}")
 
