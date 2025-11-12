@@ -341,7 +341,6 @@ print("🪵 [DEBUG] Logging Initialized")
 print("=" * 60)
 print(f"📁 Logger Name    : {logger.name}")
 print(f"📊 Log Level      : {logging.getLevelName(logger.level)}")
-print(f"📤 Stream Handler : {type(logger.handlers[0]).__name__}")
 print(f"🕒 Time Format    : %Y-%m-%d %H:%M:%S")
 print("=" * 60 + "\n")
 
