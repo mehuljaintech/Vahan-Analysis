@@ -1931,15 +1931,13 @@ def fetch_year_category(year: int, params: dict, show_debug: bool = True) -> pd.
     """
 
     # --- Prepare request ---
-    p = params.copy() if params else {}
-    p["year"] = int(year)
     st.markdown(f"## 📊 Vehicle Categories — {year}")
     print(f"\n[INFO] Fetching category data for year: {year}")
-    print(f"[PARAMS] {p}")
+    print(f"[PARAMS] {params}")
 
     # --- Fetch safely ---
     try:
-        cat_json, cat_url = get_json("vahandashboard/categoriesdonutchart", p)
+        cat_json, cat_url = get_json("vahandashboard/categoriesdonutchart", params)
         print(f"[SUCCESS] Data fetched from {cat_url}")
     except Exception as e:
         print(Fore.RED + f"[ERROR] get_json failed for {year}: {e}")
