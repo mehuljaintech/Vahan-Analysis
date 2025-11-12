@@ -3552,9 +3552,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
     st.markdown("## 🧠 Final Summary, Exports & Debug Insights — ALL-MAXED")
     
     try:
-        import time
-        import io
-        import xlsxwriter
+        
     
         summary_start = time.time()
     
@@ -3734,9 +3732,6 @@ def all_maxed_category_block(params: Optional[dict] = None):
         st.download_button("💾 Download Categories Dashboard", processed_data, "ALL-MAXED_Categories_Dashboard.xlsx")
 
         
-        import pandas as pd
-        import time
-        import streamlit as st
         
         summary_start = time.time()
         
@@ -7159,9 +7154,6 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
             print(f"[ALL-MAXED FINAL] Excel export exception: {e}")
 
     
-        import pandas as pd
-        import time
-        import streamlit as st
         
         summary_start = time.time()
         
