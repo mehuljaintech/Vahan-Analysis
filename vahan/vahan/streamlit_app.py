@@ -1954,11 +1954,6 @@ def fetch_year_category(years, params_common, show_debug=True, show_summary=True
         "_session_seed": datetime.now().strftime("%Y%m%d%H%M%S"),
     }
 
-    if extra_params:
-        for k, v in extra_params.items():
-            if v not in [None, "", [], {}]:
-                params[k] = v
-
     params["_meta"] = {
         "created": ist_now(),
         "validated": True,
