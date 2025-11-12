@@ -3549,7 +3549,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
     # =====================================================
     # 🧩 ALL-MAXED POWER BI STYLE DASHBOARD + EXPORTS
     # =====================================================
-    st.markdown("## 🧠 ALLLLLL MAXED Interactive Dashboard")
+    st.markdown("## 🧠 Interactive Dashboard")
     
     try:
         start_time = time.time()
@@ -3617,8 +3617,8 @@ def all_maxed_category_block(params: Optional[dict] = None):
         n_years = max(1,len(year_totals)-1)
         cagr = ((last/first)**(1/n_years)-1)*100 if first>0 else 0
         
-        month_totals = pivot_month.sum(axis=1).to_frame()
-        month_totals['MoM_%'] = month_totals['value'].pct_change()*100
+        month_totals = pivot_month.sum(axis=1).to_frame(name='value')
+        month_totals['MoM_%'] = month_totals['value'].pct_change() * 100
         latest_mom = f"{month_totals['MoM_%'].iloc[-1]:.2f}%" if len(month_totals)>1 else "n/a"
         
         top_cat_overall = df_src.groupby('label')['value'].sum().sort_values(ascending=False)
