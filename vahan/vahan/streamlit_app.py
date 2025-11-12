@@ -3912,7 +3912,12 @@ def all_maxed_category_block(params: Optional[dict] = None):
             f"**{top_maker_name}** leads with **{top_maker_share:.2f}%** share. "
             f"Peak year: **{int(top_year.index[0])}** with **{top_year.iloc[0]:,.0f}** registrations."
         )
-    
+    except Exception as e:
+        
+        # This will catch any runtime errors and display them in Streamlit
+        st.error(f"⛔ ALL-MAXED final summary failed: {str(e)}")
+        import traceback
+        st.code(traceback.format_exc(), language="python")    
 # -----------------------------------------------------
 # 🧩 Safe Entry Point — Streamlit-only Execution Guard
 # (with simple prints for local logs / CI)
