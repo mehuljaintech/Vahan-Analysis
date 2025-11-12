@@ -3546,197 +3546,215 @@ def all_maxed_category_block(params: Optional[dict] = None):
             st.error(f"💥 AI Narrative generation failed: {e}")
             print("[ERROR] AI Narrative Exception:", e)
 
-    alllll maxed add too
-alll maxed
 # =====================================================
-# 🧩 ALL-MAXED POWER BI STYLE DASHBOARD + EXPORTS
-# =====================================================
-import streamlit as st
-import pandas as pd
-import numpy as np
-from datetime import datetime
-import io
-import xlsxwriter
-import time
-
-st.markdown("## 🧠 ALL-MAXED Interactive Dashboard")
-
-try:
-    start_time = time.time()
+    # 🧩 ALL-MAXED FINAL SUMMARY + EXPORTS + DEBUG INSIGHTS
+    # =====================================================
+    st.markdown("## 🧠 Final Summary, Exports & Debug Insights — ALL-MAXED")
     
-    # -------------------------
-    # 1️⃣ SAFE INPUT
-    # -------------------------
-    df_src = df_cat_all.copy() if "df_cat_all" in locals() else pd.DataFrame()
-    if df_src.empty:
-        st.warning("⚠️ No data found to analyze.")
-        st.stop()
+    try:
+        import time
+        import io
+        import xlsxwriter
     
-    # -------------------------
-    # 2️⃣ USER SELECTIONS
-    # -------------------------
-    freq_options = ["Daily","Monthly","Yearly"]
-    freq = st.selectbox("Select Frequency", freq_options, index=1)
+        summary_start = time.time()
     
-    available_years = sorted(df_src['year'].unique()) if 'year' in df_src.columns else [2024,2025]
-    years = st.multiselect("Select Years", available_years, default=available_years)
+        # ----------------------------------------------------
+        # 1️⃣ SAFE INPUT + FALLBACKS
+        # ----------------------------------------------------
+        df_src = df_cat_all.copy() if "df_cat_all" in locals() else pd.DataFrame()
+        freq = freq if "freq" in locals() else "Monthly"
+        years = years if "years" in locals() and years else [2024, 2025]
+        current_year = datetime.now().year
     
-    categories = sorted(df_src['label'].unique()) if 'label' in df_src.columns else []
-    selected_categories = st.multiselect("Select Categories", categories, default=categories)
+        if df_src.empty:
+            st.warning("⚠️ No valid ALL-MAXED data found to summarize.")
+            st.stop()
     
-    df_src = df_src[df_src['label'].isin(selected_categories) & df_src['year'].isin(years)].copy()
-    if df_src.empty:
-        st.warning("⚠️ No data available after filtering.")
-        st.stop()
+        # ----------------------------------------------------
+        # 2️⃣ BASIC CLEANUP + ADD TIME FIELDS
+        # ----------------------------------------------------
+        df_src = df_src.copy()
+        if "ds" not in df_src.columns:
+            if "date" in df_src.columns:
+                df_src["ds"] = pd.to_datetime(df_src["date"])
+            elif "year" in df_src.columns:
+                df_src["ds"] = pd.to_datetime(df_src["year"].astype(str) + "-01-01")
+            else:
+                df_src["ds"] = pd.date_range(end=datetime.today(), periods=len(df_src))
     
-    # -------------------------
-    # 3️⃣ TIME FIELDS
-    # -------------------------
-    if 'ds' not in df_src.columns:
-        if 'date' in df_src.columns:
-            df_src['ds'] = pd.to_datetime(df_src['date'])
+        df_src["year"] = df_src["ds"].dt.year
+        df_src["month"] = df_src["ds"].dt.month
+        df_src["label"] = df_src["label"].astype(str) if "label" in df_src.columns else "Unknown"
+    
+        # ----------------------------------------------------
+        # 3️⃣ RESAMPLING + PIVOT
+        # ----------------------------------------------------
+        resampled = df_src.groupby(["label", "year"])["value"].sum().reset_index() if freq == "Yearly" else df_src.copy()
+    
+        pivot_year = (
+            resampled.pivot_table(index="year", columns="label", values="value", aggfunc="sum").fillna(0)
+            if "year" in resampled.columns else pd.DataFrame()
+        )
+    
+        # ----------------------------------------------------
+        # 4️⃣ KPIs & METRICS
+        # ----------------------------------------------------
+        year_totals = pivot_year.sum(axis=1).rename("TotalRegistrations").to_frame()
+        year_totals["YoY_%"] = year_totals["TotalRegistrations"].pct_change() * 100
+        year_totals["TotalRegistrations"] = year_totals["TotalRegistrations"].fillna(0).astype(int)
+        year_totals["YoY_%"] = year_totals["YoY_%"].replace([np.inf, -np.inf], np.nan).fillna(0)
+    
+        # CAGR
+        if len(year_totals) >= 2:
+            first = float(year_totals["TotalRegistrations"].iloc[0])
+            last = float(year_totals["TotalRegistrations"].iloc[-1])
+            years_count = max(1, len(year_totals) - 1)
+            cagr = ((last / first) ** (1 / years_count) - 1) * 100 if first > 0 else 0.0
         else:
-            df_src['ds'] = pd.to_datetime(df_src['year'].astype(str)+'-01-01')
+            cagr = 0.0
     
-    df_src['year'] = df_src['ds'].dt.year
-    df_src['month'] = df_src['ds'].dt.month
-    df_src['day'] = df_src['ds'].dt.day
+        # Latest MoM if monthly
+        latest_mom = "n/a"
+        if freq == "Monthly":
+            resampled["month_period"] = resampled["year"].astype(str) + "-" + resampled["month"].astype(str)
+            month_totals = resampled.groupby("month_period")["value"].sum().reset_index()
+            month_totals["MoM_%"] = month_totals["value"].pct_change() * 100
+            latest_mom = f"{month_totals['MoM_%'].iloc[-1]:.2f}%" if len(month_totals) > 1 else "n/a"
     
-    # -------------------------
-    # 4️⃣ RESAMPLING / PIVOTS
-    # -------------------------
-    resampled_yearly = df_src.groupby(['label','year'])['value'].sum().reset_index()
-    resampled_monthly = df_src.groupby(['label','year','month'])['value'].sum().reset_index()
-    resampled_daily = df_src.groupby(['label','ds'])['value'].sum().reset_index()
+        # Category share
+        latest_year = int(year_totals.index.max())
+        cat_share = (pivot_year.loc[latest_year] / pivot_year.loc[latest_year].sum() * 100).sort_values(ascending=False).round(1)
     
-    pivot_year = resampled_yearly.pivot_table(index='year', columns='label', values='value', aggfunc='sum').fillna(0)
-    pivot_month = resampled_monthly.pivot_table(index=['year','month'], columns='label', values='value', aggfunc='sum').fillna(0)
-    pivot_day = resampled_daily.pivot_table(index='ds', columns='label', values='value', aggfunc='sum').fillna(0)
+        # Top Category
+        top_cat_row = df_src.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
+        top_cat_share = (top_cat_row["value"] / df_src["value"].sum()) * 100 if df_src["value"].sum() > 0 else 0
+        # Top Year
+        top_year_row = df_src.groupby("year")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
     
-    # -------------------------
-    # 5️⃣ KPIs / METRICS
-    # -------------------------
-    year_totals = pivot_year.sum(axis=1).rename('TotalRegistrations').to_frame()
-    year_totals['YoY_%'] = year_totals['TotalRegistrations'].pct_change()*100
-    year_totals.fillna(0,inplace=True)
+        # ----------------------------------------------------
+        # 5️⃣ DISPLAY METRICS
+        # ----------------------------------------------------
+        st.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
+        st.metric("🏆 Absolute Top Category", top_cat_row["label"], f"{top_cat_share:.2f}% share")
+        st.metric("📅 Peak Year", f"{int(top_year_row['year'])}", f"{top_year_row['value']:,.0f} registrations")
     
-    first = float(year_totals['TotalRegistrations'].iloc[0])
-    last = float(year_totals['TotalRegistrations'].iloc[-1])
-    n_years = max(1,len(year_totals)-1)
-    cagr = ((last/first)**(1/n_years)-1)*100 if first>0 else 0
+        st.markdown("#### 📘 Category Share (Latest Year)")
+        st.dataframe(pd.DataFrame({
+            "Category": cat_share.index,
+            "Share_%": cat_share.values,
+            "Volume": pivot_year.loc[latest_year].astype(int).values
+        }).sort_values("Share_%", ascending=False), use_container_width=True)
     
-    month_totals = pivot_month.sum(axis=1).to_frame()
-    month_totals['MoM_%'] = month_totals['value'].pct_change()*100
-    latest_mom = f"{month_totals['MoM_%'].iloc[-1]:.2f}%" if len(month_totals)>1 else "n/a"
-    
-    top_cat_overall = df_src.groupby('label')['value'].sum().sort_values(ascending=False)
-    top_cat_row = top_cat_overall.reset_index().iloc[0]
-    top_cat_share = top_cat_row['value']/df_src['value'].sum()*100
-    
-    # -------------------------
-    # 6️⃣ DISPLAY KPIs
-    # -------------------------
-    col1,col2,col3 = st.columns(3)
-    col1.metric("📅 Years Loaded", f"{years[0]} → {years[-1]}", f"{len(years)} yrs")
-    col2.metric("🏆 Top Category", top_cat_row['label'], f"{top_cat_share:.2f}%")
-    col3.metric("📈 CAGR", f"{cagr:.2f}%", f"Latest MoM: {latest_mom}")
-    
-    st.markdown("### 📊 Latest Year Category Share")
-    latest_year = max(years)
-    cat_share = (pivot_year.loc[latest_year]/pivot_year.loc[latest_year].sum()*100).sort_values(ascending=False).round(1)
-    st.dataframe(pd.DataFrame({'Category':cat_share.index,'Share_%':cat_share.values}), use_container_width=True)
-    
-    # -------------------------
-    # 7️⃣ EXCEL EXPORT ALL-MAXED
-    # -------------------------
-    all_sheets = ["Dashboard","Yearly_Pivot","Monthly_Pivot","Daily_Pivot","Top_Categories","CrossYear"]
-    selected_sheets = st.multiselect("Select sheets to include in Excel", all_sheets, default=all_sheets)
-    
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        workbook = writer.book
-        header_fmt = workbook.add_format({'bold':True,'bg_color':'#051937','font_color':'white','align':'center','border':1})
-        highlight_fmt = workbook.add_format({'bold':True,'bg_color':'#00bf72','font_color':'white'})
+        import io
+        import pandas as pd
+        import xlsxwriter
         
-        # Dashboard
-        if "Dashboard" in selected_sheets:
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+            workbook = writer.book
+        
+            # ------------------ Sheet 1: Summary KPIs ------------------
             summary_df = pd.DataFrame({
-                'Metric':["Years Loaded","Total Categories","Total Registrations","Top Category","Top Category Share (%)","CAGR (%)","Latest MoM (%)"],
-                'Value':[f"{years[0]} → {years[-1]}", df_src['label'].nunique(), df_src['value'].sum(), top_cat_row['label'], round(top_cat_share,2), round(cagr,2), latest_mom]
+                "Metric": ["Years Loaded", "Total Categories", "Total Registrations", "Top Category", "Top Category Share (%)", "Peak Year", "Peak Year Registrations", "CAGR (%)", "Latest MoM (%)"],
+                "Value": [f"{years[0]} → {years[-1]}", df_src["label"].nunique(), df_src["value"].sum(),
+                          top_cat_row["label"], round(top_cat_share, 2),
+                          top_year_row["year"], top_year_row["value"],
+                          round(cagr, 2), latest_mom]
             })
             summary_df.to_excel(writer, sheet_name="Dashboard", index=False)
             ws = writer.sheets["Dashboard"]
-            for i,col in enumerate(summary_df.columns):
-                ws.write(0,i,col,header_fmt)
-                ws.set_column(i,i,max(15,len(col)))
-            ws.write(3,1,top_cat_row['label'],highlight_fmt)
         
-        # Yearly Pivot + Chart
-        if "Yearly_Pivot" in selected_sheets:
-            pivot_year.to_excel(writer, sheet_name="Yearly_Pivot")
-            ws2 = writer.sheets["Yearly_Pivot"]
-            for i,col in enumerate(pivot_year.columns):
-                ws2.set_column(i+1,i+1,max(len(str(col)),15))
-            chart = workbook.add_chart({'type':'column'})
-            chart.add_series({'name':'Total Registrations','categories':['Yearly_Pivot',1,0,len(pivot_year),0],'values':['Yearly_Pivot',1,1,len(pivot_year),1]})
-            ws2.insert_chart('H2',chart)
+            # Format headers
+            header_format = workbook.add_format({'bold': True, 'bg_color': '#051937', 'font_color': 'white', 'align': 'center', 'border':1})
+            for col_num, value in enumerate(summary_df.columns.values):
+                ws.write(0, col_num, value, header_format)
         
-        # Monthly Pivot
-        if "Monthly_Pivot" in selected_sheets:
-            pivot_month.to_excel(writer, sheet_name="Monthly_Pivot")
-            ws3 = writer.sheets["Monthly_Pivot"]
-            for i,col in enumerate(pivot_month.columns):
-                ws3.set_column(i+2,i+2,max(len(str(col)),15))
+            # Column widths
+            ws.set_column(0, 0, 30)
+            ws.set_column(1, 1, 25)
         
-        # Daily Pivot
-        if "Daily_Pivot" in selected_sheets:
-            pivot_day.to_excel(writer, sheet_name="Daily_Pivot")
-            ws4 = writer.sheets["Daily_Pivot"]
-            for i,col in enumerate(pivot_day.columns):
-                ws4.set_column(i+1,i+1,max(len(str(col)),15))
+            # Highlight top metrics
+            highlight_format = workbook.add_format({'bg_color': '#00bf72', 'font_color': 'white', 'bold': True})
+            ws.write(3, 1, top_cat_row["label"], highlight_format)
+            ws.write(5, 1, top_year_row["year"], highlight_format)
         
-        # Top Categories
-        if "Top_Categories" in selected_sheets:
-            top_cat_overall.reset_index().to_excel(writer, sheet_name="Top_Categories", index=False)
-            ws5 = writer.sheets["Top_Categories"]
-            for i,col in enumerate(["label","value"]):
-                ws5.set_column(i,i,max(len(col),15))
-                ws5.write(0,i,col,header_fmt)
+            # ------------------ Sheet 2: Yearly Pivot with Sparkline ------------------
+            if not pivot_year.empty:
+                pivot_year.to_excel(writer, sheet_name="Yearly_Pivot")
+                ws2 = writer.sheets["Yearly_Pivot"]
         
-        # Cross Year
-        if "CrossYear" in selected_sheets:
-            cross_year_top = pd.merge(
-                resampled_yearly[resampled_yearly['year']==years[0]][['label','value']],
-                resampled_yearly[resampled_yearly['year']==years[1]][['label','value']],
-                left_index=True,right_index=True,
-                suffixes=(f"_{years[0]}",f"_{years[1]}")
-            )
-            cross_year_top.to_excel(writer, sheet_name="CrossYear", index=False)
-            ws6 = writer.sheets["CrossYear"]
-            for i,col in enumerate(cross_year_top.columns):
-                ws6.set_column(i,i,max(len(str(col)),15))
-    
-    processed_data = output.getvalue()
-    st.download_button("💾 Download ALL-MAXED Excel", processed_data, "ALL-MAXED_Full_Analysis.xlsx")
-    
-    # -------------------------
-    # 8️⃣ DEBUG
-    # -------------------------
-    st.markdown("### ⚙️ Debug Metrics")
-    st.code(f"""
-Rows processed: {len(df_src):,}
-Categories: {df_src['label'].nunique()}
-Total registrations: {df_src['value'].sum():,.0f}
-Top category: {top_cat_row['label']} → {top_cat_row['value']:,.0f} ({top_cat_share:.2f}%)
-CAGR: {cagr:.2f}%
-Latest MoM: {latest_mom}
-Runtime: {time.time()-start_time:.2f}s
-""", language='yaml')
+                # Column widths
+                for i, col in enumerate(pivot_year.columns):
+                    ws2.set_column(i+1, i+1, max(len(str(col)), 15))  # +1 for index
+        
+                # Conditional formatting for highest value
+                ws2.conditional_format(1,1,len(pivot_year),len(pivot_year.columns), {'type': '3_color_scale'})
+        
+                # Add sparkline for total registrations per year
+                ws2.write(len(pivot_year)+2,0, "Trend (Sparkline)")
+                ws2.add_sparkline(len(pivot_year)+2,1, {'range': f'B2:{chr(65+len(pivot_year.columns))}{1+len(pivot_year)}', 'type':'line', 'max':True, 'min':True})
+        
+                # Column chart for total registrations
+                chart = workbook.add_chart({'type': 'column'})
+                chart.add_series({
+                    'name': 'Total Registrations',
+                    'categories': ['Yearly_Pivot', 1, 0, len(pivot_year), 0],
+                    'values': ['Yearly_Pivot', 1, 1, len(pivot_year), 1],
+                    'fill': {'color': '#008793'}
+                })
+                chart.set_title({'name': 'Total Registrations per Year'})
+                chart.set_x_axis({'name': 'Year'})
+                chart.set_y_axis({'name': 'Registrations'})
+                ws2.insert_chart('H2', chart, {'x_scale': 1.5, 'y_scale': 1.5})
+        
+            # ------------------ Sheet 3: Top Categories ------------------
+            top_cat_df = df_src.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False)
+            top_cat_df.to_excel(writer, sheet_name="Top_Categories", index=False)
+            ws3 = writer.sheets["Top_Categories"]
+        
+            for i, col in enumerate(top_cat_df.columns):
+                ws3.set_column(i, i, max(len(str(col)), 20))
+        
+            # Top 10 bar chart
+            n_top = min(10, len(top_cat_df))
+            chart2 = workbook.add_chart({'type': 'bar'})
+            chart2.add_series({
+                'name': 'Registrations',
+                'categories': ['Top_Categories', 1, 0, n_top, 0],
+                'values': ['Top_Categories', 1, 1, n_top, 1],
+                'fill': {'color': '#004d7a'}
+            })
+            chart2.set_title({'name': 'Top 10 Categories'})
+            chart2.set_x_axis({'name': 'Registrations'})
+            chart2.set_y_axis({'name': 'Category'})
+            ws3.insert_chart('D2', chart2, {'x_scale': 2, 'y_scale': 1.5})
+        
+        # XLSX written automatically
+        processed_data = output.getvalue()
+        st.download_button("💾 Download Categories Dashboard", processed_data, "ALL-MAXED_Categories_Dashboard.xlsx")
 
-except Exception as e:
-    st.error(f"⛔ ALL-MAXED summary failed: {e}")
-    import traceback as _tb
-    st.text(_tb.format_exc())
+    
+        # ----------------------------------------------------
+        # 7️⃣ DEBUG METRICS
+        # ----------------------------------------------------
+        summary_time = time.time() - summary_start
+        st.markdown("### ⚙️ Debug Performance Metrics")
+        st.code(f"""
+    Rows processed: {len(df_src):,}
+    Categories: {df_src['label'].nunique()}
+    Total registrations: {df_src['value'].sum():,.0f}
+    Top category: {top_cat_row['label']} → {top_cat_row['value']:,.0f} ({top_cat_share:.2f}%)
+    Peak year: {top_year_row['year']} → {top_year_row['value']:,.0f}
+    CAGR: {cagr:.2f}%
+    Latest MoM: {latest_mom}
+    Runtime: {summary_time:.2f}s
+    """, language="yaml")
+    
+    except Exception as e:
+        st.error(f"⛔ ALL-MAXED summary failed: {e}")
+        import traceback as _tb
+        st.text(_tb.format_exc())
+
 
     
 # -----------------------------------------------------
