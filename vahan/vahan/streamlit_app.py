@@ -3872,9 +3872,9 @@ def all_maxed_category_block(params: Optional[dict] = None):
         st.markdown(f"⏱️ Runtime: {summary_time:.2f}s")
 
     except Exception as e:
-    st.error(f"ALL-MAXED summary failed: {e}")
-    import traceback as _tb
-    st.text(_tb.format_exc())
+        st.error(f"ALL-MAXED summary failed: {e}")
+        import traceback as _tb
+        st.text(_tb.format_exc())
     
 # -----------------------------------------------------
 # 🧩 Safe Entry Point — Streamlit-only Execution Guard
