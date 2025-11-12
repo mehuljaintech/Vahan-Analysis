@@ -2450,15 +2450,14 @@ def all_maxed_category_block(params: Optional[dict] = None):
 
     print("="*80 + "\n")
     
-    import plotly.express as px
-    import plotly.graph_objects as go
-    import streamlit as st
-    import numpy as np
     
     # -------------------------
-    # Combined View — MAXED
+    # Combined vs Separate Mode
     # -------------------------
     if mode.startswith("Combined"):
+        # -------------------------
+        # Combined View — MAXED
+        # -------------------------
         print("\n" + "="*80)
         print("[COMBINED VIEW] 🌈 Rendering Combined (Stacked + Overlay) Maxed View")
         print(f"[COMBINED VIEW] DataFrame shape: {resampled.shape}")
@@ -2467,127 +2466,71 @@ def all_maxed_category_block(params: Optional[dict] = None):
     
         st.markdown("### 🌈 Stacked & Overlay Trends — Maxed Combined View")
     
-        # -------------------------
-        # Stats for annotations
-        # -------------------------
         total_reg = resampled["value"].sum()
         mean_val = resampled["value"].mean()
         median_val = resampled["value"].median()
     
-        # -------------------------
-        # Stacked Area Chart
-        # -------------------------
+        # --- Stacked Area Chart ---
         try:
-            print("[COMBINED VIEW] ▶ Generating maxed stacked area chart...")
             fig_area = px.area(
-                resampled,
-                x="ds",
-                y="value",
-                color="label",
+                resampled, x="ds", y="value", color="label",
                 title="📊 Stacked Registrations by Category Over Time",
-                color_discrete_sequence=px.colors.qualitative.Set3,
+                color_discrete_sequence=px.colors.qualitative.Set3
             )
-    
-            # Add mean/median lines across all categories
             fig_area.add_hline(y=mean_val, line_dash="dash", line_color="green",
                                annotation_text=f"Mean: {mean_val:.0f}", annotation_position="top left")
             fig_area.add_hline(y=median_val, line_dash="dot", line_color="blue",
                                annotation_text=f"Median: {median_val:.0f}", annotation_position="bottom right")
-    
-            # Optional shaded area for min/max
-            min_max = resampled.groupby("ds")["value"].agg(["min", "max"]).reset_index()
-            fig_area.add_traces([
-                go.Scatter(
-                    x=min_max["ds"].tolist() + min_max["ds"].tolist()[::-1],
-                    y=min_max["max"].tolist() + min_max["min"].tolist()[::-1],
-                    fill='toself',
-                    fillcolor='rgba(0,176,246,0.08)',
-                    line=dict(color='rgba(255,255,255,0)'),
-                    hoverinfo="skip",
-                    showlegend=False,
-                )
-            ])
-    
             fig_area.update_layout(
                 template="plotly_white",
                 legend_title_text="Category",
                 legend=dict(orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5),
-                xaxis_title="Date",
-                yaxis_title="Registrations",
+                xaxis_title="Date", yaxis_title="Registrations",
                 margin=dict(t=80, b=100, l=60, r=40),
                 hovermode="x unified",
                 title_font=dict(size=22, family="Segoe UI", color="#222"),
-                height=500,
+                height=500
             )
-    
-            # Custom hover template
             fig_area.update_traces(
                 hovertemplate="<b>%{fullData.name}</b><br>Date: %{x|%b %Y}<br>Registrations: %{y:,}"
             )
-    
             st.plotly_chart(fig_area, use_container_width=True)
-            print("[COMBINED VIEW] ✅ Maxed stacked area chart rendered successfully.")
         except Exception as e:
-            print(f"[COMBINED VIEW] ❌ Stacked area failed: {e}")
             st.warning(f"⚠️ Stacked area failed: {e}")
     
-        # -------------------------
-        # Overlay Line Chart
-        # -------------------------
+        # --- Overlay Line Chart ---
         try:
-            print("[COMBINED VIEW] ▶ Generating maxed overlay line chart...")
             fig_line = px.line(
-                resampled,
-                x="ds",
-                y="value",
-                color="label",
-                title="📈 Category Trends Overlay",
-                markers=True,
-                color_discrete_sequence=px.colors.qualitative.Bold,
+                resampled, x="ds", y="value", color="label",
+                title="📈 Category Trends Overlay", markers=True,
+                color_discrete_sequence=px.colors.qualitative.Bold
             )
-    
             fig_line.update_traces(line=dict(width=3))
-    
-            # Add mean/median lines
             fig_line.add_hline(y=mean_val, line_dash="dash", line_color="green",
                                annotation_text=f"Mean: {mean_val:.0f}", annotation_position="top left")
             fig_line.add_hline(y=median_val, line_dash="dot", line_color="blue",
                                annotation_text=f"Median: {median_val:.0f}", annotation_position="bottom right")
-    
             fig_line.update_layout(
                 template="plotly_white",
                 legend_title_text="Category",
                 legend=dict(orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5),
-                xaxis_title="Date",
-                yaxis_title="Registrations",
+                xaxis_title="Date", yaxis_title="Registrations",
                 margin=dict(t=80, b=100, l=60, r=40),
                 hovermode="x unified",
                 title_font=dict(size=22, family="Segoe UI", color="#222"),
-                height=500,
+                height=500
             )
-    
-            # Custom hover template
             fig_line.update_traces(
                 hovertemplate="<b>%{fullData.name}</b><br>Date: %{x|%b %Y}<br>Registrations: %{y:,}"
             )
-    
             st.plotly_chart(fig_line, use_container_width=True)
-            print("[COMBINED VIEW] ✅ Maxed overlay line chart rendered successfully.")
         except Exception as e:
-            print(f"[COMBINED VIEW] ❌ Overlay lines failed: {e}")
             st.warning(f"⚠️ Overlay lines failed: {e}")
     
-        print("="*80 + "\n")
-    
-    import streamlit as st
-    import plotly.express as px
-    import plotly.graph_objects as go
-    import numpy as np
-    
-    # -------------------------
-    # Separate Mode (Small Multiples) — MAXED
-    # -------------------------
     else:
+        # -------------------------
+        # Separate Mode (Small Multiples) — MAXED
+        # -------------------------
         print("\n" + "="*80)
         print("[SEPARATE VIEW] 🧩 Rendering Maxed Small Multiples (Yearly Category Distribution)")
         print(f"[SEPARATE VIEW] Incoming DataFrame shape: {resampled.shape}")
@@ -2598,114 +2541,89 @@ def all_maxed_category_block(params: Optional[dict] = None):
     
         try:
             years_sorted = sorted(resampled["year"].unique())
-            print(f"[SEPARATE VIEW] Years detected: {years_sorted}")
-        except Exception as e:
-            print(f"[SEPARATE VIEW] ❌ Failed to extract years: {e}")
+        except Exception:
             years_sorted = []
     
         sel_small = st.multiselect(
             "Select specific years for small multiples (limit 6)",
             years_sorted,
-            default=years_sorted[-min(3, len(years_sorted)):] if years_sorted else [],
+            default=years_sorted[-min(3, len(years_sorted)):] if years_sorted else []
         )
-        print(f"[SEPARATE VIEW] Selected years: {sel_small}")
     
-        if not sel_small:
-            print("[SEPARATE VIEW] ⚠️ No years selected — aborting rendering.")
-            st.info("Select at least one year to show small multiples.")
-        else:
+        if sel_small:
             for y in sel_small[:6]:
-                print(f"[SEPARATE VIEW] ▶ Rendering maxed bar chart for year: {y}")
                 d = resampled[resampled["year"] == y]
                 if d.empty:
-                    print(f"[SEPARATE VIEW] ⚠️ No data found for year {y}")
                     st.caption(f"⚠️ No data for {y}")
                     continue
     
-                try:
-                    # -------------------------
-                    # Stats for annotations
-                    # -------------------------
-                    total_reg = d["value"].sum()
-                    mean_val = d["value"].mean()
-                    median_val = d["value"].median()
+                total_reg = d["value"].sum()
+                mean_val = d["value"].mean()
+                median_val = d["value"].median()
     
-                    fig_bar = px.bar(
-                        d,
-                        x="label",
-                        y="value",
-                        color="label",
-                        text_auto=".2s",
-                        title=f"📊 Category Distribution — {y}",
-                        color_discrete_sequence=px.colors.qualitative.Pastel1,
-                    )
-    
-                    # Add mean/median lines
-                    fig_bar.add_hline(y=mean_val, line_dash="dash", line_color="green",
-                                      annotation_text=f"Mean: {mean_val:.0f}", annotation_position="top left")
-                    fig_bar.add_hline(y=median_val, line_dash="dot", line_color="blue",
-                                      annotation_text=f"Median: {median_val:.0f}", annotation_position="bottom right")
-    
-                    # Layout
-                    fig_bar.update_traces(textfont_size=12)
-                    fig_bar.update_layout(
-                        showlegend=True,
-                        legend_title_text="Category",
-                        template="plotly_white",
-                        margin=dict(t=60, b=40, l=40, r=40),
-                        height=450,
-                        yaxis_title="Registrations",
-                        xaxis_title="Category",
-                        title_font=dict(size=20, family="Segoe UI", color="#222"),
-                        hovermode="x unified",
-                    )
-    
-                    # Custom hover: value + % share
-                    fig_bar.update_traces(
-                        hovertemplate="<b>%{x}</b><br>Registrations: %{y:,}<br>Share: %{customdata[0]:.1%}",
-                        customdata=np.array(d["value"] / total_reg).reshape(-1, 1),
-                        marker_line_width=1.5,
-                    )
-    
-                    st.plotly_chart(fig_bar, use_container_width=True)
-                    print(f"[SEPARATE VIEW] ✅ Maxed bar chart for {y} rendered successfully.")
-    
-                except Exception as e:
-                    print(f"[SEPARATE VIEW] ❌ Failed to plot {y}: {e}")
-                    st.warning(f"⚠️ Failed to plot {y}: {e}")
-    
-        print("="*80 + "\n")
-
+                fig_bar = px.bar(
+                    d, x="label", y="value", color="label",
+                    text_auto=".2s",
+                    title=f"📊 Category Distribution — {y}",
+                    color_discrete_sequence=px.colors.qualitative.Pastel1
+                )
+                fig_bar.add_hline(y=mean_val, line_dash="dash", line_color="green",
+                                  annotation_text=f"Mean: {mean_val:.0f}", annotation_position="top left")
+                fig_bar.add_hline(y=median_val, line_dash="dot", line_color="blue",
+                                  annotation_text=f"Median: {median_val:.0f}", annotation_position="bottom right")
+                fig_bar.update_layout(
+                    template="plotly_white",
+                    margin=dict(t=60, b=40, l=40, r=40),
+                    height=450,
+                    xaxis_title="Category",
+                    yaxis_title="Registrations",
+                    hovermode="x unified"
+                )
+                fig_bar.update_traces(
+                    hovertemplate="<b>%{x}</b><br>Registrations: %{y:,}<br>Share: %{customdata[0]:.1%}",
+                    customdata=np.array(d["value"] / total_reg).reshape(-1, 1)
+                )
+                st.plotly_chart(fig_bar, use_container_width=True)
+        else:
+            st.info("Select at least one year to show small multiples.")
     # -------------------------
-    # Optional Advanced Visuals
+    # Optional Advanced Visuals — MAXED
     # -------------------------
     print("\n" + "="*80)
     print("[ADVANCED VISUALS] ⚙️ Starting optional visualization layer...")
     print(f"[ADVANCED VISUALS] show_heatmap={show_heatmap}, show_radar={show_radar}")
     print(f"[ADVANCED VISUALS] pivot_year shape: {pivot_year.shape if 'pivot_year' in locals() else 'N/A'}")
     print("-"*80)
-
+    
+    # --- Heatmap ---
     if show_heatmap:
         print("[HEATMAP] 🔥 Rendering category heatmap (Year × Category)...")
         st.markdown("### 🔥 Category Heatmap (Year × Category)")
         try:
             pivot_heat = pivot_year.copy()
-            print(f"[HEATMAP] Pivot_heat shape: {pivot_heat.shape}")
-            print(f"[HEATMAP] Columns: {list(pivot_heat.columns)} | Years: {list(pivot_heat.index)}")
-
             fig_heat = px.imshow(
                 pivot_heat.T,
                 labels=dict(x="Year", y="Category", color="Registrations"),
+                text_auto=True,
                 aspect="auto",
                 color_continuous_scale="YlOrRd",
                 title="Heatmap of Registrations per Category per Year",
+            )
+            fig_heat.update_layout(
+                template="plotly_white",
+                title_font=dict(size=20, family="Segoe UI", color="#222"),
+                xaxis=dict(tickangle=-45),
+                yaxis=dict(tickfont=dict(size=12)),
+                margin=dict(t=80, b=80, l=60, r=40),
+                height=500
             )
             st.plotly_chart(fig_heat, use_container_width=True)
             print("[HEATMAP] ✅ Heatmap rendered successfully.")
         except Exception as e:
             print(f"[HEATMAP] ❌ Heatmap failed: {e}")
             st.warning(f"⚠️ Heatmap failed: {e}")
-
+    
+    # --- Radar Chart ---
     if show_radar:
         print("[RADAR] 🕸️ Rendering radar chart (Category profiles per year)...")
         st.markdown("### 🕸️ Radar Chart — Category Profiles per Year")
@@ -2713,31 +2631,47 @@ def all_maxed_category_block(params: Optional[dict] = None):
             import plotly.graph_objects as go
             cats = list(pivot_year.columns)
             years_for_radar = sorted(pivot_year.index)[-min(4, len(pivot_year.index)):]
-            print(f"[RADAR] Categories: {cats}")
-            print(f"[RADAR] Years included: {years_for_radar}")
-
             fig_radar = go.Figure()
-            for y in years_for_radar:
+            colors = px.colors.qualitative.Set2
+    
+            for i, y in enumerate(years_for_radar):
                 vals = pivot_year.loc[y].values
-                print(f"[RADAR] Adding trace for year {y} — total {len(vals)} values.")
                 fig_radar.add_trace(go.Scatterpolar(
                     r=vals,
                     theta=cats,
                     fill='toself',
                     name=str(y),
+                    opacity=0.6,
+                    line=dict(color=colors[i % len(colors)], width=2),
+                    hovertemplate="<b>%{theta}</b><br>Registrations: %{r:,}<extra>%{fullData.name}</extra>"
                 ))
+    
+            # Optional mean line overlay
+            mean_vals = pivot_year.loc[years_for_radar].mean()
+            fig_radar.add_trace(go.Scatterpolar(
+                r=mean_vals.values,
+                theta=cats,
+                fill=None,
+                line=dict(color="black", width=3, dash="dash"),
+                name="Mean",
+                hovertemplate="<b>%{theta}</b><br>Mean Registrations: %{r:.0f}<extra>%{fullData.name}</extra>"
+            ))
+    
             fig_radar.update_layout(
-                polar=dict(radialaxis=dict(visible=True)),
+                polar=dict(radialaxis=dict(visible=True, tickformat=",", nticks=5)),
                 showlegend=True,
                 template="plotly_white",
                 title="Radar Comparison of Category Patterns",
+                title_font=dict(size=20, family="Segoe UI", color="#222"),
+                height=500,
+                margin=dict(t=80, b=60, l=60, r=60)
             )
             st.plotly_chart(fig_radar, use_container_width=True)
             print("[RADAR] ✅ Radar chart rendered successfully.")
         except Exception as e:
             print(f"[RADAR] ❌ Radar chart failed: {e}")
             st.warning(f"⚠️ Radar chart failed: {e}")
-
+    
     print("="*80 + "\n")
 
     # -------------------------
@@ -2747,23 +2681,17 @@ def all_maxed_category_block(params: Optional[dict] = None):
     print("[DONUT+SUNBURST] 🍩 Starting latest-period visualization block...")
     print(f"[DONUT+SUNBURST] resampled rows={len(resampled) if 'resampled' in locals() else 'N/A'}")
     print("-"*80)
-
+    
     st.markdown("### 🍩 Donut & Sunburst — Latest Available Period (All-Maxed)")
-
+    
     if resampled.empty:
-        print("[DONUT+SUNBURST] ⚠️ resampled DataFrame is empty.")
         st.warning("⚠️ No resampled data available for donut/sunburst charts.")
     else:
-        # Find latest period with valid data
-        latest_period = (
-            resampled.loc[resampled["value"] > 0, "ds"].max()
-            if not resampled.empty
-            else None
-        )
+        # Latest period
+        latest_period = resampled.loc[resampled["value"] > 0, "ds"].max()
         print(f"[DONUT+SUNBURST] Latest period detected: {latest_period}")
-
+    
         if latest_period is None or pd.isna(latest_period):
-            print("[DONUT+SUNBURST] ⚠️ No valid (non-zero) data found for latest period.")
             st.info("No valid non-zero data found for latest period visualization.")
         else:
             d_latest = (
@@ -2774,12 +2702,9 @@ def all_maxed_category_block(params: Optional[dict] = None):
             )
             total_latest = d_latest["value"].sum()
             d_latest["Share_%"] = (d_latest["value"] / total_latest * 100).round(2)
-            print(f"[DONUT+SUNBURST] Latest snapshot shape: {d_latest.shape}")
-            print(f"[DONUT+SUNBURST] Total registrations in latest period: {int(total_latest):,}")
-
+    
             if not d_latest.empty and total_latest > 0:
                 # --- Donut Chart ---
-                print("[DONUT] 🍩 Rendering donut chart...")
                 try:
                     fig_donut = px.pie(
                         d_latest,
@@ -2799,23 +2724,21 @@ def all_maxed_category_block(params: Optional[dict] = None):
                         template="plotly_white",
                         showlegend=True,
                         legend_title_text="Category",
+                        title_font=dict(size=20, family="Segoe UI", color="#222"),
+                        height=450,
                     )
                     st.plotly_chart(fig_donut, use_container_width=True)
                     print("[DONUT] ✅ Donut chart rendered successfully.")
                 except Exception as e:
-                    print(f"[DONUT] ❌ Donut chart failed: {e}")
                     st.warning(f"⚠️ Donut chart failed: {e}")
-
+    
                 # --- Sunburst Chart ---
-                print("[SUNBURST] 🌞 Rendering sunburst chart (year → category)...")
                 try:
                     sb = (
                         df_cat_all.groupby(["year", "label"], as_index=False)["value"]
                         .sum()
                         .sort_values(["year", "value"], ascending=[True, False])
                     )
-                    print(f"[SUNBURST] Data shape: {sb.shape}, Years: {sb['year'].unique().tolist()}")
-
                     fig_sb = px.sunburst(
                         sb,
                         path=["year", "label"],
@@ -2825,26 +2748,28 @@ def all_maxed_category_block(params: Optional[dict] = None):
                         title="🌞 Sunburst — Year → Category → Value",
                         hover_data={"value": True},
                     )
-                    fig_sb.update_layout(template="plotly_white")
+                    fig_sb.update_layout(
+                        template="plotly_white",
+                        title_font=dict(size=20, family="Segoe UI", color="#222"),
+                        height=500,
+                    )
                     st.plotly_chart(fig_sb, use_container_width=True)
                     print("[SUNBURST] ✅ Sunburst chart rendered successfully.")
                 except Exception as e:
-                    print(f"[SUNBURST] ❌ Sunburst chart failed: {e}")
                     st.warning(f"⚠️ Sunburst chart failed: {e}")
-
-                # --- Data summary ---
-                print("[SUMMARY] 📋 Displaying latest period data summary table...")
+    
+                # --- Data Summary Table ---
                 with st.expander("📋 Latest Period Data Summary"):
                     st.dataframe(
                         d_latest.style.format({"value": "{:,}", "Share_%": "{:.2f}"}),
                         use_container_width=True,
+                        height=300,
                     )
-                    print(f"[SUMMARY] Table columns: {list(d_latest.columns)}")
                     print("[SUMMARY] ✅ Data summary rendered.")
+    
             else:
-                print("[DONUT+SUNBURST] ⚠️ Latest period has zero or empty category values.")
                 st.info("⚠️ Latest period has zero or empty category values.")
-
+    
     print("[DONUT+SUNBURST] ✅ Block completed successfully.")
     print("="*80 + "\n")
 
@@ -2853,44 +2778,38 @@ def all_maxed_category_block(params: Optional[dict] = None):
     # -------------------------
     if show_heatmap:
         st.markdown("### 🔥 Heatmap — Year × Category (All-Maxed)")
-
+    
         print("\n[DEBUG] 🔥 show_heatmap is True")
         print(f"[DEBUG] pivot_year shape: {pivot_year.shape if 'pivot_year' in locals() else 'pivot_year not defined'}")
-
+    
         if pivot_year.empty:
             st.info("⚠️ No category data available for heatmap.")
             print("[DEBUG] pivot_year is empty — skipping heatmap.")
         else:
             try:
-                # Normalize optionally (for visual contrast)
+                # Copy and prepare data
                 heat = pivot_year.copy()
                 print(f"[DEBUG] heat (pivot_year copy) — columns: {list(heat.columns)}, index (years): {list(heat.index)}")
-
-                heat_norm = heat.div(heat.max(axis=1), axis=0).fillna(0)
-                print("[DEBUG] heat_norm (normalized) — sample:")
-                print(heat_norm.head())
-
-                # Add toggle for normalization
+    
+                # Toggle normalization
                 normalize_opt = st.toggle("Normalize heatmap (relative per year)", value=True)
-                print(f"[DEBUG] normalize_opt: {normalize_opt}")
-
-                heat_used = heat_norm if normalize_opt else heat
+                heat_used = heat.div(heat.max(axis=1), axis=0).fillna(0) if normalize_opt else heat
                 print(f"[DEBUG] Using {'normalized' if normalize_opt else 'absolute'} data for heatmap.")
-                print("[DEBUG] heat_used sample:")
-                print(heat_used.head())
-
+    
+                # Build heatmap
                 fig_h = go.Figure(
                     data=go.Heatmap(
                         z=heat_used.values,
                         x=heat_used.columns.astype(str),
                         y=heat_used.index.astype(str),
                         colorscale="Viridis",
+                        hovertemplate="%{y} | %{x}: %{z:,.2f}" if normalize_opt else "%{y} | %{x}: %{z:,}",
+                        text=heat_used.round(2) if normalize_opt else None,
+                        texttemplate="%{text:.2f}" if normalize_opt else None,
                         hoverongaps=False,
-                        texttemplate="%{z:.1f}" if normalize_opt else None,
                     )
                 )
-                print("[DEBUG] Heatmap figure created successfully.")
-
+    
                 fig_h.update_layout(
                     title=(
                         "Normalized Registrations by Category per Year"
@@ -2900,24 +2819,26 @@ def all_maxed_category_block(params: Optional[dict] = None):
                     xaxis_title="Category",
                     yaxis_title="Year",
                     template="plotly_white",
-                    coloraxis_colorbar=dict(
-                        title="Registrations" if not normalize_opt else "Share (0–1)"
-                    ),
                     height=500,
+                    margin=dict(t=80, b=60, l=60, r=40),
+                    coloraxis_colorbar=dict(
+                        title="Share (0–1)" if normalize_opt else "Registrations"
+                    ),
                 )
+    
                 st.plotly_chart(fig_h, use_container_width=True)
                 print("[DEBUG] Heatmap rendered successfully in Streamlit.")
-
-                # Optional: Table summary
+    
+                # Optional: Data table with gradient
                 with st.expander("📋 View Heatmap Data Table"):
                     st.dataframe(
                         heat_used.round(2)
-                        .style.format("{:,.0f}" if not normalize_opt else "{:.2f}")
+                        .style.format("{:.2f}" if normalize_opt else "{:,.0f}")
                         .background_gradient(cmap="viridis"),
                         use_container_width=True,
                     )
                     print("[DEBUG] Heatmap data table shown in expander.")
-
+    
             except Exception as e:
                 st.warning(f"⚠️ Heatmap rendering failed: {e}")
                 print(f"[ERROR] Heatmap rendering failed: {e}")
@@ -2927,43 +2848,29 @@ def all_maxed_category_block(params: Optional[dict] = None):
     # -------------------------
     if show_radar:
         st.markdown("### 🌈 Radar — Category Profile Snapshot (All-Maxed)")
-
+    
         print("\n[DEBUG] 🌈 show_radar is True")
         print(f"[DEBUG] pivot_year shape: {pivot_year.shape if 'pivot_year' in locals() else 'pivot_year not defined'}")
-
+    
         if pivot_year.empty:
             st.info("⚠️ Not enough data for radar visualization.")
             print("[DEBUG] pivot_year is empty — skipping radar.")
         else:
             try:
+                # Select last 4 years (or fewer)
                 yrs_for_radar = sorted(pivot_year.index)[-min(4, len(pivot_year.index)):]
                 cats = pivot_year.columns.tolist()
-
-                print(f"[DEBUG] Years selected for radar: {yrs_for_radar}")
-                print(f"[DEBUG] Categories (theta): {cats}")
-
-                # Normalize per category for better radar comparison
                 radar_df = pivot_year.copy()
-                print("[DEBUG] radar_df sample (raw):")
-                print(radar_df.head())
-
-                radar_df_norm = radar_df.div(radar_df.max(axis=0), axis=1).fillna(0)
-                print("[DEBUG] radar_df_norm sample (normalized):")
-                print(radar_df_norm.head())
-
+    
+                # Optional normalization
                 normalize_radar = st.toggle("Normalize radar per category (0–1)", value=True)
-                print(f"[DEBUG] normalize_radar: {normalize_radar}")
-
-                df_radar_used = radar_df_norm if normalize_radar else radar_df
+                df_radar_used = radar_df.div(radar_df.max(axis=0), axis=1).fillna(0) if normalize_radar else radar_df
                 print(f"[DEBUG] Using {'normalized' if normalize_radar else 'absolute'} data for radar plot.")
-                print(f"[DEBUG] df_radar_used shape: {df_radar_used.shape}")
-
-                # --- Build Radar Chart ---
+    
+                # Build radar figure
                 fig_r = go.Figure()
                 for y in yrs_for_radar:
                     vals = df_radar_used.loc[y].values.tolist()
-                    print(f"[DEBUG] Year {y} — values: {vals}")
-
                     fig_r.add_trace(
                         go.Scatterpolar(
                             r=vals,
@@ -2973,7 +2880,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
                             hovertemplate="<b>%{theta}</b><br>Value: %{r:.2f}<extra></extra>",
                         )
                     )
-
+    
                 fig_r.update_layout(
                     polar=dict(
                         radialaxis=dict(
@@ -2989,10 +2896,11 @@ def all_maxed_category_block(params: Optional[dict] = None):
                     template="plotly_white",
                     height=600,
                 )
+    
                 st.plotly_chart(fig_r, use_container_width=True)
                 print("[DEBUG] Radar chart rendered successfully.")
-
-                # --- Data Summary ---
+    
+                # Optional data table
                 with st.expander("📋 Radar Data Used"):
                     st.dataframe(
                         df_radar_used.round(2)
@@ -3001,7 +2909,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
                         use_container_width=True,
                     )
                     print("[DEBUG] Radar data table displayed in expander.")
-
+    
             except Exception as e:
                 st.warning(f"⚠️ Radar chart rendering failed: {e}")
                 print(f"[ERROR] Radar chart rendering failed: {e}")
@@ -3181,28 +3089,29 @@ def all_maxed_category_block(params: Optional[dict] = None):
     if do_anomaly:
         st.markdown("## ⚠️ Anomaly Detection (All-Maxed)")
         st.caption("Detects outliers and abnormal spikes/drops per category time series using IsolationForest + z-score fallback.")
-
+    
         try:
             from sklearn.ensemble import IsolationForest
             import numpy as np
-
-            # --- User Params ---
+            import pandas as pd
+            import plotly.graph_objects as go
+    
+            # --- User Parameters ---
             with st.expander("⚙️ Detection Parameters"):
                 contamination_default = st.slider("Contamination Base Rate", 0.005, 0.1, 0.02, 0.005)
                 z_threshold = st.slider("Z-Score Threshold (fallback)", 1.5, 4.0, 2.8, 0.1)
                 n_estimators = st.slider("Isolation Forest Trees", 50, 500, 200, 50)
                 rolling_window = st.slider("Rolling Window (z-score fallback)", 3, 12, 6, 1)
-
-            anomalies = []
+    
             anomaly_records = []
-
+    
             if resampled.empty:
                 st.warning("No resampled data available for anomaly detection.")
             else:
                 categories = sorted(resampled["label"].unique())
                 prog_bar = st.progress(0.0)
                 total_detected = 0
-
+    
                 for i, cat in enumerate(categories):
                     prog_bar.progress((i + 1) / len(categories))
                     ser = (
@@ -3211,15 +3120,16 @@ def all_maxed_category_block(params: Optional[dict] = None):
                         .fillna(0)
                         .sort_index()
                     )
-
+    
                     if len(ser) < 8 or ser.std() == 0:
+                        print(f"[DEBUG] Skipping {cat} — insufficient length or zero variance")
                         continue
-
+    
                     # --- Adaptive contamination ---
                     cont_rate = min(0.05, max(0.005, contamination_default * (ser.std() / (ser.mean() + 1e-9))))
                     print(f"[DEBUG] Category={cat}, Adaptive Contamination={cont_rate:.4f}")
-
-                    # --- IsolationForest ---
+    
+                    # --- IsolationForest Detection ---
                     try:
                         iso = IsolationForest(
                             contamination=cont_rate,
@@ -3231,24 +3141,25 @@ def all_maxed_category_block(params: Optional[dict] = None):
                         preds = iso.fit_predict(X)
                         an_idxs = ser.index[preds == -1]
                         ser_an = ser.loc[an_idxs]
+    
                         for dt, val in ser_an.items():
-                            anomaly_records.append(
-                                {"Category": cat, "Date": dt, "Value": val}
-                            )
+                            anomaly_records.append({"Category": cat, "Date": dt, "Value": val})
                             total_detected += 1
+    
                     except Exception as e_if:
                         print(f"[WARN] IsolationForest failed for {cat}: {e_if}")
-                        # --- Fallback: rolling z-score ---
-                        zscores = (ser - ser.rolling(rolling_window, min_periods=2).mean()) / ser.rolling(rolling_window, min_periods=2).std()
+                        # --- Fallback: Rolling Z-Score ---
+                        rolling_mean = ser.rolling(rolling_window, min_periods=2).mean()
+                        rolling_std = ser.rolling(rolling_window, min_periods=2).std()
+                        zscores = (ser - rolling_mean) / rolling_std
                         ser_an = ser[np.abs(zscores) > z_threshold]
+    
                         for dt, val in ser_an.items():
-                            anomaly_records.append(
-                                {"Category": cat, "Date": dt, "Value": val}
-                            )
+                            anomaly_records.append({"Category": cat, "Date": dt, "Value": val})
                             total_detected += 1
-
+    
                 prog_bar.empty()
-
+    
                 # -------------------------------
                 # 🧾 Summary + Visualization
                 # -------------------------------
@@ -3257,17 +3168,16 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 else:
                     df_an = pd.DataFrame(anomaly_records)
                     df_an["Date"] = pd.to_datetime(df_an["Date"])
+    
                     st.markdown("### 📋 Detected Anomalies Summary")
                     st.dataframe(
-                        df_an.sort_values("Date", ascending=False).style.format(
-                            {"Value": "{:,.0f}"}
-                        ),
+                        df_an.sort_values("Date", ascending=False).style.format({"Value": "{:,.0f}"}),
                         use_container_width=True,
                         height=300,
                     )
-
+    
                     st.info(f"📊 {total_detected} anomalies detected across {len(categories)} categories.")
-
+    
                     # --- Category selector for visualization ---
                     sel_cat = st.selectbox(
                         "🔍 View anomalies for a specific category", sorted(df_an["Category"].unique())
@@ -3279,7 +3189,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
                         .sort_index()
                     )
                     an_dates = df_an[df_an["Category"] == sel_cat]["Date"]
-
+    
                     fig_a = go.Figure()
                     fig_a.add_trace(
                         go.Scatter(
@@ -3308,7 +3218,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
                         height=500,
                     )
                     st.plotly_chart(fig_a, use_container_width=True)
-
+    
         except Exception as e:
             st.warning(f"⚠️ Anomaly detection failed: {e}")
             print("[ERROR] Anomaly detection exception:", e)
