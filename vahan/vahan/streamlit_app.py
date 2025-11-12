@@ -1941,27 +1941,6 @@ def fetch_year_category(years, params, show_debug=True, show_summary=True):
         show_summary (bool): Display multi-year comparison summary.
     """
 
-    params = {
-        "from_year": from_year,
-        "to_year": to_year,
-        "state_cd": clean_str(state_code),
-        "rto_cd": clean_str(rto_code),
-        "vclass": clean_str(vehicle_classes),
-        "maker": clean_str(vehicle_makers),
-        "time_period": time_period,
-        "include_fitness": "Y" if fitness_check else "N",
-        "veh_type": clean_str(vehicle_type),
-        "_session_seed": datetime.now().strftime("%Y%m%d%H%M%S"),
-    }
-
-    params["_meta"] = {
-        "created": ist_now(),
-        "validated": True,
-        "safe_hash": abs(hash(json.dumps(params, sort_keys=True))) % 1_000_000,
-    }
-
-    log(f"🧩 Params built successfully → hash {params['_meta']['safe_hash']}", "SUCCESS")
-
     start = time.time()
     st.markdown("## 🚘 ALL-MAXED ULTRA — Multi-Year Category Analytics")
     print("\n============================================================")
