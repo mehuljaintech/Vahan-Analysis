@@ -7142,31 +7142,62 @@ try:
         cluster_df = pd.DataFrame({"State": pivot_year.columns if not pivot_year.empty else df_top5["State"].tolist(), "Cluster": 0})
 
     # -------------------------
-    # Debug metrics & smart summary
+    # 🧮 Debug metrics & 2-Year Smart Summary
     # -------------------------
-    rows_processed = len(df_trend)
-    total_revenue_all = int(df_trend["Revenue"].sum())
-    n_states = df_top5["State"].nunique()
-    volatility = df_trend.groupby("Year")["Revenue"].sum().pct_change().std() * 100 if df_trend["Year"].nunique() > 2 else 0.0
-    dominance_ratio = (top_state_value / total_revenue_all) * n_states if total_revenue_all > 0 else 0.0
-    run_time = time.time() - start_time
-
-    st.markdown("### ⚙️ Debug Performance Metrics")
-    st.code(
-f"""Years analyzed: {sorted(df_trend['Year'].unique().tolist())}
-Rows processed: {rows_processed:,}
-Total (sum) revenue: ₹{total_revenue_all:,}
-Top state: {top_state} → ₹{top_state_value:,}
-Dominance ratio: {dominance_ratio:.2f}
-Volatility (YoY sd%): {volatility:.2f}
-Runtime: {run_time:.2f}s
-""", language="yaml")
-
-    st.success(
-        f"From **{int(df_trend['Year'].min())}** to **{int(df_trend['Year'].max())}**, "
-        f"total revenue {('increased' if cagr>0 else 'declined' if cagr<0 else 'stable')}. "
-        f"Top state: **{top_state}** ({top_state_value:,} ₹)."
-    )
+    try:
+        years_sorted = sorted(df_trend["Year"].unique())
+        if len(years_sorted) >= 2:
+            prev_year, curr_year = years_sorted[-2], years_sorted[-1]
+            df_prev = df_trend[df_trend["Year"] == prev_year]
+            df_curr = df_trend[df_trend["Year"] == curr_year]
+    
+            rows_processed = len(df_trend)
+            total_prev = int(df_prev["Revenue"].sum())
+            total_curr = int(df_curr["Revenue"].sum())
+            yoy_change = ((total_curr - total_prev) / total_prev * 100) if total_prev else 0.0
+    
+            top_prev_state = df_prev.loc[df_prev["Revenue"].idxmax(), "State"]
+            top_prev_value = int(df_prev["Revenue"].max())
+    
+            top_curr_state = df_curr.loc[df_curr["Revenue"].idxmax(), "State"]
+            top_curr_value = int(df_curr["Revenue"].max())
+    
+            n_states = df_trend["State"].nunique()
+            volatility = (
+                df_trend.groupby("Year")["Revenue"].sum().pct_change().std() * 100
+                if len(years_sorted) > 2 else 0.0
+            )
+    
+            dominance_prev = (top_prev_value / total_prev) * n_states if total_prev else 0.0
+            dominance_curr = (top_curr_value / total_curr) * n_states if total_curr else 0.0
+    
+            run_time = time.time() - start_time
+    
+            st.markdown("### ⚙️ Debug Performance Metrics (2-Year Focus)")
+            st.code(
+    f"""Years analyzed: [{prev_year}, {curr_year}]
+    Rows processed: {rows_processed:,}
+    Total revenue ({prev_year}): ₹{total_prev:,}
+    Total revenue ({curr_year}): ₹{total_curr:,}
+    YoY Change: {yoy_change:+.2f}%
+    Top state {prev_year}: {top_prev_state} → ₹{top_prev_value:,}
+    Top state {curr_year}: {top_curr_state} → ₹{top_curr_value:,}
+    Dominance ratio {prev_year}: {dominance_prev:.2f}
+    Dominance ratio {curr_year}: {dominance_curr:.2f}
+    Volatility (YoY sd%): {volatility:.2f}
+    Runtime: {run_time:.2f}s
+    """, language="yaml")
+    
+            summary_direction = "increased" if yoy_change > 0 else "declined" if yoy_change < 0 else "remained stable"
+            st.success(
+                f"Between **{prev_year} → {curr_year}**, total revenue **{summary_direction} by {abs(yoy_change):.2f}%**.  "
+                f"Top state: **{top_curr_state}** (₹{top_curr_value:,})."
+            )
+        else:
+            st.info("ℹ️ Not enough data for 2-year comparison — only one year available.")
+    except Exception as e:
+        st.error(f"❌ 2-year debug summary failed: {e}")
+        print("[2-YEAR SUMMARY] Exception:", e)
 
     # -------------------------
     # ✅ Build Excel workbook in-memory (fixed .save issue)
