@@ -404,16 +404,24 @@ class AutoReloadHandler(FileSystemEventHandler):
         except Exception as e:
             log_ist(f"⚠️ Reload failed: {e}", "ERROR", Fore.RED)
 
+import os
+from colorama import Fore
+
 def start_auto_reload(watch_dir="."):
     """Start a background observer for live reload in development."""
-    handler = AutoReloadHandler([watch_dir])
-    observer = Observer()
-    observer.schedule(handler, watch_dir, recursive=True)
-    observer.daemon = True
-    observer.start()
-    log_ist(f"👀 Auto-reload active — watching {os.path.abspath(watch_dir)}", "INFO", Fore.CYAN)
-    return observer
+    try:
+        handler = AutoReloadHandler([watch_dir])
+        observer = Observer()
+        observer.schedule(handler, watch_dir, recursive=True)
+        observer.daemon = True
+        observer.start()
+        log_ist(f"👀 Auto-reload active — watching {os.path.abspath(watch_dir)}", "INFO", Fore.CYAN)
+        return observer
+    except Exception as e:
+        log_ist(f"⚠️ Auto-reload disabled: {e}", "WARNING", Fore.YELLOW)
+        return None
 
+# --- Prevent re-init ---
 if "watchdog_started" not in st.session_state:
     observer = start_auto_reload(".")
     st.session_state.watchdog_started = True
