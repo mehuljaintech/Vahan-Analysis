@@ -5528,15 +5528,13 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
     df_maker_all = df_maker_all.sort_values(["year", "value"], ascending=[True, False]).reset_index(drop=True)
     
     print(f"[ALL-MAXED] Combined all years: {len(df_maker_all)} rows")
-    st.success(f"✅ Combined data ready for {len(years)} years, total rows: {len(df_maker_all)}")
-
+  
     # -------------------------
     # Frequency expansion -> synthetic time series
     # -------------------------
     ts_list = []
     unique_years = sorted(df_maker_all["year"].unique())
     print(f"[ALL-MAXED] Expanding timeseries for years: {unique_years}")
-    st.info(f"⏳ Generating synthetic timeseries for {len(unique_years)} years...")
     
     for y in unique_years:
         df_y = df_maker_all[df_maker_all["year"] == y].reset_index(drop=True)
@@ -5559,8 +5557,7 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
     
     df_ts["ds"] = pd.to_datetime(df_ts["ds"])
     print(f"[ALL-MAXED] Combined synthetic timeseries: {len(df_ts)} rows")
-    st.success(f"✅ Synthetic timeseries ready: {len(df_ts)} rows across {len(unique_years)} years")
-
+  
     # -------------------------
     # Resample to requested frequency
     # -------------------------
@@ -5577,8 +5574,7 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
     resampled["year"] = resampled["ds"].dt.year
     
     print(f"[ALL-MAXED] Resampled DataFrame: {len(resampled)} rows, {resampled['label'].nunique()} unique labels")
-    st.info(f"✅ Timeseries resampled: {len(resampled)} rows, {resampled['label'].nunique()} makers")
-
+  
     # -------------------------
     # Pivot tables for heatmap / radar / combined view
     # -------------------------
@@ -5598,8 +5594,7 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
     
     print(f"[ALL-MAXED] Pivot table by date: {pivot.shape[0]} rows × {pivot.shape[1]} columns")
     print(f"[ALL-MAXED] Pivot table by year: {pivot_year.shape[0]} rows × {pivot_year.shape[1]} columns")
-    st.info(f"✅ Pivot tables created: {pivot.shape[0]}×{pivot.shape[1]} (date), {pivot_year.shape[0]}×{pivot_year.shape[1]} (year)")
-
+  
     
     # -------------------------
     # Frequency expansion -> synthetic timeseries
@@ -5623,7 +5618,6 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
     df_ts["ds"] = pd.to_datetime(df_ts["ds"])
     
     print(f"[ALL-MAXED] Combined timeseries length: {len(df_ts)} rows")
-    st.info(f"✅ Synthetic timeseries created: {len(df_ts)} rows for freq={freq}")
     
     # -------------------------
     # Resample to requested frequency
@@ -5640,7 +5634,6 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
     resampled["year"] = resampled["ds"].dt.year
     
     print(f"[ALL-MAXED] Resampled timeseries shape: {resampled.shape}")
-    st.info(f"✅ Timeseries resampled: {resampled.shape[0]} rows for freq={freq}")
     
     # -------------------------
     # Pivot tables for heatmap / radar / combined view
@@ -5657,56 +5650,106 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
     print(f"[ALL-MAXED] Pivot table (time series) shape: {pivot.shape}")
     print(f"[ALL-MAXED] Pivot table (yearly) shape: {pivot_year.shape}")
     
-    st.info(f"✅ Pivot tables ready — time series: {pivot.shape[0]} rows × {pivot.shape[1]} makers, yearly: {pivot_year.shape[0]} years × {pivot_year.shape[1]} makers")
-
-    # -------------------------
-    # Display heatmap
-    # -------------------------
-    if show_heatmap:
-        st.subheader("📊 Year × Maker Heatmap")
+  
+    # -----------------------------
+    # ALL-MAXED HEATMAP — Year × Maker
+    # -----------------------------
+    if show_heatmap and not pivot_year.empty:
+        st.subheader("📊 ALL-MAXED Year × Maker Heatmap")
         print(f"[ALL-MAXED] Rendering heatmap for {pivot_year.shape[0]} years × {pivot_year.shape[1]} makers")
-        
+    
         import plotly.express as px
+    
         fig = px.imshow(
             pivot_year.T,
             labels=dict(x="Year", y="Maker", color="Registrations"),
             text_auto=True,
             aspect="auto",
-            color_continuous_scale="Viridis"
+            color_continuous_scale="Viridis",
+            origin='lower'
         )
-        
+    
+        # -----------------------------
+        # ALL-MAXED Hover & Layout
+        # -----------------------------
+        fig.update_traces(
+            hovertemplate="<b>Maker:</b> %{y}<br><b>Year:</b> %{x}<br><b>Registrations:</b> %{z:,.0f}",
+            textfont=dict(size=10, color='black')
+        )
+        fig.update_layout(
+            template=DEFAULT_TEMPLATE,
+            title="🌡️ Year × Maker Registration Heatmap (All-Maxed)",
+            title_font=TITLE_STYLE,
+            xaxis=dict(tickangle=-45, side='bottom', tickfont=dict(size=10)),
+            yaxis=dict(tickfont=dict(size=10)),
+            coloraxis_colorbar=dict(title="Registrations"),
+            height=550,
+            margin=dict(t=70, b=60, l=100, r=30)
+        )
+    
         st.plotly_chart(fig, use_container_width=True)
         st.info(f"✅ Heatmap displayed — shape: {pivot_year.shape}")
+    
+    else:
+        st.warning("⚠️ No heatmap data available for the selected years/makers.")
 
-    # -------------------------
-    # Display radar (per year)
-    # -------------------------
-    if show_radar:
-        st.subheader("📈 Radar / Polar — Makers per Year")
+    # -----------------------------
+    # ALL-MAXED RADAR / POLAR — Makers per Year
+    # -----------------------------
+    if show_radar and not pivot_year.empty:
+        st.subheader("📈 ALL-MAXED Radar / Polar — Makers per Year")
         print(f"[ALL-MAXED] Rendering radar for {pivot_year.shape[0]} years × {pivot_year.shape[1]} makers")
     
         import plotly.graph_objects as go
         fig = go.Figure()
     
-        for y in pivot_year.index:
+        # Color palette for all years
+        import plotly.colors as pc
+        palette = pc.qualitative.Dark24
+        n_colors = len(pivot_year.index)
+        colors = [palette[i % len(palette)] for i in range(n_colors)]
+    
+        for i, y in enumerate(pivot_year.index):
             fig.add_trace(
                 go.Scatterpolar(
                     r=pivot_year.loc[y].values,
                     theta=pivot_year.columns.tolist(),
                     fill='toself',
-                    name=str(y)
+                    name=str(y),
+                    line=dict(color=colors[i], width=2),
+                    marker=dict(size=6),
+                    hovertemplate="<b>Year:</b> %{name}<br>%{theta}: %{r:,.0f} registrations"
                 )
             )
     
+        # -----------------------------
+        # ALL-MAXED Layout
+        # -----------------------------
         fig.update_layout(
-            polar=dict(radialaxis=dict(visible=True, showline=True, linewidth=1)),
+            polar=dict(
+                radialaxis=dict(visible=True, showline=True, linewidth=1, gridcolor='lightgray'),
+                angularaxis=dict(tickfont=dict(size=10))
+            ),
             showlegend=True,
-            height=450,
-            title=f"Makers Radar ({pivot_year.shape[0]} Years)"
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.2,
+                xanchor="center",
+                x=0.5,
+                title=None
+            ),
+            title=f"🌐 Makers Radar — {pivot_year.shape[0]} Years × {pivot_year.shape[1]} Makers",
+            title_font=dict(size=18, color="darkblue", family="Arial"),
+            height=500,
+            margin=dict(t=80, b=60, l=60, r=60)
         )
     
         st.plotly_chart(fig, use_container_width=True)
         st.info(f"✅ Radar chart displayed — shape: {pivot_year.shape}")
+    
+    else:
+        st.warning("⚠️ No radar data available for the selected years/makers.")
 
     # =====================================================
     # 📊 VISUALIZATIONS — ALL-MAXED MAKER
@@ -5734,62 +5777,80 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
     # -------------------------
     # Combined / Small Multiples — Maker
     # -------------------------
-    if mode.startswith("Combined"):
-        st.markdown("### 🌈 Stacked & Overlay Trends — Combined Maker View")
+    if mode.startswith("Combined") and not resampled.empty:
+        st.markdown("### 🌈 ALL-MAXED — Stacked & Overlay Maker Trends")
         print(f"[ALL-MAXED] Rendering Combined Maker charts, mode={mode}")
     
-        # --- Stacked Area Chart ---
+        import plotly.express as px
+    
+        # --- Stacked Area Chart (ALL-MAXED) ---
         try:
             fig_area = px.area(
                 resampled,
                 x="ds",
                 y="value",
                 color="label",
-                title="Stacked Registrations by Maker Over Time",
+                title="📊 Stacked Registrations by Maker Over Time",
                 color_discrete_sequence=px.colors.qualitative.Set3,
             )
+            fig_area.update_traces(
+                hovertemplate="<b>%{x|%b %Y}</b><br>%{y:,.0f} registrations<br>%{fullData.name}",
+                line=dict(width=0.8),
+            )
             fig_area.update_layout(
-                legend_title_text="Maker",
+                template="plotly_white",
                 xaxis_title="Date",
                 yaxis_title="Registrations",
-                template="plotly_white",
+                legend_title_text="Maker",
                 hovermode="x unified",
+                height=500,
+                margin=dict(t=80, b=50, l=60, r=40)
             )
             st.plotly_chart(fig_area, use_container_width=True)
-            print(f"[ALL-MAXED] Stacked area chart rendered ({len(resampled)} rows)")
+            print(f"[ALL-MAXED] ✅ Stacked area chart rendered ({len(resampled)} rows)")
         except Exception as e:
             st.warning(f"⚠️ Stacked area failed: {e}")
             print(f"[ALL-MAXED] ⚠️ Stacked area exception: {e}")
     
-        # --- Overlay Line Chart ---
+        # --- Overlay Line Chart (ALL-MAXED) ---
         try:
             fig_line = px.line(
                 resampled,
                 x="ds",
                 y="value",
                 color="label",
-                title="Maker Trends (Overlay)",
                 markers=True,
+                title="📈 Maker Trends (Overlay)",
                 color_discrete_sequence=px.colors.qualitative.Bold,
             )
-            fig_line.update_traces(line=dict(width=2))
+            fig_line.update_traces(
+                line=dict(width=2),
+                marker=dict(size=6),
+                hovertemplate="<b>%{x|%b %Y}</b><br>%{y:,.0f} registrations<br>%{fullData.name}"
+            )
             fig_line.update_layout(
                 template="plotly_white",
                 xaxis_title="Date",
                 yaxis_title="Registrations",
                 hovermode="x unified",
+                legend_title_text="Maker",
+                height=500,
+                margin=dict(t=80, b=50, l=60, r=40)
             )
             st.plotly_chart(fig_line, use_container_width=True)
-            print(f"[ALL-MAXED] Overlay line chart rendered ({len(resampled)} rows)")
+            print(f"[ALL-MAXED] ✅ Overlay line chart rendered ({len(resampled)} rows)")
         except Exception as e:
             st.warning(f"⚠️ Overlay lines failed: {e}")
             print(f"[ALL-MAXED] ⚠️ Overlay line exception: {e}")
+    
+    else:
+        st.warning("⚠️ No data available for Combined Maker Trends.")
     
     # -------------------------
     # Separate Mode (Small Multiples)
     # -------------------------
     else:
-        st.markdown("### 🧩 Small Multiples — Yearly Maker Distribution")
+        st.markdown("### 🧩 ALL-MAXED — Small Multiples (Yearly Maker Distribution)")
         print(f"[ALL-MAXED] Rendering Small Multiples for separate mode")
     
         try:
@@ -5816,24 +5877,32 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                     st.caption(f"⚠️ No data for {y}")
                     print(f"[ALL-MAXED] ⚠️ No data available for year {y}")
                     continue
+    
                 try:
                     fig_bar = px.bar(
                         d,
                         x="label",
                         y="value",
                         color="label",
-                        text_auto=True,
-                        title=f"Maker Distribution — {y}",
+                        text_auto=".2s",
+                        title=f"📊 Maker Distribution — {y}",
                         color_discrete_sequence=px.colors.qualitative.Pastel1,
                     )
-                    fig_bar.update_traces(textfont_size=11, textangle=0)
+                    fig_bar.update_traces(
+                        textfont_size=11,
+                        textangle=0,
+                        hovertemplate="<b>%{x}</b><br>%{y:,.0f} registrations<br>%{fullData.name}"
+                    )
                     fig_bar.update_layout(
                         showlegend=False,
                         template="plotly_white",
+                        xaxis_title="Maker",
                         yaxis_title="Registrations",
+                        margin=dict(t=60, b=40, l=50, r=20),
+                        height=400
                     )
                     st.plotly_chart(fig_bar, use_container_width=True)
-                    print(f"[ALL-MAXED] Rendered bar chart for year {y} ({len(d)} rows)")
+                    print(f"[ALL-MAXED] ✅ Rendered bar chart for year {y} ({len(d)} rows)")
                 except Exception as e:
                     st.warning(f"⚠️ Failed to plot {y}: {e}")
                     print(f"[ALL-MAXED] ⚠️ Exception plotting year {y}: {e}")
@@ -5842,11 +5911,12 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
     # Optional Advanced Visuals — Maker
     # -------------------------
     if show_heatmap:
-        st.markdown("### 🔥 Maker Heatmap (Year × Maker)")
+        st.markdown("### 🔥 ALL-MAXED — Maker Heatmap (Year × Maker)")
         print("[ALL-MAXED] Rendering heatmap")
         try:
             pivot_heat = pivot_year.copy()
             print(f"[ALL-MAXED] Pivot shape for heatmap: {pivot_heat.shape}")
+            
             fig_heat = px.imshow(
                 pivot_heat.T,
                 labels=dict(x="Year", y="Maker", color="Registrations"),
@@ -5855,19 +5925,28 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                 title="Heatmap of Registrations per Maker per Year",
                 text_auto=True
             )
+            fig_heat.update_layout(
+                template="plotly_white",
+                title_font=dict(size=18, family="Arial Black"),
+                xaxis=dict(tickangle=-45),
+                height=450,
+                margin=dict(t=60, b=60, l=60, r=40)
+            )
             st.plotly_chart(fig_heat, use_container_width=True)
+            st.info(f"✅ Heatmap displayed — shape: {pivot_heat.shape}")
             print("[ALL-MAXED] Heatmap rendered successfully")
         except Exception as e:
             st.warning(f"⚠️ Heatmap failed: {e}")
             print(f"[ALL-MAXED] ⚠️ Heatmap exception: {e}")
     
     if show_radar:
-        st.markdown("### 🕸️ Radar Chart — Maker Profiles per Year")
+        st.markdown("### 🕸️ ALL-MAXED — Radar Chart: Maker Profiles per Year")
         print("[ALL-MAXED] Rendering radar chart")
         try:
             import plotly.graph_objects as go
             makers = list(pivot_year.columns)
             print(f"[ALL-MAXED] Makers for radar: {makers}")
+            
             fig_radar = go.Figure()
             for y in sorted(pivot_year.index)[-min(4, len(pivot_year.index)):]:
                 vals = pivot_year.loc[y].values
@@ -5876,21 +5955,26 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                     theta=makers,
                     fill='toself',
                     name=str(y),
+                    hovertemplate="<b>%{theta}</b>: %{r:,.0f} registrations<br>Year: %{fullData.name}"
                 ))
                 print(f"[ALL-MAXED] Added radar trace for year {y}")
+            
             fig_radar.update_layout(
-                polar=dict(radialaxis=dict(visible=True)),
+                polar=dict(radialaxis=dict(visible=True, showline=True, linewidth=1)),
                 showlegend=True,
                 template="plotly_white",
                 title="Radar Comparison of Maker Patterns",
+                height=500,
+                legend=dict(orientation="h", yanchor="bottom", y=-0.1, xanchor="center", x=0.5)
             )
             st.plotly_chart(fig_radar, use_container_width=True)
+            st.info(f"✅ Radar chart displayed — {len(pivot_year.columns)} makers")
             print("[ALL-MAXED] Radar chart rendered successfully")
         except Exception as e:
             st.warning(f"⚠️ Radar chart failed: {e}")
             print(f"[ALL-MAXED] ⚠️ Radar exception: {e}")
     
-      # -------------------------
+    # -------------------------
     # 🍩 Donut & Sunburst (All-Maxed) — Maker
     # -------------------------
     st.markdown("### 🍩 Donut & Sunburst — Latest Available Period (All-Maxed)")
@@ -5943,6 +6027,7 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                         template="plotly_white",
                         showlegend=True,
                         legend_title_text="Maker",
+                        title_font=dict(size=18, family="Arial Black")
                     )
                     st.plotly_chart(fig_donut, use_container_width=True)
                     print("[ALL-MAXED] Donut chart rendered successfully")
@@ -5966,7 +6051,10 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                         title="🌞 Sunburst — Year → Maker → Value",
                         hover_data={"value": True},
                     )
-                    fig_sb.update_layout(template="plotly_white")
+                    fig_sb.update_layout(
+                        template="plotly_white",
+                        title_font=dict(size=18, family="Arial Black")
+                    )
                     st.plotly_chart(fig_sb, use_container_width=True)
                     print("[ALL-MAXED] Sunburst chart rendered successfully")
                 except Exception as e:
@@ -5996,6 +6084,8 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
             try:
                 heat = pivot_year.copy()
                 print(f"[ALL-MAXED] pivot_year shape: {heat.shape}")
+    
+                # --- Normalization Option ---
                 heat_norm = heat.div(heat.max(axis=1), axis=0).fillna(0)
                 normalize_opt = st.checkbox(
                     "Normalize heatmap (relative per year)",
@@ -6004,6 +6094,7 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                 )
                 heat_used = heat_norm if normalize_opt else heat
     
+                # --- Plotly Heatmap ---
                 import plotly.graph_objects as go
                 fig_h = go.Figure(
                     data=go.Heatmap(
@@ -6032,6 +6123,7 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                 st.plotly_chart(fig_h, use_container_width=True)
                 print("[ALL-MAXED] Heatmap rendered successfully")
     
+                # --- Data Table Below ---
                 with st.expander("📋 View Heatmap Data Table"):
                     st.dataframe(
                         heat_used.round(2)
@@ -6045,7 +6137,7 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                 print(f"[ALL-MAXED] Heatmap exception: {e}")
 
     
-     # -------------------------
+    # -------------------------
     # 🌈 RADAR — Snapshot per Year (All-Maxed)
     # -------------------------
     if show_radar:
@@ -6057,16 +6149,20 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
             print("[ALL-MAXED] pivot_year is empty; radar cannot be plotted")
         else:
             try:
+                # --- Select last 4 years for radar ---
                 yrs_for_radar = sorted(pivot_year.index)[-min(4, len(pivot_year.index)):]
                 print(f"[ALL-MAXED] Years selected for radar: {yrs_for_radar}")
     
                 makers = pivot_year.columns.tolist()
                 radar_df = pivot_year.copy()
+    
+                # --- Normalization per Maker ---
                 radar_df_norm = radar_df.div(radar_df.max(axis=0), axis=1).fillna(0)
                 normalize_radar = st.checkbox("Normalize radar per Maker (0–1)", value=True)
                 df_radar_used = radar_df_norm if normalize_radar else radar_df
                 print(f"[ALL-MAXED] Normalization applied: {normalize_radar}")
     
+                # --- Plotly Radar ---
                 import plotly.graph_objects as go
                 fig_r = go.Figure()
                 for y in yrs_for_radar:
@@ -6100,6 +6196,7 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
                 st.plotly_chart(fig_r, use_container_width=True)
                 print("[ALL-MAXED] Radar chart rendered successfully")
     
+                # --- Data Table ---
                 with st.expander("📋 Radar Data Used"):
                     st.dataframe(
                         df_radar_used.round(2)
