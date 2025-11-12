@@ -904,9 +904,6 @@ def clean_str(v: str) -> str:
     if not v: return ""
     return re.sub(r"[^A-Za-z0-9_\- ,./]", "", str(v).strip())
 
-# =====================================================
-# 🧩 PARAMETER BUILDER (NO PREFILL)
-# =====================================================
 def build_params(
     from_year: int,
     to_year: int,
@@ -948,12 +945,19 @@ def build_params(
         log(f"⚠️ Invalid time_period '{time_period}', defaulting to 'Yearly'", "WARNING")
         time_period = "Yearly"
 
-    params = build_params(
-    from_year, to_year,
-    state_code=state_code, rto_code=rto_code,
-    vehicle_classes=vehicle_classes, vehicle_makers=vehicle_makers,
-    time_period=time_period, fitness_check=fitness_check, vehicle_type=vehicle_type
-)
+    # Build the params dict directly — no recursion
+    params = {
+        "fromYear": from_year,
+        "toYear": to_year,
+        "stateCode": state_code,
+        "rtoCode": rto_code,
+        "vehicleClasses": vehicle_classes,
+        "vehicleMakers": vehicle_makers,
+        "timePeriod": time_period,
+        "fitnessCheck": fitness_check,
+        "vehicleType": vehicle_type,
+    }
+
     if extra_params:
         for k, v in extra_params.items():
             if v not in [None, "", [], {}]:
