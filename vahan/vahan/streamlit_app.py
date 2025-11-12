@@ -3757,7 +3757,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
         df_src['month'] = df_src['date'].dt.to_period('M')
         df_src['year'] = df_src['date'].dt.year
         
-        # --- Comparison years ---
+        # --- Determine comparison years ---
         current_year = df_src['year'].max()
         prev_year = current_year - 1
         next_year = current_year + 1
@@ -3771,7 +3771,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
         cagr = ((end_val / start_val) ** (1 / n_years) - 1) * 100 if n_years > 0 else 0
         volatility = yearly_totals_all.pct_change().std() * 100 if len(yearly_totals_all) > 1 else 0
         
-        st.markdown("### ⚡ ALL-MAXED MAKER ANALYTICS — Prev / Current / Next Year")
+        st.markdown("### ⚡ ALL-MAXED ADVANCED ANALYTICS — Prev / Current / Next Year")
         
         all_metrics = []
         
@@ -3784,16 +3784,16 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 projected = True
                 df_curr = df_src[df_src['year'] == current_year]
                 total_current = df_curr['value'].sum()
-                projected_total = total_current * 1.2
+                projected_total = total_current * 1.2  # e.g., +20% growth
         
                 monthly_avg = projected_total / 12
                 daily_avg = projected_total / 365
         
-                curr_top_makers = df_curr.groupby('maker')['value'].sum()
-                top_makers_pct = curr_top_makers / curr_top_makers.sum()
+                curr_top_cats = df_curr.groupby('label')['value'].sum()
+                top_cats_pct = curr_top_cats / curr_top_cats.sum()
         
-                top_makers_year = {k: projected_total * v for k, v in top_makers_pct.items()}
-                top_makers_peak_month = {k: monthly_avg * v for k, v in top_makers_pct.items()}
+                top_categories_year = {k: projected_total * v for k,v in top_cats_pct.items()}
+                top_categories_peak_month = {k: monthly_avg * v for k,v in top_cats_pct.items()}
         
                 monthly_trends = {m: monthly_avg for m in range(1,13)}
                 daily_trends = {d: daily_avg for d in range(1,366)}
@@ -3808,8 +3808,8 @@ def all_maxed_category_block(params: Optional[dict] = None):
                     'peak_month_value': monthly_avg,
                     'peak_day': 'Projected',
                     'peak_day_value': daily_avg,
-                    'top_makers_year': top_makers_year,
-                    'top_makers_peak_month': top_makers_peak_month,
+                    'top_categories_year': top_categories_year,
+                    'top_categories_peak_month': top_categories_peak_month,
                     'monthly_trends': monthly_trends,
                     'daily_trends': daily_trends,
                     'latest_mom': None,
@@ -3829,9 +3829,10 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 peak_month = monthly_totals.idxmax()
                 peak_month_value = monthly_totals.max()
                 df_peak_month = df_y[df_y['month'] == peak_month]
+                days_in_month = peak_month.days_in_month
                 daily_totals_peak_month = df_peak_month.groupby('day')['value'].sum()
                 if daily_totals_peak_month.empty:
-                    daily_totals_peak_month = pd.Series([peak_month_value / 30] * 30)
+                    daily_totals_peak_month = pd.Series([peak_month_value/days_in_month]*days_in_month)
                 peak_day = daily_totals_peak_month.idxmax()
                 peak_day_value = daily_totals_peak_month.max()
             else:
@@ -3840,9 +3841,15 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 peak_day = None
                 peak_day_value = 0
         
-            # --- Top makers ---
-            top_makers_year = df_y.groupby('maker')['value'].sum().sort_values(ascending=False).head(5).to_dict()
-            top_makers_peak_month = df_peak_month.groupby('maker')['value'].sum().sort_values(ascending=False).head(5).to_dict()
+            # --- Top categories ---
+            top_categories_year = df_y.groupby('label')['value'].sum().sort_values(ascending=False).head(5).to_dict()
+            top_categories_peak_month = df_peak_month.groupby('label')['value'].sum().sort_values(ascending=False).head(5).to_dict()
+        
+            # --- MoM / YoY ---
+            monthly_sorted = monthly_totals.sort_index()
+            latest_mom = (monthly_sorted.iloc[-1] - monthly_sorted.iloc[-2]) / monthly_sorted.iloc[-2] * 100 if len(monthly_sorted) > 1 else None
+            df_prev = df_src[df_src['year'] == y-1]
+            latest_yoy = (yearly_total - df_prev['value'].sum()) / df_prev['value'].sum() * 100 if not df_prev.empty else None
         
             all_metrics.append({
                 'year': y,
@@ -3854,10 +3861,12 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 'peak_month_value': peak_month_value,
                 'peak_day': peak_day,
                 'peak_day_value': peak_day_value,
-                'top_makers_year': top_makers_year,
-                'top_makers_peak_month': top_makers_peak_month,
+                'top_categories_year': top_categories_year,
+                'top_categories_peak_month': top_categories_peak_month,
                 'monthly_trends': monthly_totals.to_dict(),
-                'daily_trends': daily_totals.to_dict()
+                'daily_trends': daily_totals.to_dict(),
+                'latest_mom': f"{latest_mom:.2f}%" if latest_mom is not None else None,
+                'latest_yoy': f"{latest_yoy:.2f}%" if latest_yoy is not None else None
             })
         
         # --- Display ---
@@ -3871,47 +3880,26 @@ def all_maxed_category_block(params: Optional[dict] = None):
         Peak month: {m['peak_month']} → {m['peak_month_value']:,.0f}
         Peak day in peak month: {m['peak_day']} → {m['peak_day_value']:,.0f}
         
-        Top makers (year):
-        {chr(10).join([f"{i+1}. {maker} → {val:,.0f} ({val/m['total']*100:.2f}%)" for i,(maker,val) in enumerate(m['top_makers_year'].items())])}
+        Top categories (year):
+        {chr(10).join([f"{i+1}. {cat} → {val:,.0f} ({val/m['total']*100:.2f}%)" for i,(cat,val) in enumerate(m['top_categories_year'].items())])}
         
-        Top makers (peak month):
-        {chr(10).join([f"{i+1}. {maker} → {val:,.0f} ({val/m['peak_month_value']*100:.2f}%)" for i,(maker,val) in enumerate(m['top_makers_peak_month'].items())])}
+        Top categories (peak month):
+        {chr(10).join([f"{i+1}. {cat} → {val:,.0f} ({val/m['peak_month_value']*100:.2f}%)" for i,(cat,val) in enumerate(m['top_categories_peak_month'].items())])}
+        
+        Month-wise trend:
+        {chr(10).join([f"{k}: {v:,.0f}" for k,v in m['monthly_trends'].items()])}
+        
+        Day-wise trend:
+        {chr(10).join([f"{k}: {v:,.0f}" for k,v in m['daily_trends'].items()])}
+        
+        Latest MoM: {m['latest_mom']}
+        Latest YoY: {m['latest_yoy']}
         """, language="yaml")
         
-        # ----------------------------------------------------
-        # Advanced debug metrics
-        # ----------------------------------------------------
-        total_all = df_src['value'].sum()
-        top_maker = df_src.groupby('maker')['value'].sum().sort_values(ascending=False).head(1)
-        top_maker_name = top_maker.index[0]
-        top_maker_value = top_maker.iloc[0]
-        top_maker_share = (top_maker_value / total_all) * 100
-        top_year = df_src.groupby('year')['value'].sum().sort_values(ascending=False).head(1)
-        
-        volatility = df_src.groupby('year')['value'].sum().pct_change().std() * 100 if len(df_src['year'].unique()) > 2 else 0
-        dominance_ratio = (top_maker_value / total_all) * len(df_src['maker'].unique()) if total_all > 0 else 0
-        direction = "increased" if cagr > 0 else "declined"
-        summary_time = time.time() - summary_start
-        
-        st.markdown("### ⚙️ Debug Performance Metrics")
-        st.code(f"""
-        Makers analyzed: {len(df_src['maker'].unique())}
-        Rows processed: {len(df_src):,}
-        Total registrations: {total_all:,.0f}
-        Top maker: {top_maker_name} → {top_maker_value:,.0f} ({top_maker_share:.2f}%)
-        Peak year: {int(top_year.index[0])} → {top_year.iloc[0]:,.0f}
-        Dominance ratio: {dominance_ratio:.2f}
-        Volatility: {volatility:.2f}%
-        CAGR: {cagr:.2f}%
-        Runtime: {summary_time:.2f}s
-        """, language="yaml")
-        
-        # Smart summary
-        st.success(
-            f"From **{df_src['year'].min()}** to **{df_src['year'].max()}**, total registrations {direction}. "
-            f"**{top_maker_name}** leads with **{top_maker_share:.2f}%** share. "
-            f"Peak year: **{int(top_year.index[0])}** with **{top_year.iloc[0]:,.0f}** registrations."
-        )
+        st.markdown(f"CAGR (full period): {cagr:.2f}%")
+        st.markdown(f"Volatility (yearly totals): {volatility:.2f}%")
+        st.markdown(f"⏱️ Runtime: {time.time()-summary_start:.2f}s")
+
     except Exception as e:
         
         # This will catch any runtime errors and display them in Streamlit
