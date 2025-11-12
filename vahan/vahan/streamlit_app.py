@@ -7735,8 +7735,47 @@ try:
         st.error(f"❌ 2-year debug summary failed: {e}")
         print("[2-YEAR SUMMARY] Exception:", e)
 
+    import io
+    import pandas as pd
+    import time
+    import streamlit as st
+    
+    # --- Start timer if not already started ---
+    if 'summary_start' not in locals():
+        summary_start = time.time()
+    
+    # --- Compute summary variables ---
+    # Total revenue across all years
+    total_revenue_all = int(df_trend['value'].sum())
+    
+    # Number of unique states
+    n_states = df_trend['State'].nunique()
+    
+    # Top state and its revenue
+    top_state_series = df_trend.groupby('State')['value'].sum()
+    top_state = top_state_series.idxmax()
+    top_state_value = top_state_series.max()
+    
+    # CAGR
+    yearly_totals = df_trend.groupby('Year')['value'].sum()
+    start_val = yearly_totals.iloc[0]
+    end_val = yearly_totals.iloc[-1]
+    n_years = len(yearly_totals) - 1
+    cagr = ((end_val / start_val) ** (1 / n_years) - 1) * 100 if n_years > 0 else 0
+    
+    # Latest MoM
+    monthly_totals = df_trend.groupby(['Year','Month'])['value'].sum().sort_index()
+    if len(monthly_totals) > 1:
+        latest_mom_val = (monthly_totals.iloc[-1] - monthly_totals.iloc[-2]) / monthly_totals.iloc[-2] * 100
+        latest_mom = f"{latest_mom_val:.2f}%"
+    else:
+        latest_mom = None
+    
+    # Runtime
+    run_time = time.time() - summary_start
+    
     # -------------------------
-    # ✅ Build Excel workbook in-memory (fixed .save issue)
+    # ✅ Build Excel workbook in-memory
     # -------------------------
     st.markdown("### 💾 Export ALL-MAXED States Excel Dashboard")
     try:
@@ -7819,6 +7858,7 @@ try:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         print("[ALL-MAXED FINAL] Excel export ready ✅")
+
     
     except Exception as e:
         st.error(f"⛔ Excel export failed: {e}")
