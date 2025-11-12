@@ -3736,10 +3736,6 @@ def all_maxed_category_block(params: Optional[dict] = None):
     # ====================================================
     # 🔥 ALL-MAXED ADVANCED ANALYTICS + COMPARISONS
     # ====================================================
-    import pandas as pd
-    import streamlit as st
-    import time
-    import numpy as np
     
     summary_time = time.time() - summary_start
     
