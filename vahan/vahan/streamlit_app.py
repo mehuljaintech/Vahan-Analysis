@@ -162,34 +162,6 @@ except Exception as e:
     sys.stdout = sys.__stdout__
     sys.stderr = sys.__stderr__
     print("⚠️ Console color initialization disabled:", e)
-
-# ============================================================
-# 🧩 Import Debug Summary
-# ============================================================
-print("\n" + "=" * 65)
-print("✅ [DEBUG] Imports Loaded Successfully")
-print("=" * 65)
-print(f"🕒 Python Version      : {sys.version.split()[0]}")
-print(f"💻 Platform            : {__import__('platform').system()} {__import__('platform').release()}")
-print(f"📂 Working Directory   : {os.getcwd()}")
-print(f"📦 NumPy Version       : {np.__version__}")
-print(f"📦 Pandas Version      : {pd.__version__}")
-print(f"📦 Requests Version    : {requests.__version__}")
-print(f"📦 Altair Version      : {alt.__version__}")
-print(f"📦 Streamlit Version   : {st.__version__}")
-print(f"📦 Plotly Version      : {px.__version__}")
-print(f"📦 Seaborn Version     : {sns.__version__}")
-print(f"📦 Scikit-learn Path   : {__import__('sklearn').__file__}")
-print(f"📦 Prophet Module      : {Prophet.__module__}")
-print(f"📦 OpenPyXL Version    : {__import__('openpyxl').__version__}")
-print(f"📦 Rich Console Active : {Console is not None}")
-print(f"📦 Colorama Init       : {colorama_init.__module__}")
-print("-" * 65)
-print(f"🧠 ML Modules Ready    : IsolationForest, KMeans, PCA, Prophet")
-print(f"📊 Visualization Ready : Plotly, Seaborn, Altair, Matplotlib")
-print(f"📗 Excel Support       : openpyxl loaded")
-print(f"🧰 Utility Tools       : tqdm, rich.console, colorama")
-print("=" * 65 + "\n")
     
 # ---------- Local VAHAN Package (ALL IMPORTS) ----------
 from vahan.api import *
