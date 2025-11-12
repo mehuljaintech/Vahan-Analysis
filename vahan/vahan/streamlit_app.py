@@ -7169,85 +7169,81 @@ Runtime: {run_time:.2f}s
     )
 
     # -------------------------
-    # Build Excel workbook in-memory
+    # ✅ Build Excel workbook in-memory (fixed .save issue)
     # -------------------------
     st.markdown("### 💾 Export ALL-MAXED States Excel Dashboard")
     try:
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
             workbook = writer.book
-
+    
             # Sheet 1: Top5
             df_top5.to_excel(writer, sheet_name="Top5", index=False)
             ws = writer.sheets["Top5"]
             ws.set_column(0, 0, 12)
             ws.set_column(1, 1, 15)
-
-            # Sheet 2: Trend (full)
+    
+            # Sheet 2: Trend
             df_trend.to_excel(writer, sheet_name="Trend", index=False)
             ws2 = writer.sheets["Trend"]
             ws2.set_column(0, 0, 12)
             ws2.set_column(1, 1, 12)
             ws2.set_column(2, 2, 15)
-
+    
             # Sheet 3: Yearly pivot
             if not pivot_year.empty:
                 pivot_year.to_excel(writer, sheet_name="Yearly_Pivot")
                 ws3 = writer.sheets["Yearly_Pivot"]
-                # conditional format on values
-                last_row = 1 + pivot_year.shape[0]
-                last_col = 1 + pivot_year.shape[1]
-                try:
-                    ws3.conditional_format(1, 1, last_row, last_col, {'type': '3_color_scale'})
-                except Exception:
-                    pass
-
-                # add a column chart for total revenue per year (first two columns assumed available)
-                try:
-                    chart = workbook.add_chart({'type': 'column'})
-                    # add series for sum of row (we'll use Year in col A, totals next to it if exists)
-                    # create a small totals table
-                    totals = year_totals.reset_index()
-                    totals.to_excel(writer, sheet_name="Yearly_Totals", index=False)
-                    ws_tot = writer.sheets["Yearly_Totals"]
-                    ws_tot.set_column(0,0,12)
-                    ws_tot.set_column(1,1,18)
-                    chart.add_series({
-                        'name': 'TotalRevenue',
-                        'categories': ['Yearly_Totals', 1, 0, len(totals), 0],
-                        'values': ['Yearly_Totals', 1, 1, len(totals), 1],
-                    })
-                    chart.set_title({'name': 'Total Revenue per Year'})
-                    ws3.insert_chart('H2', chart, {'x_scale':1.4, 'y_scale':1.2})
-                except Exception as e:
-                    print("[ALL-MAXED FINAL] Excel chart (totals) failed:", e)
-
+                ws3.conditional_format(
+                    1, 1,
+                    1 + pivot_year.shape[0],
+                    1 + pivot_year.shape[1],
+                    {'type': '3_color_scale'}
+                )
+    
+                # optional chart sheet
+                totals = year_totals.reset_index()
+                totals.to_excel(writer, sheet_name="Yearly_Totals", index=False)
+                ws_tot = writer.sheets["Yearly_Totals"]
+                chart = workbook.add_chart({'type': 'column'})
+                chart.add_series({
+                    'name': 'TotalRevenue',
+                    'categories': ['Yearly_Totals', 1, 0, len(totals), 0],
+                    'values': ['Yearly_Totals', 1, 1, len(totals), 1],
+                })
+                chart.set_title({'name': 'Total Revenue per Year'})
+                ws3.insert_chart('H2', chart, {'x_scale': 1.3, 'y_scale': 1.1})
+    
             # Sheet 4: Clusters
             cluster_df.to_excel(writer, sheet_name="Clusters", index=False)
             ws4 = writer.sheets["Clusters"]
-            ws4.set_column(0,0,15)
-            ws4.set_column(1,1,10)
-
+            ws4.set_column(0, 0, 15)
+            ws4.set_column(1, 1, 10)
+    
             # Sheet 5: Anomalies
             df_trend.to_excel(writer, sheet_name="Anomalies", index=False)
             ws5 = writer.sheets["Anomalies"]
-            ws5.set_column(0,0,12)
-            ws5.set_column(1,1,10)
-            ws5.set_column(2,2,18)
-
-            # Sheet 6: KPIs / Summary
+            ws5.set_column(0, 0, 12)
+            ws5.set_column(1, 1, 10)
+            ws5.set_column(2, 2, 18)
+    
+            # Sheet 6: Summary / KPIs
             summary_df = pd.DataFrame({
-                "Metric": ["Years Loaded", "Total States", "Total Revenue (sum)", "Top State", "Top State Revenue", "CAGR (%)", "Latest MoM", "Runtime_s"],
-                "Value": [f"{int(df_trend['Year'].min())} → {int(df_trend['Year'].max())}", n_states, total_revenue_all, top_state, top_state_value, round(cagr,2), latest_mom, round(run_time,2)]
+                "Metric": ["Years Loaded", "Total States", "Total Revenue (sum)",
+                           "Top State", "Top State Revenue", "CAGR (%)",
+                           "Latest MoM", "Runtime_s"],
+                "Value": [
+                    f"{int(df_trend['Year'].min())} → {int(df_trend['Year'].max())}",
+                    n_states, total_revenue_all, top_state, top_state_value,
+                    round(cagr, 2), latest_mom, round(run_time, 2)
+                ]
             })
             summary_df.to_excel(writer, sheet_name="Summary", index=False)
             ws6 = writer.sheets["Summary"]
-            ws6.set_column(0,0,36)
-            ws6.set_column(1,1,22)
-
-            # finish and save
-            writer.save()
-
+            ws6.set_column(0, 0, 36)
+            ws6.set_column(1, 1, 22)
+    
+        # ✅ No need to call writer.save()
         processed_data = output.getvalue()
         st.download_button(
             label="💾 Download ALL-MAXED States Excel Dashboard",
@@ -7255,8 +7251,8 @@ Runtime: {run_time:.2f}s
             file_name=f"ALL-MAXED_States_Dashboard_{int(df_trend['Year'].min())}_{int(df_trend['Year'].max())}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-        print("[ALL-MAXED FINAL] Excel export ready")
-
+        print("[ALL-MAXED FINAL] Excel export ready ✅")
+    
     except Exception as e:
         st.error(f"⛔ Excel export failed: {e}")
         print("[ALL-MAXED FINAL] Excel export exception:", e)
