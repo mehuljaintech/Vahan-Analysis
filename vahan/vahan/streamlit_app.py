@@ -7735,23 +7735,30 @@ try:
         st.error(f"❌ 2-year debug summary failed: {e}")
         print("[2-YEAR SUMMARY] Exception:", e)
 
+    
     import io
-    import pandas as pd
     import time
+    import pandas as pd
     import streamlit as st
     
-    # --- Start timer if not already started ---
+    # --- Start timer ---
     if 'summary_start' not in locals():
         summary_start = time.time()
     
-    # --- Compute summary variables ---
-    # Total revenue across all years
-    total_revenue_all = int(df_trend['value'].sum())
+    # --- Ensure df_trend has a numeric column named 'value' ---
+    numeric_cols = df_trend.select_dtypes(include='number').columns.tolist()
+    if 'value' not in df_trend.columns:
+        if numeric_cols:
+            # Rename the first numeric column to 'value'
+            df_trend = df_trend.rename(columns={numeric_cols[0]: 'value'})
+            print(f"[TREND] Renamed column '{numeric_cols[0]}' to 'value'")
+        else:
+            raise ValueError("df_trend must have at least one numeric column for export")
     
-    # Number of unique states
+    # --- Compute summary variables ---
+    total_revenue_all = int(df_trend['value'].sum())
     n_states = df_trend['State'].nunique()
     
-    # Top state and its revenue
     top_state_series = df_trend.groupby('State')['value'].sum()
     top_state = top_state_series.idxmax()
     top_state_value = top_state_series.max()
@@ -7807,7 +7814,6 @@ try:
                     {'type': '3_color_scale'}
                 )
     
-                # optional chart sheet
                 totals = year_totals.reset_index()
                 totals.to_excel(writer, sheet_name="Yearly_Totals", index=False)
                 ws_tot = writer.sheets["Yearly_Totals"]
@@ -7849,7 +7855,6 @@ try:
             ws6.set_column(0, 0, 36)
             ws6.set_column(1, 1, 22)
     
-        # ✅ No need to call writer.save()
         processed_data = output.getvalue()
         st.download_button(
             label="💾 Download ALL-MAXED States Excel Dashboard",
@@ -7858,6 +7863,7 @@ try:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         print("[ALL-MAXED FINAL] Excel export ready ✅")
+
 
     
     except Exception as e:
