@@ -5777,13 +5777,13 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
     # -------------------------
     # Combined / Small Multiples — Maker
     # -------------------------
+    import plotly.express as px
+    
     if mode.startswith("Combined") and not resampled.empty:
         st.markdown("### 🌈 ALL-MAXED — Stacked & Overlay Maker Trends")
         print(f"[ALL-MAXED] Rendering Combined Maker charts, mode={mode}")
     
-        import plotly.express as px
-    
-        # --- Stacked Area Chart (ALL-MAXED) ---
+        # --- Stacked Area Chart ---
         try:
             fig_area = px.area(
                 resampled,
@@ -5812,7 +5812,7 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
             st.warning(f"⚠️ Stacked area failed: {e}")
             print(f"[ALL-MAXED] ⚠️ Stacked area exception: {e}")
     
-        # --- Overlay Line Chart (ALL-MAXED) ---
+        # --- Overlay Line Chart ---
         try:
             fig_line = px.line(
                 resampled,
@@ -5842,9 +5842,6 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
         except Exception as e:
             st.warning(f"⚠️ Overlay lines failed: {e}")
             print(f"[ALL-MAXED] ⚠️ Overlay line exception: {e}")
-    
-    else:
-        st.warning("⚠️ No data available for Combined Maker Trends.")
     
     # -------------------------
     # Separate Mode (Small Multiples)
