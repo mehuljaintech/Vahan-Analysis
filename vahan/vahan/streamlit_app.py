@@ -4890,27 +4890,82 @@ def _unique_key(prefix="chart"):
     print(f"[DEBUG] Generated unique chart key → {key}")
     return key
 
+# ===============================================================
+# 🚀 ALL-MAXED MAKERS ANALYTICS DASHBOARD
+# ===============================================================
+from datetime import datetime
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import numpy as np
+
 # -----------------------------
-# BAR CHART — MAKERS
+# Header / Banner
+# -----------------------------
+st.markdown(
+    f"""
+    <div style="
+        text-align:center;
+        padding:20px;
+        border-radius:12px;
+        background:linear-gradient(90deg,#ff6a00,#ee0979);
+        color:white;
+        font-size:20px;
+        font-weight:bold;
+        box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    ">
+        🚗 ALL-MAXED MAKERS Analytics Dashboard — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+st.divider()
+
+# -----------------------------
+# Summary Metrics
+# -----------------------------
+def makers_summary(df: pd.DataFrame):
+    if df is None or df.empty:
+        st.warning("⚠️ No summary data available.")
+        return
+    
+    total = int(df['value'].sum())
+    mean = int(df['value'].mean())
+    median = int(df['value'].median())
+    mode_val = int(df['value'].mode()[0]) if not df['value'].mode().empty else 0
+    max_val = int(df['value'].max())
+    min_val = int(df['value'].min())
+    
+    st.markdown("### 📊 Summary Metrics — All-Maxed")
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
+    c1.metric("Total Registrations", f"{total:,}")
+    c2.metric("Mean", f"{mean:,}")
+    c3.metric("Median", f"{median:,}")
+    c4.metric("Mode", f"{mode_val:,}")
+    c5.metric("Max", f"{max_val:,}")
+    c6.metric("Min", f"{min_val:,}")
+
+# -----------------------------
+# BAR CHART — MAKERS (ALL-MAXED)
 # -----------------------------
 def bar_from_makers(df: pd.DataFrame, title="Top Makers", x="label", y="value",
-                    color=None, height=500, section_id="bar", combined=False):
+                    color=None, height=550, section_id="bar", combined=False):
     if df is None or df.empty:
         st.warning("⚠️ No data to plot.")
         return
 
     barmode = "stack" if combined else "group"
-    key = _unique_key(section_id)
-    print(f"[DEBUG] Rendering BAR chart '{title}' with key: {key}")
-
     fig = px.bar(
         df, x=x, y=y, color=color or x, text_auto=".2s",
         title=title, color_discrete_sequence=COLOR_PALETTE,
         barmode=barmode
     )
     fig.update_traces(
-        hovertemplate="<b>%{x}</b><br>%{y:,.0f} registrations",
-        textfont_size=12, textangle=0, cliponaxis=False
+        hovertemplate="<b>%{x}</b><br><b>%{y:,.0f}</b> registrations",
+        textposition="outside",
+        textfont_size=13,
+        cliponaxis=False
     )
     fig.update_layout(
         template=DEFAULT_TEMPLATE,
@@ -4919,50 +4974,53 @@ def bar_from_makers(df: pd.DataFrame, title="Top Makers", x="label", y="value",
         yaxis_title=y.title(),
         legend=dict(
             orientation="h", yanchor="bottom", y=1.02,
-            xanchor="right", x=1, title=None, bgcolor="rgba(0,0,0,0)"
+            xanchor="right", x=1, title=None, bgcolor="rgba(0,0,0,0)",
+            font=dict(size=12)
         ),
-        height=height, bargap=0.2, margin=dict(t=60, b=40, l=40, r=20)
+        height=height, bargap=0.15,
+        margin=dict(t=70, b=50, l=50, r=30)
     )
-    st.plotly_chart(fig, use_container_width=True, key=key)
-
+    st.plotly_chart(fig, use_container_width=True, key=_unique_key(section_id))
 
 # -----------------------------
-# PIE / DONUT CHART — MAKERS
+# PIE / DONUT CHART — MAKERS (ALL-MAXED)
 # -----------------------------
-def pie_from_makers(df: pd.DataFrame, title="Maker Share", donut=True, section_id="pie", height=450):
+def pie_from_makers(df: pd.DataFrame, title="Maker Share", donut=True, section_id="pie", height=500):
     if df is None or df.empty:
         st.warning("⚠️ No data to plot.")
         return
 
-    key = _unique_key(section_id)
-    print(f"[DEBUG] Rendering PIE chart '{title}' with key: {key}")
-
     fig = px.pie(
-        df, names="label", values="value", hole=0.45 if donut else 0.0,
+        df, names="label", values="value", hole=0.5 if donut else 0.0,
         title=title, color_discrete_sequence=COLOR_PALETTE
     )
     fig.update_traces(
         textinfo="label+percent",
-        hovertemplate="<b>%{label}</b><br>%{value:,.0f} registrations<br>%{percent}",
-        pull=[0.03] * len(df),
+        hovertemplate="<b>%{label}</b><br><b>%{value:,.0f}</b> registrations<br>%{percent}",
+        pull=[0.05] * len(df),
+        marker=dict(line=dict(color="#fff", width=2))
     )
     fig.update_layout(
         template=DEFAULT_TEMPLATE,
         title_font=TITLE_STYLE,
-        legend=dict(orientation="v", yanchor="top", y=0.95, xanchor="left", x=0),
-        height=height, margin=dict(t=60, b=40, l=40, r=40)
+        legend=dict(
+            orientation="v", yanchor="top", y=0.95,
+            xanchor="left", x=0, bgcolor="rgba(0,0,0,0)",
+            font=dict(size=12)
+        ),
+        height=height, margin=dict(t=70, b=50, l=50, r=50)
     )
-    st.plotly_chart(fig, use_container_width=True, key=key)
-
+    st.plotly_chart(fig, use_container_width=True, key=_unique_key(section_id))
 
 # -----------------------------
-# TREND / LINE CHART — MAKERS
+# TREND / LINE CHART — MAKERS (ALL-MAXED)
 # -----------------------------
-def trend_from_makers(df: pd.DataFrame, title="Trend Over Time", section_id="trend", height=500):
+def trend_from_makers(df: pd.DataFrame, title="Trend Over Time", section_id="trend", height=550):
     if df is None or df.empty:
         st.warning("⚠️ No trend data available.")
         return
 
+    x_axis = "year"
     if "month_name" in df.columns:
         df["month_order"] = pd.Categorical(
             df["month_name"],
@@ -4970,28 +5028,30 @@ def trend_from_makers(df: pd.DataFrame, title="Trend Over Time", section_id="tre
             ordered=True
         )
         x_axis = "month_order"
-    else:
-        x_axis = "year"
-
-    key = _unique_key(section_id)
-    print(f"[DEBUG] Rendering LINE chart '{title}' with key: {key}")
 
     fig = px.line(
         df, x=x_axis, y="value", color="label", markers=True,
         title=title, color_discrete_sequence=COLOR_PALETTE,
         line_shape="spline"
     )
-    fig.update_traces(hovertemplate="<b>%{x}</b><br>%{y:,.0f} registrations")
+    fig.update_traces(
+        hovertemplate="<b>%{x}</b><br><b>%{y:,.0f}</b> registrations",
+        marker=dict(size=8, line=dict(width=1, color='DarkSlateGrey'))
+    )
     fig.update_layout(
         template=DEFAULT_TEMPLATE,
         title_font=TITLE_STYLE,
         legend=dict(
             orientation="h", yanchor="bottom", y=1.02,
-            xanchor="right", x=1, bgcolor="rgba(0,0,0,0)"
+            xanchor="right", x=1, bgcolor="rgba(0,0,0,0)",
+            font=dict(size=12)
         ),
-        height=height, margin=dict(t=60, b=40, l=40, r=40)
+        xaxis=dict(showgrid=True, gridcolor="#eee"),
+        yaxis=dict(showgrid=True, gridcolor="#eee"),
+        height=height,
+        margin=dict(t=70, b=50, l=50, r=50)
     )
-    st.plotly_chart(fig, use_container_width=True, key=key)
+    st.plotly_chart(fig, use_container_width=True, key=_unique_key(section_id))
 
 # -----------------------------------------------------
 # 🧠 Auto Dashboard Section — Single Function (MAKERS)
