@@ -7397,42 +7397,41 @@ import pandas as pd
 import random
 import streamlit as st
 
-def safe_get_top5_(params, year=None, show_debug=True):
-    """
-    Safely fetch Top 5 States revenue data.
-    Returns: df with columns ['State', 'Revenue'], source_url
-    """
+# --- Fetch safely ---
+    try:
+        cat_json, cat_url = get_json("vahandashboard/categoriesdonutchart", params)
+        print(f"[SUCCESS] Data fetched from {cat_url}")
+    except Exception as e:
+        print(Fore.RED + f"[ERROR] get_json failed for {year}: {e}")
+        cat_json, cat_url = deterministic_mock_categories(year), f"mock://categoriesdonutchart/{year}"
+        print(f"[FALLBACK] Using deterministic mock for year {year}")
+
+    # --- Debug panel ---
+    if show_debug:
+        with st.expander(f"🧩 Debug JSON — Categories {year}", expanded=False):
+            st.write("**URL:**", cat_url)
+            st.json(cat_json if isinstance(cat_json, (dict, list)) else str(cat_json))
+    print(f"[DEBUG] Source URL: {cat_url}")
+
+like this make for states
+def safe_get_top5_(params):
     try:
         top5_json, url = get_json("vahandashboard/top5chartRevenueFee", params)
-        df = parse_top5_revenue(top5_json)  # must return 'label' and 'value' columns
-
-        # Validate
+        df = parse_top5_revenue(top5_json)
         if df.empty or "label" not in df.columns or "value" not in df.columns:
             raise ValueError("Invalid API data")
-        
-        st.success(f"✅ Top 5 States revenue fetched from API ({url})")
+        st.success(f"✅ Top 5 revenue fetched from API ({url})")
         print(f"[TOP5] Fetched from API: {url}")
-
     except Exception as e:
-        # Fallback mock
         st.warning(f"⚠️ API unavailable or failed: {e}\nUsing fallback mock data.")
         print(f"[TOP5] API failed: {e}. Using fallback data.")
         states = ["MH", "DL", "KA", "TN", "UP"]
         revenues = [random.randint(500, 2000) for _ in states]
-        df = pd.DataFrame({"State": states, "Revenue": revenues})
-        url = f"mock://top5states/{year or 'unknown'}"
-        print(f"[TOP5] Fallback mock data used for {year}: {df.to_dict(orient='records')}")
+        df = pd.DataFrame({"label": states, "value": revenues})
+        print(f"[TOP5] Fallback data created: {df.to_dict(orient='records')}")
 
-    # Standardize column names
-    df = df.rename(columns={"State": "State", "Revenue": "Revenue"})
-    
-    # Debug panel
-    if show_debug:
-        with st.expander(f"🧩 Debug JSON — Top 5 States {year}", expanded=False):
-            st.write("**Source URL:**", url)
-            st.write(df)
-    
-    return df, url
+    df = df.rename(columns={"label": "State", "value": "Revenue"})
+    return df
 
 # -----------------------------
 # 🔹 Plot Top 5 Revenue
