@@ -1928,7 +1928,7 @@ import pandas as pd
 from colorama import Fore
 import time
 
-def fetch_year_category(years, params_common, show_debug=True, show_summary=True):
+def fetch_year_category(years, params, show_debug=True, show_summary=True):
     """
     🔥 Master orchestrator for multi-year category analytics.
     Loops through years, calls `fetch_year_category`, and merges data for all.
