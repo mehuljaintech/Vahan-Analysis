@@ -4351,7 +4351,6 @@ if __name__ == "__main__":
 # # 🔧 FETCH FUNCTION — SAFE + SMART + MOCK-RESILIENT
 # # -----------------------------------------------------
 # def fetch_maker_year(year: int, params_common: dict):
-#     """Fetch top vehicle makers for a given year — fully maxed with safe params + mock fallback."""
 #     logger.info(Fore.CYAN + f"🚀 Fetching top makers for {year}...")
 
 #     # --- Safe param cleanup ---
@@ -4493,7 +4492,6 @@ if __name__ == "__main__":
 # # 🧭 FETCH MAKER DATA (PER YEAR)
 # # ===============================================================
 # def fetch_maker_year(year: int, params_common: dict):
-#     """Fetch top vehicle makers for a given year — fully maxed with safe params + mock fallback."""
 #     logger.info(Fore.CYAN + f"🚀 Fetching top makers for {year}...")
 
 #     safe_params = params_common.copy()
