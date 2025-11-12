@@ -7398,22 +7398,6 @@ import random
 import streamlit as st
 
 # --- Fetch safely ---
-    try:
-        cat_json, cat_url = get_json("vahandashboard/categoriesdonutchart", params)
-        print(f"[SUCCESS] Data fetched from {cat_url}")
-    except Exception as e:
-        print(Fore.RED + f"[ERROR] get_json failed for {year}: {e}")
-        cat_json, cat_url = deterministic_mock_categories(year), f"mock://categoriesdonutchart/{year}"
-        print(f"[FALLBACK] Using deterministic mock for year {year}")
-
-    # --- Debug panel ---
-    if show_debug:
-        with st.expander(f"🧩 Debug JSON — Categories {year}", expanded=False):
-            st.write("**URL:**", cat_url)
-            st.json(cat_json if isinstance(cat_json, (dict, list)) else str(cat_json))
-    print(f"[DEBUG] Source URL: {cat_url}")
-
-like this make for states
 def safe_get_top5_(params):
     try:
         top5_json, url = get_json("vahandashboard/top5chartRevenueFee", params)
