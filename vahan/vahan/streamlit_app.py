@@ -1257,25 +1257,6 @@ if st.session_state.get("auto_refresh", True) and not st.session_state.get("auto
 # =====================================================
 # 🚀 VAHAN ANALYTICS API ENGINE — ALL-MAXED PURE v7.0
 # =====================================================
-print("🧩 [DEBUG] Imports loaded successfully.")
-print(f"Python version       : {sys.version.split()[0]}")
-print(f"Platform             : {platform.system()} {platform.release()}")
-print(f"Working dir          : {os.getcwd()}")
-print(f"os module            : {os.__file__ if hasattr(os, '__file__') else 'builtin'}")
-print(f"re module            : {re.__file__ if hasattr(re, '__file__') else 'builtin'}")
-print(f"json module          : {json.__file__ if hasattr(json, '__file__') else 'builtin'}")
-print(f"time module          : {time.__file__ if hasattr(time, '__file__') else 'builtin'}")
-print(f"random module        : {random.__file__ if hasattr(random, '__file__') else 'builtin'}")
-print(f"logging module       : {logging.__file__ if hasattr(logging, '__file__') else 'builtin'}")
-print(f"pickle module        : {pickle.__file__ if hasattr(pickle, '__file__') else 'builtin'}")
-print(f"requests module      : {requests.__file__ if hasattr(requests, '__file__') else 'builtin'}")
-print(f"datetime module      : {datetime.__module__}")
-print(f"urlencode (urllib.parse): {urlencode.__module__}")
-print(f"zoneinfo module      : {ZoneInfo.__module__}")
-print(f"typing module        : {Any.__module__}")
-print(f"contextlib module    : {nullcontext.__module__}")
-print(f"traceback module     : {traceback.__file__ if hasattr(traceback, '__file__') else 'builtin'}")
-print("---------------------------------------------------------------")
 
 # =====================================================
 # 🧩 STREAMLIT SAFE IMPORT — ALL-MAXED
