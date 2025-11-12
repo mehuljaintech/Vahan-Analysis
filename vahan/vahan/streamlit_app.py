@@ -7303,18 +7303,8 @@ def all_maxed_maker_block(params_common: dict = None, freq="Monthly", section_id
         Top makers (peak month):
         {chr(10).join([f"{i+1}. {maker} → {val:,.0f} ({val/m['peak_month_value']*100:.2f}%)" for i,(maker,val) in enumerate(m['top_makers_peak_month'].items())])}
         
-        Month-wise trend:
-        {chr(10).join([f"{k}: {v:,.0f}" for k,v in m['monthly_trends'].items()])}
-        
-        Day-wise trend:
-        {chr(10).join([f"{k}: {v:,.0f}" for k,v in m['daily_trends'].items()])}
-        
-        Latest MoM: {m['latest_mom']}
-        Latest YoY: {m['latest_yoy']}
         """, language="yaml")
         
-        st.markdown(f"CAGR (full period): {cagr:.2f}%")
-        st.markdown(f"Volatility (yearly totals): {volatility:.2f}%")
         st.markdown(f"⏱️ Runtime: {time.time()-summary_start:.2f}s")
 
     
