@@ -3733,25 +3733,34 @@ def all_maxed_category_block(params: Optional[dict] = None):
         processed_data = output.getvalue()
         st.download_button("💾 Download Categories Dashboard", processed_data, "ALL-MAXED_Categories_Dashboard.xlsx")
 
-        # ====================================================
-        # 🔥 ALL-MAXED ADVANCED ANALYTICS + COMPARISONS
-        # ====================================================
         
-        summary_time = time.time() - summary_start
+        summary_start = time.time()
         
-        # Ensure datetime
-        df_src['date'] = pd.to_datetime(df_src['date'])
+        # --- Ensure datetime exists ---
+        if "date" in df_src.columns:
+            df_src['date'] = pd.to_datetime(df_src['date'])
+        elif "ds" in df_src.columns:
+            df_src['date'] = pd.to_datetime(df_src['ds'])
+        elif "year" in df_src.columns and "month" in df_src.columns:
+            df_src['date'] = pd.to_datetime(df_src['year'].astype(str) + '-' + df_src['month'].astype(str) + '-01')
+        elif "year" in df_src.columns:
+            df_src['date'] = pd.to_datetime(df_src['year'].astype(str) + '-01-01')
+        else:
+            # fallback
+            df_src['date'] = pd.date_range(end=pd.Timestamp.today(), periods=len(df_src))
+        
+        # --- Add helper columns ---
         df_src['day'] = df_src['date'].dt.date
         df_src['month'] = df_src['date'].dt.to_period('M')
         df_src['year'] = df_src['date'].dt.year
         
-        # Determine years
+        # --- Determine comparison years ---
         current_year = df_src['year'].max()
         prev_year = current_year - 1
         next_year = current_year + 1
         years_to_compare = [prev_year, current_year, next_year]
         
-        # Yearly totals for CAGR and volatility
+        # --- Yearly totals for CAGR & volatility ---
         yearly_totals_all = df_src.groupby('year')['value'].sum()
         start_val = yearly_totals_all.iloc[0]
         end_val = yearly_totals_all.iloc[-1]
@@ -3761,13 +3770,12 @@ def all_maxed_category_block(params: Optional[dict] = None):
         
         st.markdown("### ⚡ ALL-MAXED ADVANCED ANALYTICS — Prev / Current / Next Year")
         
-        # Container for comparison
         all_metrics = []
         
         for y in years_to_compare:
             df_y = df_src[df_src['year'] == y]
-        
-            # Projection for next year
+            
+            # Projection for next year if empty
             if df_y.empty and y == next_year:
                 df_curr = df_src[df_src['year'] == current_year]
                 monthly_avg = df_curr.groupby('month')['value'].sum().mean()
@@ -3791,14 +3799,14 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 })
                 continue
         
-            # --- Daily, Monthly, Yearly aggregates ---
+            # Daily, monthly, yearly aggregates
             daily_totals = df_y.groupby('day')['value'].sum()
             monthly_totals = df_y.groupby('month')['value'].sum()
             yearly_total = df_y['value'].sum()
             daily_avg = daily_totals.mean()
             monthly_avg = monthly_totals.mean()
         
-            # --- Peak month & peak day ---
+            # Peak month/day
             peak_month = monthly_totals.idxmax()
             peak_month_value = monthly_totals.max()
             df_peak_month = df_y[df_y['month'] == peak_month]
@@ -3806,21 +3814,15 @@ def all_maxed_category_block(params: Optional[dict] = None):
             peak_day = daily_totals_peak_month.idxmax()
             peak_day_value = daily_totals_peak_month.max()
         
-            # --- Top categories ---
-            categories_year = df_y.groupby('label')['value'].sum().sort_values(ascending=False)
-            top_categories_year = categories_year.head(5).to_dict()
-            categories_peak_month = df_peak_month.groupby('label')['value'].sum().sort_values(ascending=False)
-            top_categories_peak_month = categories_peak_month.head(5).to_dict()
+            # Top categories
+            top_categories_year = df_y.groupby('label')['value'].sum().sort_values(ascending=False).head(5).to_dict()
+            top_categories_peak_month = df_peak_month.groupby('label')['value'].sum().sort_values(ascending=False).head(5).to_dict()
         
-            # --- MoM / YoY ---
+            # MoM / YoY
             monthly_sorted = monthly_totals.sort_index()
             latest_mom = (monthly_sorted.iloc[-1] - monthly_sorted.iloc[-2]) / monthly_sorted.iloc[-2] * 100 if len(monthly_sorted) > 1 else None
             df_prev = df_src[df_src['year'] == y-1]
             latest_yoy = (yearly_total - df_prev['value'].sum()) / df_prev['value'].sum() * 100 if not df_prev.empty else None
-        
-            # --- Month-wise & day-wise trends ---
-            monthly_trends = monthly_totals.to_dict()
-            daily_trends = daily_totals.to_dict()
         
             all_metrics.append({
                 'year': y,
@@ -3834,13 +3836,13 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 'peak_day_value': peak_day_value,
                 'top_categories_year': top_categories_year,
                 'top_categories_peak_month': top_categories_peak_month,
-                'monthly_trends': monthly_trends,
-                'daily_trends': daily_trends,
+                'monthly_trends': monthly_totals.to_dict(),
+                'daily_trends': daily_totals.to_dict(),
                 'latest_mom': f"{latest_mom:.2f}%" if latest_mom is not None else None,
                 'latest_yoy': f"{latest_yoy:.2f}%" if latest_yoy is not None else None
             })
         
-        # Display ALL-MAXED advanced analytics
+        # --- Display ---
         for m in all_metrics:
             st.markdown(f"#### Year: {m['year']}{' (Projected)' if m.get('projected') else ''}")
             st.code(f"""
@@ -3869,7 +3871,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
         
         st.markdown(f"CAGR (full period): {cagr:.2f}%")
         st.markdown(f"Volatility (yearly totals): {volatility:.2f}%")
-        st.markdown(f"⏱️ Runtime: {summary_time:.2f}s")
+        st.markdown(f"⏱️ Runtime: {time.time()-summary_start:.2f}s")
 
     except Exception as e:
         st.error(f"ALL-MAXED summary failed: {e}")
