@@ -7397,7 +7397,7 @@ import pandas as pd
 import random
 import streamlit as st
 
-def safe_get_top5_states(params, year=None, show_debug=True):
+def safe_get_top5_(params, year=None, show_debug=True):
     """
     Safely fetch Top 5 States revenue data.
     Returns: df with columns ['State', 'Revenue'], source_url
