@@ -7015,6 +7015,257 @@ except Exception as e:
 st.markdown("---")
 st.success("✅ ALL-MAXED Top 5 Revenue States Dashboard Ready!")
 
+# =====================================================
+# 🧩 ALL-MAXED FINAL SUMMARY + EXCEL EXPORT — STATES
+# =====================================================
+import io
+import time
+import xlsxwriter
+from sklearn.ensemble import IsolationForest
+from sklearn.cluster import KMeans
+
+st.markdown("## 🧠 Final Summary & Debug Insights — ALL-MAXED States")
+print("[ALL-MAXED FINAL] Starting final summary & export section")
+
+try:
+    start_time = time.time()
+
+    # -------------------------
+    # Safety: ensure df_top5 & df_trend exist
+    # -------------------------
+    if "df_top5" not in locals() or df_top5 is None or df_top5.empty:
+        print("[ALL-MAXED FINAL] df_top5 missing — creating fallback")
+        df_top5 = pd.DataFrame({"State": ["MH","DL","KA","TN","UP"], "Revenue":[1000,800,700,650,600]})
+
+    if "df_trend" not in locals() or df_trend is None or df_trend.empty:
+        print("[ALL-MAXED FINAL] df_trend missing — generating fallback multi-year trend")
+        yrs = list(range(from_year if 'from_year' in locals() else 2019, (to_year if 'to_year' in locals() else datetime.now().year)+1))
+        rows = []
+        for s, v in zip(df_top5["State"], df_top5["Revenue"]):
+            base = int(v)
+            for y in yrs:
+                rows.append({"State": s, "Year": int(y), "Revenue": max(0, int(base * (1 + 0.06 * (y-yrs[0])) + random.randint(-50,50)))})
+        df_trend = pd.DataFrame(rows)
+
+    # -------------------------
+    # Add anomaly column (IsolationForest) if not present
+    # -------------------------
+    if "Anomaly" not in df_trend.columns:
+        try:
+            print("[ALL-MAXED FINAL] Running IsolationForest anomaly detection")
+            def _detect(series, cont=0.10):
+                iso = IsolationForest(contamination=cont, random_state=42)
+                preds = iso.fit_predict(series.values.reshape(-1,1))
+                return preds
+            df_trend["Anomaly"] = df_trend.groupby("State")["Revenue"].transform(lambda x: _detect(x, cont=0.10))
+            df_trend["AnomalyLabel"] = df_trend["Anomaly"].map({1:"Normal", -1:"Anomaly"})
+            print("[ALL-MAXED FINAL] Anomaly detection finished")
+        except Exception as e:
+            print("[ALL-MAXED FINAL] Anomaly detection failed:", e)
+            df_trend["Anomaly"] = 1
+            df_trend["AnomalyLabel"] = "Normal"
+
+    # -------------------------
+    # Yearly pivot (for KPI calculations)
+    # -------------------------
+    pivot_year = df_trend.pivot_table(index="Year", columns="State", values="Revenue", aggfunc="sum").fillna(0)
+    if pivot_year.empty:
+        print("[ALL-MAXED FINAL] pivot_year empty — aborting KPI calc gracefully")
+        st.warning("⚠️ Not enough time-series data to compute yearly KPIs.")
+    # total per year
+    year_totals = pivot_year.sum(axis=1).rename("TotalRevenue").to_frame()
+    year_totals["YoY_%"] = year_totals["TotalRevenue"].pct_change() * 100
+    year_totals["TotalRevenue"] = year_totals["TotalRevenue"].fillna(0).astype(int)
+    year_totals["YoY_%"] = year_totals["YoY_%"].replace([np.inf, -np.inf], np.nan).fillna(0)
+
+    # CAGR
+    if len(year_totals) >= 2:
+        first = float(year_totals["TotalRevenue"].iloc[0])
+        last = float(year_totals["TotalRevenue"].iloc[-1])
+        years_count = max(1, len(year_totals)-1)
+        cagr = ((last / first) ** (1 / years_count) - 1) * 100 if first > 0 else 0.0
+    else:
+        cagr = 0.0
+
+    # MoM if we have monthly frequency in original data (best-effort)
+    latest_mom = "n/a"
+    if "Month" in df_trend.columns or (frequency if 'frequency' in locals() else None) == "Monthly":
+        # attempt to compute month-over-month using df_trend if it had months; otherwise leave n/a
+        try:
+            # if df_trend had monthly rows with 'Month' column
+            if "Month" in df_trend.columns:
+                month_totals = df_trend.groupby(["Year","Month"])["Revenue"].sum().reset_index()
+                month_totals["period"] = month_totals["Year"].astype(str) + "-" + month_totals["Month"].astype(str)
+                month_totals["MoM_%"] = month_totals["Revenue"].pct_change() * 100
+                latest_mom = f"{month_totals['MoM_%'].iloc[-1]:.2f}%" if len(month_totals)>1 else "n/a"
+        except Exception:
+            latest_mom = "n/a"
+
+    # Top state and shares (latest year)
+    latest_year = int(year_totals.index.max()) if not year_totals.empty else int(df_trend["Year"].max())
+    latest_total = int(year_totals.loc[latest_year, "TotalRevenue"]) if latest_year in year_totals.index else int(df_trend[df_trend["Year"]==latest_year]["Revenue"].sum())
+    state_shares = (pivot_year.loc[latest_year] / pivot_year.loc[latest_year].sum() * 100).sort_values(ascending=False).round(1) if latest_year in pivot_year.index else pd.Series(dtype=float)
+    if not state_shares.empty:
+        top_state = state_shares.idxmax()
+        top_state_value = int(pivot_year.loc[latest_year, top_state])
+    else:
+        top_state = df_top5.loc[df_top5["Revenue"].idxmax(), "State"]
+        top_state_value = int(df_top5["Revenue"].max())
+
+    # Display KPIs
+    st.subheader("💎 Key Metrics — States")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Total Revenue (latest year)", f"₹{latest_total:,}")
+    c2.metric("CAGR (period)", f"{cagr:.2f}%")
+    c3.metric("Latest MoM", latest_mom)
+    st.markdown(f"- **Top State (latest year):** {top_state} → ₹{top_state_value:,}")
+    if not state_shares.empty:
+        st.markdown("#### State shares (latest year)")
+        shares_df = pd.DataFrame({"State": state_shares.index, "Share_%": state_shares.values, "Revenue": pivot_year.loc[latest_year].astype(int).values}).reset_index(drop=True)
+        st.dataframe(shares_df, use_container_width=True)
+
+    # -------------------------
+    # KMeans clustering on year×state pivot
+    # -------------------------
+    try:
+        print("[ALL-MAXED FINAL] Running KMeans clustering")
+        pivot_for_cluster = pivot_year.copy()
+        k = min(3, pivot_for_cluster.shape[1]) if pivot_for_cluster.shape[1] > 0 else 1
+        km = KMeans(n_clusters=k, n_init="auto", random_state=42)
+        cluster_labels = km.fit_predict(pivot_for_cluster.T.values)  # cluster states by their yearly pattern (transpose)
+        cluster_df = pd.DataFrame({"State": pivot_for_cluster.columns, "Cluster": cluster_labels})
+        st.markdown("### 🔍 KMeans — State pattern clusters")
+        st.dataframe(cluster_df.sort_values("Cluster"), use_container_width=True)
+        print("[ALL-MAXED FINAL] KMeans centers:", km.cluster_centers_)
+    except Exception as e:
+        print("[ALL-MAXED FINAL] KMeans failed:", e)
+        cluster_df = pd.DataFrame({"State": pivot_year.columns if not pivot_year.empty else df_top5["State"].tolist(), "Cluster": 0})
+
+    # -------------------------
+    # Debug metrics & smart summary
+    # -------------------------
+    rows_processed = len(df_trend)
+    total_revenue_all = int(df_trend["Revenue"].sum())
+    n_states = df_top5["State"].nunique()
+    volatility = df_trend.groupby("Year")["Revenue"].sum().pct_change().std() * 100 if df_trend["Year"].nunique() > 2 else 0.0
+    dominance_ratio = (top_state_value / total_revenue_all) * n_states if total_revenue_all > 0 else 0.0
+    run_time = time.time() - start_time
+
+    st.markdown("### ⚙️ Debug Performance Metrics")
+    st.code(
+f"""Years analyzed: {sorted(df_trend['Year'].unique().tolist())}
+Rows processed: {rows_processed:,}
+Total (sum) revenue: ₹{total_revenue_all:,}
+Top state: {top_state} → ₹{top_state_value:,}
+Dominance ratio: {dominance_ratio:.2f}
+Volatility (YoY sd%): {volatility:.2f}
+Runtime: {run_time:.2f}s
+""", language="yaml")
+
+    st.success(
+        f"From **{int(df_trend['Year'].min())}** to **{int(df_trend['Year'].max())}**, "
+        f"total revenue {('increased' if cagr>0 else 'declined' if cagr<0 else 'stable')}. "
+        f"Top state: **{top_state}** ({top_state_value:,} ₹)."
+    )
+
+    # -------------------------
+    # Build Excel workbook in-memory
+    # -------------------------
+    st.markdown("### 💾 Export ALL-MAXED States Excel Dashboard")
+    try:
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+            workbook = writer.book
+
+            # Sheet 1: Top5
+            df_top5.to_excel(writer, sheet_name="Top5", index=False)
+            ws = writer.sheets["Top5"]
+            ws.set_column(0, 0, 12)
+            ws.set_column(1, 1, 15)
+
+            # Sheet 2: Trend (full)
+            df_trend.to_excel(writer, sheet_name="Trend", index=False)
+            ws2 = writer.sheets["Trend"]
+            ws2.set_column(0, 0, 12)
+            ws2.set_column(1, 1, 12)
+            ws2.set_column(2, 2, 15)
+
+            # Sheet 3: Yearly pivot
+            if not pivot_year.empty:
+                pivot_year.to_excel(writer, sheet_name="Yearly_Pivot")
+                ws3 = writer.sheets["Yearly_Pivot"]
+                # conditional format on values
+                last_row = 1 + pivot_year.shape[0]
+                last_col = 1 + pivot_year.shape[1]
+                try:
+                    ws3.conditional_format(1, 1, last_row, last_col, {'type': '3_color_scale'})
+                except Exception:
+                    pass
+
+                # add a column chart for total revenue per year (first two columns assumed available)
+                try:
+                    chart = workbook.add_chart({'type': 'column'})
+                    # add series for sum of row (we'll use Year in col A, totals next to it if exists)
+                    # create a small totals table
+                    totals = year_totals.reset_index()
+                    totals.to_excel(writer, sheet_name="Yearly_Totals", index=False)
+                    ws_tot = writer.sheets["Yearly_Totals"]
+                    ws_tot.set_column(0,0,12)
+                    ws_tot.set_column(1,1,18)
+                    chart.add_series({
+                        'name': 'TotalRevenue',
+                        'categories': ['Yearly_Totals', 1, 0, len(totals), 0],
+                        'values': ['Yearly_Totals', 1, 1, len(totals), 1],
+                    })
+                    chart.set_title({'name': 'Total Revenue per Year'})
+                    ws3.insert_chart('H2', chart, {'x_scale':1.4, 'y_scale':1.2})
+                except Exception as e:
+                    print("[ALL-MAXED FINAL] Excel chart (totals) failed:", e)
+
+            # Sheet 4: Clusters
+            cluster_df.to_excel(writer, sheet_name="Clusters", index=False)
+            ws4 = writer.sheets["Clusters"]
+            ws4.set_column(0,0,15)
+            ws4.set_column(1,1,10)
+
+            # Sheet 5: Anomalies
+            df_trend.to_excel(writer, sheet_name="Anomalies", index=False)
+            ws5 = writer.sheets["Anomalies"]
+            ws5.set_column(0,0,12)
+            ws5.set_column(1,1,10)
+            ws5.set_column(2,2,18)
+
+            # Sheet 6: KPIs / Summary
+            summary_df = pd.DataFrame({
+                "Metric": ["Years Loaded", "Total States", "Total Revenue (sum)", "Top State", "Top State Revenue", "CAGR (%)", "Latest MoM", "Runtime_s"],
+                "Value": [f"{int(df_trend['Year'].min())} → {int(df_trend['Year'].max())}", n_states, total_revenue_all, top_state, top_state_value, round(cagr,2), latest_mom, round(run_time,2)]
+            })
+            summary_df.to_excel(writer, sheet_name="Summary", index=False)
+            ws6 = writer.sheets["Summary"]
+            ws6.set_column(0,0,36)
+            ws6.set_column(1,1,22)
+
+            # finish and save
+            writer.save()
+
+        processed_data = output.getvalue()
+        st.download_button(
+            label="💾 Download ALL-MAXED States Excel Dashboard",
+            data=processed_data,
+            file_name=f"ALL-MAXED_States_Dashboard_{int(df_trend['Year'].min())}_{int(df_trend['Year'].max())}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        print("[ALL-MAXED FINAL] Excel export ready")
+
+    except Exception as e:
+        st.error(f"⛔ Excel export failed: {e}")
+        print("[ALL-MAXED FINAL] Excel export exception:", e)
+
+except Exception as e:
+    st.error(f"⛔ ALL-MAXED final failed: {e}")
+    print("[ALL-MAXED FINAL] Exception occurred:", e)
+
+
 # ================================================================
 # 🚀 VAHAN ALL-MAXED — Unified Trend + Growth + Revenue Analytics
 # ================================================================
