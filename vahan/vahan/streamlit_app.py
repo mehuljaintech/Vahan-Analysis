@@ -511,13 +511,19 @@ def safe_save_presets(presets: dict):
         return False
 
 def to_df(json_obj, label_keys=("label",), value_key="value"):
-    # Compatible with many API shapes (keeps original behavior)
-    if isinstance(json_obj, dict) and "labels" in json_obj and "data" in json_obj:
+    # Handle case where 'labels' and 'data' are parallel arrays
+    if "labels" in json_obj and "data" in json_obj:
         labels = json_obj["labels"]
         values = json_obj["data"]
-        min_len = min(len(labels), len(values))
-        return pd.DataFrame({"label": labels[:min_len], "value": values[:min_len]})
-    data = json_obj.get("data", json_obj) if isinstance(json_obj, dict) else json_obj
+        # Defensive: ensure same length
+        if len(labels) == len(values):
+            return pd.DataFrame({"label": labels, "value": values})
+        else:
+            # fallback: truncate to shortest
+            min_len = min(len(labels), len(values))
+            return pd.DataFrame({"label": labels[:min_len], "value": values[:min_len]})
+    # ...existing code for list of dicts...
+    data = json_obj.get("data", json_obj)
     if isinstance(data, dict):
         data = [data]
     rows = []
@@ -942,19 +948,12 @@ def build_params(
         log(f"⚠️ Invalid time_period '{time_period}', defaulting to 'Yearly'", "WARNING")
         time_period = "Yearly"
 
-    params = {
-        "from_year": from_year,
-        "to_year": to_year,
-        "state_cd": clean_str(state_code),
-        "rto_cd": clean_str(rto_code),
-        "vclass": clean_str(vehicle_classes),
-        "maker": clean_str(vehicle_makers),
-        "time_period": time_period,
-        "include_fitness": "Y" if fitness_check else "N",
-        "veh_type": clean_str(vehicle_type),
-        "_session_seed": datetime.now().strftime("%Y%m%d%H%M%S"),
-    }
-
+    params = build_params(
+    from_year, to_year,
+    state_code=state_code, rto_code=rto_code,
+    vehicle_classes=vehicle_classes, vehicle_makers=vehicle_makers,
+    time_period=time_period, fitness_check=fitness_check, vehicle_type=vehicle_type
+)
     if extra_params:
         for k, v in extra_params.items():
             if v not in [None, "", [], {}]:
