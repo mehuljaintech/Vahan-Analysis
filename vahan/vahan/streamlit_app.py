@@ -10,24 +10,6 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-# ---------------------------------------------------------------
-# 🔍 Print debug info for imports
-# ---------------------------------------------------------------
-print("🧩 [DEBUG] Imports loaded successfully.")
-print(f"Python version   : {sys.version.split()[0]}")
-print(f"Platform         : {platform.system()} {platform.release()}")
-print(f"Working dir      : {os.getcwd()}")
-print(f"Streamlit path   : {st.__file__}")
-print(f"Streamlit version: {st.__version__}")
-print(f"Pandas version   : {pd.__version__}")
-print(f"NumPy version    : {np.__version__}")
-print(f"Timezone module  : {ZoneInfo.__module__}")
-print(f"Datetime module  : {datetime.__module__}")
-print(f"Logging module   : {logging.__file__ if hasattr(logging, '__file__') else 'builtin'}")
-print(f"Traceback module : {traceback.__file__ if hasattr(traceback, '__file__') else 'builtin'}")
-print(f"Random module    : {random.__file__ if hasattr(random, '__file__') else 'builtin'}")
-print("---------------------------------------------------------------")
-
 # =============================
 # 📚 Cleaned & Consolidated Imports
 # =============================
@@ -46,30 +28,6 @@ import pandas as pd
 import requests
 import altair as alt
 from dotenv import load_dotenv
-
-# =============================
-# 🧩 Import Debug Summary
-# =============================
-print("✅ [DEBUG] Imports loaded successfully")
-print("--------------------------------------------------")
-print(f"Python Runtime     : {time.strftime('%Y-%m-%d %H:%M:%S')} | version {__import__('sys').version.split()[0]}")
-print(f"Working Directory  : {__import__('os').getcwd()}")
-print(f"Platform           : {__import__('platform').system()} {__import__('platform').release()}")
-print("--------------------------------------------------")
-print(f"NumPy version      : {np.__version__}")
-print(f"Pandas version     : {pd.__version__}")
-print(f"Requests version   : {requests.__version__}")
-print(f"Altair version     : {alt.__version__}")
-print(f"dotenv (load_dotenv): {load_dotenv.__module__}")
-print("--------------------------------------------------")
-print(f"io module          : {io.__name__}")
-print(f"json module        : {json.__name__}")
-print(f"time module        : {time.__name__}")
-print(f"random module      : {random.__name__}")
-print(f"traceback module   : {traceback.__name__}")
-print(f"datetime.date path : {date.__module__}")
-print(f"timedelta path     : {timedelta.__module__}")
-print("--------------------------------------------------")
 
 # ============================================================
 # 🚀 VAHAN ALL-MAXED MODE — Full Power Imports (No Limits)
@@ -162,7 +120,7 @@ except Exception as e:
     sys.stdout = sys.__stdout__
     sys.stderr = sys.__stderr__
     print("⚠️ Console color initialization disabled:", e)
-    
+
 # ---------- Local VAHAN Package (ALL IMPORTS) ----------
 from vahan.api import *
 from vahan.parsing import *
@@ -170,32 +128,8 @@ from vahan.metrics import *
 from vahan.charts import *
 
 # ============================================================
-# 🧩 VAHAN Package Debug Summary
-# ============================================================
-try:
-    import vahan
-    print("\n" + "=" * 65)
-    print("🚗 [DEBUG] VAHAN Package Imports Loaded")
-    print("=" * 65)
-    print(f"📦 VAHAN Root Path     : {getattr(vahan, '__file__', 'Not found')}")
-    print(f"📦 VAHAN Package Dir   : {getattr(vahan, '__path__', [''])[0]}")
-    print(f"📦 VAHAN Submodules    : api, parsing, metrics, charts ✅")
-    print("-" * 65)
-    print(f"🔹 vahan.api           : {getattr(vahan, 'api', None).__package__ if hasattr(vahan, 'api') else 'Not loaded'}")
-    print(f"🔹 vahan.parsing       : {getattr(vahan, 'parsing', None).__package__ if hasattr(vahan, 'parsing') else 'Not loaded'}")
-    print(f"🔹 vahan.metrics       : {getattr(vahan, 'metrics', None).__package__ if hasattr(vahan, 'metrics') else 'Not loaded'}")
-    print(f"🔹 vahan.charts        : {getattr(vahan, 'charts', None).__package__ if hasattr(vahan, 'charts') else 'Not loaded'}")
-    print("=" * 65 + "\n")
-
-except ModuleNotFoundError as e:
-    print("❌ [ERROR] VAHAN package not found:", e)
-except Exception as e:
-    print("⚠️ [WARN] VAHAN import diagnostics failed:", e)
-
-# ============================================================
 # 🚀 ALL-MAXED GLOBAL INITIALIZATION BLOCK (v2.0)
-# ============================================================
-import os
+# ============================================================import os
 import sys
 import random
 import time
@@ -223,191 +157,53 @@ from prophet import Prophet
 from openpyxl import load_workbook
 from io import BytesIO
 
-# ============================================================
-# 📦 Import Debug Summary
-# ============================================================
 
-print("\n" + "=" * 60)
-print("✅ [DEBUG] Core Imports Loaded Successfully")
-print("=" * 60)
-print(f"🕒 Python Version     : {sys.version.split()[0]}")
-print(f"💻 Platform           : {__import__('platform').system()} {__import__('platform').release()}")
-print(f"📂 Working Directory  : {os.getcwd()}")
-print("-" * 60)
+# Initialize color output for cross-platform logs
+colorama_init(autoreset=True)
 
-
-# --- Runtime Checks ---
-print(f"🧮 Math Module        : {math.__name__}")
-print(f"🎨 Colorama Init      : {colorama_init.__module__}")
-print(f"🗓️ Datetime Loaded    : {datetime.__module__}")
-print(f"🎲 Random Module Path : {random.__file__ if hasattr(random, '__file__') else 'builtin'}")
-print("=" * 60 + "\n")
-
-# ============================================================
-# 🎨 Initialize Colorama (Cross-Platform Safe)
-# ============================================================
-try:
-    # On Streamlit or headless servers, disable output wrapping
-    if "STREAMLIT_SERVER" in os.environ or "streamlit" in sys.modules:
-        import colorama
-        colorama.deinit()  # reset any wrapping done by Streamlit
-        sys.stdout = sys.__stdout__
-        sys.stderr = sys.__stderr__
-        colorama_init(strip=True, convert=False, autoreset=True)
-    else:
-        colorama_init(autoreset=True)
-    print(Fore.GREEN + "✅ [DEBUG] Colorama initialized successfully" + Style.RESET_ALL)
-
-except Exception as e:
-    sys.stdout = sys.__stdout__
-    sys.stderr = sys.__stderr__
-    print(f"⚠️ [WARN] Colorama initialization failed: {e}")
-
-# ============================================================
-# ⚙️ Warnings + Pandas / NumPy Display Config
-# ============================================================
-import warnings as warnings_filter
+# ---------- Warnings + Pandas Config ----------
+warnings_filter = __import__("warnings")
 warnings_filter.filterwarnings("ignore")
-
-# --- Pandas Options ---
 pd.set_option("display.max_columns", None)
 pd.set_option("display.max_rows", 1000)
 pd.set_option("display.width", 200)
 pd.set_option("display.float_format", "{:,.4f}".format)
-
-# --- NumPy Options ---
 np.set_printoptions(suppress=True)
 
-# --- Debug confirmation ---
-print("\n" + "=" * 60)
-print("🧩 [DEBUG] Pandas / NumPy Configuration Applied")
-print("=" * 60)
-print(f"⚠️  Warnings Ignored   : Yes")
-print(f"📊 Pandas Max Columns  : {pd.get_option('display.max_columns')}")
-print(f"📊 Pandas Max Rows     : {pd.get_option('display.max_rows')}")
-print(f"📊 Display Width       : {pd.get_option('display.width')}")
-print(f"📊 Float Format        : {pd.get_option('display.float_format')}")
-print(f"🔢 NumPy Suppress Sci. : {np.get_printoptions().get('suppress', False)}")
-print("=" * 60 + "\n")
-
-# ============================================================
-# 🌍 Load Environment + Global Seeds
-# ============================================================
-from dotenv import load_dotenv
-from datetime import date
-import numpy as np, random, os
-
-# --- Load environment variables from .env file (if present) ---
-env_result = load_dotenv()
+# ---------- Load Environment ----------
+load_dotenv()
 TODAY = date.today()
-
-# --- Reproducibility seed ---
 RANDOM_SEED = 42
 np.random.seed(RANDOM_SEED)
 random.seed(RANDOM_SEED)
 
-# --- Debug confirmation ---
-print("\n" + "=" * 60)
-print("🌱 [DEBUG] Environment & Seed Initialization")
-print("=" * 60)
-print(f"📅 Current Date       : {TODAY}")
-print(f"🔢 Random Seed Value  : {RANDOM_SEED}")
-print(f"📁 .env Loaded        : {'✅ Yes' if env_result else '⚠️ Not found or empty'}")
-print(f"🔐 Environment Vars   : {len(os.environ.keys())} loaded")
-# Show a few top env vars safely
-visible_envs = {k: v for k, v in list(os.environ.items())[:3]}
-print(f"🌍 Sample ENV Vars    : {json.dumps(visible_envs, indent=2)}")
-print("=" * 60 + "\n")
-
-# ============================================================
-# 🧾 Logging Setup (Universal + Streamlit-Safe)
-# ============================================================
-import logging, sys
-from colorama import Fore, Style
-
+# ---------- Logging Setup ----------
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-8s | %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
     handlers=[logging.StreamHandler(sys.stdout)]
 )
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-# --- Debug confirmation ---
-print("\n" + "=" * 60)
-print("🪵 [DEBUG] Logging Initialized")
-print("=" * 60)
-print(f"📁 Logger Name    : {logger.name}")
-print(f"📊 Log Level      : {logging.getLevelName(logger.level)}")
-print(f"🕒 Time Format    : %Y-%m-%d %H:%M:%S")
-print("=" * 60 + "\n")
-
-logger.info(Fore.GREEN + "✅ Logging system ready." + Style.RESET_ALL)
-
 # ============================================================
 # 🚀 Streamlit Page Configuration (Must Come First)
 # ============================================================
-try:
-    st.set_page_config(
-        page_title="🚗 Vahan Master Ultra — ALL-MAXED Mode",
-        page_icon="🚀",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
+# ---------- Streamlit Config (MUST COME FIRST) ----------
+st.set_page_config(
+    page_title="🚗 Vahan Master Ultra — ALL-MAXED Mode",
+    page_icon="🚀",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-    # --- Optional CLI + Log confirmation ---
-    print("\n" + "=" * 60)
-    print("🧭 [DEBUG] Streamlit Page Config Applied")
-    print("=" * 60)
-    print(f"🏷️  Title       : 🚗 Vahan Master Ultra — ALL-MAXED Mode")
-    print(f"🧩 Layout       : wide")
-    print(f"🧱 Sidebar      : expanded")
-    print("=" * 60 + "\n")
+# ---------- Print Startup Summary ----------
+print(f"\n{Fore.GREEN}✅ ALL-MAXED ENVIRONMENT READY — FULL FEATURE SET ENABLED{Style.RESET_ALL}")
+print(f"{Fore.CYAN}📦 Modules Loaded: numpy, pandas, streamlit, plotly, sklearn, prophet, openpyxl, requests, dotenv, logging{Style.RESET_ALL}")
+print(f"{Fore.YELLOW}🧠 Mode: Developer | Analyst | Research — unrestricted ALL-MAXED imports{Style.RESET_ALL}")
+print(f"{Fore.MAGENTA}🕒 Today: {TODAY} | Seed: {RANDOM_SEED}{Style.RESET_ALL}")
+print(f"{Fore.BLUE}📁 Working Dir: {os.getcwd()}{Style.RESET_ALL}\n")
 
-except Exception as e:
-    print("⚠️ [WARN] Streamlit page config could not be set:", e)
-
-# ============================================================
-# 🧩 Print Startup Summary (Visual Confirmation)
-# ============================================================
-try:
-    from colorama import Fore, Style
-except ImportError:
-    # fallback if colorama isn't available
-    class Dummy:
-        RESET_ALL = ""
-    Fore = Style = Dummy()
-
-try:
-    print("\n" + "=" * 80)
-    print(f"{Fore.GREEN}✅ ALL-MAXED ENVIRONMENT READY — FULL FEATURE SET ENABLED{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}📦 Modules Loaded: numpy, pandas, streamlit, plotly, sklearn, prophet, openpyxl, requests, dotenv, logging{Style.RESET_ALL}")
-    print(f"{Fore.YELLOW}🧠 Mode: Developer | Analyst | Research — unrestricted ALL-MAXED imports{Style.RESET_ALL}")
-    print(f"{Fore.MAGENTA}🕒 Today: {TODAY if 'TODAY' in globals() else 'N/A'} | Seed: {RANDOM_SEED if 'RANDOM_SEED' in globals() else 'N/A'}{Style.RESET_ALL}")
-    print(f"{Fore.BLUE}📁 Working Dir: {os.getcwd()}{Style.RESET_ALL}")
-    print("=" * 80 + "\n")
-
-except Exception as e:
-    print("=" * 80)
-    print("⚠️ [WARN] Startup summary print failed:", e)
-    print("=" * 80)
-
-# ============================================================
-# 🧾 Initialize Empty DataFrame
-# ============================================================
-import pandas as pd
-
+# ---------- Initialize Empty DataFrame ----------
 df = pd.DataFrame()
-
-# --- Debug confirmation ---
-print("\n" + "=" * 60)
-print("📊 [DEBUG] Empty DataFrame Initialized")
-print("=" * 60)
-print(f"Shape : {df.shape}")
-print(f"Columns: {list(df.columns) if len(df.columns) > 0 else 'None'}")
-print("=" * 60 + "\n")
 
 # =====================================================
 # ⚡ VAHAN ALL-MAXED ULTRA+ BOOT ENGINE (v4.0)
@@ -421,63 +217,16 @@ from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-# --- Initialize Colorama (safe mode) ---
-try:
-    colorama_init(autoreset=True)
-except Exception:
-    pass
-
-# --- Debug summary ---
-print("\n" + "=" * 70)
-print(f"{Fore.GREEN}🧩 [DEBUG] System Modules Imported Successfully{Style.RESET_ALL}")
-print("=" * 70)
-print(f"🕒 Python Version     : {sys.version.split()[0]}")
-print(f"💻 Platform           : {platform.system()} {platform.release()}")
-print(f"📂 Working Directory  : {os.getcwd()}")
-print(f"⚙️  CPU Count         : {psutil.cpu_count(logical=True)} cores")
-print(f"💾 Memory Total       : {round(psutil.virtual_memory().total / 1e9, 2)} GB")
-print(f"🧵 Threading Module   : {threading.__name__}")
-print(f"👁️  Watchdog Observer : {Observer.__module__}")
-print(f"📡 Streamlit Version  : {st.__version__}")
-print(f"🕓 Timezone Support   : {ZoneInfo.__module__}")
-print(f"📁 Pathlib Base Dir   : {Path.cwd()}")
-print("=" * 70 + "\n")
 
 # =====================================================
 # 🌏 COLOR + GLOBAL INIT
 # =====================================================
-from colorama import Fore, Style, init as colorama_init
-import os
-import platform
-from datetime import datetime
-
-# --- Initialize color support for all terminals ---
 colorama_init(autoreset=True)
-
-# --- App constants ---
 APP_NAME = "🚗 Parivahan Analytics"
 APP_VERSION = "vMAX-ULTRA"
 APP_ENV = "Production"
 LOG_DIR = "logs"
-
-# --- Ensure logs directory exists ---
-try:
-    os.makedirs(LOG_DIR, exist_ok=True)
-    log_status = f"✅ Created/Verified log directory: {LOG_DIR}"
-except Exception as e:
-    log_status = f"❌ Failed to create log directory: {e}"
-
-# --- Startup summary ---
-print("\n" + "=" * 70)
-print(f"{Fore.GREEN}{APP_NAME} — {APP_VERSION}{Style.RESET_ALL}")
-print("=" * 70)
-print(f"🌍 Environment : {Fore.CYAN}{APP_ENV}{Style.RESET_ALL}")
-print(f"🕒 Started At  : {Fore.YELLOW}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Style.RESET_ALL}")
-print(f"💻 Platform    : {Fore.MAGENTA}{platform.system()} {platform.release()}{Style.RESET_ALL}")
-print(f"📁 Working Dir : {Fore.BLUE}{os.getcwd()}{Style.RESET_ALL}")
-print(f"🧾 Log Path    : {Fore.WHITE}{os.path.abspath(LOG_DIR)}{Style.RESET_ALL}")
-print(f"{log_status}")
-print("=" * 70 + "\n")
+os.makedirs(LOG_DIR, exist_ok=True)
 
 # =====================================================
 # ⚙️ LOGGING — ULTRA-MAXED (IST + Colors + Rotation + Compatibility)
@@ -496,112 +245,82 @@ colorama_init(autoreset=True)
 LOG_DIR = os.path.join(os.getcwd(), "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 
-logging.basicConfig(level=logging.DEBUG)
-logging.debug("✅ Logging initialized at DEBUG level")
-
-
 # =====================================================
 # 🕒 IST LOGGING HELPERS
 # =====================================================
-from datetime import datetime
-from zoneinfo import ZoneInfo
-from colorama import Fore, Style
-import logging
-
 def log_ist(msg: str, level: str = "INFO", color: str = Fore.CYAN):
-    """
-    Print a timestamped message in IST timezone with color.
-    Safe for use in Streamlit or CLI environments.
-    """
+    """Print a timestamped message in IST timezone with color."""
     try:
         ist_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
-        formatted = f"{color}[IST {ist_time}] [{level.upper()}] {msg}{Style.RESET_ALL}"
-        print(formatted)
+        print(f"{color}[IST {ist_time}] [{level.upper()}] {msg}{Style.RESET_ALL}")
     except Exception as e:
         print(f"[IST Logging Fallback] {msg} (Error: {e})")
 
 class ISTFormatter(logging.Formatter):
-    """Custom logging formatter that outputs timestamps in IST."""
-    
+    """Custom logging formatter that formats times in IST."""
     def converter(self, timestamp):
         return datetime.fromtimestamp(timestamp, ZoneInfo("Asia/Kolkata"))
-
     def formatTime(self, record, datefmt=None):
         dt = self.converter(record.created)
         return dt.strftime(datefmt or "%Y-%m-%d %H:%M:%S")
 
-    def format(self, record):
-        base = super().format(record)
-        return f"{Fore.CYAN}{base}{Style.RESET_ALL}"  # Optional: add subtle color tint
-
 # =====================================================
-# 🧠 GLOBAL LOGGING CONFIGURATION (Dual Channel, IST)
+# 🧠 GLOBAL LOGGING CONFIGURATION (Dual Channel)
 # =====================================================
-import os
-import sys
-import logging
-from datetime import datetime
-from logging.handlers import TimedRotatingFileHandler
-from zoneinfo import ZoneInfo
-from colorama import Fore, Style
-
-# --- Globals ---
-LOG_DIR = os.path.join(os.getcwd(), "logs")
-os.makedirs(LOG_DIR, exist_ok=True)
-
 def setup_global_logging():
-    """Configure root logger with color console + daily rotating file handler."""
+    """Configure root logger with color console + rotating file (daily)."""
     log_file = os.path.join(LOG_DIR, "vahan_ultra.log")
     formatter = ISTFormatter("%(asctime)s | %(levelname)-8s | %(message)s")
 
     root = logging.getLogger()
-    root.setLevel(logging.DEBUG)  # 🔹 Enable debug visibility by default
+    root.setLevel(logging.INFO)
 
-    # --- Clear existing handlers to avoid Streamlit duplicates
+    # Clear existing handlers
     for h in list(root.handlers):
         root.removeHandler(h)
 
-    # --- Console Handler (Color + IST)
+    # --- Console Handler
     ch = logging.StreamHandler(sys.stdout)
     ch.setFormatter(formatter)
     root.addHandler(ch)
 
-    # --- File Handler (Daily rotation, 10 backups)
-    fh = TimedRotatingFileHandler(
-        log_file, when="midnight", backupCount=10, encoding="utf-8"
-    )
+    # --- File Handler (daily rotation)
+    from logging.handlers import TimedRotatingFileHandler
+    fh = TimedRotatingFileHandler(log_file, when="midnight", backupCount=10, encoding="utf-8")
     fh.setFormatter(formatter)
     root.addHandler(fh)
 
-    log_ist("✅ Logging initialized with daily rotation (DEBUG enabled)", "INFO", Fore.GREEN)
+    # Notify success
+    log_ist("✅ Logging initialized with daily rotation", "INFO", Fore.GREEN)
 
+# Initialize logging on import
+setup_global_logging()
 
-# =====================================================
-# ⏰ IST Timestamp + Safe Logger Helpers
-# =====================================================
 def _get_ist_now():
-    """Return current IST timestamp safely."""
+    """Return current IST timestamp string safely."""
     try:
         return datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
     except Exception:
         return datetime.now().strftime("%Y-%m-%d %I:%M:%S")
 
-
 def log(msg: str, level: str = "INFO"):
     """
-    Safe wrapper for logging + color console.
-    Designed for analytics functions or API fetches.
+    Safe, backward-compatible logger.
+    Uses internal _get_ist_now() to avoid name collision with user vars.
     """
-    ts = _get_ist_now()
+    try:
+        ts = _get_ist_now()
+    except Exception:
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     level = str(level).upper().strip()
     prefix = f"[IST {ts}] [{level}]"
     color_map = {
-        "DEBUG": Fore.BLUE,
         "INFO": Fore.CYAN,
-        "SUCCESS": Fore.GREEN,
         "WARNING": Fore.YELLOW,
         "ERROR": Fore.RED,
-        "CRITICAL": Fore.MAGENTA,
+        "DEBUG": Fore.BLUE,
+        "SUCCESS": Fore.GREEN,
     }
     color = color_map.get(level, Fore.WHITE)
 
@@ -610,250 +329,133 @@ def log(msg: str, level: str = "INFO"):
         logging.log(getattr(logging, level, logging.INFO), msg)
     except Exception as e:
         print(f"[LOGGING FAILSAFE] {msg} (Error: {e})")
-
-
-# =====================================================
-# 🚀 Initialize Global Logging on Import
-# =====================================================
-setup_global_logging()
-log("Global logging setup completed successfully", "DEBUG")
         
 # =====================================================
-# 💻 SYSTEM DIAGNOSTICS (Enhanced + Streamlit Safe)
+# 💻 SYSTEM DIAGNOSTICS
 # =====================================================
-import platform
-import psutil
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
-from colorama import Fore
-
 def system_diagnostics():
-    """Collect and print system-level metrics with color and IST timestamps."""
+    """Collect and print system-level metrics."""
     try:
         cpu_usage = psutil.cpu_percent(interval=0.8)
         mem = psutil.virtual_memory()
         boot_time = datetime.fromtimestamp(psutil.boot_time(), ZoneInfo("Asia/Kolkata"))
         uptime = datetime.now(ZoneInfo("Asia/Kolkata")) - boot_time
-
-        # Platform and runtime
-        os_info = f"{platform.system()} {platform.release()} ({platform.version()})"
-        python_info = platform.python_version()
-        arch = platform.machine()
-
-        # Logging outputs
-        log_ist(f"💻 OS: {os_info} | Arch: {arch} | Python {python_info}", "INFO", Fore.MAGENTA)
-        log_ist(
-            f"🧠 CPU: {cpu_usage:.1f}% | Memory: {mem.percent:.1f}% of {round(mem.total / (1024**3), 2)} GB",
-            "INFO",
-            Fore.MAGENTA,
-        )
-        log_ist(
-            f"⏱️ Uptime: {str(timedelta(seconds=int(uptime.total_seconds())))} since {boot_time.strftime('%Y-%m-%d %I:%M %p')}",
-            "INFO",
-            Fore.MAGENTA,
-        )
-
-        # Optional Streamlit mirror (if running inside app)
-        if "streamlit" in sys.modules:
-            st.sidebar.markdown(f"**💻 System:** {os_info}")
-            st.sidebar.markdown(f"**🧠 CPU:** {cpu_usage:.1f}% | **RAM:** {mem.percent:.1f}%")
-            st.sidebar.markdown(f"**⏱️ Uptime:** {str(timedelta(seconds=int(uptime.total_seconds())))}")
-
+        log_ist(f"💻 OS: {platform.system()} {platform.release()} | Python {platform.python_version()}", "INFO", Fore.MAGENTA)
+        log_ist(f"🧠 CPU: {cpu_usage:.1f}% | Memory: {mem.percent}% of {round(mem.total / (1024**3), 2)} GB", "INFO", Fore.MAGENTA)
+        log_ist(f"⏱️ Uptime: {str(timedelta(seconds=int(uptime.total_seconds())))}", "INFO", Fore.MAGENTA)
     except Exception as e:
         log_ist(f"⚠️ Diagnostics failed: {e}", "ERROR", Fore.RED)
 
-# --- Run immediately on import ---
 system_diagnostics()
 
 # =====================================================
-# 🚀 BOOT BANNER (Enhanced + Safe + Animated)
+# 🚀 BOOT BANNER
 # =====================================================
-import os
-import platform
-from datetime import datetime
-from zoneinfo import ZoneInfo
-import streamlit as st
-
 def app_boot_banner(app_name=APP_NAME, version=APP_VERSION, env=APP_ENV):
-    """Display an animated startup banner in Streamlit or print fallback."""
-    try:
-        ist_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
-        python_ver = platform.python_version()
-        streamlit_ver = st.__version__
-        sys_os = platform.system()
-        cpu_count = os.cpu_count()
-        cwd = os.getcwd()
+    """Display an animated startup banner in Streamlit."""
+    ist_time = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
+    python_ver = platform.python_version()
+    streamlit_ver = st.__version__
+    sys_os = platform.system()
+    cpu_count = os.cpu_count()
+    cwd = os.getcwd()
 
-        gradient = "linear-gradient(90deg,#0072ff,#00c6ff)"
-        shadow = "0 4px 20px rgba(0,0,0,0.25)"
+    gradient = "linear-gradient(90deg,#0072ff,#00c6ff)"
+    shadow = "0 4px 20px rgba(0,0,0,0.25)"
+    st.markdown(f"""
+    <div style='background:{gradient};color:white;padding:18px 26px;
+         border-radius:18px;margin:20px 0 30px 0;box-shadow:{shadow};
+         font-family:monospace;line-height:1.6;'>
+        <h3>🌍 {app_name} — {version}</h3>
+        🕒 <b>Boot Time:</b> {ist_time} (IST)<br>
+        ⚙️ <b>Environment:</b> {env} | Python {python_ver} | Streamlit {streamlit_ver}<br>
+        💻 OS: {sys_os} | CPU Cores: {cpu_count}<br>
+        📁 Working Dir: {cwd}
+    </div>
+    """, unsafe_allow_html=True)
 
-        # Optional shimmer animation for a subtle “booting” effect
-        shimmer_css = """
-        <style>
-        @keyframes shimmer {
-            0% { background-position: -500px 0; }
-            100% { background-position: 500px 0; }
-        }
-        .shimmer {
-            background: linear-gradient(90deg, rgba(255,255,255,0.15) 25%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.15) 75%);
-            background-size: 1000px 100%;
-            animation: shimmer 3s infinite linear;
-        }
-        </style>
-        """
-
-        st.markdown(shimmer_css, unsafe_allow_html=True)
-
-        st.markdown(f"""
-        <div class='shimmer' style='background:{gradient};color:white;padding:18px 26px;
-             border-radius:18px;margin:20px 0 30px 0;box-shadow:{shadow};
-             font-family:monospace;line-height:1.6;'>
-            <h3>🌍 {app_name} — {version}</h3>
-            🕒 <b>Boot Time:</b> {ist_time} (IST)<br>
-            ⚙️ <b>Environment:</b> {env} | Python {python_ver} | Streamlit {streamlit_ver}<br>
-            💻 OS: {sys_os} | CPU Cores: {cpu_count}<br>
-            📁 Working Dir: {cwd}
-        </div>
-        """, unsafe_allow_html=True)
-
-    except Exception as e:
-        # --- CLI fallback ---
-        print(f"\n🚀 {app_name} — {version} [{env}]")
-        print(f"🕒 Boot Time: {datetime.now().strftime('%Y-%m-%d %I:%M:%S %p')} (local)")
-        print(f"⚙️ Python {platform.python_version()} | OS: {platform.system()}")
-        print(f"❗ Streamlit banner display failed: {e}\n")
-
-
-# --- Run once at startup ---
 app_boot_banner()
 
 # =====================================================
-# 🎉 FIRST LAUNCH EVENT (Enhanced)
+# 🎉 FIRST LAUNCH EVENT
 # =====================================================
-def trigger_first_launch_event():
-    """Trigger first-time Streamlit launch celebration safely."""
-    if "launched" not in st.session_state:
-        st.session_state.launched = True
-
-        # Toast message with style
-        st.toast("🚀 Welcome to **VAHAN ULTRA MAX Edition**!", icon="🌍")
-        
-        # Detect layout width for animation choice
-        if st.session_state.get("_wide_mode", True):
-            st.balloons()
-        else:
-            st.snow()
-
-        # Log and timestamp
-        log_ist("🎉 Streamlit App Launched Successfully", "INFO", Fore.GREEN)
-        st.markdown(
-            f"<small style='color:gray;'>🕒 Booted at "
-            f"{datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M:%S %p')}</small>",
-            unsafe_allow_html=True,
-        )
-
-# Call once at startup
-trigger_first_launch_event()
+if "launched" not in st.session_state:
+    st.session_state.launched = True
+    st.toast("🚀 Welcome to VAHAN ULTRA MAX Edition!", icon="🌍")
+    st.balloons()
+    log_ist("🎉 Streamlit App Launched Successfully", "INFO", Fore.GREEN)
 
 # =====================================================
-# 🔁 AUTO FILE WATCHER (DEV MODE — Safe Reload)
+# 🔁 AUTO FILE WATCHER (DEV MODE)
 # =====================================================
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-import time, os, streamlit as st
-from colorama import Fore
-
-# --- File change handler ---
 class AutoReloadHandler(FileSystemEventHandler):
-    """Auto-refresh Streamlit when Python files change (Dev mode only)."""
+    """Auto-refresh Streamlit when .py files change (Dev mode only)."""
     def __init__(self, watch_paths):
         self.watch_paths = watch_paths
-        self.last_reload = 0
+        self.last_reload = time.time()
 
     def on_any_event(self, event):
         if not event.src_path.endswith(".py"):
             return
-        now = time.time()
-        if now - self.last_reload < 2:  # debounce reloads
+        if time.time() - self.last_reload < 2:  # avoid storm
             return
-        self.last_reload = now
-
+        self.last_reload = time.time()
         file_name = os.path.basename(event.src_path)
         log_ist(f"♻️ Detected change in {file_name} — triggering rerun", "INFO", Fore.YELLOW)
         try:
-            st.toast(f"🔄 Auto-reloading due to `{file_name}`", icon="⚙️")
-            time.sleep(0.5)
+            st.toast(f"🔄 Auto-reloading due to {file_name}", icon="⚙️")
             st.rerun()
         except Exception as e:
-            log_ist(f"⚠️ Auto-reload failed: {e}", "ERROR", Fore.RED)
+            log_ist(f"⚠️ Reload failed: {e}", "ERROR", Fore.RED)
 
+import os
+from colorama import Fore
 
-# --- Watchdog bootstrapper ---
 def start_auto_reload(watch_dir="."):
-    """Start background observer for live reload (safe for Streamlit reruns)."""
+    """Start a background observer for live reload in development."""
     try:
         handler = AutoReloadHandler([watch_dir])
         observer = Observer()
         observer.schedule(handler, watch_dir, recursive=True)
         observer.daemon = True
         observer.start()
-
         log_ist(f"👀 Auto-reload active — watching {os.path.abspath(watch_dir)}", "INFO", Fore.CYAN)
         return observer
     except Exception as e:
         log_ist(f"⚠️ Auto-reload disabled: {e}", "WARNING", Fore.YELLOW)
         return None
 
-
-# --- Prevent multiple reinitializations ---
+# --- Prevent re-init ---
 if "watchdog_started" not in st.session_state:
     observer = start_auto_reload(".")
     st.session_state.watchdog_started = True
-    log_ist("✅ Watchdog initialized once per session", "DEBUG", Fore.GREEN)
 
 # =====================================================
 # 🧩 HEARTBEAT MONITOR THREAD
 # =====================================================
-import threading, time
-from colorama import Fore
-
 def start_heartbeat(interval=600):
-    """Spawn a background thread that logs periodic heartbeat messages safely."""
+    """Thread that logs periodic heartbeat messages."""
     def _loop():
-        log_ist("💓 Initial heartbeat — system online.", "INFO", Fore.BLUE)
         while True:
-            try:
-                time.sleep(interval)
-                log_ist("💓 Heartbeat: System running fine.", "INFO", Fore.BLUE)
-            except Exception as e:
-                log_ist(f"⚠️ Heartbeat error: {e}", "ERROR", Fore.RED)
-                time.sleep(30)  # retry sooner if failed
+            log_ist("💓 Heartbeat: System running fine.", "INFO", Fore.BLUE)
+            time.sleep(interval)
 
-    t = threading.Thread(target=_loop, daemon=True, name="HeartbeatThread")
+    t = threading.Thread(target=_loop, daemon=True)
     t.start()
-    log_ist("💓 Heartbeat thread started (interval: %s sec)" % interval, "DEBUG", Fore.BLUE)
-    return t
+    log_ist("💓 Heartbeat thread started", "INFO", Fore.BLUE)
 
-
-# --- One-time startup guard ---
 if "heartbeat" not in st.session_state:
-    st.session_state.heartbeat = start_heartbeat(interval=900)  # 15 minutes
+    start_heartbeat(interval=900)  # every 15 minutes
+    st.session_state.heartbeat = True
 
 # =====================================================
 # ✅ FINAL BOOT MESSAGE
 # =====================================================
-try:
-    log_ist("✅ VAHAN ALL-MAXED ULTRA+ Boot Complete", "INFO", Fore.GREEN)
-    log_ist("🌐 Environment stable — ready for data ops, analytics, and live monitoring.", "INFO", Fore.CYAN)
-
-    # Streamlit-only UI notice
-    if st._is_running_with_streamlit:
-        st.toast("✅ All Systems Ready — Full Power Mode 🔋", icon="✅")
-except Exception as e:
-    print(f"{Fore.RED}[BOOT] Final message error: {e}{Style.RESET_ALL}")
+log_ist("✅ VAHAN ALL-MAXED ULTRA+ Boot Complete", "INFO", Fore.GREEN)
+st.toast("✅ All Systems Ready — Full Power Mode 🔋", icon="✅")
 
 # =====================================================
-# ⚙️ DYNAMIC SIDEBAR — ALL-MAXED ULTRA (v3.0 + Debug)
+# ⚙️ DYNAMIC SIDEBAR — ALL-MAXED ULTRA (v3.0)
 # =====================================================
 import os
 import json
@@ -864,21 +466,17 @@ from datetime import date, datetime
 from pathlib import Path
 import streamlit as st
 import pandas as pd
-from colorama import Fore, Style
 
 # ---------- SAFE DEFAULTS ----------
 STORAGE_DIR = Path.home() / ".vahan"
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 PRESETS_FILE = STORAGE_DIR / "sidebar_presets.json"
 
-print(f"{Fore.CYAN}[INIT] Sidebar storage: {STORAGE_DIR}{Style.RESET_ALL}")
-
 if "init_done" not in st.session_state:
     st.session_state["init_done"] = True
     st.session_state.setdefault("session_seed", random.randint(100000, 999999))
     st.session_state.setdefault("user_cookie", f"user_{random.randint(1000,9999)}")
-
-    # Sidebar default states
+    # sidebar defaults
     st.session_state.setdefault("from_year", None)
     st.session_state.setdefault("to_year", None)
     st.session_state.setdefault("time_period", "Yearly")
@@ -890,61 +488,58 @@ if "init_done" not in st.session_state:
     st.session_state.setdefault("auto_refresh", True)
     st.session_state.setdefault("watchdog_enabled", True)
 
-    print(f"{Fore.GREEN}[STATE] Initialized new Streamlit session seed={st.session_state.session_seed}{Style.RESET_ALL}")
-
-# Toggle to hide/show sidebar
+# Toggle to hide/show entire sidebar UI (keeps state)
 SHOW_SIDEBAR_UI = st.session_state.get("show_sidebar", False)
-print(f"{Fore.YELLOW}[UI] Sidebar visible: {SHOW_SIDEBAR_UI}{Style.RESET_ALL}")
 
-# ---------- Helpers ----------
+# ---------- small helper utilities ----------
 def safe_load_presets():
     try:
         if PRESETS_FILE.exists():
             with PRESETS_FILE.open("r", encoding="utf-8") as fh:
-                data = json.load(fh)
-                print(f"{Fore.GREEN}[LOAD] Loaded {len(data)} sidebar presets{Style.RESET_ALL}")
-                return data
-        else:
-            print(f"{Fore.YELLOW}[LOAD] No presets found (fresh start){Style.RESET_ALL}")
+                return json.load(fh)
     except Exception as e:
-        print(f"{Fore.RED}[ERROR] Could not load presets: {e}{Style.RESET_ALL}")
+        st.warning(f"⚠️ Could not load presets: {e}")
     return {}
 
 def safe_save_presets(presets: dict):
     try:
         with PRESETS_FILE.open("w", encoding="utf-8") as fh:
             json.dump(presets, fh, indent=2)
-        print(f"{Fore.CYAN}[SAVE] Presets saved successfully ({len(presets)}){Style.RESET_ALL}")
         return True
     except Exception as e:
-        print(f"{Fore.RED}[ERROR] Failed to save presets: {e}{Style.RESET_ALL}")
+        st.error(f"💥 Failed to save presets: {e}")
         return False
 
 def to_df(json_obj, label_keys=("label",), value_key="value"):
-    try:
-        if isinstance(json_obj, dict) and "labels" in json_obj and "data" in json_obj:
-            labels = json_obj["labels"]
-            values = json_obj["data"]
-            min_len = min(len(labels), len(values))
-            df = pd.DataFrame({"label": labels[:min_len], "value": values[:min_len]})
-        else:
-            data = json_obj.get("data", json_obj) if isinstance(json_obj, dict) else json_obj
-            if isinstance(data, dict):
-                data = [data]
-            rows = []
-            for item in data:
-                label = next((item.get(k) for k in label_keys if k in item), None)
-                value = item.get(value_key) or item.get("count") or item.get("total")
-                if label is not None and value is not None:
-                    rows.append({"label": label, "value": value})
-            df = pd.DataFrame(rows)
-        print(f"{Fore.BLUE}[DF] to_df generated {len(df)} rows{Style.RESET_ALL}")
-        return df
-    except Exception as e:
-        print(f"{Fore.RED}[DF ERROR] {e}{Style.RESET_ALL}")
-        return pd.DataFrame()
+    # Compatible with many API shapes (keeps original behavior)
+    if isinstance(json_obj, dict) and "labels" in json_obj and "data" in json_obj:
+        labels = json_obj["labels"]
+        values = json_obj["data"]
+        min_len = min(len(labels), len(values))
+        return pd.DataFrame({"label": labels[:min_len], "value": values[:min_len]})
+    data = json_obj.get("data", json_obj) if isinstance(json_obj, dict) else json_obj
+    if isinstance(data, dict):
+        data = [data]
+    rows = []
+    for item in data:
+        label = None
+        for k in label_keys:
+            if k in item:
+                label = item[k]
+                break
+        if label is None and label_keys:
+            label = item.get(label_keys[0], None)
+        value = item.get(value_key, None)
+        if value is None:
+            for vk in ("count", "value", "total"):
+                if vk in item:
+                    value = item[vk]
+                    break
+        if label is not None and value is not None:
+            rows.append({"label": label, "value": value})
+    return pd.DataFrame(rows)
 
-# ---------- CSS ----------
+# ---------- compact CSS (keeps app neat when sidebar hidden) ----------
 HIDE_SIDEBAR_CSS = """
 <style>
 section[data-testid="stSidebar"] {display: none !important;}
@@ -956,47 +551,24 @@ div[data-testid="collapsedControl"] {display: none !important;}
 """
 if not SHOW_SIDEBAR_UI:
     st.markdown(HIDE_SIDEBAR_CSS, unsafe_allow_html=True)
-    print(f"{Fore.MAGENTA}[CSS] Sidebar hidden via injected style{Style.RESET_ALL}")
 
-# ---------- Bootstrap ----------
+# ---------- Bootstrap / header ----------
 today = date.today()
 default_from_year = today.year - 1
 
+# ---------- Load presets ----------
 _presets = safe_load_presets()
 preset_names = sorted(list(_presets.keys()))
-print(f"{Fore.CYAN}[BOOT] Sidebar presets ready ({len(preset_names)} total){Style.RESET_ALL}")
 
 # =====================================================
-# ⚙️ SIDEBAR CONTROL PANEL — ULTRA MAXED v4.1
+# ⚙️ SIDEBAR CONTROL PANEL — ULTRA MAXED v4.0
 # =====================================================
 import streamlit as st
 import time, platform
 from datetime import date
-from pathlib import Path
-import json
 
 today = date.today()
 default_from_year = 2015
-
-# ---------- Storage for presets ----------
-STORAGE_DIR = Path.home() / ".vahan"
-STORAGE_DIR.mkdir(parents=True, exist_ok=True)
-PRESETS_FILE = STORAGE_DIR / "sidebar_presets.json"
-
-def safe_load_presets():
-    try:
-        if PRESETS_FILE.exists():
-            return json.load(PRESETS_FILE.open("r", encoding="utf-8"))
-    except:
-        return {}
-    return {}
-
-def safe_save_presets(presets: dict):
-    try:
-        json.dump(presets, PRESETS_FILE.open("w", encoding="utf-8"), indent=2)
-        return True
-    except:
-        return False
 
 # -----------------------------------------------------
 # 🧩 SAFE SESSION INITIALIZATION (once only)
@@ -1028,33 +600,21 @@ init_state("auto_refresh", True)
 init_state("enable_beta", False)
 
 # -----------------------------------------------------
-# 🚀 CSS: hide sidebar if toggled off
-# -----------------------------------------------------
-HIDE_SIDEBAR_CSS = """
-<style>
-section[data-testid="stSidebar"] {display: none !important;}
-div[data-testid="collapsedControl"] {display: none !important;}
-</style>
-"""
-if not st.session_state.show_sidebar:
-    st.markdown(HIDE_SIDEBAR_CSS, unsafe_allow_html=True)
-
-# -----------------------------------------------------
 # 🚀 SIDEBAR UI (wrapped for safety)
 # -----------------------------------------------------
 try:
-    st.sidebar.markdown("<div class='sidebar-title'>⚙️ Control Panel — ULTRA MAXED v4.1</div>", unsafe_allow_html=True)
+    st.sidebar.markdown("<div class='sidebar-title'>⚙️ Control Panel — ULTRA MAXED</div>", unsafe_allow_html=True)
     st.sidebar.markdown("---")
 
-    # Sidebar toggle
-    if st.sidebar.checkbox("🧱 Show Sidebar UI", value=st.session_state.show_sidebar, key="toggle_sidebar_ui"):
-        st.session_state.show_sidebar = True
-    else:
-        st.session_state.show_sidebar = False
-
-    # Top buttons
+    # Top control buttons
     top_col1, top_col2 = st.sidebar.columns([3, 1])
     with top_col1:
+        if st.sidebar.button("🔁 Toggle Sidebar UI"):
+            st.session_state["show_sidebar"] = not st.session_state.get("show_sidebar", True)
+            st.toast("🔀 Sidebar toggled")
+            st.rerun()
+
+    with top_col2:
         if st.sidebar.button("🧹 Clear Session"):
             keep = {k: st.session_state[k] for k in ["session_seed", "user_cookie"] if k in st.session_state}
             st.session_state.clear()
@@ -1065,98 +625,99 @@ try:
     # -------------------------------------------------
     # 📊 DATA FILTERS
     # -------------------------------------------------
+    # ---------- Data Filters ----------
     with st.sidebar.expander("📊 Data Filters", expanded=True):
         st.markdown("### Time range")
-        from_year = st.number_input("From Year", 2012, today.year, st.session_state.from_year)
-        to_year = st.number_input("To Year", from_year, today.year, st.session_state.to_year)
-        st.session_state.from_year = from_year
-        st.session_state.to_year = to_year
 
-        st.session_state.state_code = st.text_input("State Code (blank=All-India)", st.session_state.state_code)
-        st.session_state.rto_code = st.text_input("RTO Code (0=aggregate)", st.session_state.rto_code)
-        st.session_state.vehicle_classes = st.text_input("Vehicle Classes", st.session_state.vehicle_classes)
-        st.session_state.vehicle_makers = st.text_input("Vehicle Makers", st.session_state.vehicle_makers)
-        st.session_state.vehicle_type = st.text_input("Vehicle Type", st.session_state.vehicle_type)
+        # ✅ Always fall back to integers (never None)
+        default_from_year = st.session_state.get("from_year", today.year - 1) or (today.year - 3)
+        default_to_year = st.session_state.get("to_year", today.year) or today.year
 
-        # Friendly selects
-        st.session_state.time_period = st.selectbox("Time Period", ["Yearly","Quarterly","Monthly"], index=["Yearly","Quarterly","Monthly"].index(st.session_state.time_period))
-        st.session_state.fitness_check = st.selectbox("Fitness Check", ["No","Yes"], index=1 if st.session_state.fitness_check else 0) == "Yes"
+        from_year = st.sidebar.number_input("From Year", min_value=2012, max_value=today.year, value=default_from_year)
+        to_year = st.sidebar.number_input("To Year", min_value=from_year, max_value=today.year, value=today.year)
+        state_code = st.sidebar.text_input("State Code (blank=All-India)", value="")
+        rto_code = st.sidebar.text_input("RTO Code (0=aggregate)", value="0")
+        vehicle_classes = st.sidebar.text_input("Vehicle Classes (e.g., 2W,3W,4W if accepted)", value="")
+        vehicle_makers = st.sidebar.text_input("Vehicle Makers (comma-separated or IDs)", value="")
+        time_period = st.sidebar.selectbox("Time Period", options=[0,1,2], index=0)
+        fitness_check = st.sidebar.selectbox("Fitness Check", options=[0,1], index=0)
+        vehicle_type = st.sidebar.text_input("Vehicle Type (optional)", value="")
+
 
     # -------------------------------------------------
-    # 🧠 AI / Forecasting
+    # 🧠 AI / FORECASTING
     # -------------------------------------------------
     with st.sidebar.expander("🧠 AI / Forecasting", expanded=False):
-        for key,label in [("enable_forecast","📈 Forecasting"), ("enable_anomaly","⚠️ Anomaly Detection"),
-                          ("enable_cluster","🔍 Clustering"), ("enable_ai","🤖 AI Narratives")]:
-            st.session_state[key] = st.checkbox(label, st.session_state[key])
+        enable_forecast = st.checkbox("📈 Forecasting", st.session_state.enable_forecast, key="input_enable_forecast")
+        enable_anomaly = st.checkbox("⚠️ Anomaly Detection", st.session_state.enable_anomaly, key="input_enable_anomaly")
+        enable_cluster = st.checkbox("🔍 Clustering", st.session_state.enable_cluster, key="input_enable_cluster")
+        enable_ai = st.checkbox("🤖 AI Narratives", st.session_state.enable_ai, key="input_enable_ai")
 
-        if st.session_state.enable_forecast and st.session_state.enable_anomaly:
-            st.caption("📊 Forecasts include anomaly markers.")
-        if st.session_state.enable_cluster:
+        st.session_state.update({
+            "enable_forecast": enable_forecast,
+            "enable_anomaly": enable_anomaly,
+            "enable_cluster": enable_cluster,
+            "enable_ai": enable_ai
+        })
+
+        if enable_forecast and enable_anomaly:
+            st.caption("📊 Forecasts will include anomaly markers.")
+        if enable_cluster:
             st.caption("🧩 Cluster model adapts dynamically.")
-        if st.session_state.enable_ai:
+        if enable_ai:
             st.caption("💬 AI narratives enabled — generating insights...")
 
         if st.button("🔒 Lock AI Settings"):
             st.session_state["_ai_locked"] = True
-            st.toast("🧠 AI config locked")
+            st.toast("🧠 AI config locked for this session")
 
     # -------------------------------------------------
-    # 🧭 API & Reports
+    # 🧭 API & Experimental Settings
     # -------------------------------------------------
     with st.sidebar.expander("🧭 API & Reports", expanded=False):
-        st.session_state.base_url = st.text_input("🌐 API Base URL", st.session_state.base_url).rstrip('/')
-        st.session_state.timeout = st.slider("⏳ API Timeout (s)", 5, 120, st.session_state.timeout)
-        st.session_state.export_format = st.selectbox("📤 Export Format", ["CSV","XLSX","PDF"], index=["CSV","XLSX","PDF"].index(st.session_state.export_format))
-        st.session_state.auto_refresh = st.checkbox("♻️ Auto-refresh", st.session_state.auto_refresh)
+        st.text_input("🌐 API Base URL", st.session_state.base_url, key="input_base_url")
+        st.slider("⏳ API Timeout (s)", 5, 120, st.session_state.timeout, key="input_timeout")
+        st.selectbox("📤 Export Format", ["CSV", "XLSX", "PDF"],
+                     index=["CSV", "XLSX", "PDF"].index(st.session_state.export_format),
+                     key="input_export_format")
+        st.checkbox("♻️ Auto-refresh on data change", value=st.session_state.auto_refresh, key="input_auto_refresh")
 
-    # -------------------------------------------------
-    # 🧪 Experimental
-    # -------------------------------------------------
     with st.sidebar.expander("🧪 Experimental", expanded=False):
-        st.session_state.enable_beta = st.checkbox("🧪 Enable Experimental Features", st.session_state.enable_beta)
-        if st.session_state.enable_beta:
+        enable_beta = st.checkbox("🧪 Enable Experimental Features", st.session_state.enable_beta, key="input_enable_beta")
+        st.session_state.enable_beta = enable_beta
+        if enable_beta:
             st.info("Experimental mode ON — unstable features enabled")
 
     # -------------------------------------------------
-    # 💾 Presets
+    # 💾 Preset Management
     # -------------------------------------------------
     with st.sidebar.expander("💾 Presets", expanded=False):
         presets = safe_load_presets()
-        # Save current preset
-        preset_name = st.text_input("Preset name", value="", key="preset_name_input")
-        if st.button("💾 Save Preset"):
-            if preset_name.strip():
-                presets[preset_name.strip()] = {k:v for k,v in st.session_state.items() if k not in ["preset_name_input","preset_select","preset_delname_input"]}
-                safe_save_presets(presets)
-                st.toast(f"Preset '{preset_name.strip()}' saved")
-            else:
-                st.warning("Enter valid preset name")
-
-        # Load/delete
         if presets:
-            sel = st.selectbox("Load preset", ["-- none --"]+list(sorted(presets.keys())), index=0, key="preset_select")
+            sel = st.selectbox("Load preset", ["-- none --"] + list(sorted(presets.keys())), index=0, key="preset_select")
             if sel and sel != "-- none --":
                 if st.button("▶️ Apply Selected Preset"):
-                    for k,v in presets[sel].items():
+                    p = presets[sel]
+                    for k, v in p.items():
                         st.session_state[k] = v
                     st.toast(f"Applied preset '{sel}'")
                     time.sleep(0.3)
                     st.rerun()
 
-            del_name = st.text_input("Delete preset name", "", key="preset_delname_input")
+            del_name = st.text_input("Delete preset name", value="", key="preset_delname_input")
             if st.button("🗑️ Delete Preset"):
-                if del_name.strip() in presets:
-                    del presets[del_name.strip()]
+                dn = del_name.strip()
+                if dn and dn in presets:
+                    del presets[dn]
                     safe_save_presets(presets)
-                    st.toast(f"Deleted preset '{del_name.strip()}'")
+                    st.toast(f"Deleted preset '{dn}'")
                 else:
                     st.error("Preset not found")
         else:
             st.caption("No presets saved yet — use 'Save Preset' above.")
 
     # -------------------------------------------------
-    # 🧾 Footer
+    # 🧾 Footer Info
     # -------------------------------------------------
     st.sidebar.markdown("---")
     st.sidebar.caption(f"🧩 User: `{st.session_state.user_cookie}` | 🔑 Seed: `{st.session_state.session_seed}`")
@@ -1164,95 +725,106 @@ try:
 
 except Exception as e:
     st.sidebar.error(f"⚠️ Auto-recovered from sidebar error: {e}")
-    import traceback; traceback.print_exc()
-    for k in ["preset_name_input","preset_select","preset_delname_input"]:
-        if k in st.session_state: del st.session_state[k]
+    import traceback
+    traceback.print_exc()
+    for k in ["preset_name_input", "preset_select", "preset_delname_input"]:
+        if k in st.session_state:
+            del st.session_state[k]
     time.sleep(0.2)
     st.rerun()
 
 # =====================================================
-# 🔁 LIVE AUTO-REFRESH (Reactive Engine — ALLLL MAXED v5.0)
+# 🔁 LIVE AUTO-REFRESH (Reactive Engine — ULTRA MAXED v3.0)
 # =====================================================
 import streamlit as st
 import threading
 import time
-from datetime import datetime
-from colorama import Fore
-from zoneinfo import ZoneInfo
+from datetime import datetime, timedelta
 
-# ---------- INIT ----------
-st.session_state.setdefault("auto_refresh", True)
-st.session_state.setdefault("auto_refresh_interval", 120)
-st.session_state.setdefault("auto_refresh_thread", None)
-st.session_state.setdefault("auto_refresh_last", datetime.now(ZoneInfo("Asia/Kolkata")))
-st.session_state.setdefault("auto_refresh_stop", False)
+# Ensure proper init
+if "auto_refresh" not in st.session_state:
+    st.session_state["auto_refresh"] = True
+if "auto_refresh_interval" not in st.session_state:
+    st.session_state["auto_refresh_interval"] = 120  # seconds
+if "auto_refresh_thread" not in st.session_state:
+    st.session_state["auto_refresh_thread"] = None
+if "auto_refresh_last" not in st.session_state:
+    st.session_state["auto_refresh_last"] = datetime.now()
+if "auto_refresh_stop" not in st.session_state:
+    st.session_state["auto_refresh_stop"] = False
 
-def log_ist(msg: str, level: str = "INFO", color: str = Fore.CYAN):
-    """Safe IST logger (integrates with auto-refresh)."""
-    try:
-        ts = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
-        print(f"{color}[IST {ts}] [{level}] {msg}")
-    except Exception:
-        print(f"[IST Logging Fallback] {msg}")
 
-# ---------- REFRESH LOOP ----------
-def _auto_refresh_loop():
-    """Background auto-refresh loop (ALLLL MAXED)."""
+# ---------- REFRESH FUNCTION ----------
+def _auto_refresh_loop(interval=120):
+    """Runs background refresh loop safely."""
     while not st.session_state.get("auto_refresh_stop", False):
-        interval = st.session_state.get("auto_refresh_interval", 120)
         time.sleep(interval)
-        if st.session_state.get("auto_refresh_stop", False):
-            break
         st.session_state["_auto_refresh_trigger"] = datetime.now().isoformat()
-        st.session_state["auto_refresh_last"] = datetime.now(ZoneInfo("Asia/Kolkata"))
+        st.session_state["auto_refresh_last"] = datetime.now()
+        # Toast works only when visible, so guard with try
         try:
             st.toast("🔁 Auto-refresh triggered!", icon="🕒")
-            log_ist(f"Auto-refresh triggered after {interval}s", "INFO", Fore.BLUE)
-        except:
+        except Exception:
             pass
-        try:
-            st.rerun()
-        except:
-            log_ist("⚠️ Auto-refresh rerun failed", "WARNING", Fore.YELLOW)
+        st.rerun()
 
-# ---------- CONTROL PANEL ----------
-with st.sidebar.expander("🕒 Auto-Refresh Control (ALLLL MAXED)", expanded=False):
+
+# ---------- CONTROL PANEL (VISIBLE AT TOP OR FOOTER) ----------
+with st.sidebar.expander("🕒 Auto-Refresh Control", expanded=False):
     st.markdown("### 🔄 Live Data Auto-Refresh")
     st.caption("Keep your dashboard continuously synced with the latest data.")
 
-    interval = st.slider(
-        "⏳ Refresh Interval (sec)",
-        30, 600,
-        st.session_state["auto_refresh_interval"],
-        step=30,
-        key="auto_refresh_interval"
-    )
-
-    c1, c2 = st.columns(2)
+    c1, c2 = st.columns([3, 1])
     with c1:
+        interval = st.slider("⏳ Refresh Interval (sec)", 30, 600,
+                             st.session_state.get("auto_refresh_interval", 120),
+                             step=30, key="auto_refresh_interval")
+    with c2:
+        st.caption(" ")
+
+    # Start/Stop buttons
+    c3, c4 = st.columns(2)
+    with c3:
         if st.button("▶️ Start Auto-Refresh"):
             st.session_state["auto_refresh_stop"] = False
-            if not st.session_state.get("auto_refresh_thread", False):
-                thread = threading.Thread(target=_auto_refresh_loop, daemon=True)
+            if st.session_state.get("auto_refresh_thread") is None or not st.session_state["auto_refresh_thread"]:
+                thread = threading.Thread(
+                    target=_auto_refresh_loop,
+                    args=(st.session_state["auto_refresh_interval"],),
+                    daemon=True
+                )
                 thread.start()
                 st.session_state["auto_refresh_thread"] = True
                 st.toast(f"🔁 Auto-refresh started ({interval}s interval).", icon="🟢")
-                log_ist(f"🔁 Auto-refresh thread started ({interval}s interval)", "INFO", Fore.GREEN)
-    with c2:
+    with c4:
         if st.button("⏹️ Stop Auto-Refresh"):
             st.session_state["auto_refresh_stop"] = True
             st.session_state["auto_refresh_thread"] = None
             st.toast("⏹️ Auto-refresh stopped.", icon="🔴")
-            log_ist("⏹️ Auto-refresh thread stopped", "INFO", Fore.RED)
 
-# ---------- AUTO START ----------
+    # Show status and time since last refresh
+    if not st.session_state.get("auto_refresh_stop", False):
+        elapsed = (datetime.now() - st.session_state.get("auto_refresh_last", datetime.now())).seconds
+        next_refresh_in = st.session_state.get("auto_refresh_interval", 120) - elapsed
+        if next_refresh_in < 0:
+            next_refresh_in = 0
+        st.markdown(f"**🕒 Next refresh in:** `{next_refresh_in}s`")
+        st.progress(max(0, min(1, 1 - elapsed / st.session_state.get("auto_refresh_interval", 120))))
+    else:
+        st.info("⏸️ Auto-refresh paused.")
+
+
+# ---------- AUTO START (if enabled) ----------
 if st.session_state.get("auto_refresh", True) and not st.session_state.get("auto_refresh_stop", False):
-    if not st.session_state.get("auto_refresh_thread", False):
-        thread = threading.Thread(target=_auto_refresh_loop, daemon=True)
+    if "auto_refresh_thread" not in st.session_state or not st.session_state["auto_refresh_thread"]:
+        thread = threading.Thread(
+            target=_auto_refresh_loop,
+            args=(st.session_state["auto_refresh_interval"],),
+            daemon=True
+        )
         thread.start()
         st.session_state["auto_refresh_thread"] = True
-        st.toast(f"🔁 Auto-refresh active every {st.session_state['auto_refresh_interval']}s (ALLLL MAXED).", icon="🕒")
-        log_ist(f"🔁 Auto-refresh auto-started ({st.session_state['auto_refresh_interval']}s interval)", "SUCCESS", Fore.GREEN)
+        st.toast(f"🔁 Auto-refresh active every {st.session_state['auto_refresh_interval']}s (ULTRA-MAXED).", icon="🕒")
 
 # =====================================================
 # 🚀 VAHAN ANALYTICS API ENGINE — ALL-MAXED PURE v7.0
@@ -1261,13 +833,20 @@ if st.session_state.get("auto_refresh", True) and not st.session_state.get("auto
 # =====================================================
 # 🧩 STREAMLIT SAFE IMPORT — ALL-MAXED
 # =====================================================
+import os, re, json, time, random, logging, pickle, requests
+from datetime import datetime
+from urllib.parse import urlencode
+from zoneinfo import ZoneInfo
+from typing import Optional, Dict, Any
+from contextlib import nullcontext
+
+# =====================================================
+# 🧩 STREAMLIT SAFE IMPORT
+# =====================================================
 try:
     import streamlit as st
-    ST_LOADED = True
 except ImportError:
-    ST_LOADED = False
     class st:
-        """Safe fallback for Streamlit if not installed."""
         @staticmethod
         def expander(*_, **__): return nullcontext()
         @staticmethod
@@ -1275,113 +854,52 @@ except ImportError:
         @staticmethod
         def spinner(_): return nullcontext()
         @staticmethod
-        def warning(msg): print(f"[WARNING] {msg}")
+        def warning(msg): print("[WARNING]", msg)
         @staticmethod
-        def error(msg): print(f"[ERROR] {msg}")
-        @staticmethod
-        def markdown(msg, **kwargs): print(f"[MARKDOWN] {msg}")
-        @staticmethod
-        def text(msg): print(f"[TEXT] {msg}")
-        @staticmethod
-        def button(label, **kwargs): return False
-        @staticmethod
-        def checkbox(label, **kwargs): return False
-        @staticmethod
-        def selectbox(label, options=None, **kwargs): return options[0] if options else None
+        def error(msg): print("[ERROR]", msg)
 
-# ---------------------------------------------------------------
-# 🔍 Debug info for Streamlit import
-# ---------------------------------------------------------------
-try:
-    print("🧩 [DEBUG] Streamlit safe import loaded.")
-    print(f"Streamlit loaded : {ST_LOADED}")
-    print(f"Streamlit path   : {getattr(st, '__file__', 'safe fallback')}")
-    print(f"Streamlit version: {getattr(st, '__version__', 'unknown')}")
-except Exception as e:
-    print(f"[DEBUG] Streamlit debug failed: {e}")
-print("---------------------------------------------------------------")
+
 
 # =====================================================
-# ⚙️ CONSTANTS — ALL-MAXED
+# ⚙️ CONSTANTS
 # =====================================================
 BASE_URL = "https://analytics.parivahan.gov.in/analytics/publicdashboard"
 MAX_RETRIES = 4
-DEFAULT_TIMEOUT = 60  # seconds
-
-# ---------------------------------------------------------------
-# 🔍 Debug info for constants
-# ---------------------------------------------------------------
-print("🧩 [DEBUG] Constants loaded successfully.")
-print(f"BASE_URL      : {BASE_URL}")
-print(f"MAX_RETRIES   : {MAX_RETRIES}")
-print(f"DEFAULT_TIMEOUT: {DEFAULT_TIMEOUT}s")
-print("---------------------------------------------------------------")
+DEFAULT_TIMEOUT = 60
 
 # =====================================================
-# 🕒 UTILITIES — LOGGING + TIME (ALL-MAXED)
+# 🕒 UTILITIES — LOGGING + TIME
 # =====================================================
-from datetime import datetime
-from zoneinfo import ZoneInfo
-
 def ist_now() -> str:
-    """Return current IST timestamp as string."""
-    try:
-        return datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
-    except Exception:
-        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d %I:%M:%S %p")
 
 def log(msg: str, level: str = "INFO"):
-    """
-    Safe IST logger with color + Streamlit fallback.
-    Levels: INFO, WARNING, ERROR, SUCCESS
-    """
-    prefix = f"[IST {ist_now()}] [{level.upper()}]"
+    prefix = f"[IST {ist_now()}] [{level}]"
     line = f"{prefix} {msg}"
-
-    color_map = {
-        "INFO": "\033[94m",      # Blue
-        "WARNING": "\033[93m",   # Yellow
-        "ERROR": "\033[91m",     # Red
-        "SUCCESS": "\033[92m",   # Green
-    }
-    color = color_map.get(level.upper(), "\033[0m")
-    print(f"{color}{line}\033[0m")
-
-    # Streamlit fallback
+    color = {
+        "INFO": "\033[94m",
+        "WARNING": "\033[93m",
+        "ERROR": "\033[91m",
+        "SUCCESS": "\033[92m",
+    }.get(level, "\033[0m")
+    print(color + line + "\033[0m")
     try:
-        if level.upper() == "ERROR":
+        if level == "ERROR":
             st.error(line)
-        elif level.upper() == "WARNING":
+        elif level == "WARNING":
             st.warning(line)
     except Exception:
         pass
 
-# ---------------------------------------------------------------
-# 🔍 Debug info for logging utility
-# ---------------------------------------------------------------
-log("🧩 Logging utility loaded successfully", "SUCCESS")
-log(f"Current IST time: {ist_now()}", "INFO")
-print("---------------------------------------------------------------")
-
 # =====================================================
-# 🧰 CLEAN STRING (ALL-MAXED)
+# 🧰 CLEAN STRING
 # =====================================================
-import re
-
 def clean_str(v: str) -> str:
-    """
-    Safely clean a string by removing unwanted characters.
-    Keeps: letters, numbers, underscore, dash, space, comma, dot, slash.
-    """
-    if not v:
-        log("⚠️ clean_str received empty or None value", "WARNING")
-        return ""
-    cleaned = re.sub(r"[^A-Za-z0-9_\- ,./]", "", str(v).strip())
-    log(f"Original: {v!r} | Cleaned: {cleaned!r}", "INFO")
-    return cleaned
+    if not v: return ""
+    return re.sub(r"[^A-Za-z0-9_\- ,./]", "", str(v).strip())
 
 # =====================================================
-# 🧩 PARAMETER BUILDER (ALL-MAXED, NO PREFILL)
+# 🧩 PARAMETER BUILDER (NO PREFILL)
 # =====================================================
 def build_params(
     from_year: int,
@@ -1394,12 +912,13 @@ def build_params(
     time_period: str,
     fitness_check: bool,
     vehicle_type: str,
+    extra_params: Optional[dict] = None,
 ) -> dict:
-    """Strict builder — all parameters mandatory, debug-friendly."""
+    """Strict builder — no prefilled defaults."""
     current_year = datetime.now().year
     errors = []
 
-    # --- Strict checks ---
+    # strict checks
     if from_year is None or to_year is None:
         errors.append("Both from_year and to_year must be provided.")
     if not isinstance(from_year, int) or not isinstance(to_year, int):
@@ -1418,13 +937,11 @@ def build_params(
             log(f"❌ Parameter Error: {e}", "ERROR")
         raise ValueError(" | ".join(errors))
 
-    # --- Normalize time_period ---
     time_period = time_period.title().strip()
     if time_period not in ["Yearly", "Quarterly", "Monthly"]:
         log(f"⚠️ Invalid time_period '{time_period}', defaulting to 'Yearly'", "WARNING")
         time_period = "Yearly"
 
-    # --- Build main param dict ---
     params = {
         "from_year": from_year,
         "to_year": to_year,
@@ -1438,14 +955,11 @@ def build_params(
         "_session_seed": datetime.now().strftime("%Y%m%d%H%M%S"),
     }
 
-    # --- Add extra params if valid ---
     if extra_params:
         for k, v in extra_params.items():
             if v not in [None, "", [], {}]:
                 params[k] = v
-                log(f"🔹 Extra param added: {k} = {v}", "INFO")
 
-    # --- Meta info ---
     params["_meta"] = {
         "created": ist_now(),
         "validated": True,
@@ -1454,7 +968,6 @@ def build_params(
 
     log(f"🧩 Params built successfully → hash {params['_meta']['safe_hash']}", "SUCCESS")
 
-    # --- Optional Streamlit display ---
     try:
         with st.expander("🔍 VAHAN Parameter Summary", expanded=False):
             st.json(params)
@@ -1464,25 +977,9 @@ def build_params(
     return params
 
 
-# =====================================================
-# 📊 VAHAN INTELLIGENCE DASHBOARD — ALL-MAXED (REAL DATA EDITION)
-# =====================================================
 import streamlit as st
 from datetime import datetime
 from zoneinfo import ZoneInfo
-
-# ---------------------------------------------------------------
-# 🔍 Print debug info for imports
-# ---------------------------------------------------------------
-print("🧩 [DEBUG] Imports loaded successfully.")
-print(f"Python version   : {__import__('sys').version.split()[0]}")
-print(f"Platform         : {__import__('platform').system()} {__import__('platform').release()}")
-print(f"Working dir      : {__import__('os').getcwd()}")
-print(f"Streamlit path   : {st.__file__ if hasattr(st, '__file__') else 'builtin'}")
-print(f"Streamlit version: {st.__version__ if hasattr(st, '__version__') else 'unknown'}")
-print(f"Datetime module  : {datetime.__module__}")
-print(f"Timezone module  : {ZoneInfo.__module__}")
-print("---------------------------------------------------------------")
 
 # =====================================================
 # 🎨 GLOBAL STYLE + HEADER
@@ -1537,34 +1034,12 @@ footer small {
 """, unsafe_allow_html=True)
 
 # =====================================================
-# 🧩 DEBUG INFO — ALL-MAXED
-# =====================================================
-import sys, platform, os, traceback, random, pandas as pd, numpy as np
-
-print("---------------------------------------------------------------")
-print("🧩 [DEBUG] Imports loaded successfully — ALL-MAXED")
-print(f"Python version   : {sys.version.split()[0]}")
-print(f"Platform         : {platform.system()} {platform.release()}")
-print(f"Working dir      : {os.getcwd()}")
-print(f"Streamlit path   : {st.__file__ if hasattr(st, '__file__') else 'builtin'}")
-print(f"Streamlit version: {st.__version__ if hasattr(st, '__version__') else 'N/A'}")
-print(f"Pandas version   : {pd.__version__}")
-print(f"NumPy version    : {np.__version__}")
-print(f"Timezone module  : {ZoneInfo.__module__}")
-print(f"Datetime module  : {datetime.__module__}")
-print(f"Logging module   : {logging.__file__ if hasattr(logging, '__file__') else 'builtin'}")
-print(f"Traceback module : {traceback.__file__ if hasattr(traceback, '__file__') else 'builtin'}")
-print(f"Random module    : {random.__file__ if hasattr(random, '__file__') else 'builtin'}")
-print("---------------------------------------------------------------")
-
-# =====================================================
-# 🚗 HEADER — ULTRA MAXED
+# 🚗 HEADER
 # =====================================================
 st.markdown("""
 <div style='text-align:center;margin-bottom:2rem;'>
-  <h1 style='font-size:2.8rem;'>🚗 <b>Vahan Intelligence Dashboard</b></h1>
-  <p style='font-size:1.1rem;color:#555;'>AI-Driven Analytics • Forecasts • Trends • All-India Transport Intelligence</p>
-  <hr class='glow'>
+  <h1>🚗 <b>Vahan Intelligence Dashboard</b></h1>
+  <p>AI-Driven Analytics • Forecasts • Trends • All-India Transport Intelligence</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -1618,19 +1093,6 @@ from typing import Optional, Dict, Any
 # -------------------------
 load_dotenv()  # load .env if present
 
-# -------------------------
-# 🧩 Debug print of imports & environment
-# -------------------------
-print("🧩 [DEBUG] Core imports loaded successfully.")
-print(f"Python version   : {os.sys.version.split()[0]}")
-print(f"Platform         : {os.sys.platform}")
-print(f"Working dir      : {os.getcwd()}")
-print(f"Streamlit path   : {st.__file__ if hasattr(st, '__file__') else 'builtin'}")
-print(f"Streamlit version: {st.__version__}")
-print(f"Requests version : {requests.__version__}")
-print(f"Dotenv module    : {load_dotenv.__module__}")
-print("---------------------------------------------------------------")
-
 def get_secret(key: str, default: Optional[str] = "") -> str:
     # priority: st.secrets -> env -> default
     try:
@@ -1663,19 +1125,6 @@ ENDPOINTS = {
 
 AI_URL = ENDPOINTS.get(AI_PROVIDER, ENDPOINTS["openai"])
 
-# -------------------------
-# 🧩 Debug print
-# -------------------------
-print("🧩 [DEBUG] AI / DEEPINFRA Configuration Loaded")
-print(f"AI Provider       : {AI_PROVIDER}")
-print(f"AI Model          : {AI_MODEL}")
-print(f"AI Timeout        : {AI_TIMEOUT}s")
-print(f"AI URL            : {AI_URL}")
-print(f"DEEPINFRA Model   : {DEEPINFRA_MODEL}")
-print(f"DEEPINFRA Timeout : {DEEPINFRA_TIMEOUT}s")
-print(f"Keys available?   : {'Yes' if AI_API_KEY else 'No'} / {'Yes' if DEEPINFRA_API_KEY else 'No'}")
-print("---------------------------------------------------------------")
-
 # =====================================================
 # 🧠 SAFE SIDEBAR TOGGLE (ALL-MAXED v3 — ULTRA EDITION)
 # =====================================================
@@ -1683,18 +1132,16 @@ import streamlit as st
 from datetime import datetime
 
 # -----------------------------------------------------
-# 🎨 Sidebar header with gradient + shadow
+# 🎨 Sidebar header
 # -----------------------------------------------------
 st.sidebar.markdown(
     """
-    <div style='padding:8px 12px;
-                border-radius:10px;
-                background: linear-gradient(90deg, #0b3d91, #1a73e8);
+    <div style='padding:8px 10px;
+                border-radius:8px;
+                background:linear-gradient(90deg,#0b3d91,#1a73e8);
                 color:white;
                 font-weight:700;
-                text-align:center;
-                text-shadow: 0 0 6px rgba(255,255,255,0.4);
-                margin-bottom:8px;'>
+                text-shadow:0 0 6px rgba(255,255,255,0.3);'>
         🤖 DeepInfra / Universal AI Connector
     </div>
     """,
@@ -1702,47 +1149,24 @@ st.sidebar.markdown(
 )
 
 # -----------------------------------------------------
-# 🧩 Optional debug info for sidebar render
-# -----------------------------------------------------
-if "sidebar_rendered" not in st.session_state:
-    st.session_state["sidebar_rendered"] = True
-    print(f"🧩 [DEBUG] Sidebar header rendered at {datetime.now().strftime('%I:%M:%S %p')}")
-
-# -----------------------------------------------------
 # 🧩 Initialize State (Safe, Idempotent)
 # -----------------------------------------------------
 def init_state(key, default=None):
-    """Set a session state key only if it doesn't exist yet (idempotent)."""
     if key not in st.session_state:
         st.session_state[key] = default
 
-# -----------------------------------------------------
-# 🎛️ AI / Sidebar Controls State
-# -----------------------------------------------------
-init_state("enable_ai", True)        # toggle AI features on/off
-init_state("last_ai_check", None)    # timestamp of last AI action
-init_state("ai_status", "idle")      # current AI workflow status
-init_state("ai_locked", False)       # whether AI settings are locked
-init_state("ai_provider", "deepinfra")  # default AI provider
-init_state("ai_model", None)         # model currently selected
+init_state("enable_ai", True)
+init_state("last_ai_check", None)
+init_state("ai_status", "idle")
 
 # -----------------------------------------------------
 # 🧠 Unified Toggle Component (Duplicate-Proof)
 # -----------------------------------------------------
 def safe_checkbox(label, session_key, default=True, help_text=None):
-    """
-    Safely create a checkbox synced with session_state.
-    Prevents duplicates and ensures consistent state.
-    """
-    widget_key = f"{session_key}_widget"  # Unique widget key
-    val = st.sidebar.checkbox(
-        label,
-        key=widget_key,
-        value=st.session_state.get(session_key, default),
-        help=help_text
-    )
-    # Sync back to session_state
-    if st.session_state.get(session_key) != val:
+    """Safely create a checkbox synced with session_state (duplicate-safe)."""
+    widget_key = f"{session_key}_widget"  # Unique key per widget
+    val = st.sidebar.checkbox(label, key=widget_key, value=st.session_state.get(session_key, default), help=help_text)
+    if val != st.session_state[session_key]:
         st.session_state[session_key] = val
     return val
 
@@ -1753,78 +1177,49 @@ enable_ai = safe_checkbox(
     "Enable AI",
     "enable_ai",
     default=True,
-    help_text="Toggle DeepInfra / Universal AI connector"
+    help_text="Toggle DeepInfra / Universal AI connector",
 )
 
+
 # -----------------------------------------------------
-# 📊 Dynamic AI Status Display (ALL-MAXED)
+# 📊 Dynamic Status Display (Instant Feedback)
 # -----------------------------------------------------
 if enable_ai:
     st.session_state.ai_status = "active"
-    status_color = "#16c784"  # green
+    status_color = "#16c784"
     emoji = "✅"
     status_text = "AI Enabled — DeepInfra connector active."
 else:
     st.session_state.ai_status = "disabled"
-    status_color = "#f39c12"  # orange
+    status_color = "#f39c12"
     emoji = "⚠️"
     status_text = "AI Disabled — manual mode only."
 
-# Render as styled card
-st.markdown(f"""
-<div class="metric-card" style="background:{status_color};color:white;">
-    <h3 style="margin:0;">{emoji} {status_text}</h3>
-    <small style="opacity:0.8;">Last checked: {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M:%S %p IST')}</small>
-</div>
-""", unsafe_allow_html=True)
+# -----------------------------------------------------
+# 🕒 Last AI Check Timestamp (optional tracking)
+# -----------------------------------------------------
+if enable_ai:
+    st.session_state.last_ai_check = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # -----------------------------------------------------
-# 🕒 Display Last AI Check
+# 💬 Sidebar Visual Status Badge
 # -----------------------------------------------------
-if st.session_state.last_ai_check:
-    st.sidebar.markdown(f"""
-    <div style="font-size:12px; color:#aaa; margin-top:4px;">
-        ⏱️ Last AI check: {st.session_state.last_ai_check} IST
-    </div>
-    """, unsafe_allow_html=True)
-
-# -----------------------------------------------------
-# 💬 Sidebar Visual Status Badge — ALL-MAXED EDITION
-# -----------------------------------------------------
-pulse_color = status_color if enable_ai else "#888"
-
 st.sidebar.markdown(
     f"""
-    <div style='
-        margin-top:8px;
-        padding:12px 14px;
-        border-radius:12px;
-        background: linear-gradient(135deg, {pulse_color}20, {pulse_color}10);
-        border:1px solid {pulse_color};
-        color:{pulse_color};
-        font-weight:700;
-        text-align:center;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        transition: all 0.3s ease-in-out;
-    '>
-        <span style='display:inline-block; width:10px; height:10px; border-radius:50%; 
-                     background:{pulse_color}; margin-right:6px; 
-                     animation: pulse 1.2s infinite alternate; vertical-align:middle;'></span>
+    <div style='margin-top:8px;
+                padding:10px 12px;
+                border-radius:10px;
+                background:{status_color}20;
+                border:1px solid {status_color};
+                color:{status_color};
+                font-weight:600;
+                text-align:center;'>
         {emoji} {status_text}<br>
-        <small style='color:#aaa;'>Last check: {st.session_state.last_ai_check or "—"}</small>
+        <small style='color:#888;'>Last check: {st.session_state.last_ai_check or "—"}</small>
     </div>
-
-    <style>
-    @keyframes pulse {{
-        0% {{ opacity: 0.4; transform: scale(0.8); }}
-        50% {{ opacity: 0.8; transform: scale(1.1); }}
-        100% {{ opacity: 0.6; transform: scale(0.9); }}
-    }}
-    </style>
     """,
     unsafe_allow_html=True
 )
-
 # -----------------------------------------------------
 # 🔧 Future Expansion Example
 # -----------------------------------------------------
@@ -1855,67 +1250,38 @@ def ping_provider(provider: str = AI_PROVIDER, api_key: str = None, timeout: int
     except Exception as e:
         return f"error: {str(e)[:120]}", None
 
-# -------------------------
-# 🔌 Ping / Connectivity Checks — ALL-MAXED
-# -------------------------
-def render_provider_card_maxed():
+# show connectivity card
+def render_provider_card():
     if not enable_ai:
         st.sidebar.info("AI Mode: Disabled")
         return
 
-    # Determine key to use
     key_to_show = AI_API_KEY or (DEEPINFRA_API_KEY if AI_PROVIDER == "deepinfra" else "")
     has_key = bool(key_to_show)
     if not has_key:
-        st.sidebar.error(
-            "❌ No API key found. Add to st.secrets or environment (AI_API_KEY / DEEPINFRA_API_KEY)."
-        )
+        st.sidebar.error("❌ No API key found. Add to st.secrets or environment (AI_API_KEY / DEEPINFRA_API_KEY).")
         return
 
-    # Ping provider
     status, latency = ping_provider(api_key=key_to_show)
     st.session_state.last_ai_check = _now_ts()
+    if status == 200:
+        st.sidebar.success(f"✅ {AI_PROVIDER.title()} reachable — {latency} ms")
+        st.sidebar.caption(f"Model: **{AI_MODEL}** | Last check: {st.session_state.last_ai_check}")
+    elif status == "timeout":
+        st.sidebar.error("⏱️ Provider timed out")
+    elif isinstance(status, int) and status == 401:
+        st.sidebar.error("🚫 Unauthorized — invalid API key")
+    else:
+        st.sidebar.warning(f"⚠️ Status: {status} | Last check: {st.session_state.last_ai_check}")
 
-    # Styling vars
-    bg_color = "#16c78420" if status == 200 else "#f39c1220" if status == "timeout" else "#f1c40f20"
-    border_color = "#16c784" if status == 200 else "#f39c12" if status == "timeout" else "#f1c40f"
-    emoji = "✅" if status == 200 else "⏱️" if status == "timeout" else "⚠️"
-    msg = (
-        f"{emoji} {AI_PROVIDER.title()} reachable — {latency} ms" if status == 200 else
-        "⏱️ Provider timed out" if status == "timeout" else
-        f"⚠️ Status: {status}"
-    )
-
-    st.sidebar.markdown(
-        f"""
-        <div style='
-            margin:10px 0;
-            padding:12px 14px;
-            border-radius:12px;
-            background:{bg_color};
-            border:1px solid {border_color};
-            color:{border_color};
-            font-weight:700;
-            text-align:center;
-            box-shadow:0 4px 12px rgba(0,0,0,0.15);
-            transition: all 0.3s ease-in-out;
-        '>
-            {msg}<br>
-            <small style='color:#888;'>Model: <b>{AI_MODEL}</b> | Last check: {st.session_state.last_ai_check}</small>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-render_provider_card_maxed()
+render_provider_card()
 st.sidebar.markdown("---")
 
 # -------------------------
-# 🧠 Session Chat Memory — ALL-MAXED
+# 🧠 Session chat memory
 # -------------------------
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
-    st.toast("💬 Chat memory initialized — ready for AI interactions!", icon="🧩")
 
 # -------------------------
 # ⚙️ Universal Chat (safe, streaming-friendly)
