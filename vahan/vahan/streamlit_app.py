@@ -3862,11 +3862,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 'peak_day': peak_day,
                 'peak_day_value': peak_day_value,
                 'top_categories_year': top_categories_year,
-                'top_categories_peak_month': top_categories_peak_month,
-                'monthly_trends': monthly_totals.to_dict(),
-                'daily_trends': daily_totals.to_dict(),
-                'latest_mom': f"{latest_mom:.2f}%" if latest_mom is not None else None,
-                'latest_yoy': f"{latest_yoy:.2f}%" if latest_yoy is not None else None
+                'top_categories_peak_month': top_categories_peak_month
             })
         
         # --- Display ---
@@ -3886,18 +3882,6 @@ def all_maxed_category_block(params: Optional[dict] = None):
         Top categories (peak month):
         {chr(10).join([f"{i+1}. {cat} → {val:,.0f} ({val/m['peak_month_value']*100:.2f}%)" for i,(cat,val) in enumerate(m['top_categories_peak_month'].items())])}
         
-        Month-wise trend:
-        {chr(10).join([f"{k}: {v:,.0f}" for k,v in m['monthly_trends'].items()])}
-        
-        Day-wise trend:
-        {chr(10).join([f"{k}: {v:,.0f}" for k,v in m['daily_trends'].items()])}
-        
-        Latest MoM: {m['latest_mom']}
-        Latest YoY: {m['latest_yoy']}
-        """, language="yaml")
-        
-        st.markdown(f"CAGR (full period): {cagr:.2f}%")
-        st.markdown(f"Volatility (yearly totals): {volatility:.2f}%")
         st.markdown(f"⏱️ Runtime: {time.time()-summary_start:.2f}s")
 
     except Exception as e:
