@@ -7248,16 +7248,28 @@ fig_a = px.scatter(df_tr, x="date", y="value",
                    color=df_tr["anomaly"].map({1: "Normal", -1: "Anomaly"}))
 st.plotly_chart(fig_a, use_container_width=True)
 
-# -----------------------------
 st.subheader("🔍 Clustering (Monthly Patterns)")
-month_pivot = df_tr.pivot_table(index="year", columns="month", values="value", aggfunc="sum").fillna(0)
-print(f"[DEBUG] Pivot for clustering:\n{month_pivot}")
 
-k = st.slider("Select K (clusters)", 2, min(10, len(month_pivot)), 3)
-km = KMeans(n_clusters=k, random_state=42).fit(month_pivot)
-month_pivot["Cluster"] = km.labels_
-print(f"[DEBUG] Cluster assignments:\n{month_pivot[['Cluster']]}")
-st.dataframe(month_pivot)
+# Pivot (year vs month)
+month_pivot = (
+    df_tr.pivot_table(index="year", columns="month", values="value", aggfunc="sum")
+    .fillna(0)
+)
+st.write("[DEBUG] Pivot for clustering:", month_pivot.shape)
+
+num_years = len(month_pivot)
+if num_years < 2:
+    st.warning("❗Not enough yearly data for clustering.")
+else:
+    max_k = min(10, num_years)
+    k = st.slider("Select K (clusters)", 2, max_k, min(3, max_k))
+
+    # Fit KMeans safely
+    km = KMeans(n_clusters=k, random_state=42)
+    month_pivot["Cluster"] = km.fit_predict(month_pivot)
+
+    st.dataframe(month_pivot)
+    st.write(f"[DEBUG] Cluster assignments:\n{month_pivot[['Cluster']]}")
 
 # ================================================================
 # 🔥 HEATMAP
