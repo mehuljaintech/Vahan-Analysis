@@ -3865,24 +3865,26 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 'top_categories_peak_month': top_categories_peak_month
             })
         
-        # --- Display ---
-        for m in all_metrics:
-            st.markdown(f"#### Year: {m['year']}{' (Projected)' if m.get('projected') else ''}")
-            st.code(f"""
-        Total registrations: {m['total']:,.0f}
-        Daily average: {m['daily_avg']:,.0f}
-        Monthly average: {m['monthly_avg']:,.0f}
-        
-        Peak month: {m['peak_month']} → {m['peak_month_value']:,.0f}
-        Peak day in peak month: {m['peak_day']} → {m['peak_day_value']:,.0f}
-        
-        Top categories (year):
-        {chr(10).join([f"{i+1}. {cat} → {val:,.0f} ({val/m['total']*100:.2f}%)" for i,(cat,val) in enumerate(m['top_categories_year'].items())])}
-        
-        Top categories (peak month):
-        {chr(10).join([f"{i+1}. {cat} → {val:,.0f} ({val/m['peak_month_value']*100:.2f}%)" for i,(cat,val) in enumerate(m['top_categories_peak_month'].items())])}
-        
-        st.markdown(f"⏱️ Runtime: {time.time()-summary_start:.2f}s")
+        st.code(
+    f"""
+Total registrations: {m['total']:,.0f}
+Daily average: {m['daily_avg']:,.0f}
+Monthly average: {m['monthly_avg']:,.0f}
+
+Peak month: {m['peak_month']} → {m['peak_month_value']:,.0f}
+Peak day in peak month: {m['peak_day']} → {m['peak_day_value']:,.0f}
+
+Top makers (year):
+{chr(10).join([f"{i+1}. {maker} → {val:,.0f} ({val/m['total']*100:.2f}%)" for i,(maker,val) in enumerate(m['top_makers_year'].items())])}
+
+Top makers (peak month):
+{chr(10).join([f"{i+1}. {maker} → {val:,.0f} ({val/m['peak_month_value']*100:.2f}%)" for i,(maker,val) in enumerate(m['top_makers_peak_month'].items())])}
+
+Latest MoM: {m['latest_mom']}
+Latest YoY: {m['latest_yoy']}
+""",
+    language="yaml"
+)
 
     except Exception as e:
         st.error(f"ALL-MAXED summary failed: {e}")
