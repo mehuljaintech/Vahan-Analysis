@@ -3546,7 +3546,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
             st.error(f"💥 AI Narrative generation failed: {e}")
             print("[ERROR] AI Narrative Exception:", e)
 
-# =====================================================
+    # =====================================================
     # 🧩 ALL-MAXED FINAL SUMMARY + EXPORTS + DEBUG INSIGHTS
     # =====================================================
     st.markdown("## 🧠 Final Summary, Exports & Debug Insights — ALL-MAXED")
@@ -3735,25 +3735,140 @@ def all_maxed_category_block(params: Optional[dict] = None):
 
     
         # ----------------------------------------------------
-        # 7️⃣ DEBUG METRICS
+        # 🔥 ALL-MAXED GRANULAR + COMPARATIVE DASHBOARD
         # ----------------------------------------------------
-        summary_time = time.time() - summary_start
-        st.markdown("### ⚙️ Debug Performance Metrics")
-        st.code(f"""
-    Rows processed: {len(df_src):,}
-    Categories: {df_src['label'].nunique()}
-    Total registrations: {df_src['value'].sum():,.0f}
-    Top category: {top_cat_row['label']} → {top_cat_row['value']:,.0f} ({top_cat_share:.2f}%)
-    Peak year: {top_year_row['year']} → {top_year_row['value']:,.0f}
-    CAGR: {cagr:.2f}%
-    Latest MoM: {latest_mom}
-    Runtime: {summary_time:.2f}s
-    """, language="yaml")
-    
-    except Exception as e:
-        st.error(f"⛔ ALL-MAXED summary failed: {e}")
-        import traceback as _tb
-        st.text(_tb.format_exc())
+        try:
+            import pandas as pd
+            import streamlit as st
+            import time
+        
+            summary_time = time.time() - summary_start
+        
+            df_src['date'] = pd.to_datetime(df_src['date'])
+            df_src['day'] = df_src['date'].dt.date
+            df_src['month'] = df_src['date'].dt.to_period('M')
+            df_src['year'] = df_src['date'].dt.year
+        
+            current_year = df_src['year'].max()
+            prev_year = current_year - 1
+            next_year = current_year + 1
+            years_to_compare = [prev_year, current_year, next_year]
+        
+            # CAGR across available years
+            yearly_totals_all = df_src.groupby('year')['value'].sum()
+            try:
+                start_val = yearly_totals_all.iloc[0]
+                end_val = yearly_totals_all.iloc[-1]
+                n_years = len(yearly_totals_all) - 1
+                cagr = ((end_val / start_val) ** (1 / n_years) - 1) * 100 if n_years > 0 else 0
+            except:
+                cagr = 0
+        
+            st.markdown("### ⚡ ALL-MAXED Ultimate Granular + Comparative Dashboard")
+        
+            # Collect metrics for comparison table
+            comparison_metrics = []
+        
+            for y in years_to_compare:
+                df_y = df_src[df_src['year'] == y]
+        
+                if df_y.empty and y == next_year:
+                    # Projection based on current year
+                    df_curr = df_src[df_src['year'] == current_year]
+                    if not df_curr.empty:
+                        monthly_avg = df_curr.groupby('month')['value'].sum().mean()
+                        projected_total = monthly_avg * 12
+                        comparison_metrics.append({
+                            'year': y,
+                            'total': projected_total,
+                            'daily_avg': projected_total / 365,
+                            'monthly_avg': monthly_avg,
+                            'peak_month': 'Projected',
+                            'peak_month_value': projected_total / 12,
+                            'peak_day': 'Projected',
+                            'peak_day_value': projected_total / 365,
+                            'top_categories_year': {'Projected': projected_total},
+                            'top_categories_peak_month': {'Projected': projected_total / 12},
+                            'latest_mom': None,
+                            'latest_yoy': None
+                        })
+                    continue
+        
+                # --- Year-level aggregates ---
+                yearly_total = df_y['value'].sum()
+                daily_avg = df_y.groupby('day')['value'].sum().mean()
+                monthly_avg = df_y.groupby('month')['value'].sum().mean()
+        
+                # --- Peak month & peak day ---
+                monthly_totals = df_y.groupby('month')['value'].sum()
+                peak_month = monthly_totals.idxmax()
+                peak_month_value = monthly_totals.max()
+        
+                df_peak_month = df_y[df_y['month'] == peak_month]
+                daily_totals_in_month = df_peak_month.groupby('day')['value'].sum()
+                peak_day_in_month = daily_totals_in_month.idxmax()
+                peak_day_value = daily_totals_in_month.max()
+        
+                # --- Top categories ---
+                category_totals_year = df_y.groupby('label')['value'].sum().sort_values(ascending=False)
+                top_categories_year = category_totals_year.head(5).to_dict()
+        
+                top_categories_peak_month = df_peak_month.groupby('label')['value'].sum().sort_values(ascending=False).head(5).to_dict()
+        
+                # MoM & YoY
+                monthly_totals_sorted = monthly_totals.sort_index()
+                latest_mom = None
+                if len(monthly_totals_sorted) > 1:
+                    latest_mom = (monthly_totals_sorted.iloc[-1] - monthly_totals_sorted.iloc[-2]) / monthly_totals_sorted.iloc[-2] * 100
+        
+                df_prev = df_src[df_src['year'] == y-1]
+                latest_yoy = None
+                if not df_prev.empty:
+                    latest_yoy = (yearly_total - df_prev['value'].sum()) / df_prev['value'].sum() * 100
+        
+                comparison_metrics.append({
+                    'year': y,
+                    'total': yearly_total,
+                    'daily_avg': daily_avg,
+                    'monthly_avg': monthly_avg,
+                    'peak_month': peak_month,
+                    'peak_month_value': peak_month_value,
+                    'peak_day': peak_day_in_month,
+                    'peak_day_value': peak_day_value,
+                    'top_categories_year': top_categories_year,
+                    'top_categories_peak_month': top_categories_peak_month,
+                    'latest_mom': f"{latest_mom:.2f}%" if latest_mom is not None else None,
+                    'latest_yoy': f"{latest_yoy:.2f}%" if latest_yoy is not None else None
+                })
+        
+            # Display metrics in Streamlit
+            for m in comparison_metrics:
+                st.markdown(f"#### Year: {m['year']}{' (Projected)' if m['year']==next_year and m['peak_month']=='Projected' else ''}")
+                st.code(f"""
+        Total registrations: {m['total']:,.0f}
+        Daily average: {m['daily_avg']:,.0f}
+        Monthly average: {m['monthly_avg']:,.0f}
+        
+        Peak month: {m['peak_month']} → {m['peak_month_value']:,.0f}
+        Peak day in peak month: {m['peak_day']} → {m['peak_day_value']:,.0f}
+        
+        Top 5 categories of the year:
+        {chr(10).join([f"{i+1}. {cat} → {val:,.0f} ({val/m['total']*100:.2f}%)" for i,(cat,val) in enumerate(m['top_categories_year'].items())])}
+        
+        Top 5 categories in peak month:
+        {chr(10).join([f"{i+1}. {cat} → {val:,.0f} ({val/m['peak_month_value']*100:.2f}%)" for i,(cat,val) in enumerate(m['top_categories_peak_month'].items())])}
+        
+        Latest MoM: {m['latest_mom']}
+        Latest YoY: {m['latest_yoy']}
+        """, language="yaml")
+        
+            st.markdown(f"CAGR (full period): {cagr:.2f}%")
+            st.markdown(f"⏱️ Runtime: {summary_time:.2f}s")
+        
+        except Exception as e:
+            st.error(f"⛔ ALL-MAXED ultimate comparison failed: {e}")
+            import traceback as _tb
+            st.text(_tb.format_exc())
 
 
     
