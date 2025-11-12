@@ -3773,8 +3773,7 @@ if __name__ == "__main__":
     print(f"Python: {sys.version.splitlines()[0]}")
     print(f"Platform: {platform.platform()}")
 
-    st.markdown("# 🚗 ALL-MAXED CATEGORY ANALYTICS")
-
+    
     try:
         print("[ALL-MAXED] Calling all_maxed_category_block()")
         all_maxed_category_block()
