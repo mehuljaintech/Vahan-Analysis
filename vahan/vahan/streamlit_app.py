@@ -2450,80 +2450,151 @@ def all_maxed_category_block(params: Optional[dict] = None):
 
     print("="*80 + "\n")
     
+    import plotly.express as px
+    import plotly.graph_objects as go
+    import streamlit as st
+    import numpy as np
+    
     # -------------------------
-    # Combined View
+    # Combined View — MAXED
     # -------------------------
     if mode.startswith("Combined"):
         print("\n" + "="*80)
-        print("[COMBINED VIEW] 🌈 Rendering Combined (Stacked + Overlay) View")
+        print("[COMBINED VIEW] 🌈 Rendering Combined (Stacked + Overlay) Maxed View")
         print(f"[COMBINED VIEW] DataFrame shape: {resampled.shape}")
         print(f"[COMBINED VIEW] Columns: {list(resampled.columns)}")
         print("-"*80)
-
-        st.markdown("### 🌈 Stacked & Overlay Trends — Combined View")
     
-        # --- Stacked Area Chart ---
+        st.markdown("### 🌈 Stacked & Overlay Trends — Maxed Combined View")
+    
+        # -------------------------
+        # Stats for annotations
+        # -------------------------
+        total_reg = resampled["value"].sum()
+        mean_val = resampled["value"].mean()
+        median_val = resampled["value"].median()
+    
+        # -------------------------
+        # Stacked Area Chart
+        # -------------------------
         try:
-            print("[COMBINED VIEW] ▶ Generating stacked area chart...")
+            print("[COMBINED VIEW] ▶ Generating maxed stacked area chart...")
             fig_area = px.area(
                 resampled,
                 x="ds",
                 y="value",
                 color="label",
-                title="Stacked Registrations by Category Over Time",
+                title="📊 Stacked Registrations by Category Over Time",
                 color_discrete_sequence=px.colors.qualitative.Set3,
             )
+    
+            # Add mean/median lines across all categories
+            fig_area.add_hline(y=mean_val, line_dash="dash", line_color="green",
+                               annotation_text=f"Mean: {mean_val:.0f}", annotation_position="top left")
+            fig_area.add_hline(y=median_val, line_dash="dot", line_color="blue",
+                               annotation_text=f"Median: {median_val:.0f}", annotation_position="bottom right")
+    
+            # Optional shaded area for min/max
+            min_max = resampled.groupby("ds")["value"].agg(["min", "max"]).reset_index()
+            fig_area.add_traces([
+                go.Scatter(
+                    x=min_max["ds"].tolist() + min_max["ds"].tolist()[::-1],
+                    y=min_max["max"].tolist() + min_max["min"].tolist()[::-1],
+                    fill='toself',
+                    fillcolor='rgba(0,176,246,0.08)',
+                    line=dict(color='rgba(255,255,255,0)'),
+                    hoverinfo="skip",
+                    showlegend=False,
+                )
+            ])
+    
             fig_area.update_layout(
+                template="plotly_white",
                 legend_title_text="Category",
+                legend=dict(orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5),
                 xaxis_title="Date",
                 yaxis_title="Registrations",
-                template="plotly_white",
+                margin=dict(t=80, b=100, l=60, r=40),
                 hovermode="x unified",
+                title_font=dict(size=22, family="Segoe UI", color="#222"),
+                height=500,
             )
+    
+            # Custom hover template
+            fig_area.update_traces(
+                hovertemplate="<b>%{fullData.name}</b><br>Date: %{x|%b %Y}<br>Registrations: %{y:,}"
+            )
+    
             st.plotly_chart(fig_area, use_container_width=True)
-            print("[COMBINED VIEW] ✅ Stacked area chart rendered successfully.")
+            print("[COMBINED VIEW] ✅ Maxed stacked area chart rendered successfully.")
         except Exception as e:
             print(f"[COMBINED VIEW] ❌ Stacked area failed: {e}")
             st.warning(f"⚠️ Stacked area failed: {e}")
     
-        # --- Overlay Line Chart ---
+        # -------------------------
+        # Overlay Line Chart
+        # -------------------------
         try:
-            print("[COMBINED VIEW] ▶ Generating overlay line chart...")
+            print("[COMBINED VIEW] ▶ Generating maxed overlay line chart...")
             fig_line = px.line(
                 resampled,
                 x="ds",
                 y="value",
                 color="label",
-                title="Category Trends (Overlay)",
+                title="📈 Category Trends Overlay",
                 markers=True,
                 color_discrete_sequence=px.colors.qualitative.Bold,
             )
-            fig_line.update_traces(line=dict(width=2))
+    
+            fig_line.update_traces(line=dict(width=3))
+    
+            # Add mean/median lines
+            fig_line.add_hline(y=mean_val, line_dash="dash", line_color="green",
+                               annotation_text=f"Mean: {mean_val:.0f}", annotation_position="top left")
+            fig_line.add_hline(y=median_val, line_dash="dot", line_color="blue",
+                               annotation_text=f"Median: {median_val:.0f}", annotation_position="bottom right")
+    
             fig_line.update_layout(
                 template="plotly_white",
+                legend_title_text="Category",
+                legend=dict(orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5),
                 xaxis_title="Date",
                 yaxis_title="Registrations",
+                margin=dict(t=80, b=100, l=60, r=40),
                 hovermode="x unified",
+                title_font=dict(size=22, family="Segoe UI", color="#222"),
+                height=500,
             )
+    
+            # Custom hover template
+            fig_line.update_traces(
+                hovertemplate="<b>%{fullData.name}</b><br>Date: %{x|%b %Y}<br>Registrations: %{y:,}"
+            )
+    
             st.plotly_chart(fig_line, use_container_width=True)
-            print("[COMBINED VIEW] ✅ Overlay line chart rendered successfully.")
+            print("[COMBINED VIEW] ✅ Maxed overlay line chart rendered successfully.")
         except Exception as e:
             print(f"[COMBINED VIEW] ❌ Overlay lines failed: {e}")
             st.warning(f"⚠️ Overlay lines failed: {e}")
-
+    
         print("="*80 + "\n")
     
+    import streamlit as st
+    import plotly.express as px
+    import plotly.graph_objects as go
+    import numpy as np
+    
     # -------------------------
-    # Separate Mode (Small Multiples)
+    # Separate Mode (Small Multiples) — MAXED
     # -------------------------
     else:
         print("\n" + "="*80)
-        print("[SEPARATE VIEW] 🧩 Rendering Small Multiples (Yearly Category Distribution)")
+        print("[SEPARATE VIEW] 🧩 Rendering Maxed Small Multiples (Yearly Category Distribution)")
         print(f"[SEPARATE VIEW] Incoming DataFrame shape: {resampled.shape}")
         print(f"[SEPARATE VIEW] Columns: {list(resampled.columns)}")
         print("-"*80)
-
-        st.markdown("### 🧩 Small Multiples — Yearly Category Distribution")
+    
+        st.markdown("### 🧩 Maxed Small Multiples — Yearly Category Distribution")
     
         try:
             years_sorted = sorted(resampled["year"].unique())
@@ -2544,34 +2615,65 @@ def all_maxed_category_block(params: Optional[dict] = None):
             st.info("Select at least one year to show small multiples.")
         else:
             for y in sel_small[:6]:
-                print(f"[SEPARATE VIEW] ▶ Rendering bar chart for year: {y}")
+                print(f"[SEPARATE VIEW] ▶ Rendering maxed bar chart for year: {y}")
                 d = resampled[resampled["year"] == y]
                 if d.empty:
                     print(f"[SEPARATE VIEW] ⚠️ No data found for year {y}")
                     st.caption(f"⚠️ No data for {y}")
                     continue
+    
                 try:
+                    # -------------------------
+                    # Stats for annotations
+                    # -------------------------
+                    total_reg = d["value"].sum()
+                    mean_val = d["value"].mean()
+                    median_val = d["value"].median()
+    
                     fig_bar = px.bar(
                         d,
                         x="label",
                         y="value",
                         color="label",
-                        text_auto=True,
-                        title=f"Category Distribution — {y}",
+                        text_auto=".2s",
+                        title=f"📊 Category Distribution — {y}",
                         color_discrete_sequence=px.colors.qualitative.Pastel1,
                     )
-                    fig_bar.update_traces(textfont_size=11, textangle=0)
+    
+                    # Add mean/median lines
+                    fig_bar.add_hline(y=mean_val, line_dash="dash", line_color="green",
+                                      annotation_text=f"Mean: {mean_val:.0f}", annotation_position="top left")
+                    fig_bar.add_hline(y=median_val, line_dash="dot", line_color="blue",
+                                      annotation_text=f"Median: {median_val:.0f}", annotation_position="bottom right")
+    
+                    # Layout
+                    fig_bar.update_traces(textfont_size=12)
                     fig_bar.update_layout(
-                        showlegend=False,
+                        showlegend=True,
+                        legend_title_text="Category",
                         template="plotly_white",
+                        margin=dict(t=60, b=40, l=40, r=40),
+                        height=450,
                         yaxis_title="Registrations",
+                        xaxis_title="Category",
+                        title_font=dict(size=20, family="Segoe UI", color="#222"),
+                        hovermode="x unified",
                     )
+    
+                    # Custom hover: value + % share
+                    fig_bar.update_traces(
+                        hovertemplate="<b>%{x}</b><br>Registrations: %{y:,}<br>Share: %{customdata[0]:.1%}",
+                        customdata=np.array(d["value"] / total_reg).reshape(-1, 1),
+                        marker_line_width=1.5,
+                    )
+    
                     st.plotly_chart(fig_bar, use_container_width=True)
-                    print(f"[SEPARATE VIEW] ✅ Bar chart for {y} rendered successfully.")
+                    print(f"[SEPARATE VIEW] ✅ Maxed bar chart for {y} rendered successfully.")
+    
                 except Exception as e:
                     print(f"[SEPARATE VIEW] ❌ Failed to plot {y}: {e}")
                     st.warning(f"⚠️ Failed to plot {y}: {e}")
-
+    
         print("="*80 + "\n")
 
     # -------------------------
