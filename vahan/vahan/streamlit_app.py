@@ -3734,6 +3734,10 @@ def all_maxed_category_block(params: Optional[dict] = None):
         st.download_button("💾 Download Categories Dashboard", processed_data, "ALL-MAXED_Categories_Dashboard.xlsx")
 
         
+        import pandas as pd
+        import time
+        import streamlit as st
+        
         summary_start = time.time()
         
         # --- Ensure datetime exists ---
@@ -3748,7 +3752,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
         else:
             df_src['date'] = pd.date_range(end=pd.Timestamp.today(), periods=len(df_src))
         
-        # --- Add helper columns ---
+        # --- Helper columns ---
         df_src['day'] = df_src['date'].dt.date
         df_src['month'] = df_src['date'].dt.to_period('M')
         df_src['year'] = df_src['date'].dt.year
@@ -3773,31 +3777,37 @@ def all_maxed_category_block(params: Optional[dict] = None):
         
         for y in years_to_compare:
             df_y = df_src[df_src['year'] == y]
+            projected = False
         
             # --- Projection for next year ---
-            projected = False
             if df_y.empty and y == next_year:
                 projected = True
                 df_curr = df_src[df_src['year'] == current_year]
                 total_current = df_curr['value'].sum()
                 projected_total = total_current * 1.2  # e.g., +20% growth
-                monthly_trends = {m: projected_total / 12 for m in range(1,13)}
-                daily_trends = {d: projected_total / 365 for d in range(1,366)}
-                # Top categories: copy % from current year
+        
+                monthly_avg = projected_total / 12
+                daily_avg = projected_total / 365
+        
                 curr_top_cats = df_curr.groupby('label')['value'].sum()
-                top_cats_pct = (curr_top_cats / curr_top_cats.sum())
+                top_cats_pct = curr_top_cats / curr_top_cats.sum()
+        
                 top_categories_year = {k: projected_total * v for k,v in top_cats_pct.items()}
-                top_categories_peak_month = {k: (projected_total/12)*v for k,v in top_cats_pct.items()}
+                top_categories_peak_month = {k: monthly_avg * v for k,v in top_cats_pct.items()}
+        
+                monthly_trends = {m: monthly_avg for m in range(1,13)}
+                daily_trends = {d: daily_avg for d in range(1,366)}
+        
                 all_metrics.append({
                     'year': y,
                     'projected': True,
                     'total': projected_total,
-                    'daily_avg': projected_total / 365,
-                    'monthly_avg': projected_total / 12,
+                    'daily_avg': daily_avg,
+                    'monthly_avg': monthly_avg,
                     'peak_month': 'Projected',
-                    'peak_month_value': projected_total / 12,
+                    'peak_month_value': monthly_avg,
                     'peak_day': 'Projected',
-                    'peak_day_value': projected_total / 365,
+                    'peak_day_value': daily_avg,
                     'top_categories_year': top_categories_year,
                     'top_categories_peak_month': top_categories_peak_month,
                     'monthly_trends': monthly_trends,
@@ -3807,7 +3817,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 })
                 continue
         
-            # --- Daily, monthly, yearly aggregates ---
+            # --- Real data aggregates ---
             daily_totals = df_y.groupby('day')['value'].sum()
             monthly_totals = df_y.groupby('month')['value'].sum()
             yearly_total = df_y['value'].sum()
@@ -3815,12 +3825,21 @@ def all_maxed_category_block(params: Optional[dict] = None):
             monthly_avg = yearly_total / 12
         
             # --- Peak month & day ---
-            peak_month = monthly_totals.idxmax() if not monthly_totals.empty else None
-            peak_month_value = monthly_totals.max() if not monthly_totals.empty else 0
-            df_peak_month = df_y[df_y['month'] == peak_month] if peak_month is not None else df_y
-            daily_totals_peak_month = df_peak_month.groupby('day')['value'].sum()
-            peak_day = daily_totals_peak_month.idxmax() if not daily_totals_peak_month.empty else None
-            peak_day_value = daily_totals_peak_month.max() if not daily_totals_peak_month.empty else 0
+            if not monthly_totals.empty:
+                peak_month = monthly_totals.idxmax()
+                peak_month_value = monthly_totals.max()
+                df_peak_month = df_y[df_y['month'] == peak_month]
+                days_in_month = peak_month.days_in_month
+                daily_totals_peak_month = df_peak_month.groupby('day')['value'].sum()
+                if daily_totals_peak_month.empty:
+                    daily_totals_peak_month = pd.Series([peak_month_value/days_in_month]*days_in_month)
+                peak_day = daily_totals_peak_month.idxmax()
+                peak_day_value = daily_totals_peak_month.max()
+            else:
+                peak_month = None
+                peak_month_value = 0
+                peak_day = None
+                peak_day_value = 0
         
             # --- Top categories ---
             top_categories_year = df_y.groupby('label')['value'].sum().sort_values(ascending=False).head(5).to_dict()
@@ -3850,7 +3869,7 @@ def all_maxed_category_block(params: Optional[dict] = None):
                 'latest_yoy': f"{latest_yoy:.2f}%" if latest_yoy is not None else None
             })
         
-        # --- Display ALL-MAXED ---
+        # --- Display ---
         for m in all_metrics:
             st.markdown(f"#### Year: {m['year']}{' (Projected)' if m.get('projected') else ''}")
             st.code(f"""
