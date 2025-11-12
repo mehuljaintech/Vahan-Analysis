@@ -2228,12 +2228,32 @@ def all_maxed_category_block(params: Optional[dict] = None):
     params = params or {}
 
     print("\n" + "=" * 80)
-    print("[ALL-MAXED] 🚗 Starting Category Analytics Block")
-    print(f"[DEBUG] Params received: {params if params else 'None'}")
-    print(f"[TIME] Started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("[ALL-MAXED] 🚗 Starting CATEGORY analytics control block setup")
+    print(f"[TIME] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 80)
-
-    st.markdown("## 🚗 ALL-MAXED — Category Analytics (Multi-frequency, Multi-year)")
+    
+    # -------------------------
+    # ALL-MAXED UI STARTING BANNER
+    # -------------------------
+    st.markdown(
+        f"""
+        <div style="
+            text-align:center;
+            padding:20px;
+            border-radius:14px;
+            background:linear-gradient(90deg,#11998e,#38ef7d);
+            color:white;
+            font-size:20px;
+            font-weight:bold;
+            box-shadow: 0 0 16px rgba(0,0,0,0.4);
+        ">
+            🚗 ALL-MAXED CATEGORY Analytics Block Started — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    st.divider()  # optional visual separation
 
     # -------------------------
     # Controls — All Maxed (with unique keys)
