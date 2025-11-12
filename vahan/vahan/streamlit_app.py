@@ -1936,10 +1936,37 @@ def fetch_year_category(years, params_common, show_debug=True, show_summary=True
 
     Args:
         years (list[int]): Years to process.
-        params_common (dict): Common params (e.g., state_cd, veh_catg, fuel_type).
+        params (dict): Common params (e.g., state_cd, veh_catg, fuel_type).
         show_debug (bool): Show debug JSON for each year.
         show_summary (bool): Display multi-year comparison summary.
     """
+
+    params = {
+        "from_year": from_year,
+        "to_year": to_year,
+        "state_cd": clean_str(state_code),
+        "rto_cd": clean_str(rto_code),
+        "vclass": clean_str(vehicle_classes),
+        "maker": clean_str(vehicle_makers),
+        "time_period": time_period,
+        "include_fitness": "Y" if fitness_check else "N",
+        "veh_type": clean_str(vehicle_type),
+        "_session_seed": datetime.now().strftime("%Y%m%d%H%M%S"),
+    }
+
+    if extra_params:
+        for k, v in extra_params.items():
+            if v not in [None, "", [], {}]:
+                params[k] = v
+
+    params["_meta"] = {
+        "created": ist_now(),
+        "validated": True,
+        "safe_hash": abs(hash(json.dumps(params, sort_keys=True))) % 1_000_000,
+    }
+
+    log(f"🧩 Params built successfully → hash {params['_meta']['safe_hash']}", "SUCCESS")
+
     start = time.time()
     st.markdown("## 🚘 ALL-MAXED ULTRA — Multi-Year Category Analytics")
     print("\n============================================================")
