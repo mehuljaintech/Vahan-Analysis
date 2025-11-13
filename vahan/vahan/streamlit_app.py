@@ -5208,22 +5208,22 @@ def render_maker_dashboard(year: int, freq="Monthly"):
     st.caption(f"Total: {format_number(total)} | Generated: {mock_json['meta']['generatedAt']}")
     print(f"[DEBUG] Top maker: {top['label']} with {top['value']} registrations")
 
-    # Layout 2-col + trend
-    c1, c2 = st.columns([2, 1])
-    with c1:
-        print(f"[DEBUG] Rendering bar chart for year={year}")
-        bar_from_makers(df, title=f"{year} {freq} Breakdown (Bar)", color="label", section_id=f"bar_{year}")
-    with c2:
-        print(f"[DEBUG] Rendering pie chart for year={year}")
-        pie_from_makers(df, title=f"{year} Share (Donut)", section_id=f"pie_{year}")
+    #     # Layout 2-col + trend
+    # c1, c2 = st.columns([2, 1])
+    # with c1:
+    #     print(f"[DEBUG] Rendering bar chart for year={year}")
+    #     bar_from_makers(df, title=f"{year} {freq} Breakdown (Bar)", color="label", section_id=f"bar_{year}")
+    # with c2:
+    #     print(f"[DEBUG] Rendering pie chart for year={year}")
+    #     pie_from_makers(df, title=f"{year} Share (Donut)", section_id=f"pie_{year}")
 
-    # Optional trend
-    if "month_name" in df.columns:
-        print(f"[DEBUG] Rendering monthly trend chart for year={year}")
-        trend_from_makers(df, title=f"{year} Monthly Trend (Animated)", section_id=f"trend_{year}")
-    else:
-        print(f"[DEBUG] Rendering yearly trend chart for year={year}")
-        trend_from_makers(df, title=f"{year} Maker Trend", section_id=f"trend_{year}")
+    # # Optional trend
+    # if "month_name" in df.columns:
+    #     print(f"[DEBUG] Rendering monthly trend chart for year={year}")
+    #     trend_from_makers(df, title=f"{year} Monthly Trend (Animated)", section_id=f"trend_{year}")
+    # else:
+    #     print(f"[DEBUG] Rendering yearly trend chart for year={year}")
+    #     trend_from_makers(df, title=f"{year} Maker Trend", section_id=f"trend_{year}")
 
     print(f"[DEBUG] Dashboard rendering complete for year={year}")
     return df
