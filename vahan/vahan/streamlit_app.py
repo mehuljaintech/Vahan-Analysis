@@ -7731,13 +7731,13 @@ import streamlit as st
 # 🔸 Safe Fetch with Mock Fallback
 # ------------------------------------------------------------
 def safe_get_top5_(params: dict) -> pd.DataFrame:
-    """ALL-MAXED — Fetch Top 5 Revenue States (robust API + fallback mock + full debug)."""
-    year = params.get("fromYear", 2025)
+    """ALL-MAXED — Fetch Top 5 Revenue States (robust API + deterministic fallback)."""
+    year = params.get("fromYear", datetime.now().year)
     used_mock = False
     df = pd.DataFrame()
 
     try:
-        # === Primary API attempt ===
+        # === Primary API Attempt ===
         top5_json, url = get_json("vahandashboard/top5chartRevenueFee", params)
         df = parse_top5_revenue(top5_json)
 
@@ -7751,7 +7751,7 @@ def safe_get_top5_(params: dict) -> pd.DataFrame:
         print("=" * 100)
 
     except Exception as e:
-        # === Fallback deterministic mock ===
+        # === Deterministic Fallback ===
         used_mock = True
         mock_url = f"mock://top5chartRevenueFee/{year}"
         st.warning(f"⚠️ API unavailable or failed: {e}\nUsing fallback mock data ({mock_url})")
@@ -7765,16 +7765,16 @@ def safe_get_top5_(params: dict) -> pd.DataFrame:
         states = ["MH", "DL", "KA", "TN", "UP"]
         revenues = [random.randint(500_000, 2_000_000) for _ in states]
         df = pd.DataFrame({"label": states, "value": revenues})
-        print(f"[ALL-MAXED] MOCK DATA →\n{df}")
+
+        print(f"[ALL-MAXED] MOCK DATA:\n{df}")
         print("=" * 100)
 
-    # === Normalize + annotate ===
+    # === Normalize ===
     df = df.rename(columns={"label": "State", "value": "Revenue"}).reset_index(drop=True)
     df["Revenue"] = pd.to_numeric(df["Revenue"], errors="coerce").fillna(0).astype(int)
     df["Source"] = "API" if not used_mock else "Mock"
 
     return df
-
 
 # ------------------------------------------------------------
 # 🔹 Render Dashboard
