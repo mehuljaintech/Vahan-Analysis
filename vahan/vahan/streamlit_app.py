@@ -7719,10 +7719,25 @@ import pandas as pd
 import random
 import streamlit as st
 
+# ============================================================
+# ⚡ ALL-MAXED — Top 5 Revenue States Analytics Suite
+# ============================================================
+import pandas as pd
+import random
+import plotly.express as px
+import streamlit as st
+
+# ------------------------------------------------------------
+# 🔸 Safe Fetch with Mock Fallback
+# ------------------------------------------------------------
 def safe_get_top5_(params: dict) -> pd.DataFrame:
-    """ALL-MAXED — Fetch Top 5 Revenue States, with robust fallback mock + detailed debug."""
+    """ALL-MAXED — Fetch Top 5 Revenue States (robust API + fallback mock + full debug)."""
+    year = params.get("fromYear", 2025)
+    used_mock = False
+    df = pd.DataFrame()
+
     try:
-        # === API attempt ===
+        # === Primary API attempt ===
         top5_json, url = get_json("vahandashboard/top5chartRevenueFee", params)
         df = parse_top5_revenue(top5_json)
 
@@ -7730,79 +7745,91 @@ def safe_get_top5_(params: dict) -> pd.DataFrame:
             raise ValueError("Invalid or empty API data")
 
         st.success(f"✅ Top 5 Revenue fetched successfully ({url})")
-        print("="*90)
-        print(f"[ALL-MAXED] ✅ API SUCCESS — URL: {url}")
+        print("=" * 100)
+        print(f"[ALL-MAXED] ✅ API SUCCESS — {url}")
         print(df.head())
-        print("="*90)
+        print("=" * 100)
 
     except Exception as e:
-        # === Fallback mock ===
-        year = params.get("fromYear", 2025)
+        # === Fallback deterministic mock ===
+        used_mock = True
         mock_url = f"mock://top5chartRevenueFee/{year}"
         st.warning(f"⚠️ API unavailable or failed: {e}\nUsing fallback mock data ({mock_url})")
 
-        print("="*90)
-        print(f"[ALL-MAXED] ⚠️ API FAILED — Using mock fallback")
+        print("=" * 100)
+        print(f"[ALL-MAXED] ⚠️ API FAILED — Fallback mock engaged")
         print(f"[ALL-MAXED] ERROR: {e}")
-        print(f"[ALL-MAXED] Mock Source → {mock_url}")
+        print(f"[ALL-MAXED] SOURCE: {mock_url}")
 
         random.seed(year)
         states = ["MH", "DL", "KA", "TN", "UP"]
         revenues = [random.randint(500_000, 2_000_000) for _ in states]
         df = pd.DataFrame({"label": states, "value": revenues})
-        print(f"[ALL-MAXED] Mock Data:\n{df}")
-        print("="*90)
+        print(f"[ALL-MAXED] MOCK DATA →\n{df}")
+        print("=" * 100)
 
-    # === Normalize output ===
+    # === Normalize + annotate ===
     df = df.rename(columns={"label": "State", "value": "Revenue"}).reset_index(drop=True)
-    df["Revenue"] = df["Revenue"].astype(int)
-    df["Source"] = "API" if "url" in locals() else "Mock"
+    df["Revenue"] = pd.to_numeric(df["Revenue"], errors="coerce").fillna(0).astype(int)
+    df["Source"] = "API" if not used_mock else "Mock"
 
     return df
 
 
-# -----------------------------
-# 🔹 Plot Top 5 Revenue
-# -----------------------------
+# ------------------------------------------------------------
+# 🔹 Render Dashboard
+# ------------------------------------------------------------
 st.markdown("## 💰 ALL-MAXED — Top 5 Revenue States Analytics Suite")
 df_top5 = safe_get_top5_(params_common1)
 
-print(f"[TOP5] Data for plotting:\n{df_top5}")
+if not df_top5.empty:
+    print(f"[ALL-MAXED] ✅ Data Ready:\n{df_top5}")
 
-# Bar chart
-fig_bar = px.bar(
-    df_top5,
-    x="State",
-    y="Revenue",
-    title="Top 5 Revenue States (Bar)",
-    text="Revenue",
-    labels={"Revenue": "Revenue (₹ Cr)", "State": "State"}
-)
-fig_bar.update_layout(template="plotly_white")
-st.plotly_chart(fig_bar, use_container_width=True)
-print("[TOP5] Bar chart rendered")
+    # === Bar Chart ===
+    fig_bar = px.bar(
+        df_top5,
+        x="State",
+        y="Revenue",
+        text="Revenue",
+        color="State",
+        title="Top 5 Revenue States (Bar Chart)",
+        labels={"Revenue": "Revenue (₹ Cr)", "State": "State"},
+        color_discrete_sequence=px.colors.qualitative.Safe,
+    )
+    fig_bar.update_traces(texttemplate="₹%{text:,}", textposition="outside")
+    fig_bar.update_layout(template="plotly_white", height=480, margin=dict(t=60))
+    st.plotly_chart(fig_bar, use_container_width=True)
+    print("[ALL-MAXED] Bar chart rendered")
 
-# Pie chart
-fig_pie = px.pie(
-    df_top5,
-    names="State",
-    values="Revenue",
-    title="Top 5 Revenue States (Pie)",
-    hole=0.4
-)
-st.plotly_chart(fig_pie, use_container_width=True)
-print("[TOP5] Pie chart rendered")
+    # === Pie Chart ===
+    fig_pie = px.pie(
+        df_top5,
+        names="State",
+        values="Revenue",
+        title="Top 5 Revenue States (Share Donut)",
+        hole=0.4,
+        color_discrete_sequence=px.colors.qualitative.Vivid,
+    )
+    fig_pie.update_traces(textinfo="percent+label", pull=[0.04]*len(df_top5))
+    st.plotly_chart(fig_pie, use_container_width=True)
+    print("[ALL-MAXED] Pie chart rendered")
 
-# KPI summary
-total_rev = df_top5["Revenue"].sum()
-top_state = df_top5.loc[df_top5["Revenue"].idxmax(), "State"]
-top_value = df_top5["Revenue"].max()
+    # === KPI Summary ===
+    total_rev = df_top5["Revenue"].sum()
+    top_state = df_top5.loc[df_top5["Revenue"].idxmax(), "State"]
+    top_value = df_top5["Revenue"].max()
 
-st.markdown("### 💎 Key Metrics")
-st.write(f"- **Total Revenue:** ₹{total_rev:,} Cr")
-st.write(f"- **Top State:** {top_state} with ₹{top_value:,} Cr")
-print(f"[TOP5] Total Revenue: ₹{total_rev:,} Cr")
-print(f"[TOP5] Top State: {top_state} with ₹{top_value:,} Cr")
+    st.markdown("### 💎 ALL-MAXED Key Metrics")
+    st.write(f"- 🏆 **Top State:** {top_state} — ₹{top_value:,} Cr")
+    st.write(f"- 💰 **Total Revenue:** ₹{total_rev:,} Cr")
+    st.write(f"- 🧩 **Source:** {df_top5['Source'].iloc[0]}")
+    print(f"[ALL-MAXED] Total: ₹{total_rev:,} | Top: {top_state} ({top_value:,})")
+
+else:
+    st.error("❌ No data available for Top 5 Revenue States.")
+    print("[ALL-MAXED] ❌ No data produced by safe_get_top5_")
+
+print("[ALL-MAXED] Top 5 Revenue Suite Complete ✅")
 
 # --------------------------------------------------
 # 🔹 Advanced Analytics — Trend Simulation
