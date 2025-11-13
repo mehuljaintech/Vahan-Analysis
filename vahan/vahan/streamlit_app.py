@@ -836,6 +836,82 @@ if st.session_state.get("auto_refresh", True) and not st.session_state.get("auto
 # 🚀 VAHAN ANALYTICS API ENGINE — ALL-MAXED PURE v7.0
 # =====================================================
 
+def build_params(
+    from_year: int,
+    to_year: int,
+    *,
+    state_code: str,
+    rto_code: str,
+    vehicle_classes: str,
+    vehicle_makers: str,
+    time_period: str,
+    fitness_check: bool,
+    vehicle_type: str,
+    extra_params: Optional[dict] = None,
+) -> dict:
+    """Strict builder — no prefilled defaults."""
+    current_year = datetime.now().year
+    errors = []
+
+    # strict checks
+    if from_year is None or to_year is None:
+        errors.append("Both from_year and to_year must be provided.")
+    if not isinstance(from_year, int) or not isinstance(to_year, int):
+        errors.append("Year values must be integers.")
+    if from_year > to_year:
+        errors.append(f"From year ({from_year}) cannot exceed To year ({to_year}).")
+    if from_year < 2000 or to_year > current_year:
+        errors.append(f"Year range must be between 2000 and {current_year}.")
+    if not isinstance(fitness_check, bool):
+        errors.append("Fitness flag must be boolean (True/False).")
+    if not all([state_code, rto_code, vehicle_classes, vehicle_makers, time_period, vehicle_type]):
+        errors.append("All core parameters must be explicitly provided — no blanks allowed.")
+
+    if errors:
+        for e in errors:
+            log(f"❌ Parameter Error: {e}", "ERROR")
+        raise ValueError(" | ".join(errors))
+
+    time_period = time_period.title().strip()
+    if time_period not in ["Yearly", "Quarterly", "Monthly"]:
+        log(f"⚠️ Invalid time_period '{time_period}', defaulting to 'Yearly'", "WARNING")
+        time_period = "Yearly"
+
+    # Build the params dict directly — no recursion
+    params = {
+        "fromYear": from_year,
+        "toYear": to_year,
+        "stateCode": state_code,
+        "rtoCode": rto_code,
+        "vehicleClasses": vehicle_classes,
+        "vehicleMakers": vehicle_makers,
+        "timePeriod": time_period,
+        "fitnessCheck": fitness_check,
+        "vehicleType": vehicle_type,
+    }
+
+    if extra_params:
+        for k, v in extra_params.items():
+            if v not in [None, "", [], {}]:
+                params[k] = v
+
+    params["_meta"] = {
+        "created": ist_now(),
+        "validated": True,
+        "safe_hash": abs(hash(json.dumps(params, sort_keys=True))) % 1_000_000,
+    }
+
+    log(f"🧩 Params built successfully → hash {params['_meta']['safe_hash']}", "SUCCESS")
+
+    try:
+        with st.expander("🔍 VAHAN Parameter Summary", expanded=False):
+            st.json(params)
+    except Exception:
+        pass
+
+    return params
+
+
 # =====================================================
 # 🧩 STREAMLIT SAFE IMPORT — ALL-MAXED
 # =====================================================
@@ -8258,82 +8334,6 @@ def safe_value(val, default):
     if val is None or (isinstance(val, str) and not val.strip()):
         return default
     return val
-
-def build_params(
-    from_year: int,
-    to_year: int,
-    *,
-    state_code: str,
-    rto_code: str,
-    vehicle_classes: str,
-    vehicle_makers: str,
-    time_period: str,
-    fitness_check: bool,
-    vehicle_type: str,
-    extra_params: Optional[dict] = None,
-) -> dict:
-    """Strict builder — no prefilled defaults."""
-    current_year = datetime.now().year
-    errors = []
-
-    # strict checks
-    if from_year is None or to_year is None:
-        errors.append("Both from_year and to_year must be provided.")
-    if not isinstance(from_year, int) or not isinstance(to_year, int):
-        errors.append("Year values must be integers.")
-    if from_year > to_year:
-        errors.append(f"From year ({from_year}) cannot exceed To year ({to_year}).")
-    if from_year < 2000 or to_year > current_year:
-        errors.append(f"Year range must be between 2000 and {current_year}.")
-    if not isinstance(fitness_check, bool):
-        errors.append("Fitness flag must be boolean (True/False).")
-    if not all([state_code, rto_code, vehicle_classes, vehicle_makers, time_period, vehicle_type]):
-        errors.append("All core parameters must be explicitly provided — no blanks allowed.")
-
-    if errors:
-        for e in errors:
-            log(f"❌ Parameter Error: {e}", "ERROR")
-        raise ValueError(" | ".join(errors))
-
-    time_period = time_period.title().strip()
-    if time_period not in ["Yearly", "Quarterly", "Monthly"]:
-        log(f"⚠️ Invalid time_period '{time_period}', defaulting to 'Yearly'", "WARNING")
-        time_period = "Yearly"
-
-    # Build the params dict directly — no recursion
-    params = {
-        "fromYear": from_year,
-        "toYear": to_year,
-        "stateCode": state_code,
-        "rtoCode": rto_code,
-        "vehicleClasses": vehicle_classes,
-        "vehicleMakers": vehicle_makers,
-        "timePeriod": time_period,
-        "fitnessCheck": fitness_check,
-        "vehicleType": vehicle_type,
-    }
-
-    if extra_params:
-        for k, v in extra_params.items():
-            if v not in [None, "", [], {}]:
-                params[k] = v
-
-    params["_meta"] = {
-        "created": ist_now(),
-        "validated": True,
-        "safe_hash": abs(hash(json.dumps(params, sort_keys=True))) % 1_000_000,
-    }
-
-    log(f"🧩 Params built successfully → hash {params['_meta']['safe_hash']}", "SUCCESS")
-
-    try:
-        with st.expander("🔍 VAHAN Parameter Summary", expanded=False):
-            st.json(params)
-    except Exception:
-        pass
-
-    return params
-
 
 
 from_year = safe_value(locals().get('from_year'), 2018)
