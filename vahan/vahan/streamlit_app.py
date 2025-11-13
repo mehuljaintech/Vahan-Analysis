@@ -908,17 +908,21 @@ from datetime import datetime
 import json
 import streamlit as st
 
+from datetime import datetime
+import json
+import streamlit as st
+
 def build_params(
     from_year: int,
     to_year: int,
     *,
-    state_code: str,
-    rto_code: str,
-    vehicle_classes: str,
-    vehicle_makers: str,
-    time_period: str,
-    fitness_check: bool,
-    vehicle_type: str,
+    state_code: str = "0",          # "0" = ALL India
+    rto_code: str = "0",
+    vehicle_classes: str = "ALL",
+    vehicle_makers: str = "ALL",
+    time_period: str = "Yearly",
+    fitness_check: bool = False,
+    vehicle_type: str = "0",        # "0" = ALL types
     extra_params: dict | None = None,
 ) -> dict:
     """ALL-MAXED — Strict, API-safe parameter builder (no recursion, meta-safe)."""
@@ -934,8 +938,6 @@ def build_params(
         errors.append(f"From year ({from_year}) cannot exceed To year ({to_year}).")
     if from_year < 2000 or to_year > current_year:
         errors.append(f"Year range must be between 2000 and {current_year}.")
-    if not isinstance(fitness_check, bool):
-        errors.append("Fitness flag must be boolean (True/False).")
     if not all([state_code, rto_code, vehicle_classes, vehicle_makers, time_period, vehicle_type]):
         errors.append("All core parameters must be explicitly provided — no blanks allowed.")
 
@@ -950,6 +952,9 @@ def build_params(
         print(f"⚠️ Invalid time_period '{time_period}', defaulting to 'Yearly'")
         time_period = "Yearly"
 
+    # Convert bool to Parivahan-compatible "0"/"1" strings
+    fitness_check_str = str(int(bool(fitness_check)))
+
     # --- Build clean request dict ---
     params = {
         "fromYear": from_year,
@@ -959,7 +964,7 @@ def build_params(
         "vehicleClasses": vehicle_classes,
         "vehicleMakers": vehicle_makers,
         "timePeriod": time_period,
-        "fitnessCheck": str(fitness_check),  # convert to string for API
+        "fitnessCheck": fitness_check_str,
         "vehicleType": vehicle_type,
     }
 
