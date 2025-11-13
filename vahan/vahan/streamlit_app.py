@@ -5573,6 +5573,19 @@ def maker_to_timeseries(df: pd.DataFrame, year: int, freq="Monthly") -> pd.DataF
 # -----------------------------
 # ALL-MAXED Fetch Top 5 Makers
 # -----------------------------
+import pandas as pd
+import numpy as np
+import random
+import uuid
+import streamlit as st
+import plotly.express as px
+import plotly.graph_objects as go
+from colorama import Fore
+
+
+# -----------------------------
+# ALL-MAXED Fetch Top 5 Makers
+# -----------------------------
 def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = True) -> pd.DataFrame:
     st.markdown(f"## 🏆 Top Vehicle Makers — {year}")
     print(f"\n[INFO] Fetching top makers for year: {year}")
@@ -5627,11 +5640,16 @@ def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = True) ->
     df.columns = [c.lower() for c in df.columns]
     df["year"] = year
     df = df.sort_values("value", ascending=False)
-    df["value"] = pd.to_numeric(df.get("value", 0), errors="coerce").fillna(0)
+    df["value"] = pd.to_numeric(df.get("value") if "value" in df else 0, errors="coerce").fillna(0)
 
     total = df["value"].sum()
     mean_val = df["value"].mean()
     median_val = df["value"].median()
+
+    # -----------------------------
+    # Unique keys
+    # -----------------------------
+    uid = uuid.uuid4().hex
 
     # -----------------------------
     # Bar Chart
@@ -5656,7 +5674,7 @@ def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = True) ->
             customdata=np.array(df["value"] / total).reshape(-1, 1),
             marker_line_width=1.5
         )
-        st.plotly_chart(fig_bar, use_container_width=True, key=f"bar_{year}")
+        st.plotly_chart(fig_bar, use_container_width=True, key=f"bar_{year}_{uid}")
     except Exception as e:
         st.warning(f"⚠️ Bar chart failed: {e}")
 
@@ -5676,7 +5694,7 @@ def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = True) ->
                               hovertemplate="<b>%{label}</b><br>%{value:,} registrations<br>%{percent}",
                               pull=[0.05]*len(df),
                               marker=dict(line=dict(color='#ffffff', width=2)))
-        st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_{year}")
+        st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_{year}_{uid}")
     except Exception as e:
         st.warning(f"⚠️ Pie chart failed: {e}")
 
@@ -5711,11 +5729,44 @@ def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = True) ->
                            annotation_text=f"Mean: {mean_val:.0f}", annotation_position="top left")
         fig_line.add_hline(y=median_val, line_dash="dot", line_color="blue",
                            annotation_text=f"Median: {median_val:.0f}", annotation_position="bottom right")
-        st.plotly_chart(fig_line, use_container_width=True, key=f"trend_{year}")
+        st.plotly_chart(fig_line, use_container_width=True, key=f"trend_{year}_{uid}")
         print(f"[INFO] Rendered synthetic monthly trend for {year}")
 
     print(f"[DONE] Completed fetch_maker_top5 for {year}\n{'-'*60}")
     return df
+
+# -----------------------------
+# Multi-Year ALL-MAXED Loop
+# -----------------------------
+all_years = []
+st.info(f"🔄 Starting fetch for {len(years)} years: {years}")
+
+with st.spinner("⏳ Fetching maker data for all selected years..."):
+    for y in years:
+        try:
+            st.write(f"⏳ Fetching data for {y}...")
+            df_y = fetch_maker_top5(y, params_common, show_debug=True)
+
+            # Safe numeric handling
+            if "score" in df_y.columns:
+                df_y["value"] = pd.to_numeric(df_y["score"], errors="coerce").fillna(0)
+            else:
+                df_y["value"] = pd.to_numeric(df_y["value"], errors="coerce").fillna(0)
+
+            all_years.append(df_y)
+            print(f"[ALL-MAXED] Year {y} fetched: {len(df_y)} rows, top maker: {df_y.iloc[0]['label']}")
+
+        except Exception as e:
+            st.error(f"❌ {y} fetch error: {e}")
+            print(f"[ALL-MAXED] Exception during fetch for {y}: {e}")
+
+# Combine all years
+if all_years:
+    df_all_years = pd.concat(all_years, ignore_index=True)
+    st.success(f"✅ Fetched and combined data for {len(all_years)} years")
+else:
+    df_all_years = pd.DataFrame()
+    st.warning("⚠️ No data fetched for the selected years")
 
 # =====================================================
 # -------------------------
