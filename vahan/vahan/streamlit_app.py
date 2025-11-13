@@ -5191,52 +5191,83 @@ def trend_from_makers(df: pd.DataFrame, title="Trend Over Time", section_id="tre
 # -----------------------------------------------------
 def render_maker_dashboard(year: int, freq="Monthly", use_mock=False):
     """
-    Render full UI for a given year:
-      - Fetch real API data if available
-      - Fallback to deterministic mock if requested or API fails
-      - Show KPI, bar, pie, trend — ALL-MAXED
+    ALLLLL-MAXED Maker Dashboard:
+      ✅ Uses API data when available
+      ✅ Deterministic mock fallback if API fails or use_mock=True
+      ✅ Single data source, single render path (no duplicates)
+      ✅ Includes KPI, bar, donut, and trend
+      ✅ Full debug prints for traceability
     """
+    import uuid
+    import pandas as pd
+    import streamlit as st
+
+    uid = uuid.uuid4().hex[:8]
     st.subheader(f"📊 Maker Distribution — {year} ({freq})")
-    uid = uuid.uuid4().hex  # unique key for this year
+    print(f"\n[ALL-MAXED] 🧩 Starting render_maker_dashboard({year}, use_mock={use_mock})")
 
-    # Fetch real data
-    if not use_mock:
-        try:
+    # -------------------------------------------------
+    # 1️⃣ Fetch Data (API or Mock)
+    # -------------------------------------------------
+    df = pd.DataFrame()
+    src = "❌ None"
+
+    try:
+        if not use_mock:
             df = fetch_maker_top5(year, params_common, show_debug=True)
-            # Already numeric-safe in fetch_maker_top5
-        except Exception as e:
-            st.warning(f"⚠️ API fetch failed, using mock for {year}: {e}")
-            df = deterministic_mock_makers(year, freq=freq)
-            df = pd.DataFrame(df["data"])
-    else:
-        # Direct mock
+            if isinstance(df, tuple):
+                print(f"[ALL-MAXED] ⚠️ fetch_maker_top5 returned tuple; unpacking first element.")
+                df = df[0]
+            if df is None or df.empty:
+                raise ValueError("Empty DataFrame from API")
+            src = "✅ Real API"
+        else:
+            raise Exception("Forced mock mode")
+    except Exception as e:
+        print(Fore.RED + f"[ALL-MAXED] ⚠️ API failed for {year}: {e}")
         mock_json = deterministic_mock_makers(year, freq=freq)
-        df = pd.DataFrame(mock_json["data"])
+        df = pd.DataFrame(mock_json.get("data", []))
+        src = "🧩 Deterministic Mock"
 
-    if df.empty:
-        st.warning(f"⚠️ No data available for {year}")
+    if df is None or df.empty or not isinstance(df, pd.DataFrame):
+        st.error(f"🚫 No valid data available for {year}")
+        print(Fore.RED + f"[ALL-MAXED] ❌ No valid DataFrame after fallback")
         return pd.DataFrame()
 
-    # KPIs
+    print(Fore.GREEN + f"[ALL-MAXED] ✅ Data ready for {year} | Source: {src} | Rows: {len(df)}")
+
+    # -------------------------------------------------
+    # 2️⃣ KPIs
+    # -------------------------------------------------
     total = df["value"].sum()
     top = df.sort_values("value", ascending=False).iloc[0]
     pct = (top["value"] / total * 100) if total else 0
-    st.success(f"🏆 Top Maker: {top['label']} — {int(top['value']):,} registrations ({pct:.1f}%)")
-    st.info(f"Mean: {int(df['value'].mean()):,}, Median: {int(df['value'].median()):,}")
 
-    # # Layout charts with unique keys
-    # c1, c2 = st.columns([2, 1])
-    # with c1:
-    #     bar_from_makers(df, title=f"{year} {freq} Breakdown (Bar)", color="label", section_id=f"bar_{year}_{uid}")
-    # with c2:
-    #     pie_from_makers(df, title=f"{year} Share (Donut)", section_id=f"pie_{year}_{uid}")
+    st.success(f"🏆 **Top Maker:** {top['label']} — {int(top['value']):,} registrations ({pct:.1f}%)")
+    st.caption(f"📦 Total: {int(total):,} | Mean: {int(df['value'].mean()):,} | Median: {int(df['value'].median()):,}")
+    st.caption(f"🔹 Source: {src}")
 
-    # # Synthetic trend
-    # df_ts = maker_to_timeseries(df, year)
-    # trend_from_makers(df_ts, title=f"{year} Monthly Trend", section_id=f"trend_{year}_{uid}")
+    # -------------------------------------------------
+    # 3️⃣ Charts
+    # -------------------------------------------------
+    c1, c2 = st.columns([2, 1])
+    with c1:
+        print(f"[ALL-MAXED] 📊 Rendering Bar Chart for {year}")
+        bar_from_makers(df, title=f"{year} {freq} Breakdown (Bar)", color="label", section_id=f"bar_{year}_{uid}")
 
-    # return df
+    with c2:
+        print(f"[ALL-MAXED] 🍩 Rendering Donut Chart for {year}")
+        pie_from_makers(df, title=f"{year} Share (Donut)", section_id=f"pie_{year}_{uid}")
 
+    # -------------------------------------------------
+    # 4️⃣ Trend (Synthetic)
+    # -------------------------------------------------
+    print(f"[ALL-MAXED] 📈 Generating Synthetic Trend for {year}")
+    df_ts = maker_to_timeseries(df, year)
+    trend_from_makers(df_ts, title=f"{year} Monthly Trend", section_id=f"trend_{year}_{uid}")
+
+    print(f"[ALL-MAXED] ✅ Completed Maker Dashboard for {year}\n{'='*80}")
+    return df
 
 # ============================================================
 # ⚙️ Synthetic Timeseries Expansion — MAKER ULTRA MAXED
@@ -5376,23 +5407,56 @@ from typing import Dict
 # Fallback deterministic mock
 # -----------------------------
 
-def maker_mock_top5(year: int) -> Dict:
-    """Return deterministic mock Top 5 Makers data with ALL-MAXED debug print."""
-    data = [
-        {"label": f"Maker {i}", "value": np.random.randint(500, 2000)}
-        for i in range(1, 6)
+import numpy as np
+import pandas as pd
+from datetime import datetime
+
+def maker_mock_top5(year: int) -> dict:
+    """
+    Deterministic ALLLLL-MAXED Mock Top 5 Makers Data.
+    ✅ Stable per-year seed (same values every run)
+    ✅ Includes total, rank, and meta info
+    ✅ Clean debug printing for traceability
+    """
+    np.random.seed(year % 9999)  # ensures reproducibility per year
+
+    makers = [
+        "Hero Motocorp Ltd", "Honda Motorcycle", "TVS Motor Co", 
+        "Bajaj Auto Ltd", "Royal Enfield Ltd", "Maruti Suzuki", 
+        "Tata Motors", "Hyundai Motor", "Mahindra & Mahindra", "Kia India"
     ]
-    
-    total = sum(d["value"] for d in data)
-    top = max(data, key=lambda x: x["value"])
-    
-    print("="*80)
-    print(f"[ALL-MAXED] Year {year} — Top 5 Makers Mock Data")
-    print(f"Total registrations (Top5 mock): {total}")
-    print(f"Top Maker: {top['label']} → {top['value']}")
-    print("="*80)
-    
-    return {"data": data}
+
+    # Pick top 5 deterministic subset
+    chosen = np.random.choice(makers, size=5, replace=False)
+    values = np.random.randint(1_000_000, 6_000_000, size=5)
+
+    data = [{"label": m, "value": int(v)} for m, v in zip(chosen, values)]
+    df = pd.DataFrame(data).sort_values("value", ascending=False).reset_index(drop=True)
+    df["rank"] = df.index + 1
+
+    total = int(df["value"].sum())
+    top = df.iloc[0].to_dict()
+
+    # --- Pretty debug print ---
+    print("=" * 100)
+    print(f"[ALL-MAXED] 🚗 MOCK TOP 5 MAKERS for {year}")
+    print(df.to_string(index=False))
+    print("-" * 100)
+    print(f"Total Registrations: {total:,}")
+    print(f"🏆 Top Maker: {top['label']} → {top['value']:,}")
+    print("=" * 100)
+
+    # --- Final JSON-style return ---
+    return {
+        "data": df.to_dict(orient="records"),
+        "meta": {
+            "source": "deterministic_mock",
+            "generatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "year": year,
+            "total": total,
+            "topMaker": top["label"],
+        },
+    }
 
 #-----------------------------
 # MAXED Maker fetch + render
@@ -5465,30 +5529,54 @@ logger = logging.getLogger(__name__)
 # -----------------------------
 # Deterministic Top5 Mock
 # -----------------------------
+import random
+import pandas as pd
+from datetime import datetime
+
 def maker_mock_top5(year: int) -> pd.DataFrame:
-    """Return deterministic Top 5 Makers for a given year."""
-    random.seed(year)
+    """
+    Deterministic Top 5 Vehicle Makers — ALL-MAXED Edition
+    ✅ Stable per-year output (no randomness drift)
+    ✅ Scales slightly with year for realism
+    ✅ Compatible with both fetch_maker_top5() and render_maker_dashboard()
+    ✅ Includes clean debug printout
+    """
+    random.seed(year)  # ensures deterministic output per year
+
     makers = [
         "Maruti Suzuki", "Tata Motors", "Hyundai", "Mahindra", "Hero MotoCorp",
         "Bajaj Auto", "TVS Motor", "Honda", "Kia", "Toyota"
     ]
+
+    # Choose deterministic Top 5
     random.shuffle(makers)
     top5 = makers[:5]
 
+    # Compute deterministic values
     base = random.randint(200_000, 1_000_000)
     growth = 1 + (year - 2020) * 0.06
-    data = [{"label": m, "value": int(base * random.uniform(0.5, 1.5) * growth)} for m in top5]
+    data = [
+        {"label": m, "value": int(base * random.uniform(0.5, 1.5) * growth)}
+        for m in top5
+    ]
 
-    # ALL-MAXED debug
-    total = sum(d["value"] for d in data)
-    top = max(data, key=lambda x: x["value"])
-    print("="*80)
-    print(f"[ALL-MAXED MOCK] Year {year} — Top 5 Makers")
-    print(f"Total registrations (mock): {total:,}")
-    print(f"Top Maker: {top['label']} → {top['value']:,}")
-    print("="*80)
+    df = pd.DataFrame(data).sort_values("value", ascending=False).reset_index(drop=True)
+    df["rank"] = df.index + 1
+    df["year"] = year
 
-    return pd.DataFrame(data)
+    # --- ALL-MAXED Debug Log ---
+    total = df["value"].sum()
+    top = df.iloc[0]
+    print("=" * 100)
+    print(f"[ALL-MAXED MOCK] 🚗 Year {year} — Top 5 Makers (Deterministic)")
+    print(df.to_string(index=False))
+    print("-" * 100)
+    print(f"Total registrations: {total:,}")
+    print(f"🏆 Top Maker: {top['label']} → {top['value']:,}")
+    print(f"Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("=" * 100)
+
+    return df
 
 # -----------------------------
 # Fetch Top5 Makers
@@ -5505,30 +5593,54 @@ logger = logging.getLogger(__name__)
 # -----------------------------
 # Deterministic Top5 Mock
 # -----------------------------
+import random
+import pandas as pd
+from datetime import datetime
+
 def maker_mock_top5(year: int) -> pd.DataFrame:
-    """Return deterministic Top 5 Makers for a given year."""
+    """
+    Deterministic Top 5 Vehicle Makers — ALL-MAXED Edition
+    ✅ Fully deterministic per year
+    ✅ Realistic growth scaling from 2020 onward
+    ✅ Adds rank + year columns for easy charting
+    ✅ Pretty debug block with totals and top maker
+    """
     random.seed(year)
+
     makers = [
         "Maruti Suzuki", "Tata Motors", "Hyundai", "Mahindra", "Hero MotoCorp",
         "Bajaj Auto", "TVS Motor", "Honda", "Kia", "Toyota"
     ]
+
+    # Deterministically shuffle and pick top 5
     random.shuffle(makers)
     top5 = makers[:5]
 
+    # Simulate realistic base + year growth
     base = random.randint(200_000, 1_000_000)
     growth = 1 + (year - 2020) * 0.06
-    data = [{"label": m, "value": int(base * random.uniform(0.5, 1.5) * growth)} for m in top5]
+    data = [
+        {"label": m, "value": int(base * random.uniform(0.5, 1.5) * growth)}
+        for m in top5
+    ]
 
-    # ALL-MAXED debug
-    total = sum(d["value"] for d in data)
-    top = max(data, key=lambda x: x["value"])
-    print("="*80)
-    print(f"[ALL-MAXED MOCK] Year {year} — Top 5 Makers")
-    print(f"Total registrations (mock): {total:,}")
-    print(f"Top Maker: {top['label']} → {top['value']:,}")
-    print("="*80)
+    df = pd.DataFrame(data).sort_values("value", ascending=False).reset_index(drop=True)
+    df["rank"] = df.index + 1
+    df["year"] = year
 
-    return pd.DataFrame(data)
+    # --- ALL-MAXED Debug Output ---
+    total = df["value"].sum()
+    top = df.iloc[0]
+    print("=" * 90)
+    print(f"[ALL-MAXED MOCK] 🚗 Year {year} — Top 5 Makers (Deterministic)")
+    print(df.to_string(index=False))
+    print("-" * 90)
+    print(f"Total registrations: {total:,}")
+    print(f"🏆 Top Maker: {top['label']} → {top['value']:,}")
+    print(f"Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("=" * 90)
+
+    return df
 
 # -----------------------------
 # Fetch Top5 Makers
@@ -5546,6 +5658,7 @@ from typing import Tuple
 # Deterministic Maker Mock
 # -----------------------------
 def maker_mock_top5(year: int) -> pd.DataFrame:
+    """ALL-MAXED deterministic Top 5 Makers mock — realistic, simple, consistent."""
     random.seed(year)
     makers = [
         "Maruti Suzuki", "Tata Motors", "Hyundai", "Mahindra", "Hero MotoCorp",
@@ -5553,31 +5666,92 @@ def maker_mock_top5(year: int) -> pd.DataFrame:
     ]
     random.shuffle(makers)
     top5 = makers[:5]
+
     base = random.randint(200_000, 1_000_000)
     growth = 1 + (year - 2020) * 0.06
     data = [{"label": m, "value": int(base * random.uniform(0.5, 1.5) * growth)} for m in top5]
 
-    # ALL-MAXED debug
-    total = sum(d["value"] for d in data)
-    top = max(data, key=lambda x: x["value"])
+    df = pd.DataFrame(data).sort_values("value", ascending=False).reset_index(drop=True)
+    df["rank"] = df.index + 1
+    df["year"] = year
+
+    # ALL-MAXED debug print
+    total = df["value"].sum()
+    top = df.iloc[0]
     print("="*80)
     print(f"[ALL-MAXED MOCK] Year {year} — Top 5 Makers")
+    print(df.to_string(index=False))
+    print("-"*80)
     print(f"Total registrations (mock): {total:,}")
-    print(f"Top Maker: {top['label']} → {top['value']:,}")
+    print(f"🏆 Top Maker: {top['label']} → {top['value']:,}")
     print("="*80)
-    return pd.DataFrame(data)
+
+    return df
 
 # -----------------------------
 # Synthetic monthly trend generator
 # -----------------------------
-def maker_to_timeseries(df: pd.DataFrame, year: int, freq="Monthly") -> pd.DataFrame:
-    # Expand each maker to 12 months with some random variation
+def maker_to_timeseries(df: pd.DataFrame, year: int, freq: str = "Monthly") -> pd.DataFrame:
+    """
+    Expand annual maker totals into a realistic monthly timeseries — ALL-MAXED deterministic version.
+    ✅ Preserves total annual sum per maker.
+    ✅ Adds mild seasonality, trend, and noise.
+    ✅ Returns DataFrame ready for Plotly line charts.
+    """
+    import numpy as np
+    import pandas as pd
+    import random
+
+    if df is None or df.empty:
+        return pd.DataFrame(columns=["ds", "label", "value", "year", "month", "month_name"])
+
+    random.seed(year)
+    np.random.seed(year)
+
     rows = []
+    months = range(1, 13)
+
     for _, row in df.iterrows():
-        for month in range(1, 13):
-            val = int(row["value"] / 12 * random.uniform(0.85, 1.15))
-            rows.append({"ds": pd.Timestamp(year=year, month=month, day=1), "label": row["label"], "value": val})
-    return pd.DataFrame(rows)
+        maker = row["label"]
+        annual_total = float(row["value"])
+        if annual_total <= 0:
+            continue
+
+        # --- mild trend & noise
+        trend = np.linspace(0.9, 1.1, 12)
+        if random.random() > 0.5:  # flip trend direction randomly
+            trend = trend[::-1]
+        noise = np.random.normal(0, 0.05, 12)  # ±5% random variation
+        seasonality = 1 + 0.15 * np.sin(np.linspace(0, 2 * np.pi, 12))  # smooth season curve
+
+        raw = annual_total / 12 * trend * (1 + noise) * seasonality
+        raw = np.maximum(raw, 0)
+        raw *= annual_total / raw.sum()  # normalize back to annual total
+
+        for i, month in enumerate(months):
+            rows.append({
+                "ds": pd.Timestamp(year=year, month=month, day=1),
+                "year": year,
+                "month": month,
+                "month_name": pd.Timestamp(year=year, month=month, day=1).strftime("%b"),
+                "label": maker,
+                "value": round(raw[i], 2)
+            })
+
+    df_ts = pd.DataFrame(rows)
+    df_ts["value"] = df_ts["value"].astype(float)
+
+    # --- ALL-MAXED console summary
+    total = df_ts["value"].sum()
+    top = df_ts.groupby("label")["value"].sum().reset_index().sort_values("value", ascending=False).iloc[0]
+    print("=" * 80)
+    print(f"[ALL-MAXED] Synthetic Timeseries for {year}")
+    print(f"Total registrations generated: {total:,.0f}")
+    print(f"🏆 Top Maker: {top['label']} — {top['value']:,.0f}")
+    print(f"Rows: {len(df_ts):,}")
+    print("=" * 80)
+
+    return df_ts
 
 # -----------------------------
 # ALL-MAXED Fetch Top 5 Makers
@@ -5604,12 +5778,17 @@ def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = True) ->
     # Safe Parameter Preparation
     # -----------------------------
     safe_params = params_common.copy()
+
     # -----------------------------
     # API Fetch (with Mock Fallback)
     # -----------------------------
-    mk_json, mk_url, used_mock = None, None, False
+    used_mock = False
+    mk_json, mk_url = None, None
+
     try:
         mk_json, mk_url = get_json("vahandashboard/top5Makerchart", safe_params)
+        if not mk_json:
+            raise ValueError("Empty API response")
         print(f"[SUCCESS] API fetched from {mk_url}")
     except Exception as e:
         print(Fore.RED + f"[ERROR] API fetch failed: {e}")
@@ -5617,7 +5796,7 @@ def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = True) ->
         used_mock = True
 
     # -----------------------------
-    # Debug JSON Viewer
+    # JSON Debug (Optional)
     # -----------------------------
     if show_debug:
         with st.expander(f"🧩 JSON Debug — Makers {year}", expanded=False):
@@ -5625,53 +5804,58 @@ def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = True) ->
             st.json(mk_json if isinstance(mk_json, (dict, list)) else str(mk_json))
 
     # -----------------------------
-    # Normalize JSON to DataFrame
+    # Normalize JSON → DataFrame
     # -----------------------------
     df = pd.DataFrame()
-    try:
-        if isinstance(mk_json, dict):
-            if "datasets" in mk_json and "labels" in mk_json:
-                df = pd.DataFrame({"label": mk_json["labels"], "value": mk_json["datasets"][0]["data"]})
-            elif "data" in mk_json:
-                df = pd.DataFrame(mk_json["data"])
-            elif "result" in mk_json:
-                df = pd.DataFrame(mk_json["result"])
-        elif isinstance(mk_json, list) and mk_json:
-            df = pd.DataFrame(mk_json)
-    except Exception as e:
-        print(Fore.YELLOW + f"[WARNING] JSON→DataFrame conversion failed: {e}")
+    if not used_mock:
+        try:
+            if isinstance(mk_json, dict):
+                if "datasets" in mk_json and "labels" in mk_json:
+                    df = pd.DataFrame({"label": mk_json["labels"], "value": mk_json["datasets"][0]["data"]})
+                elif "data" in mk_json:
+                    df = pd.DataFrame(mk_json["data"])
+                elif "result" in mk_json:
+                    df = pd.DataFrame(mk_json["result"])
+            elif isinstance(mk_json, list) and mk_json:
+                df = pd.DataFrame(mk_json)
+        except Exception as e:
+            print(Fore.YELLOW + f"[WARNING] JSON→DataFrame failed: {e}")
 
     # -----------------------------
-    # Mock Fallback
+    # Mock Fallback (Only if Empty)
     # -----------------------------
     if df.empty or "label" not in df.columns:
         df = maker_mock_top5(year)
         used_mock = True
         st.warning(f"⚠️ No valid API data for {year} — using deterministic mock")
+    else:
+        print(f"[ALL-MAXED] ✅ Using API data ({len(df)} rows)")
 
     # -----------------------------
-    # Clean + Normalize
+    # Normalize & Stats
     # -----------------------------
     df.columns = [c.lower() for c in df.columns]
     df["year"] = year
     df["value"] = pd.to_numeric(df.get("value", 0), errors="coerce").fillna(0)
     df = df.sort_values("value", ascending=False)
-
     total = df["value"].sum()
     mean_val = df["value"].mean()
     median_val = df["value"].median()
 
-    # Unique streamlit keys
     uid = uuid.uuid4().hex
 
     # -----------------------------
-    # Visuals
+    # Charts (Single Set — Mock OR API)
     # -----------------------------
     try:
+        label_source = "Mock Data" if used_mock else "Live API"
+        color_seq = px.colors.qualitative.Safe if not used_mock else px.colors.qualitative.Vivid
+
         # BAR
         fig_bar = px.bar(
             df, x="label", y="value", color="label", text_auto=".2s",
-            title=f"Top Makers — {year}", color_discrete_sequence=px.colors.qualitative.Safe
+            title=f"Top Makers — {year} ({label_source})",
+            color_discrete_sequence=color_seq
         )
         fig_bar.add_hline(y=mean_val, line_dash="dash", line_color="green",
                           annotation_text=f"Mean: {mean_val:.0f}", annotation_position="top left")
@@ -5681,12 +5865,17 @@ def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = True) ->
         st.plotly_chart(fig_bar, use_container_width=True, key=f"bar_{year}_{uid}")
 
         # PIE
-        fig_pie = px.pie(df, names="label", values="value", hole=0.4,
-                         title=f"Maker Share — {year}", color_discrete_sequence=px.colors.qualitative.Vivid)
-        fig_pie.update_traces(textinfo="percent+label",
-                              hovertemplate="<b>%{label}</b><br>%{value:,} registrations<br>%{percent}",
-                              pull=[0.05]*len(df),
-                              marker=dict(line=dict(color='#fff', width=2)))
+        fig_pie = px.pie(
+            df, names="label", values="value", hole=0.4,
+            title=f"Maker Share — {year} ({label_source})",
+            color_discrete_sequence=color_seq
+        )
+        fig_pie.update_traces(
+            textinfo="percent+label",
+            hovertemplate="<b>%{label}</b><br>%{value:,} registrations<br>%{percent}",
+            pull=[0.05] * len(df),
+            marker=dict(line=dict(color="#fff", width=2))
+        )
         st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_{year}_{uid}")
 
     except Exception as e:
@@ -5699,8 +5888,8 @@ def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = True) ->
     pct = (top["value"] / total * 100) if total else 0
     st.markdown(f"🏆 **Top Maker:** {top['label']} — {int(top['value']):,} ({pct:.1f}%)")
     st.info(f"Mean: {int(mean_val):,}, Median: {int(median_val):,}")
-    df["share_%"] = (df["value"] / total * 100).round(2)
 
+    df["share_%"] = (df["value"] / total * 100).round(2)
     st.dataframe(
         df.style.format({"value": "{:,.0f}", "share_%": "{:.2f}%"}).bar(
             subset=["share_%"], color="#4CAF50"
@@ -5709,49 +5898,20 @@ def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = True) ->
     )
 
     # -----------------------------
-    # Synthetic Trend
+    # Synthetic Monthly Trend
     # -----------------------------
     with st.expander("📈 Synthetic Monthly Trend", expanded=False):
         df_ts = maker_to_timeseries(df, year)
-        fig_line = px.line(df_ts, x="ds", y="value", color="label", markers=True,
-                           title=f"Monthly Trend — {year}",
-                           color_discrete_sequence=px.colors.qualitative.Set2)
+        fig_line = px.line(
+            df_ts, x="ds", y="value", color="label", markers=True,
+            title=f"Monthly Trend — {year} ({label_source})",
+            color_discrete_sequence=px.colors.qualitative.Set2
+        )
         fig_line.update_layout(template="plotly_white", height=400)
         st.plotly_chart(fig_line, use_container_width=True, key=f"trend_{year}_{uid}")
 
     print(f"[DONE] Completed ALL-MAXED fetch_maker_top5 for {year} ({'MOCK' if used_mock else 'API'})")
     return df
-
-
-# ============================================================
-# 🌀 Multi-Year ALL-MAXED Loop
-# ============================================================
-all_years = []
-st.info(f"🔄 Starting fetch for {len(years)} years: {years}")
-
-with st.spinner("⏳ Fetching maker data for all selected years..."):
-    for y in years:
-        try:
-            st.write(f"⏳ Fetching data for {y}...")
-            df_y = fetch_maker_top5(y, params_common, show_debug=False)
-            if not df_y.empty:
-                all_years.append(df_y)
-                print(f"[ALL-MAXED] ✅ {y}: {len(df_y)} rows, top={df_y.iloc[0]['label']}")
-        except Exception as e:
-            st.error(f"❌ {y} fetch error: {e}")
-            print(f"[ALL-MAXED] ❌ Exception during {y}: {e}")
-
-# -----------------------------
-# Combine + Summary
-# -----------------------------
-if all_years:
-    df_all_years = pd.concat(all_years, ignore_index=True)
-    st.success(f"✅ Combined {len(all_years)} years of data — {len(df_all_years):,} rows total")
-else:
-    df_all_years = pd.DataFrame()
-    st.warning("⚠️ No data fetched for selected years")
-
-print("[ALL-MAXED] Maker analytics complete.")
 
 # =====================================================
 # -------------------------
