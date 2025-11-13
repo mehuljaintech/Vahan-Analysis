@@ -5484,6 +5484,46 @@ def maker_mock_top5(year: int) -> pd.DataFrame:
 # -----------------------------
 # Fetch Top5 Makers
 # -----------------------------
+import pandas as pd
+import random
+import streamlit as st
+import logging
+from colorama import Fore
+from typing import Tuple, Dict
+
+logger = logging.getLogger(__name__)
+
+# -----------------------------
+# Deterministic Top5 Mock
+# -----------------------------
+def maker_mock_top5(year: int) -> pd.DataFrame:
+    """Return deterministic Top 5 Makers for a given year."""
+    random.seed(year)
+    makers = [
+        "Maruti Suzuki", "Tata Motors", "Hyundai", "Mahindra", "Hero MotoCorp",
+        "Bajaj Auto", "TVS Motor", "Honda", "Kia", "Toyota"
+    ]
+    random.shuffle(makers)
+    top5 = makers[:5]
+
+    base = random.randint(200_000, 1_000_000)
+    growth = 1 + (year - 2020) * 0.06
+    data = [{"label": m, "value": int(base * random.uniform(0.5, 1.5) * growth)} for m in top5]
+
+    # ALL-MAXED debug
+    total = sum(d["value"] for d in data)
+    top = max(data, key=lambda x: x["value"])
+    print("="*80)
+    print(f"[ALL-MAXED MOCK] Year {year} — Top 5 Makers")
+    print(f"Total registrations (mock): {total:,}")
+    print(f"Top Maker: {top['label']} → {top['value']:,}")
+    print("="*80)
+
+    return pd.DataFrame(data)
+
+# -----------------------------
+# Fetch Top5 Makers
+# -----------------------------
 def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = False) -> Tuple[pd.DataFrame, bool]:
     """
     ALL-MAXED fetch for top vehicle makers for a given year.
@@ -5552,6 +5592,9 @@ def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = False) -
     df["year"] = year
     df = df.sort_values("value", ascending=False)
 
+    # --- Ensure numeric 'value' column ---
+    df["value"] = pd.to_numeric(df.get("score") if "score" in df else df.get("value", 0), errors="coerce").fillna(0)
+
     # --- Render charts ONLY ONCE ---
     if not df.empty:
         st.info(f"🏆 **{year} Top Maker:** **{df.iloc[0]['label']}** — {df.iloc[0]['value']:,} registrations")
@@ -5577,9 +5620,13 @@ def fetch_maker_top5_all_years(years, params_common):
         for y in years:
             try:
                 st.write(f"⏳ Fetching data for {y}...")
-                dfy, used_mock = fetch_maker_top5(y, params_common, show_debug=True)
-                if not dfy.empty:
-                    all_years.append(dfy)
+                df_y, used_mock = fetch_maker_top5(y, params_common, show_debug=True)
+                
+                if df_y is None or df_y.empty:
+                    st.warning(f"⚠️ No data for {y}, skipping...")
+                    continue
+
+                all_years.append(df_y)
             except Exception as e:
                 st.error(f"❌ {y} fetch error: {e}")
                 logger.error(Fore.RED + f"Fetch error {y}: {e}")
