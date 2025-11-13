@@ -904,6 +904,10 @@ def clean_str(v: str) -> str:
     if not v: return ""
     return re.sub(r"[^A-Za-z0-9_\- ,./]", "", str(v).strip())
 
+from datetime import datetime
+import json
+import streamlit as st
+
 def build_params(
     from_year: int,
     to_year: int,
@@ -915,13 +919,13 @@ def build_params(
     time_period: str,
     fitness_check: bool,
     vehicle_type: str,
-    extra_params: Optional[dict] = None,
+    extra_params: dict | None = None,
 ) -> dict:
-    """Strict builder — no prefilled defaults."""
+    """ALL-MAXED — Strict, API-safe parameter builder (no recursion, meta-safe)."""
     current_year = datetime.now().year
     errors = []
 
-    # strict checks
+    # --- Strict validations ---
     if from_year is None or to_year is None:
         errors.append("Both from_year and to_year must be provided.")
     if not isinstance(from_year, int) or not isinstance(to_year, int):
@@ -937,15 +941,16 @@ def build_params(
 
     if errors:
         for e in errors:
-            log(f"❌ Parameter Error: {e}", "ERROR")
+            print(f"❌ Parameter Error: {e}")
         raise ValueError(" | ".join(errors))
 
+    # --- Normalize values ---
     time_period = time_period.title().strip()
     if time_period not in ["Yearly", "Quarterly", "Monthly"]:
-        log(f"⚠️ Invalid time_period '{time_period}', defaulting to 'Yearly'", "WARNING")
+        print(f"⚠️ Invalid time_period '{time_period}', defaulting to 'Yearly'")
         time_period = "Yearly"
 
-    # Build the params dict directly — no recursion
+    # --- Build clean request dict ---
     params = {
         "fromYear": from_year,
         "toYear": to_year,
@@ -954,7 +959,7 @@ def build_params(
         "vehicleClasses": vehicle_classes,
         "vehicleMakers": vehicle_makers,
         "timePeriod": time_period,
-        "fitnessCheck": fitness_check,
+        "fitnessCheck": str(fitness_check),  # convert to string for API
         "vehicleType": vehicle_type,
     }
 
@@ -963,22 +968,27 @@ def build_params(
             if v not in [None, "", [], {}]:
                 params[k] = v
 
-    params["_meta"] = {
-        "created": ist_now(),
+    # --- Local-only metadata (for logging/debug, not for API) ---
+    meta = {
+        "created": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "validated": True,
         "safe_hash": abs(hash(json.dumps(params, sort_keys=True))) % 1_000_000,
     }
 
-    log(f"🧩 Params built successfully → hash {params['_meta']['safe_hash']}", "SUCCESS")
+    print("=" * 90)
+    print(f"[ALL-MAXED] 🧩 Params built successfully — hash {meta['safe_hash']}")
+    for k, v in params.items():
+        print(f"  {k}: {v}")
+    print("=" * 90)
 
+    # --- Optional Streamlit visualization ---
     try:
         with st.expander("🔍 VAHAN Parameter Summary", expanded=False):
-            st.json(params)
+            st.json({"params": params, "_meta": meta})
     except Exception:
         pass
 
     return params
-
 
 import streamlit as st
 from datetime import datetime
