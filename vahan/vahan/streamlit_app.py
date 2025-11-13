@@ -7715,139 +7715,51 @@ import random
 import streamlit as st
 
 # --- Fetch safely ---
-def safe_get_top5_(year: int, params_common: dict, show_debug: bool = True) -> pd.DataFrame:
-    """ALL-MAXED: Fetch Top 5 Revenue States — API + Mock Fallback with full debug + visuals."""
-    st.markdown(f"## 💰 Top 5 Revenue States — {year}")
-    print(f"\n[ALL-MAXED] Starting Top 5 Revenue States fetch for {year}")
+import pandas as pd
+import random
+import streamlit as st
 
-    safe_params = params_common.copy()
-    safe_params.update({"fromYear": year, "toYear": year})
-
-    # --------------------------------------------------
-    # 1️⃣ Attempt API Fetch
-    # --------------------------------------------------
-    used_mock = False
-    json_data, api_url = None, None
-
+def safe_get_top5_(params: dict) -> pd.DataFrame:
+    """ALL-MAXED — Fetch Top 5 Revenue States, with robust fallback mock + detailed debug."""
     try:
-        json_data, api_url = get_json("vahandashboard/top5chartRevenueFee", safe_params)
-        if not json_data:
-            raise ValueError("Empty API response")
-        print(f"[SUCCESS] API data fetched from {api_url}")
+        # === API attempt ===
+        top5_json, url = get_json("vahandashboard/top5chartRevenueFee", params)
+        df = parse_top5_revenue(top5_json)
+
+        if df.empty or not {"label", "value"} <= set(df.columns):
+            raise ValueError("Invalid or empty API data")
+
+        st.success(f"✅ Top 5 Revenue fetched successfully ({url})")
+        print("="*90)
+        print(f"[ALL-MAXED] ✅ API SUCCESS — URL: {url}")
+        print(df.head())
+        print("="*90)
+
     except Exception as e:
-        used_mock = True
-        api_url = f"mock://top5chartRevenueFee/{year}"
-        print(f"[ERROR] API unavailable for {year}: {e}")
-        st.warning(f"⚠️ API unavailable or failed: {e}\nUsing fallback mock data.")
+        # === Fallback mock ===
+        year = params.get("fromYear", 2025)
+        mock_url = f"mock://top5chartRevenueFee/{year}"
+        st.warning(f"⚠️ API unavailable or failed: {e}\nUsing fallback mock data ({mock_url})")
 
-    # --------------------------------------------------
-    # 2️⃣ Normalize or Mock Fallback
-    # --------------------------------------------------
-    df = pd.DataFrame()
-    if not used_mock:
-        try:
-            if isinstance(json_data, dict):
-                if "labels" in json_data and "datasets" in json_data:
-                    df = pd.DataFrame({
-                        "State": json_data["labels"],
-                        "Revenue": json_data["datasets"][0]["data"]
-                    })
-                elif "data" in json_data:
-                    df = pd.DataFrame(json_data["data"]).rename(
-                        columns={"label": "State", "value": "Revenue"}
-                    )
-                elif "result" in json_data:
-                    df = pd.DataFrame(json_data["result"]).rename(
-                        columns={"label": "State", "value": "Revenue"}
-                    )
-            elif isinstance(json_data, list) and json_data:
-                df = pd.DataFrame(json_data).rename(
-                    columns={"label": "State", "value": "Revenue"}
-                )
-        except Exception as e:
-            print(f"[WARNING] JSON→DataFrame normalization failed: {e}")
-            df = pd.DataFrame()
+        print("="*90)
+        print(f"[ALL-MAXED] ⚠️ API FAILED — Using mock fallback")
+        print(f"[ALL-MAXED] ERROR: {e}")
+        print(f"[ALL-MAXED] Mock Source → {mock_url}")
 
-    # --------------------------------------------------
-    # 3️⃣ Deterministic Mock Fallback
-    # --------------------------------------------------
-    if df.empty or "State" not in df.columns or "Revenue" not in df.columns:
-        used_mock = True
         random.seed(year)
         states = ["MH", "DL", "KA", "TN", "UP"]
-        revenues = [random.randint(500, 2000) * (1 + (year - 2020) * 0.07) for _ in states]
-        df = pd.DataFrame({"State": states, "Revenue": [int(v) for v in revenues]})
+        revenues = [random.randint(500_000, 2_000_000) for _ in states]
+        df = pd.DataFrame({"label": states, "value": revenues})
+        print(f"[ALL-MAXED] Mock Data:\n{df}")
+        print("="*90)
 
-        print("=" * 80)
-        print(f"[ALL-MAXED MOCK] Year {year} — Top 5 Revenue States")
-        for s, v in zip(states, revenues):
-            print(f"  {s} → ₹{int(v):,} Cr")
-        print("=" * 80)
+    # === Normalize output ===
+    df = df.rename(columns={"label": "State", "value": "Revenue"}).reset_index(drop=True)
+    df["Revenue"] = df["Revenue"].astype(int)
+    df["Source"] = "API" if "url" in locals() else "Mock"
 
-        st.info(f"💡 Using deterministic mock data for {year} (mock:// source)")
-
-    # --------------------------------------------------
-    # 4️⃣ Data Cleaning & Stats
-    # --------------------------------------------------
-    df["Year"] = year
-    df["Revenue"] = pd.to_numeric(df["Revenue"], errors="coerce").fillna(0)
-    df = df.sort_values("Revenue", ascending=False)
-    total = df["Revenue"].sum()
-    mean_val = df["Revenue"].mean()
-    median_val = df["Revenue"].median()
-    uid = uuid.uuid4().hex
-
-    # --------------------------------------------------
-    # 5️⃣ Charts (Single Set — API or Mock)
-    # --------------------------------------------------
-    label_src = "Mock Data" if used_mock else "Live API"
-    color_seq = px.colors.qualitative.Vivid if used_mock else px.colors.qualitative.Safe
-
-    # BAR
-    fig_bar = px.bar(
-        df, x="State", y="Revenue", color="State", text_auto=".2s",
-        title=f"Top 5 Revenue States — {year} ({label_src})",
-        color_discrete_sequence=color_seq
-    )
-    fig_bar.add_hline(y=mean_val, line_dash="dash", line_color="green",
-                      annotation_text=f"Mean: {mean_val:.0f}", annotation_position="top left")
-    fig_bar.add_hline(y=median_val, line_dash="dot", line_color="blue",
-                      annotation_text=f"Median: {median_val:.0f}", annotation_position="bottom right")
-    fig_bar.update_layout(template="plotly_white", height=450)
-    st.plotly_chart(fig_bar, use_container_width=True, key=f"rev_bar_{year}_{uid}")
-
-    # PIE
-    fig_pie = px.pie(
-        df, names="State", values="Revenue", hole=0.4,
-        title=f"Revenue Share — {year} ({label_src})",
-        color_discrete_sequence=color_seq
-    )
-    fig_pie.update_traces(
-        textinfo="percent+label",
-        hovertemplate="<b>%{label}</b><br>₹%{value:,} Cr <br>%{percent}",
-        pull=[0.05] * len(df),
-        marker=dict(line=dict(color="#fff", width=2))
-    )
-    st.plotly_chart(fig_pie, use_container_width=True, key=f"rev_pie_{year}_{uid}")
-
-    # --------------------------------------------------
-    # 6️⃣ KPI + Summary Table
-    # --------------------------------------------------
-    top = df.iloc[0]
-    pct = (top["Revenue"] / total * 100) if total else 0
-    st.success(f"🏆 Top State: {top['State']} — ₹{int(top['Revenue']):,} Cr ({pct:.1f}%)")
-    st.info(f"Mean: ₹{int(mean_val):,} Cr, Median: ₹{int(median_val):,} Cr")
-
-    df["Share %"] = (df["Revenue"] / total * 100).round(2)
-    st.dataframe(
-        df.style.format({"Revenue": "₹{:,.0f}", "Share %": "{:.2f}%"}).bar(
-            subset=["Share %"], color="#4CAF50"
-        ).highlight_max(subset=["Revenue"], color="#F39C12"),
-        use_container_width=True, height=300,
-    )
-
-    print(f"[DONE] Completed ALL-MAXED Top 5 Revenue States for {year} ({'MOCK' if used_mock else 'API'})")
     return df
+
 
 # -----------------------------
 # 🔹 Plot Top 5 Revenue
