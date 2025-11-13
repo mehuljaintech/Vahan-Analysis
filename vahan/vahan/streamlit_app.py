@@ -8259,12 +8259,6 @@ def safe_value(val, default):
         return default
     return val
 
-def build_params(**kwargs):
-    """Mock builder — merges & cleans parameters."""
-    params = {}
-    for k, v in kwargs.items():
-        params[k] = safe_value(v, "ALL" if isinstance(v, str) else v)
-    return params
 
 from_year = safe_value(locals().get('from_year'), 2018)
 to_year = safe_value(locals().get('to_year'), datetime.now().year)
