@@ -8346,18 +8346,6 @@ frequency = safe_value(locals().get('frequency'), 'Monthly')
 fitness_check = safe_value(locals().get('fitness_check'), 'ALL')
 vehicle_type = safe_value(locals().get('vehicle_type'), 'ALL')
 
-params = build_params(
-    from_year=from_year,
-    to_year=to_year,
-    state_code=state_code,
-    rto_code=rto_code,
-    vehicle_classes=vehicle_classes,
-    vehicle_makers=vehicle_makers,
-    time_period=frequency,
-    fitness_check=fitness_check,
-    vehicle_type=vehicle_type
-)
-
 st.write("🔍 **Params Sent to API:**")
 st.json(params)
 
