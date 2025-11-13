@@ -5116,7 +5116,6 @@ def bar_from_makers(df: pd.DataFrame, title="Top Makers", x="label", y="value",
         height=height, bargap=0.15,
         margin=dict(t=70, b=50, l=50, r=30)
     )
-    st.plotly_chart(fig, use_container_width=True, key=_unique_key(section_id))
 
 # -----------------------------
 # PIE / DONUT CHART — MAKERS (ALL-MAXED)
@@ -5146,7 +5145,6 @@ def pie_from_makers(df: pd.DataFrame, title="Maker Share", donut=True, section_i
         ),
         height=height, margin=dict(t=70, b=50, l=50, r=50)
     )
-    st.plotly_chart(fig, use_container_width=True, key=_unique_key(section_id))
 
 # -----------------------------
 # TREND / LINE CHART — MAKERS (ALL-MAXED)
@@ -5187,7 +5185,6 @@ def trend_from_makers(df: pd.DataFrame, title="Trend Over Time", section_id="tre
         height=height,
         margin=dict(t=70, b=50, l=50, r=50)
     )
-    st.plotly_chart(fig, use_container_width=True, key=_unique_key(section_id))
 
 # -----------------------------------------------------
 # 🧠 Auto Dashboard Section — Single Function (MAKERS)
