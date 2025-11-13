@@ -5224,18 +5224,18 @@ def render_maker_dashboard(year: int, freq="Monthly", use_mock=False):
     st.success(f"🏆 Top Maker: {top['label']} — {int(top['value']):,} registrations ({pct:.1f}%)")
     st.info(f"Mean: {int(df['value'].mean()):,}, Median: {int(df['value'].median()):,}")
 
-    # Layout charts with unique keys
-    c1, c2 = st.columns([2, 1])
-    with c1:
-        bar_from_makers(df, title=f"{year} {freq} Breakdown (Bar)", color="label", section_id=f"bar_{year}_{uid}")
-    with c2:
-        pie_from_makers(df, title=f"{year} Share (Donut)", section_id=f"pie_{year}_{uid}")
+    # # Layout charts with unique keys
+    # c1, c2 = st.columns([2, 1])
+    # with c1:
+    #     bar_from_makers(df, title=f"{year} {freq} Breakdown (Bar)", color="label", section_id=f"bar_{year}_{uid}")
+    # with c2:
+    #     pie_from_makers(df, title=f"{year} Share (Donut)", section_id=f"pie_{year}_{uid}")
 
-    # Synthetic trend
-    df_ts = maker_to_timeseries(df, year)
-    trend_from_makers(df_ts, title=f"{year} Monthly Trend", section_id=f"trend_{year}_{uid}")
+    # # Synthetic trend
+    # df_ts = maker_to_timeseries(df, year)
+    # trend_from_makers(df_ts, title=f"{year} Monthly Trend", section_id=f"trend_{year}_{uid}")
 
-    return df
+    # return df
 
 
 # ============================================================
