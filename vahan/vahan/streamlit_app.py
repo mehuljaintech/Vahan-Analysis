@@ -5192,40 +5192,52 @@ def trend_from_makers(df: pd.DataFrame, title="Trend Over Time", section_id="tre
 # -----------------------------------------------------
 # 🧠 Auto Dashboard Section — Single Function (MAKERS)
 # -----------------------------------------------------
-def render_maker_dashboard(year: int, freq="Monthly"):
-    """Render full UI: fetch mock makers data, show KPI, bar, pie, trend — ALL-MAXED."""
+def render_maker_dashboard(year: int, freq="Monthly", use_mock=False):
+    """
+    Render full UI for a given year:
+      - Fetch real API data if available
+      - Fallback to deterministic mock if requested or API fails
+      - Show KPI, bar, pie, trend — ALL-MAXED
+    """
     st.subheader(f"📊 Maker Distribution — {year} ({freq})")
-    print(f"[DEBUG] Rendering maker dashboard for year={year}, freq={freq}")
+    uid = uuid.uuid4().hex  # unique key for this year
 
-    # Generate deterministic data
-    mock_json = deterministic_mock_makers(year, freq=freq)
-    df = pd.DataFrame(mock_json["data"])
-    print(f"[DEBUG] Mock data generated with {len(df)} rows")
+    # Fetch real data
+    if not use_mock:
+        try:
+            df = fetch_maker_top5(year, params_common, show_debug=True)
+            # Already numeric-safe in fetch_maker_top5
+        except Exception as e:
+            st.warning(f"⚠️ API fetch failed, using mock for {year}: {e}")
+            df = deterministic_mock_makers(year, freq=freq)
+            df = pd.DataFrame(df["data"])
+    else:
+        # Direct mock
+        mock_json = deterministic_mock_makers(year, freq=freq)
+        df = pd.DataFrame(mock_json["data"])
 
+    if df.empty:
+        st.warning(f"⚠️ No data available for {year}")
+        return pd.DataFrame()
+
+    # KPIs
     total = df["value"].sum()
     top = df.sort_values("value", ascending=False).iloc[0]
-    st.success(f"🏆 **Top Maker:** {top['label']} — {format_number(top['value'])} registrations")
-    st.caption(f"Total: {format_number(total)} | Generated: {mock_json['meta']['generatedAt']}")
-    print(f"[DEBUG] Top maker: {top['label']} with {top['value']} registrations")
+    pct = (top["value"] / total * 100) if total else 0
+    st.success(f"🏆 Top Maker: {top['label']} — {int(top['value']):,} registrations ({pct:.1f}%)")
+    st.info(f"Mean: {int(df['value'].mean()):,}, Median: {int(df['value'].median()):,}")
 
-        # Layout 2-col + trend
+    # Layout charts with unique keys
     c1, c2 = st.columns([2, 1])
     with c1:
-        print(f"[DEBUG] Rendering bar chart for year={year}")
-        bar_from_makers(df, title=f"{year} {freq} Breakdown (Bar)", color="label", section_id=f"bar_{year}")
+        bar_from_makers(df, title=f"{year} {freq} Breakdown (Bar)", color="label", section_id=f"bar_{year}_{uid}")
     with c2:
-        print(f"[DEBUG] Rendering pie chart for year={year}")
-        pie_from_makers(df, title=f"{year} Share (Donut)", section_id=f"pie_{year}")
+        pie_from_makers(df, title=f"{year} Share (Donut)", section_id=f"pie_{year}_{uid}")
 
-    # Optional trend
-    if "month_name" in df.columns:
-        print(f"[DEBUG] Rendering monthly trend chart for year={year}")
-        trend_from_makers(df, title=f"{year} Monthly Trend (Animated)", section_id=f"trend_{year}")
-    else:
-        print(f"[DEBUG] Rendering yearly trend chart for year={year}")
-        trend_from_makers(df, title=f"{year} Maker Trend", section_id=f"trend_{year}")
+    # Synthetic trend
+    df_ts = maker_to_timeseries(df, year)
+    trend_from_makers(df_ts, title=f"{year} Monthly Trend", section_id=f"trend_{year}_{uid}")
 
-    print(f"[DEBUG] Dashboard rendering complete for year={year}")
     return df
 
 
