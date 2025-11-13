@@ -5208,22 +5208,22 @@ def render_maker_dashboard(year: int, freq="Monthly"):
     st.caption(f"Total: {format_number(total)} | Generated: {mock_json['meta']['generatedAt']}")
     print(f"[DEBUG] Top maker: {top['label']} with {top['value']} registrations")
 
-    #     # Layout 2-col + trend
-    # c1, c2 = st.columns([2, 1])
-    # with c1:
-    #     print(f"[DEBUG] Rendering bar chart for year={year}")
-    #     bar_from_makers(df, title=f"{year} {freq} Breakdown (Bar)", color="label", section_id=f"bar_{year}")
-    # with c2:
-    #     print(f"[DEBUG] Rendering pie chart for year={year}")
-    #     pie_from_makers(df, title=f"{year} Share (Donut)", section_id=f"pie_{year}")
+        # Layout 2-col + trend
+    c1, c2 = st.columns([2, 1])
+    with c1:
+        print(f"[DEBUG] Rendering bar chart for year={year}")
+        bar_from_makers(df, title=f"{year} {freq} Breakdown (Bar)", color="label", section_id=f"bar_{year}")
+    with c2:
+        print(f"[DEBUG] Rendering pie chart for year={year}")
+        pie_from_makers(df, title=f"{year} Share (Donut)", section_id=f"pie_{year}")
 
-    # # Optional trend
-    # if "month_name" in df.columns:
-    #     print(f"[DEBUG] Rendering monthly trend chart for year={year}")
-    #     trend_from_makers(df, title=f"{year} Monthly Trend (Animated)", section_id=f"trend_{year}")
-    # else:
-    #     print(f"[DEBUG] Rendering yearly trend chart for year={year}")
-    #     trend_from_makers(df, title=f"{year} Maker Trend", section_id=f"trend_{year}")
+    # Optional trend
+    if "month_name" in df.columns:
+        print(f"[DEBUG] Rendering monthly trend chart for year={year}")
+        trend_from_makers(df, title=f"{year} Monthly Trend (Animated)", section_id=f"trend_{year}")
+    else:
+        print(f"[DEBUG] Rendering yearly trend chart for year={year}")
+        trend_from_makers(df, title=f"{year} Maker Trend", section_id=f"trend_{year}")
 
     print(f"[DEBUG] Dashboard rendering complete for year={year}")
     return df
@@ -5444,64 +5444,84 @@ logger.info(f"Parameters: {params_common}")
 logger.info(f"Years in scope: {years}")
 
 
-def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = False):
-    """
-    Fetch top vehicle makers for a given year — fully maxed with safe params + mock fallback.
-    
-    Parameters:
-        year (int): Year to fetch
-        params_common (dict): Parameters for the API
-        show_debug (bool): If True, show raw JSON in an expander
+import pandas as pd
+import random
+import streamlit as st
+import logging
+from colorama import Fore
+from typing import Tuple, Dict
 
-    Returns:
-        pd.DataFrame: DataFrame of top makers with 'label', 'value', 'year'
-    """
-    import random
-    import pandas as pd
-    import streamlit as st
-    import logging
-    from colorama import Fore
+logger = logging.getLogger(__name__)
 
-    logger = logging.getLogger(__name__)
+# -----------------------------
+# Deterministic Top5 Mock
+# -----------------------------
+def maker_mock_top5(year: int) -> pd.DataFrame:
+    """Return deterministic Top 5 Makers for a given year."""
+    random.seed(year)
+    makers = [
+        "Maruti Suzuki", "Tata Motors", "Hyundai", "Mahindra", "Hero MotoCorp",
+        "Bajaj Auto", "TVS Motor", "Honda", "Kia", "Toyota"
+    ]
+    random.shuffle(makers)
+    top5 = makers[:5]
+
+    base = random.randint(200_000, 1_000_000)
+    growth = 1 + (year - 2020) * 0.06
+    data = [{"label": m, "value": int(base * random.uniform(0.5, 1.5) * growth)} for m in top5]
+
+    # ALL-MAXED debug
+    total = sum(d["value"] for d in data)
+    top = max(data, key=lambda x: x["value"])
+    print("="*80)
+    print(f"[ALL-MAXED MOCK] Year {year} — Top 5 Makers")
+    print(f"Total registrations (mock): {total:,}")
+    print(f"Top Maker: {top['label']} → {top['value']:,}")
+    print("="*80)
+
+    return pd.DataFrame(data)
+
+# -----------------------------
+# Fetch Top5 Makers
+# -----------------------------
+def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = False) -> Tuple[pd.DataFrame, bool]:
+    """
+    ALL-MAXED fetch for top vehicle makers for a given year.
+    Returns DataFrame and a flag used_mock (True if mock used).
+    """
     logger.info(Fore.CYAN + f"🚀 Fetching top makers for {year}...")
 
-    # --- Safe param cleanup ---
     safe_params = params_common.copy()
     safe_params["fromYear"] = year
     safe_params["toYear"] = year
-
     for k in ["fitnessCheck", "stateCode", "rtoCode", "vehicleType"]:
         if k in safe_params and safe_params[k] in ["ALL", "0", "", None, False]:
             safe_params.pop(k, None)
 
-    # -----------------------------
-    # Attempt API fetch
-    # -----------------------------
+    # --- Attempt API fetch ---
     mk_json, mk_url = None, None
+    used_mock = False
     try:
         mk_json, mk_url = get_json("vahandashboard/top5Makerchart", safe_params)
         print(f"[DEBUG] API response URL: {mk_url}")
-        print(f"[DEBUG] API response keys: {list(mk_json.keys()) if mk_json else 'None'}")
+        print(f"[DEBUG] API keys: {list(mk_json.keys()) if mk_json else 'None'}")
     except Exception as e:
         logger.error(Fore.RED + f"❌ API fetch failed for {year}: {e}")
         mk_json, mk_url = None, "MOCK://top5Makerchart"
+        used_mock = True
 
-    # --- Status caption in Streamlit ---
-    color = "orange" if mk_url and "MOCK" in mk_url else "green"
-    st.markdown(
-        f"🔗 **API ({year}):** <span style='color:{color}'>{mk_url or 'N/A'}</span>",
-        unsafe_allow_html=True,
-    )
+    # Streamlit status
+    color = "orange" if used_mock else "green"
+    st.markdown(f"🔗 **{year} Data Source:** <span style='color:{color}'>{'Mock' if used_mock else mk_url}</span>", unsafe_allow_html=True)
 
-    # --- Optional debug ---
+    # Debug JSON
     if show_debug:
         with st.expander(f"🧩 JSON Debug — {year}", expanded=False):
             st.json(mk_json)
 
-    # --- Validate JSON & extract data ---
-    is_valid = False
+    # --- Validate & parse API JSON ---
     df = pd.DataFrame()
-
+    is_valid = False
     if isinstance(mk_json, dict):
         if "datasets" in mk_json and "labels" in mk_json:
             data_values = mk_json["datasets"][0].get("data", [])
@@ -5519,83 +5539,61 @@ def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = False):
         df = pd.DataFrame(mk_json)
         is_valid = not df.empty
 
-    # --- Handle missing/invalid data with deterministic mock ---
+    # --- Fallback to deterministic mock ---
     if not is_valid or df.empty:
-        logger.warning(Fore.YELLOW + f"⚠️ Using mock data for {year}")
-        st.warning(f"⚠️ No valid API data for {year}, generating mock values.")
-        random.seed(year)
-        makers = [
-            "Maruti Suzuki", "Tata Motors", "Hyundai", "Mahindra", "Hero MotoCorp",
-            "Bajaj Auto", "TVS Motor", "Honda", "Kia", "Toyota", "Renault",
-            "Ashok Leyland", "MG Motor", "Eicher", "Piaggio", "BYD", "Olectra", "Force Motors"
-        ]
-        random.shuffle(makers)
-        top = makers[:10]
-        base = random.randint(200_000, 1_000_000)
-        growth = 1 + (year - 2020) * 0.06
-        df = pd.DataFrame({
-            "label": top,
-            "value": [int(base * random.uniform(0.5, 1.5) * growth) for _ in top]
-        })
-        print(f"[DEBUG] Mock data generated: {df.to_dict(orient='records')}")
+        df = maker_mock_top5(year)
+        used_mock = True
     else:
         st.success(f"✅ Valid API data loaded for {year}")
-        print(f"[DEBUG] API data loaded successfully: {df.head().to_dict(orient='records')}")
+        print(f"[DEBUG] API data loaded: {df.head().to_dict(orient='records')}")
 
-    # --- Normalize columns ---
+    # Normalize & sort
     df.columns = [c.lower() for c in df.columns]
     df["year"] = year
     df = df.sort_values("value", ascending=False)
 
-    # --- Visual output ---
+    # --- Render charts ONLY ONCE ---
     if not df.empty:
-        st.info(f"🏆 **{year}** → **{df.iloc[0]['label']}** — {df.iloc[0]['value']:,} registrations")
+        st.info(f"🏆 **{year} Top Maker:** **{df.iloc[0]['label']}** — {df.iloc[0]['value']:,} registrations")
         bar_from_makers(df, f"Top Makers ({year})", combined=False)
         pie_from_makers(df, f"Maker Share ({year})")
 
-    # --- Print ALL-MAXED debug summary ---
+    # ALL-MAXED debug summary
     print("="*80)
-    print(f"[ALL-MAXED] Year: {year}, Top Maker: {df.iloc[0]['label'] if not df.empty else 'N/A'}")
+    print(f"[ALL-MAXED] Year: {year}, Top Maker: {df.iloc[0]['label'] if not df.empty else 'N/A'}, Mock used: {used_mock}")
     print(f"Total makers: {len(df)}, Columns: {df.columns.tolist()}")
     print("="*80)
 
-    return df
+    return df, used_mock
 
-# -----------------------------------------------------
-# 🔁 MAIN LOOP — MULTI-YEAR FETCH
-# -----------------------------------------------------
-all_years = []
+# -----------------------------
+# Multi-Year Fetch — ALLLL MAXED
+# -----------------------------
+def fetch_maker_top5_all_years(years, params_common):
+    all_years = []
+    st.info(f"🔄 Starting ALL-MAXED fetch for {len(years)} years: {years}")
 
-st.info(f"🔄 Starting fetch for {len(years)} years: {years}")
+    with st.spinner("⏳ Fetching maker data for all selected years..."):
+        for y in years:
+            try:
+                st.write(f"⏳ Fetching data for {y}...")
+                dfy, used_mock = fetch_maker_top5(y, params_common, show_debug=True)
+                if not dfy.empty:
+                    all_years.append(dfy)
+            except Exception as e:
+                st.error(f"❌ {y} fetch error: {e}")
+                logger.error(Fore.RED + f"Fetch error {y}: {e}")
 
-with st.spinner("⏳ Fetching maker data for all selected years..."):
-    for y in years:
-        try:
-            st.write(f"⏳ Fetching data for {y}...")
-            print(f"[ALL-MAXED] Fetching maker top 5 for year {y}...")
-            
-            # ✅ fetch with debug
-            dfy = fetch_maker_top5(y, params_common, show_debug=True)  
-            
-            if dfy is not None and not dfy.empty:
-                all_years.append(dfy)
-                print(f"[ALL-MAXED] Year {y} fetched: {len(dfy)} rows, top maker: {dfy.iloc[0]['label']}")
-            else:
-                print(f"[ALL-MAXED] Year {y} returned empty DataFrame")
-            
-        except Exception as e:
-            st.error(f"❌ {y} fetch error: {e}")
-            logger.error(Fore.RED + f"Fetch error {y}: {e}")
-            print(f"[ALL-MAXED] Exception during fetch for {y}: {e}")
+    # Combine all years
+    if all_years:
+        df_all = pd.concat(all_years, ignore_index=True)
+        st.success(f"✅ Fetched and combined data for {len(all_years)} years")
+        print(f"[ALL-MAXED] Combined all years: {len(df_all)} rows")
+    else:
+        df_all = pd.DataFrame()
+        st.warning("⚠️ No data fetched for the selected years")
 
-# Combine all years into a single DataFrame if needed
-if all_years:
-    df_all_years = pd.concat(all_years, ignore_index=True)
-    print(f"[ALL-MAXED] Combined all years: {len(df_all_years)} rows")
-    st.success(f"✅ Fetched and combined data for {len(all_years)} years")
-else:
-    df_all_years = pd.DataFrame()
-    st.warning("⚠️ No data fetched for the selected years")
+    return df_all
 
 # =====================================================
 # -------------------------
@@ -7323,8 +7321,6 @@ if __name__ == "__main__":
     import traceback
 
     print("[ALL-MAXED ENTRY] Streamlit app starting...")
-    
-    st.markdown("# 🚗 ALL-MAXED MAKER ANALYTICS")
     
     try:
         print("[ALL-MAXED ENTRY] Calling all_maxed_maker_block()")
