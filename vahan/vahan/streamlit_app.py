@@ -836,6 +836,28 @@ if st.session_state.get("auto_refresh", True) and not st.session_state.get("auto
 # 🚀 VAHAN ANALYTICS API ENGINE — ALL-MAXED PURE v7.0
 # =====================================================
 
+import json
+from datetime import datetime
+from typing import Optional
+
+import streamlit as st
+
+# If you have a custom logging function
+def log(msg: str, level: str = "INFO"):
+    """Simple logger for demonstration purposes."""
+    print(f"[{level}] {msg}")
+
+# If you have a custom IST timestamp function
+def ist_now() -> str:
+    """Return current time as string in IST."""
+    from pytz import timezone
+    import datetime
+    ist = timezone("Asia/Kolkata")
+    return datetime.datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S")
+
+# =====================================================
+# 🧩 PARAMETER BUILDER (STRICT)
+# =====================================================
 def build_params(
     from_year: int,
     to_year: int,
