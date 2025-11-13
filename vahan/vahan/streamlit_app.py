@@ -5595,23 +5595,22 @@ import plotly.graph_objects as go
 from colorama import Fore
 
 
-# -----------------------------
-# ALL-MAXED Fetch Top 5 Makers
-# -----------------------------
+# ============================================================
+# 🧩 ALL-MAXED Fetch Top 5 Makers (Unified API + Mock Fallback)
+# ============================================================
+
 def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = True) -> pd.DataFrame:
     st.markdown(f"## 🏆 Top Vehicle Makers — {year}")
-    print(f"\n[INFO] Fetching top makers for year: {year}")
-    
-    # Safe params
-    safe_params = params_common.copy()
-    safe_params["fromYear"] = year
-    safe_params["toYear"] = year
-    for k in ["fitnessCheck", "stateCode", "rtoCode", "vehicleType"]:
-        if k in safe_params and safe_params[k] in ["ALL", "0", "", None, False]:
-            safe_params.pop(k, None)
+    print(f"\n[INFO] Fetching top makers for year {year}")
 
-    # Fetch API
-    used_mock = False
+    # -----------------------------
+    # Safe Parameter Preparation
+    # -----------------------------
+    safe_params = params_common.copy()
+    # -----------------------------
+    # API Fetch (with Mock Fallback)
+    # -----------------------------
+    mk_json, mk_url, used_mock = None, None, False
     try:
         mk_json, mk_url = get_json("vahandashboard/top5Makerchart", safe_params)
         print(f"[SUCCESS] API fetched from {mk_url}")
@@ -5619,15 +5618,18 @@ def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = True) ->
         print(Fore.RED + f"[ERROR] API fetch failed: {e}")
         mk_json, mk_url = None, f"mock://top5Makerchart/{year}"
         used_mock = True
-        print(f"[FALLBACK] Using deterministic mock for {year}")
 
-    # Debug panel
+    # -----------------------------
+    # Debug JSON Viewer
+    # -----------------------------
     if show_debug:
         with st.expander(f"🧩 JSON Debug — Makers {year}", expanded=False):
             st.write("**URL:**", mk_url)
             st.json(mk_json if isinstance(mk_json, (dict, list)) else str(mk_json))
 
+    # -----------------------------
     # Normalize JSON to DataFrame
+    # -----------------------------
     df = pd.DataFrame()
     try:
         if isinstance(mk_json, dict):
@@ -5640,116 +5642,93 @@ def fetch_maker_top5(year: int, params_common: dict, show_debug: bool = True) ->
         elif isinstance(mk_json, list) and mk_json:
             df = pd.DataFrame(mk_json)
     except Exception as e:
-        print(Fore.YELLOW + f"[WARNING] Conversion failed: {e}")
+        print(Fore.YELLOW + f"[WARNING] JSON→DataFrame conversion failed: {e}")
 
-    # Fallback mock if empty
-    if df.empty:
+    # -----------------------------
+    # Mock Fallback
+    # -----------------------------
+    if df.empty or "label" not in df.columns:
         df = maker_mock_top5(year)
         used_mock = True
-        st.warning(f"⚠️ No valid API data for {year}, using mock data")
+        st.warning(f"⚠️ No valid API data for {year} — using deterministic mock")
 
-    # Normalize
+    # -----------------------------
+    # Clean + Normalize
+    # -----------------------------
     df.columns = [c.lower() for c in df.columns]
     df["year"] = year
+    df["value"] = pd.to_numeric(df.get("value", 0), errors="coerce").fillna(0)
     df = df.sort_values("value", ascending=False)
-    df["value"] = pd.to_numeric(df.get("value") if "value" in df else 0, errors="coerce").fillna(0)
 
     total = df["value"].sum()
     mean_val = df["value"].mean()
     median_val = df["value"].median()
 
-    # -----------------------------
-    # Unique keys
-    # -----------------------------
+    # Unique streamlit keys
     uid = uuid.uuid4().hex
 
     # -----------------------------
-    # Bar Chart
+    # Visuals
     # -----------------------------
     try:
+        # BAR
         fig_bar = px.bar(
-            df,
-            x="label",
-            y="value",
-            color="label",
-            text_auto=".2s",
-            title=f"Top Makers Distribution — {year}",
-            color_discrete_sequence=px.colors.qualitative.Safe,
+            df, x="label", y="value", color="label", text_auto=".2s",
+            title=f"Top Makers — {year}", color_discrete_sequence=px.colors.qualitative.Safe
         )
         fig_bar.add_hline(y=mean_val, line_dash="dash", line_color="green",
                           annotation_text=f"Mean: {mean_val:.0f}", annotation_position="top left")
         fig_bar.add_hline(y=median_val, line_dash="dot", line_color="blue",
                           annotation_text=f"Median: {median_val:.0f}", annotation_position="bottom right")
-        fig_bar.update_layout(template="plotly_white", height=500, xaxis_title="Maker", yaxis_title="Registrations")
-        fig_bar.update_traces(
-            hovertemplate="<b>%{x}</b><br>Registrations: %{y:,}<br>Share: %{customdata[0]:.1%}",
-            customdata=np.array(df["value"] / total).reshape(-1, 1),
-            marker_line_width=1.5
-        )
+        fig_bar.update_layout(template="plotly_white", height=450, margin=dict(t=60))
         st.plotly_chart(fig_bar, use_container_width=True, key=f"bar_{year}_{uid}")
-    except Exception as e:
-        st.warning(f"⚠️ Bar chart failed: {e}")
 
-    # -----------------------------
-    # Pie Chart
-    # -----------------------------
-    try:
-        fig_pie = px.pie(
-            df,
-            names="label",
-            values="value",
-            hole=0.4,
-            title=f"Maker Share — {year}",
-            color_discrete_sequence=px.colors.qualitative.Vivid,
-        )
+        # PIE
+        fig_pie = px.pie(df, names="label", values="value", hole=0.4,
+                         title=f"Maker Share — {year}", color_discrete_sequence=px.colors.qualitative.Vivid)
         fig_pie.update_traces(textinfo="percent+label",
                               hovertemplate="<b>%{label}</b><br>%{value:,} registrations<br>%{percent}",
                               pull=[0.05]*len(df),
-                              marker=dict(line=dict(color='#ffffff', width=2)))
+                              marker=dict(line=dict(color='#fff', width=2)))
         st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_{year}_{uid}")
+
     except Exception as e:
-        st.warning(f"⚠️ Pie chart failed: {e}")
+        st.warning(f"⚠️ Chart render failed: {e}")
 
     # -----------------------------
-    # Top Maker Insight
+    # KPI + Table
     # -----------------------------
     top = df.iloc[0]
     pct = (top["value"] / total * 100) if total else 0
-    st.markdown(f"🏆 **Top Maker:** {top['label']} — {int(top['value']):,} registrations ({pct:.1f}%)")
-    st.info(f"Mean registrations: {int(mean_val):,}, Median registrations: {int(median_val):,}")
-    print(f"[ALL-MAXED] Year {year}: Top Maker {top['label']} ({pct:.1f}%, {int(top['value']):,})")
-
-    # -----------------------------
-    # Share % Table
-    # -----------------------------
+    st.markdown(f"🏆 **Top Maker:** {top['label']} — {int(top['value']):,} ({pct:.1f}%)")
+    st.info(f"Mean: {int(mean_val):,}, Median: {int(median_val):,}")
     df["share_%"] = (df["value"] / total * 100).round(2)
+
     st.dataframe(
-        df.sort_values("share_%", ascending=False).style.format({"value": "{:,.0f}", "share_%": "{:.2f}%"}).bar(
+        df.style.format({"value": "{:,.0f}", "share_%": "{:.2f}%"}).bar(
             subset=["share_%"], color="#4CAF50"
-        ).highlight_max(subset=["value"], color="#F39C12").highlight_min(subset=["value"], color="#E74C3C"),
-        use_container_width=True, height=300
+        ).highlight_max(subset=["value"], color="#F39C12"),
+        use_container_width=True, height=320,
     )
 
     # -----------------------------
-    # Synthetic Monthly Trend
+    # Synthetic Trend
     # -----------------------------
-    with st.expander("📈 Synthetic Monthly Trend", expanded=True):
+    with st.expander("📈 Synthetic Monthly Trend", expanded=False):
         df_ts = maker_to_timeseries(df, year)
         fig_line = px.line(df_ts, x="ds", y="value", color="label", markers=True,
-                           title=f"Monthly Trend — {year}", color_discrete_sequence=px.colors.qualitative.Set2)
-        fig_line.add_hline(y=mean_val, line_dash="dash", line_color="green",
-                           annotation_text=f"Mean: {mean_val:.0f}", annotation_position="top left")
-        fig_line.add_hline(y=median_val, line_dash="dot", line_color="blue",
-                           annotation_text=f"Median: {median_val:.0f}", annotation_position="bottom right")
+                           title=f"Monthly Trend — {year}",
+                           color_discrete_sequence=px.colors.qualitative.Set2)
+        fig_line.update_layout(template="plotly_white", height=400)
         st.plotly_chart(fig_line, use_container_width=True, key=f"trend_{year}_{uid}")
-        print(f"[INFO] Rendered synthetic monthly trend for {year}")
 
-    print(f"[DONE] Completed fetch_maker_top5 for {year}\n{'-'*60}")
+    print(f"[DONE] Completed ALL-MAXED fetch_maker_top5 for {year} ({'MOCK' if used_mock else 'API'})")
     return df
 
-# -----------------------------
-# Multi-Year ALL-MAXED Loop
-# -----------------------------
+
+# ============================================================
+# 🌀 Multi-Year ALL-MAXED Loop
+# ============================================================
 all_years = []
 st.info(f"🔄 Starting fetch for {len(years)} years: {years}")
 
@@ -5757,28 +5736,25 @@ with st.spinner("⏳ Fetching maker data for all selected years..."):
     for y in years:
         try:
             st.write(f"⏳ Fetching data for {y}...")
-            df_y = fetch_maker_top5(y, params_common, show_debug=True)
-
-            # Safe numeric handling
-            if "score" in df_y.columns:
-                df_y["value"] = pd.to_numeric(df_y["score"], errors="coerce").fillna(0)
-            else:
-                df_y["value"] = pd.to_numeric(df_y["value"], errors="coerce").fillna(0)
-
-            all_years.append(df_y)
-            print(f"[ALL-MAXED] Year {y} fetched: {len(df_y)} rows, top maker: {df_y.iloc[0]['label']}")
-
+            df_y = fetch_maker_top5(y, params_common, show_debug=False)
+            if not df_y.empty:
+                all_years.append(df_y)
+                print(f"[ALL-MAXED] ✅ {y}: {len(df_y)} rows, top={df_y.iloc[0]['label']}")
         except Exception as e:
             st.error(f"❌ {y} fetch error: {e}")
-            print(f"[ALL-MAXED] Exception during fetch for {y}: {e}")
+            print(f"[ALL-MAXED] ❌ Exception during {y}: {e}")
 
-# Combine all years
+# -----------------------------
+# Combine + Summary
+# -----------------------------
 if all_years:
     df_all_years = pd.concat(all_years, ignore_index=True)
-    st.success(f"✅ Fetched and combined data for {len(all_years)} years")
+    st.success(f"✅ Combined {len(all_years)} years of data — {len(df_all_years):,} rows total")
 else:
     df_all_years = pd.DataFrame()
-    st.warning("⚠️ No data fetched for the selected years")
+    st.warning("⚠️ No data fetched for selected years")
+
+print("[ALL-MAXED] Maker analytics complete.")
 
 # =====================================================
 # -------------------------
