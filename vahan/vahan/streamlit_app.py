@@ -8301,531 +8301,531 @@ except Exception as e:
     print("[ALL-MAXED FINAL] Exception occurred:", e)
 
 
-# ================================================================
-# 🚀 VAHAN ALL-MAXED — Unified Trend + Growth + Revenue Analytics
-# ================================================================
-
-import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
-from datetime import datetime, timedelta
-import json, random, math, logging
-from colorama import Fore
-
-# ================================================================
-# ⚙️ PARAMETER SAFETY + BUILD
-# ================================================================
-
-from datetime import datetime
-import streamlit as st
-
-# ================================================================
-# 🚀 VAHAN ALL-MAXED — Unified Trend + Growth + Revenue Analytics
-# ================================================================
-print("\n" + "=" * 80)
-print("[ALL-MAXED] 🚀 Starting Unified Trend + Growth + Revenue analytics control block setup")
-print(f"[TIME] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-print("=" * 80)
-
-st.markdown(
-    f"""
-    <div style="
-        text-align:center;
-        padding:22px;
-        border-radius:16px;
-        background:linear-gradient(90deg,#36D1DC,#5B86E5);
-        color:white;
-        font-size:22px;
-        font-weight:bold;
-        box-shadow: 0 0 18px rgba(0,0,0,0.45);
-    ">
-        🚀 VAHAN ALL-MAXED — Unified Trend + Growth + Revenue Analytics Started — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-st.divider()  # optional visual separation
-
-
-def safe_value(val, default):
-    """Ensure no parameter is blank or None."""
-    if val is None or (isinstance(val, str) and not val.strip()):
-        return default
-    return val
-
-
-from_year = safe_value(locals().get('from_year'), 2018)
-to_year = safe_value(locals().get('to_year'), datetime.now().year)
-state_code = safe_value(locals().get('state_code'), 'ALL')
-rto_code = safe_value(locals().get('rto_code'), '0')
-vehicle_classes = safe_value(locals().get('vehicle_classes'), 'ALL')
-vehicle_makers = safe_value(locals().get('vehicle_makers'), 'ALL')
-frequency = safe_value(locals().get('frequency'), 'Monthly')
-fitness_check = safe_value(locals().get('fitness_check'), 'ALL')
-vehicle_type = safe_value(locals().get('vehicle_type'), 'ALL')
-
-st.write("🔍 **Params Sent to API:**")
-st.json(params)
-
-# ✅ Also print to console for debugging
-print(Fore.CYAN + "[DEBUG] Parameters sent to API:" + Fore.RESET)
-print(params)
-
-def normalize_trend(tr_json):
-    """Normalize trend data structure."""
-    if not tr_json:
-        print("[DEBUG] Input trend JSON is empty. Returning empty DataFrame.")
-        return pd.DataFrame()
-
-    if "data" in tr_json:
-        df = pd.DataFrame(tr_json["data"])
-        print(f"[DEBUG] Loaded {len(df)} rows from 'data' key.")
-    elif isinstance(tr_json, list):
-        df = pd.DataFrame(tr_json)
-        print(f"[DEBUG] Loaded {len(df)} rows from list input.")
-    else:
-        df = pd.DataFrame()
-        print("[DEBUG] Input JSON unrecognized. Returning empty DataFrame.")
-
-    if "date" not in df.columns:
-        df["date"] = pd.date_range("2020-01-01", periods=len(df), freq="M")
-        print("[DEBUG] 'date' column missing. Added default monthly range starting 2020-01-01.")
-
-    if "value" not in df.columns:
-        df["value"] = np.random.randint(300000, 800000, len(df))
-        print("[DEBUG] 'value' column missing. Filled with random integers.")
-
-    print(f"[DEBUG] normalize_trend returning DataFrame with {len(df)} rows and columns: {df.columns.tolist()}")
-    return df
-
-def safe_get_trend(params):
-    try:
-        tr_json, tr_url = get_json("vahandashboard/vahanyearwiseregistrationtrend", params)
-        print(f"[DEBUG] Fetched trend JSON from URL: {tr_url}")
-        df = normalize_trend(tr_json)
-        print(f"[DEBUG] Trend DataFrame shape: {df.shape}")
-    except Exception as e:
-        print(f"[DEBUG] API fetch failed: {e}. Using fallback mock data.")
-        tr_url = "MOCK://trend"
-        np.random.seed(42)
-        months = pd.date_range("2020-01-01", "2026-12-01", freq="MS")
-        df = pd.DataFrame({
-            "date": months,
-            "value": (
-                (np.sin(np.arange(len(months)) / 6) * 0.1 + 1.05)
-                * np.linspace(400000, 950000, len(months))
-                + np.random.randint(-50000, 50000, len(months))
-            ).astype(int)
-        })
-        print(f"[DEBUG] Fallback DataFrame shape: {df.shape}")
-
-    df["year"] = df["date"].dt.year
-    df["month"] = df["date"].dt.month
-
-    print(f"[DEBUG] Added 'year' and 'month' columns. Final shape: {df.shape}")
-    return df, tr_url
-
-with st.spinner("📡 Fetching trend series..."):
-    df_tr, tr_url = safe_get_trend(params)
-    print(f"[DEBUG] Trend URL used: {tr_url}")
-    print(f"[DEBUG] Trend DataFrame head:\n{df_tr.head()}")
-    print(f"[DEBUG] Trend DataFrame shape: {df_tr.shape}")
-
-if df_tr.empty:
-    st.error("❌ No trend data found.")
-    print("[DEBUG] df_tr is empty — nothing to plot.")
-else:
-    st.success(f"✅ Trend data fetched ({len(df_tr)} records)")
-    st.line_chart(df_tr.set_index("date")["value"])
-    print(f"[DEBUG] Plotted trend chart for {len(df_tr)} records")
-
-st.subheader("📈 Multi-Year Comparison")
-years = sorted(df_tr["year"].unique())
-selected_years = st.multiselect("Select years to compare", years, default=years[-2:])
-print(f"[DEBUG] All available years: {years}")
-print(f"[DEBUG] User selected years: {selected_years}")
-
-pivot = (
-    df_tr.groupby([df_tr["date"].dt.strftime("%b"), "year"])["value"]
-    .sum()
-    .unstack()
-    .fillna(0)
-)
-print(f"[DEBUG] Pivot table head:\n{pivot.head()}")
-print(f"[DEBUG] Pivot table columns: {pivot.columns.tolist()}")
-
-# --- Ensure column types are strings for Plotly
-pivot.columns = pivot.columns.astype(str)
-selected_years_str = [str(y) for y in selected_years if str(y) in pivot.columns]
-print(f"[DEBUG] Selected years (str) in pivot: {selected_years_str}")
-
-if not selected_years_str:
-    st.warning("⚠️ No matching years found for comparison plot.")
-    print("[DEBUG] No years available for plotting.")
-else:
-    fig = px.line(
-        pivot,
-        x=pivot.index,
-        y=selected_years_str,
-        markers=True,
-        title="Year-over-Year Registration Comparison"
-    )
-    st.plotly_chart(fig, use_container_width=True)
-    print(f"[DEBUG] Plotted comparison chart for years: {selected_years_str}")
-
-# ================================================================
-# 💰 REVENUE TREND MOCK
-# ================================================================
-
-def safe_get_revenue_trend(params):
-    np.random.seed(42)
-    now = datetime.now()
-    years = list(range(2019, now.year + 1))
-    df = pd.DataFrame({
-        "period": [f"FY{y}-{str(y+1)[-2:]}" for y in years for _ in range(4)],
-        "year": np.repeat(years, 4),
-        "value": np.concatenate([
-            np.linspace(random.randint(500, 800), random.randint(900, 1200), 4)
-            for _ in years
-        ])
-    })
-    return df
-
-df_rev = safe_get_revenue_trend(params)
-
-print(f"[DEBUG] Revenue trend head:\n{df_rev.head()}")
-print(f"[DEBUG] Revenue trend years: {df_rev['year'].unique()}")
-print(f"[DEBUG] Revenue trend periods: {df_rev['period'].unique()}")
-
-st.subheader("💰 Revenue Trend Comparison")
-fig_rev = px.line(df_rev, x="period", y="value", color="year", markers=True)
-st.plotly_chart(fig_rev, use_container_width=True)
-
-print(f"[DEBUG] Plotted revenue trend chart for years: {df_rev['year'].unique()}")
-
-
-# ================================================================
-# 🔮 FORECASTING + ANOMALY + CLUSTERING
-# ================================================================
-
-try:
-    from sklearn.linear_model import LinearRegression
-    from sklearn.ensemble import IsolationForest
-    from sklearn.cluster import KMeans
-except ImportError:
-    import subprocess, sys
-    subprocess.run([sys.executable, "-m", "pip", "install", "scikit-learn"])
-    from sklearn.linear_model import LinearRegression
-    from sklearn.ensemble import IsolationForest
-    from sklearn.cluster import KMeans
-
-st.subheader("🔮 Forecasting (Linear Regression)")
-series = df_tr.groupby("year")["value"].sum().reset_index()
-print(f"[DEBUG] Series for forecasting:\n{series}")
-
-X = np.arange(len(series)).reshape(-1, 1)
-lr = LinearRegression().fit(X, series["value"])
-future_idx = np.arange(len(series) + 5).reshape(-1, 1)
-preds = lr.predict(future_idx)
-future_years = list(range(series["year"].iloc[0], series["year"].iloc[0] + len(preds)))
-df_pred = pd.DataFrame({"year": future_years, "pred": preds})
-print(f"[DEBUG] Forecasted values:\n{df_pred}")
-
-fig_lin = px.line(df_pred, x="year", y="pred", title="Linear Forecast", markers=True)
-fig_lin.add_scatter(x=series["year"], y=series["value"], mode="lines+markers", name="Actual")
-st.plotly_chart(fig_lin, use_container_width=True)
-
-# -----------------------------
-st.subheader("⚠️ Anomaly Detection")
-iso = IsolationForest(contamination=0.03, random_state=42)
-df_tr["anomaly"] = iso.fit_predict(df_tr[["value"]])
-print(f"[DEBUG] Anomalies detected:\n{df_tr[['date','value','anomaly']].tail()}")
-
-fig_a = px.scatter(df_tr, x="date", y="value",
-                   color=df_tr["anomaly"].map({1: "Normal", -1: "Anomaly"}))
-st.plotly_chart(fig_a, use_container_width=True)
-
-# -----------------------------
-st.subheader("🔍 Clustering (Monthly Patterns)")
-
-# Pivot (year vs month)
-month_pivot = (
-    df_tr.pivot_table(index="year", columns="month", values="value", aggfunc="sum")
-    .fillna(0)
-)
-st.write(f"[DEBUG] Pivot for clustering shape: {month_pivot.shape}")
-
-num_years = len(month_pivot)
-
-if num_years < 2:
-    st.info("📉 Only one year of data — clustering skipped.")
-    st.dataframe(month_pivot)
-
-elif num_years == 2:
-    st.info("⚙️ Only two years available — using K=2 automatically.")
-    try:
-        km = KMeans(n_clusters=2, random_state=42)
-        month_pivot["Cluster"] = km.fit_predict(month_pivot)
-        st.dataframe(month_pivot)
-        st.write(f"[DEBUG] Cluster assignments:\n{month_pivot[['Cluster']]}")
-    except Exception as e:
-        st.error(f"❌ Clustering failed: {e}")
-
-else:
-    # Safe slider only when we have ≥ 3 years
-    max_k = min(10, num_years)
-    default_k = min(3, max_k)
-    k = st.slider(
-        "Select K (clusters)",
-        min_value=2,
-        max_value=max_k,
-        value=default_k,
-        step=1,
-        help="Choose number of clusters (≤ number of years)"
-    )
-
-    try:
-        km = KMeans(n_clusters=k, random_state=42)
-        month_pivot["Cluster"] = km.fit_predict(month_pivot)
-        st.dataframe(month_pivot)
-        st.write(f"[DEBUG] Cluster assignments:\n{month_pivot[['Cluster']]}")
-    except Exception as e:
-        st.error(f"❌ Clustering failed: {e}")
-
-# ================================================================
-# 🔥 HEATMAP
-# ================================================================
-
-st.subheader("🔥 Heatmap — Month × Year")
-
-# Pivot table for heatmap
-heat = df_tr.pivot_table(index="year", columns="month", values="value", aggfunc="sum").fillna(0)
-
-# DEBUG: print the pivot table
-print("[DEBUG] Heatmap pivot table:")
-print(heat)
-
-# Create heatmap
-fig_h = go.Figure(
-    data=go.Heatmap(
-        z=heat.values,
-        x=heat.columns,
-        y=heat.index,
-        colorscale="Viridis",
-        hovertemplate="Year: %{y}<br>Month: %{x}<br>Registrations: %{z}<extra></extra>"
-    )
-)
-fig_h.update_layout(
-    title="Heatmap of Registrations",
-    xaxis_title="Month",
-    yaxis_title="Year"
-)
-st.plotly_chart(fig_h, use_container_width=True)
-
-
-# ================================================================
-# ✅ SUMMARY
-# ================================================================
-
-st.markdown("---")
-
-total_records = len(df_tr)
-duration_start = df_tr['year'].min()
-duration_end = df_tr['year'].max()
-peak_value = df_tr['value'].max()
-
-# DEBUG prints
-print(f"[DEBUG] Total Records: {total_records}")
-print(f"[DEBUG] Duration: {duration_start} → {duration_end}")
-print(f"[DEBUG] Peak Value: {peak_value:,}")
-
-st.markdown(f"**Total Records:** {total_records:,}")
-st.markdown(f"**Duration:** {duration_start} → {duration_end}")
-st.markdown(f"**Peak Value:** {peak_value:,.0f}")
-st.success("✅ All modules executed successfully — VAHAN ALL-MAXED ready!")
-
-
-# ---------- Forecasting & Anomalies -------------------------------------------
-# --- Ensure required variables exist ---
-import pandas as pd
-import numpy as np
-import streamlit as st
-import math
-
-# -------------------------
-# Permanently enable ML
-# -------------------------
-enable_ml = True
-
-# -------------------------
-# Ensure historical data exists
-# -------------------------
-if "df_tr" not in globals() or df_tr is None or df_tr.empty:
-    # Create minimal synthetic timeseries
-    dates = pd.date_range("2023-01-01", periods=12, freq="M")
-    values = np.random.randint(1000, 5000, size=len(dates))
-    df_tr = pd.DataFrame({"date": dates, "value": values})
-
-print(f"[DEBUG] df_tr head:\n{df_tr.head()}")
-print(f"[DEBUG] Total rows: {len(df_tr)}")
-print(f"[DEBUG] Date range: {df_tr['date'].min()} → {df_tr['date'].max()}")
-print(f"[DEBUG] Value stats: min={df_tr['value'].min()}, max={df_tr['value'].max()}, mean={df_tr['value'].mean():.2f}")
-
-freq_map = {"M": "MS", "Y": "YS"}
-frequency = "M"
-
-def lazy(pkg):
-    try:
-        __import__(pkg)
-        print(f"[DEBUG] Package '{pkg}' is available.")
-        return True
-    except ImportError:
-        print(f"[DEBUG] Package '{pkg}' not installed.")
-        return None
-
-try:
-    from prophet import Prophet
-    prophet_mod = Prophet
-    print("[DEBUG] Prophet module loaded successfully.")
-except Exception:
-    prophet_mod = None
-    print("[DEBUG] Prophet module not available; fallback only.")
-
-# ---------- Forecasting & Anomaly Detection ----------
-if enable_ml and not df_tr.empty:
-    st.subheader("📊 Forecasting & Anomaly Detection — ALLL-MAXED")
-
-    fc_col1, fc_col2 = st.columns([2,3])
-    with fc_col1:
-        method = st.selectbox(
-            "Forecast method",
-            ["Naive seasonality", "SARIMAX", "Prophet", "RandomForest", "XGBoost"],
-            key="forecast_method_maxed"
-        )
-        horizon = st.number_input("Forecast horizon (periods)", 1, 60, 12, key="forecast_horizon_maxed")
-    with fc_col2:
-        st.info("Auto-shows all visuals & stats. Methods run only if their packages are available.")
-
-    ts = df_tr.set_index("date")["value"].astype(float)
-    freq = freq_map.get(frequency, "M")
-
-    print(f"[DEBUG] Forecast selected: {method}, horizon: {horizon}")
-    print(f"[DEBUG] Time series head:\n{ts.head()}")
-
-    # ---- FORECAST ----
-    if st.button("Run Forecast (ALLL-MAXED)", key="run_forecast_allmaxed"):
-        st.markdown("### 🔮 Forecast Results")
-        fc = None
-        idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq=freq)
-
-        # Forecast logic
-        if method == "Naive seasonality":
-            last = ts[-12:] if len(ts) >= 12 else ts
-            preds = np.tile(last.values, int(np.ceil(horizon / len(last))))[:horizon]
-            fc = pd.Series(preds, index=idx)
-            print(f"[DEBUG] Naive seasonality forecast values:\n{fc}")
-
-        elif method == "SARIMAX" and lazy("statsmodels"):
-            from statsmodels.tsa.statespace.sarimax import SARIMAX
-            model = SARIMAX(ts, order=(1,1,1), seasonal_order=(1,1,1,12))
-            res = model.fit(disp=False)
-            fc = pd.Series(res.get_forecast(steps=horizon).predicted_mean, index=idx)
-            print(f"[DEBUG] SARIMAX forecast head:\n{fc.head()}")
-
-        elif method == "Prophet" and lazy("prophet") and prophet_mod:
-            pdf = ts.reset_index().rename(columns={"date": "ds", "value": "y"})
-            m = prophet_mod()
-            m.fit(pdf)
-            future = m.make_future_dataframe(periods=horizon, freq="M")
-            fc = m.predict(future).set_index("ds")["yhat"].tail(horizon)
-            print(f"[DEBUG] Prophet forecast head:\n{fc.head()}")
-
-        elif method == "RandomForest" and lazy("sklearn"):
-            from sklearn.ensemble import RandomForestRegressor
-            df_feat = pd.DataFrame({"y": ts})
-            for l in range(1,13):
-                df_feat[f"lag_{l}"] = df_feat["y"].shift(l)
-            df_feat = df_feat.dropna()
-            X = df_feat.drop(columns=["y"]).values
-            y_arr = df_feat["y"].values
-            model = RandomForestRegressor(n_estimators=200, random_state=42).fit(X, y_arr)
-            last = df_feat.drop(columns=["y"]).iloc[-1].values
-            preds, cur = [], last.copy()
-            for _ in range(horizon):
-                p = model.predict(cur.reshape(1,-1))[0]
-                preds.append(p)
-                cur = np.roll(cur, 1)
-                cur[0] = p
-            fc = pd.Series(preds, index=idx)
-            print(f"[DEBUG] RandomForest forecast head:\n{fc.head()}")
-
-        elif method == "XGBoost" and lazy("xgboost"):
-            import xgboost as xgb
-            df_feat = pd.DataFrame({"y": ts})
-            for l in range(1,13):
-                df_feat[f"lag_{l}"] = df_feat["y"].shift(l)
-            df_feat = df_feat.dropna()
-            X = df_feat.drop(columns=["y"])
-            y_arr = df_feat["y"]
-            dtrain = xgb.DMatrix(X, label=y_arr)
-            bst = xgb.train({"objective": "reg:squarederror"}, dtrain, num_boost_round=200)
-            last = X.iloc[-1].values
-            preds, cur = [], last.copy()
-            for _ in range(horizon):
-                dcur = xgb.DMatrix(cur.reshape(1,-1))
-                p = bst.predict(dcur)[0]
-                preds.append(p)
-                cur = np.roll(cur,1)
-                cur[0] = p
-            fc = pd.Series(preds, index=idx)
-            print(f"[DEBUG] XGBoost forecast head:\n{fc.head()}")
-
-        if fc is not None and not fc.empty:
-            combined = pd.concat([ts, fc])
-            st.line_chart(combined)
-            st.metric("Forecast Mean", round(fc.mean(), 2))
-            st.metric("Forecast Std", round(fc.std(), 2))
-            st.metric("Forecast Start", str(fc.index[0].date()))
-            st.metric("Forecast End", str(fc.index[-1].date()))
-            with st.expander("📈 Forecast Data Summary"):
-                st.dataframe(fc.describe().to_frame("Forecast Summary"))
-
-    # ---- ANOMALY DETECTION ----
-    st.markdown("### ⚠️ Anomaly Detection")
-    a_method = st.selectbox(
-        "Anomaly method",
-        ["Z-score", "IQR", "IsolationForest"],
-        key="anom_method_allmaxed"
-    )
-
-    if st.button("Run Anomaly Detection (ALLL-MAXED)", key="run_anom_allmaxed"):
-        if a_method == "Z-score":
-            z = (ts - ts.mean()) / ts.std()
-            anoms = z.abs() > 3
-        elif a_method == "IQR":
-            q1, q3 = ts.quantile(0.25), ts.quantile(0.75)
-            iqr = q3 - q1
-            anoms = (ts < q1 - 1.5*iqr) | (ts > q3 + 1.5*iqr)
-        elif a_method == "IsolationForest" and lazy("sklearn"):
-            from sklearn.ensemble import IsolationForest
-            iso = IsolationForest(random_state=0).fit(ts.values.reshape(-1,1))
-            preds = iso.predict(ts.values.reshape(-1,1))
-            anoms = preds == -1
-        else:
-            anoms = pd.Series(False, index=ts.index)
-
-        out = ts[anoms]
-        print(f"[DEBUG] Anomalies detected: {out.shape[0]}")
-        print(f"[DEBUG] Anomaly values:\n{out}")
-        st.metric("Anomalies Detected", out.shape[0])
-        st.line_chart(ts)
-        if not out.empty:
-            st.scatter_chart(out)
-            with st.expander("🔍 Anomaly Data"):
-                st.dataframe(out)
+# # ================================================================
+# # 🚀 VAHAN ALL-MAXED — Unified Trend + Growth + Revenue Analytics
+# # ================================================================
+
+# import streamlit as st
+# import pandas as pd
+# import numpy as np
+# import plotly.express as px
+# import plotly.graph_objects as go
+# from datetime import datetime, timedelta
+# import json, random, math, logging
+# from colorama import Fore
+
+# # ================================================================
+# # ⚙️ PARAMETER SAFETY + BUILD
+# # ================================================================
+
+# from datetime import datetime
+# import streamlit as st
+
+# # ================================================================
+# # 🚀 VAHAN ALL-MAXED — Unified Trend + Growth + Revenue Analytics
+# # ================================================================
+# print("\n" + "=" * 80)
+# print("[ALL-MAXED] 🚀 Starting Unified Trend + Growth + Revenue analytics control block setup")
+# print(f"[TIME] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+# print("=" * 80)
+
+# st.markdown(
+#     f"""
+#     <div style="
+#         text-align:center;
+#         padding:22px;
+#         border-radius:16px;
+#         background:linear-gradient(90deg,#36D1DC,#5B86E5);
+#         color:white;
+#         font-size:22px;
+#         font-weight:bold;
+#         box-shadow: 0 0 18px rgba(0,0,0,0.45);
+#     ">
+#         🚀 VAHAN ALL-MAXED — Unified Trend + Growth + Revenue Analytics Started — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+#     </div>
+#     """,
+#     unsafe_allow_html=True
+# )
+
+# st.divider()  # optional visual separation
+
+
+# def safe_value(val, default):
+#     """Ensure no parameter is blank or None."""
+#     if val is None or (isinstance(val, str) and not val.strip()):
+#         return default
+#     return val
+
+
+# from_year = safe_value(locals().get('from_year'), 2018)
+# to_year = safe_value(locals().get('to_year'), datetime.now().year)
+# state_code = safe_value(locals().get('state_code'), 'ALL')
+# rto_code = safe_value(locals().get('rto_code'), '0')
+# vehicle_classes = safe_value(locals().get('vehicle_classes'), 'ALL')
+# vehicle_makers = safe_value(locals().get('vehicle_makers'), 'ALL')
+# frequency = safe_value(locals().get('frequency'), 'Monthly')
+# fitness_check = safe_value(locals().get('fitness_check'), 'ALL')
+# vehicle_type = safe_value(locals().get('vehicle_type'), 'ALL')
+
+# st.write("🔍 **Params Sent to API:**")
+# st.json(params)
+
+# # ✅ Also print to console for debugging
+# print(Fore.CYAN + "[DEBUG] Parameters sent to API:" + Fore.RESET)
+# print(params)
+
+# def normalize_trend(tr_json):
+#     """Normalize trend data structure."""
+#     if not tr_json:
+#         print("[DEBUG] Input trend JSON is empty. Returning empty DataFrame.")
+#         return pd.DataFrame()
+
+#     if "data" in tr_json:
+#         df = pd.DataFrame(tr_json["data"])
+#         print(f"[DEBUG] Loaded {len(df)} rows from 'data' key.")
+#     elif isinstance(tr_json, list):
+#         df = pd.DataFrame(tr_json)
+#         print(f"[DEBUG] Loaded {len(df)} rows from list input.")
+#     else:
+#         df = pd.DataFrame()
+#         print("[DEBUG] Input JSON unrecognized. Returning empty DataFrame.")
+
+#     if "date" not in df.columns:
+#         df["date"] = pd.date_range("2020-01-01", periods=len(df), freq="M")
+#         print("[DEBUG] 'date' column missing. Added default monthly range starting 2020-01-01.")
+
+#     if "value" not in df.columns:
+#         df["value"] = np.random.randint(300000, 800000, len(df))
+#         print("[DEBUG] 'value' column missing. Filled with random integers.")
+
+#     print(f"[DEBUG] normalize_trend returning DataFrame with {len(df)} rows and columns: {df.columns.tolist()}")
+#     return df
+
+# def safe_get_trend(params):
+#     try:
+#         tr_json, tr_url = get_json("vahandashboard/vahanyearwiseregistrationtrend", params)
+#         print(f"[DEBUG] Fetched trend JSON from URL: {tr_url}")
+#         df = normalize_trend(tr_json)
+#         print(f"[DEBUG] Trend DataFrame shape: {df.shape}")
+#     except Exception as e:
+#         print(f"[DEBUG] API fetch failed: {e}. Using fallback mock data.")
+#         tr_url = "MOCK://trend"
+#         np.random.seed(42)
+#         months = pd.date_range("2020-01-01", "2026-12-01", freq="MS")
+#         df = pd.DataFrame({
+#             "date": months,
+#             "value": (
+#                 (np.sin(np.arange(len(months)) / 6) * 0.1 + 1.05)
+#                 * np.linspace(400000, 950000, len(months))
+#                 + np.random.randint(-50000, 50000, len(months))
+#             ).astype(int)
+#         })
+#         print(f"[DEBUG] Fallback DataFrame shape: {df.shape}")
+
+#     df["year"] = df["date"].dt.year
+#     df["month"] = df["date"].dt.month
+
+#     print(f"[DEBUG] Added 'year' and 'month' columns. Final shape: {df.shape}")
+#     return df, tr_url
+
+# with st.spinner("📡 Fetching trend series..."):
+#     df_tr, tr_url = safe_get_trend(params)
+#     print(f"[DEBUG] Trend URL used: {tr_url}")
+#     print(f"[DEBUG] Trend DataFrame head:\n{df_tr.head()}")
+#     print(f"[DEBUG] Trend DataFrame shape: {df_tr.shape}")
+
+# if df_tr.empty:
+#     st.error("❌ No trend data found.")
+#     print("[DEBUG] df_tr is empty — nothing to plot.")
+# else:
+#     st.success(f"✅ Trend data fetched ({len(df_tr)} records)")
+#     st.line_chart(df_tr.set_index("date")["value"])
+#     print(f"[DEBUG] Plotted trend chart for {len(df_tr)} records")
+
+# st.subheader("📈 Multi-Year Comparison")
+# years = sorted(df_tr["year"].unique())
+# selected_years = st.multiselect("Select years to compare", years, default=years[-2:])
+# print(f"[DEBUG] All available years: {years}")
+# print(f"[DEBUG] User selected years: {selected_years}")
+
+# pivot = (
+#     df_tr.groupby([df_tr["date"].dt.strftime("%b"), "year"])["value"]
+#     .sum()
+#     .unstack()
+#     .fillna(0)
+# )
+# print(f"[DEBUG] Pivot table head:\n{pivot.head()}")
+# print(f"[DEBUG] Pivot table columns: {pivot.columns.tolist()}")
+
+# # --- Ensure column types are strings for Plotly
+# pivot.columns = pivot.columns.astype(str)
+# selected_years_str = [str(y) for y in selected_years if str(y) in pivot.columns]
+# print(f"[DEBUG] Selected years (str) in pivot: {selected_years_str}")
+
+# if not selected_years_str:
+#     st.warning("⚠️ No matching years found for comparison plot.")
+#     print("[DEBUG] No years available for plotting.")
+# else:
+#     fig = px.line(
+#         pivot,
+#         x=pivot.index,
+#         y=selected_years_str,
+#         markers=True,
+#         title="Year-over-Year Registration Comparison"
+#     )
+#     st.plotly_chart(fig, use_container_width=True)
+#     print(f"[DEBUG] Plotted comparison chart for years: {selected_years_str}")
+
+# # ================================================================
+# # 💰 REVENUE TREND MOCK
+# # ================================================================
+
+# def safe_get_revenue_trend(params):
+#     np.random.seed(42)
+#     now = datetime.now()
+#     years = list(range(2019, now.year + 1))
+#     df = pd.DataFrame({
+#         "period": [f"FY{y}-{str(y+1)[-2:]}" for y in years for _ in range(4)],
+#         "year": np.repeat(years, 4),
+#         "value": np.concatenate([
+#             np.linspace(random.randint(500, 800), random.randint(900, 1200), 4)
+#             for _ in years
+#         ])
+#     })
+#     return df
+
+# df_rev = safe_get_revenue_trend(params)
+
+# print(f"[DEBUG] Revenue trend head:\n{df_rev.head()}")
+# print(f"[DEBUG] Revenue trend years: {df_rev['year'].unique()}")
+# print(f"[DEBUG] Revenue trend periods: {df_rev['period'].unique()}")
+
+# st.subheader("💰 Revenue Trend Comparison")
+# fig_rev = px.line(df_rev, x="period", y="value", color="year", markers=True)
+# st.plotly_chart(fig_rev, use_container_width=True)
+
+# print(f"[DEBUG] Plotted revenue trend chart for years: {df_rev['year'].unique()}")
+
+
+# # ================================================================
+# # 🔮 FORECASTING + ANOMALY + CLUSTERING
+# # ================================================================
+
+# try:
+#     from sklearn.linear_model import LinearRegression
+#     from sklearn.ensemble import IsolationForest
+#     from sklearn.cluster import KMeans
+# except ImportError:
+#     import subprocess, sys
+#     subprocess.run([sys.executable, "-m", "pip", "install", "scikit-learn"])
+#     from sklearn.linear_model import LinearRegression
+#     from sklearn.ensemble import IsolationForest
+#     from sklearn.cluster import KMeans
+
+# st.subheader("🔮 Forecasting (Linear Regression)")
+# series = df_tr.groupby("year")["value"].sum().reset_index()
+# print(f"[DEBUG] Series for forecasting:\n{series}")
+
+# X = np.arange(len(series)).reshape(-1, 1)
+# lr = LinearRegression().fit(X, series["value"])
+# future_idx = np.arange(len(series) + 5).reshape(-1, 1)
+# preds = lr.predict(future_idx)
+# future_years = list(range(series["year"].iloc[0], series["year"].iloc[0] + len(preds)))
+# df_pred = pd.DataFrame({"year": future_years, "pred": preds})
+# print(f"[DEBUG] Forecasted values:\n{df_pred}")
+
+# fig_lin = px.line(df_pred, x="year", y="pred", title="Linear Forecast", markers=True)
+# fig_lin.add_scatter(x=series["year"], y=series["value"], mode="lines+markers", name="Actual")
+# st.plotly_chart(fig_lin, use_container_width=True)
+
+# # -----------------------------
+# st.subheader("⚠️ Anomaly Detection")
+# iso = IsolationForest(contamination=0.03, random_state=42)
+# df_tr["anomaly"] = iso.fit_predict(df_tr[["value"]])
+# print(f"[DEBUG] Anomalies detected:\n{df_tr[['date','value','anomaly']].tail()}")
+
+# fig_a = px.scatter(df_tr, x="date", y="value",
+#                    color=df_tr["anomaly"].map({1: "Normal", -1: "Anomaly"}))
+# st.plotly_chart(fig_a, use_container_width=True)
+
+# # -----------------------------
+# st.subheader("🔍 Clustering (Monthly Patterns)")
+
+# # Pivot (year vs month)
+# month_pivot = (
+#     df_tr.pivot_table(index="year", columns="month", values="value", aggfunc="sum")
+#     .fillna(0)
+# )
+# st.write(f"[DEBUG] Pivot for clustering shape: {month_pivot.shape}")
+
+# num_years = len(month_pivot)
+
+# if num_years < 2:
+#     st.info("📉 Only one year of data — clustering skipped.")
+#     st.dataframe(month_pivot)
+
+# elif num_years == 2:
+#     st.info("⚙️ Only two years available — using K=2 automatically.")
+#     try:
+#         km = KMeans(n_clusters=2, random_state=42)
+#         month_pivot["Cluster"] = km.fit_predict(month_pivot)
+#         st.dataframe(month_pivot)
+#         st.write(f"[DEBUG] Cluster assignments:\n{month_pivot[['Cluster']]}")
+#     except Exception as e:
+#         st.error(f"❌ Clustering failed: {e}")
+
+# else:
+#     # Safe slider only when we have ≥ 3 years
+#     max_k = min(10, num_years)
+#     default_k = min(3, max_k)
+#     k = st.slider(
+#         "Select K (clusters)",
+#         min_value=2,
+#         max_value=max_k,
+#         value=default_k,
+#         step=1,
+#         help="Choose number of clusters (≤ number of years)"
+#     )
+
+#     try:
+#         km = KMeans(n_clusters=k, random_state=42)
+#         month_pivot["Cluster"] = km.fit_predict(month_pivot)
+#         st.dataframe(month_pivot)
+#         st.write(f"[DEBUG] Cluster assignments:\n{month_pivot[['Cluster']]}")
+#     except Exception as e:
+#         st.error(f"❌ Clustering failed: {e}")
+
+# # ================================================================
+# # 🔥 HEATMAP
+# # ================================================================
+
+# st.subheader("🔥 Heatmap — Month × Year")
+
+# # Pivot table for heatmap
+# heat = df_tr.pivot_table(index="year", columns="month", values="value", aggfunc="sum").fillna(0)
+
+# # DEBUG: print the pivot table
+# print("[DEBUG] Heatmap pivot table:")
+# print(heat)
+
+# # Create heatmap
+# fig_h = go.Figure(
+#     data=go.Heatmap(
+#         z=heat.values,
+#         x=heat.columns,
+#         y=heat.index,
+#         colorscale="Viridis",
+#         hovertemplate="Year: %{y}<br>Month: %{x}<br>Registrations: %{z}<extra></extra>"
+#     )
+# )
+# fig_h.update_layout(
+#     title="Heatmap of Registrations",
+#     xaxis_title="Month",
+#     yaxis_title="Year"
+# )
+# st.plotly_chart(fig_h, use_container_width=True)
+
+
+# # ================================================================
+# # ✅ SUMMARY
+# # ================================================================
+
+# st.markdown("---")
+
+# total_records = len(df_tr)
+# duration_start = df_tr['year'].min()
+# duration_end = df_tr['year'].max()
+# peak_value = df_tr['value'].max()
+
+# # DEBUG prints
+# print(f"[DEBUG] Total Records: {total_records}")
+# print(f"[DEBUG] Duration: {duration_start} → {duration_end}")
+# print(f"[DEBUG] Peak Value: {peak_value:,}")
+
+# st.markdown(f"**Total Records:** {total_records:,}")
+# st.markdown(f"**Duration:** {duration_start} → {duration_end}")
+# st.markdown(f"**Peak Value:** {peak_value:,.0f}")
+# st.success("✅ All modules executed successfully — VAHAN ALL-MAXED ready!")
+
+
+# # ---------- Forecasting & Anomalies -------------------------------------------
+# # --- Ensure required variables exist ---
+# import pandas as pd
+# import numpy as np
+# import streamlit as st
+# import math
+
+# # -------------------------
+# # Permanently enable ML
+# # -------------------------
+# enable_ml = True
+
+# # -------------------------
+# # Ensure historical data exists
+# # -------------------------
+# if "df_tr" not in globals() or df_tr is None or df_tr.empty:
+#     # Create minimal synthetic timeseries
+#     dates = pd.date_range("2023-01-01", periods=12, freq="M")
+#     values = np.random.randint(1000, 5000, size=len(dates))
+#     df_tr = pd.DataFrame({"date": dates, "value": values})
+
+# print(f"[DEBUG] df_tr head:\n{df_tr.head()}")
+# print(f"[DEBUG] Total rows: {len(df_tr)}")
+# print(f"[DEBUG] Date range: {df_tr['date'].min()} → {df_tr['date'].max()}")
+# print(f"[DEBUG] Value stats: min={df_tr['value'].min()}, max={df_tr['value'].max()}, mean={df_tr['value'].mean():.2f}")
+
+# freq_map = {"M": "MS", "Y": "YS"}
+# frequency = "M"
+
+# def lazy(pkg):
+#     try:
+#         __import__(pkg)
+#         print(f"[DEBUG] Package '{pkg}' is available.")
+#         return True
+#     except ImportError:
+#         print(f"[DEBUG] Package '{pkg}' not installed.")
+#         return None
+
+# try:
+#     from prophet import Prophet
+#     prophet_mod = Prophet
+#     print("[DEBUG] Prophet module loaded successfully.")
+# except Exception:
+#     prophet_mod = None
+#     print("[DEBUG] Prophet module not available; fallback only.")
+
+# # ---------- Forecasting & Anomaly Detection ----------
+# if enable_ml and not df_tr.empty:
+#     st.subheader("📊 Forecasting & Anomaly Detection — ALLL-MAXED")
+
+#     fc_col1, fc_col2 = st.columns([2,3])
+#     with fc_col1:
+#         method = st.selectbox(
+#             "Forecast method",
+#             ["Naive seasonality", "SARIMAX", "Prophet", "RandomForest", "XGBoost"],
+#             key="forecast_method_maxed"
+#         )
+#         horizon = st.number_input("Forecast horizon (periods)", 1, 60, 12, key="forecast_horizon_maxed")
+#     with fc_col2:
+#         st.info("Auto-shows all visuals & stats. Methods run only if their packages are available.")
+
+#     ts = df_tr.set_index("date")["value"].astype(float)
+#     freq = freq_map.get(frequency, "M")
+
+#     print(f"[DEBUG] Forecast selected: {method}, horizon: {horizon}")
+#     print(f"[DEBUG] Time series head:\n{ts.head()}")
+
+#     # ---- FORECAST ----
+#     if st.button("Run Forecast (ALLL-MAXED)", key="run_forecast_allmaxed"):
+#         st.markdown("### 🔮 Forecast Results")
+#         fc = None
+#         idx = pd.date_range(start=ts.index[-1] + pd.offsets.MonthBegin(1), periods=horizon, freq=freq)
+
+#         # Forecast logic
+#         if method == "Naive seasonality":
+#             last = ts[-12:] if len(ts) >= 12 else ts
+#             preds = np.tile(last.values, int(np.ceil(horizon / len(last))))[:horizon]
+#             fc = pd.Series(preds, index=idx)
+#             print(f"[DEBUG] Naive seasonality forecast values:\n{fc}")
+
+#         elif method == "SARIMAX" and lazy("statsmodels"):
+#             from statsmodels.tsa.statespace.sarimax import SARIMAX
+#             model = SARIMAX(ts, order=(1,1,1), seasonal_order=(1,1,1,12))
+#             res = model.fit(disp=False)
+#             fc = pd.Series(res.get_forecast(steps=horizon).predicted_mean, index=idx)
+#             print(f"[DEBUG] SARIMAX forecast head:\n{fc.head()}")
+
+#         elif method == "Prophet" and lazy("prophet") and prophet_mod:
+#             pdf = ts.reset_index().rename(columns={"date": "ds", "value": "y"})
+#             m = prophet_mod()
+#             m.fit(pdf)
+#             future = m.make_future_dataframe(periods=horizon, freq="M")
+#             fc = m.predict(future).set_index("ds")["yhat"].tail(horizon)
+#             print(f"[DEBUG] Prophet forecast head:\n{fc.head()}")
+
+#         elif method == "RandomForest" and lazy("sklearn"):
+#             from sklearn.ensemble import RandomForestRegressor
+#             df_feat = pd.DataFrame({"y": ts})
+#             for l in range(1,13):
+#                 df_feat[f"lag_{l}"] = df_feat["y"].shift(l)
+#             df_feat = df_feat.dropna()
+#             X = df_feat.drop(columns=["y"]).values
+#             y_arr = df_feat["y"].values
+#             model = RandomForestRegressor(n_estimators=200, random_state=42).fit(X, y_arr)
+#             last = df_feat.drop(columns=["y"]).iloc[-1].values
+#             preds, cur = [], last.copy()
+#             for _ in range(horizon):
+#                 p = model.predict(cur.reshape(1,-1))[0]
+#                 preds.append(p)
+#                 cur = np.roll(cur, 1)
+#                 cur[0] = p
+#             fc = pd.Series(preds, index=idx)
+#             print(f"[DEBUG] RandomForest forecast head:\n{fc.head()}")
+
+#         elif method == "XGBoost" and lazy("xgboost"):
+#             import xgboost as xgb
+#             df_feat = pd.DataFrame({"y": ts})
+#             for l in range(1,13):
+#                 df_feat[f"lag_{l}"] = df_feat["y"].shift(l)
+#             df_feat = df_feat.dropna()
+#             X = df_feat.drop(columns=["y"])
+#             y_arr = df_feat["y"]
+#             dtrain = xgb.DMatrix(X, label=y_arr)
+#             bst = xgb.train({"objective": "reg:squarederror"}, dtrain, num_boost_round=200)
+#             last = X.iloc[-1].values
+#             preds, cur = [], last.copy()
+#             for _ in range(horizon):
+#                 dcur = xgb.DMatrix(cur.reshape(1,-1))
+#                 p = bst.predict(dcur)[0]
+#                 preds.append(p)
+#                 cur = np.roll(cur,1)
+#                 cur[0] = p
+#             fc = pd.Series(preds, index=idx)
+#             print(f"[DEBUG] XGBoost forecast head:\n{fc.head()}")
+
+#         if fc is not None and not fc.empty:
+#             combined = pd.concat([ts, fc])
+#             st.line_chart(combined)
+#             st.metric("Forecast Mean", round(fc.mean(), 2))
+#             st.metric("Forecast Std", round(fc.std(), 2))
+#             st.metric("Forecast Start", str(fc.index[0].date()))
+#             st.metric("Forecast End", str(fc.index[-1].date()))
+#             with st.expander("📈 Forecast Data Summary"):
+#                 st.dataframe(fc.describe().to_frame("Forecast Summary"))
+
+#     # ---- ANOMALY DETECTION ----
+#     st.markdown("### ⚠️ Anomaly Detection")
+#     a_method = st.selectbox(
+#         "Anomaly method",
+#         ["Z-score", "IQR", "IsolationForest"],
+#         key="anom_method_allmaxed"
+#     )
+
+#     if st.button("Run Anomaly Detection (ALLL-MAXED)", key="run_anom_allmaxed"):
+#         if a_method == "Z-score":
+#             z = (ts - ts.mean()) / ts.std()
+#             anoms = z.abs() > 3
+#         elif a_method == "IQR":
+#             q1, q3 = ts.quantile(0.25), ts.quantile(0.75)
+#             iqr = q3 - q1
+#             anoms = (ts < q1 - 1.5*iqr) | (ts > q3 + 1.5*iqr)
+#         elif a_method == "IsolationForest" and lazy("sklearn"):
+#             from sklearn.ensemble import IsolationForest
+#             iso = IsolationForest(random_state=0).fit(ts.values.reshape(-1,1))
+#             preds = iso.predict(ts.values.reshape(-1,1))
+#             anoms = preds == -1
+#         else:
+#             anoms = pd.Series(False, index=ts.index)
+
+#         out = ts[anoms]
+#         print(f"[DEBUG] Anomalies detected: {out.shape[0]}")
+#         print(f"[DEBUG] Anomaly values:\n{out}")
+#         st.metric("Anomalies Detected", out.shape[0])
+#         st.line_chart(ts)
+#         if not out.empty:
+#             st.scatter_chart(out)
+#             with st.expander("🔍 Anomaly Data"):
+#                 st.dataframe(out)
 
 # ---------------------------------------------------
 
